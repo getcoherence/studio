@@ -40,7 +40,10 @@ OpenScreen is 100% free for personal and commercial use. Use it, modify it, dist
 - OpenScreen is designed to support both Windows and macOS. We did not use any native APIs specific to one OS, so it should work on both. However, it hasn't been fully tested on Windows yet, if you run into issues, please let me know!
 - After you install the app, you'll need to grant it accessibility and screen recording permissions for it to work properly.
 
+
 ## macOS Installation Instructions
+
+Download the latest installer for your platform from the [GitHub Releases](https://github.com/siddharthvaddem/openscreen/releases) page.
 
 If you encounter issues with macOS Gatekeeper blocking the app (since it does not come with a developer certificate), you can bypass this by running the following command in your terminal after installation:
 
@@ -49,9 +52,6 @@ xattr -rd com.apple.quarantine /Applications/Openscreen.app
 ```
 
 After running this command, proceed to **System Preferences > Security & Privacy** to grant the necessary permissions for "screen recording" and "accessibility". Once permissions are granted, you can launch the app.
-
-## Getting Started
-Download the latest installer for your platform from the [GitHub Releases](https://github.com/siddharthvaddem/openscreen/releases) page.
 
 ## Built with
 - Electron
