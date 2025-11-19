@@ -50,10 +50,6 @@ xattr -rd com.apple.quarantine /Applications/Openscreen.app
 
 After running this command, proceed to **System Preferences > Security & Privacy** to grant the necessary permissions for "screen recording" and "accessibility". Once permissions are granted, you can launch the app.
 
-
-**Contribution:**
-Planning to add a contribution guide soon so people can contribute to this repo. Stay tuned!
-
 ## Getting Started
 Download the latest installer for your platform from the [GitHub Releases](https://github.com/siddharthvaddem/openscreen/releases) page.
 
