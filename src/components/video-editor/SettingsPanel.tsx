@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { getAssetPath } from "@/lib/assetPath";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import Colorful from '@uiw/react-color-colorful';
 import { hsvaToHex } from '@uiw/color-convert';
-import { Trash2, Download, Crop, X, Bug } from "lucide-react";
+import { Trash2, Download, Crop, X, Bug, Upload } from "lucide-react";
+import { toast } from "sonner";
 import type { ZoomDepth, CropRegion } from "./types";
 import { CropControl } from "./CropControl";
 
@@ -69,6 +70,8 @@ const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
 
 export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, showShadow, onShadowChange, showBlur, onBlurChange, cropRegion, onCropChange, videoElement, onExport }: SettingsPanelProps) {
   const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
+  const [customImages, setCustomImages] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let mounted = true
@@ -91,6 +94,53 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
   const handleDeleteClick = () => {
     if (selectedZoomId && onZoomDelete) {
       onZoomDelete(selectedZoomId);
+    }
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    
+    // Validate file type - only allow JPG/JPEG
+    const validTypes = ['image/jpeg', 'image/jpg'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Invalid file type', {
+        description: 'Please upload a JPG or JPEG image file.',
+      });
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (dataUrl) {
+        setCustomImages(prev => [...prev, dataUrl]);
+        onWallpaperChange(dataUrl);
+        toast.success('Custom image uploaded successfully!');
+      }
+    };
+
+    reader.onerror = () => {
+      toast.error('Failed to upload image', {
+        description: 'There was an error reading the file.',
+      });
+    };
+
+    reader.readAsDataURL(file);
+    // Reset input so the same file can be selected again
+    event.target.value = '';
+  };
+
+  const handleRemoveCustomImage = (imageUrl: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setCustomImages(prev => prev.filter(img => img !== imageUrl));
+    // If the removed image was selected, clear selection
+    if (selected === imageUrl) {
+      onWallpaperChange(wallpaperPaths[0] || WALLPAPER_RELATIVE[0]);
     }
   };
 
@@ -224,8 +274,54 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
         </TabsList>
         
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-2">
-          <TabsContent value="image" className="mt-0">
+          <TabsContent value="image" className="mt-0 space-y-3">
+            {/* Upload Button */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              accept=".jpg,.jpeg,image/jpeg"
+              className="hidden"
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="outline"
+              className="w-full gap-2 bg-white/5 text-slate-200 border-white/10 hover:bg-[#34B27B] hover:text-white hover:border-[#34B27B] transition-all"
+            >
+              <Upload className="w-4 h-4" />
+              Upload Custom Image
+            </Button>
+
             <div className="grid grid-cols-6 gap-2">
+              {/* Custom Images */}
+              {customImages.map((imageUrl, idx) => {
+                const isSelected = selected === imageUrl;
+                return (
+                  <div
+                    key={`custom-${idx}`}
+                    className={cn(
+                      "aspect-square rounded-lg border-2 overflow-hidden cursor-pointer transition-all duration-200 relative group",
+                      isSelected
+                        ? "border-[#34B27B] ring-2 ring-[#34B27B]/30 scale-105 shadow-lg shadow-[#34B27B]/10"
+                        : "border-white/5 hover:border-white/20 hover:scale-105 opacity-70 hover:opacity-100"
+                    )}
+                    style={{ backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
+                    aria-label={`Custom Image ${idx + 1}`}
+                    onClick={() => onWallpaperChange(imageUrl)}
+                    role="button"
+                  >
+                    <button
+                      onClick={(e) => handleRemoveCustomImage(imageUrl, e)}
+                      className="absolute top-1 right-1 w-5 h-5 bg-red-500/90 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      aria-label="Remove custom image"
+                    >
+                      <X className="w-3 h-3 text-white" />
+                    </button>
+                  </div>
+                );
+              })}
+
+              {/* Preset Wallpapers */}
               {(wallpaperPaths.length > 0 ? wallpaperPaths : WALLPAPER_RELATIVE.map(p => `/${p}`)).map((path, idx) => {
                 const isSelected = (() => {
                   if (!selected) return false;

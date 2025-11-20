@@ -683,6 +683,12 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
           return
         }
 
+        // If it's a data URL (custom uploaded image), use as-is
+        if (wallpaper.startsWith('data:')) {
+          if (mounted) setResolvedWallpaper(wallpaper)
+          return
+        }
+
         // If it's an absolute web/http or file path, use as-is
         if (wallpaper.startsWith('http') || wallpaper.startsWith('file://') || wallpaper.startsWith('/')) {
           // If it's an absolute server path (starts with '/'), resolve via getAssetPath as well
@@ -704,7 +710,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
     return () => { mounted = false }
   }, [wallpaper])
 
-  const isImageUrl = Boolean(resolvedWallpaper && (resolvedWallpaper.startsWith('file://') || resolvedWallpaper.startsWith('http') || resolvedWallpaper.startsWith('/')))
+  const isImageUrl = Boolean(resolvedWallpaper && (resolvedWallpaper.startsWith('file://') || resolvedWallpaper.startsWith('http') || resolvedWallpaper.startsWith('/') || resolvedWallpaper.startsWith('data:')))
   const backgroundStyle = isImageUrl
     ? { backgroundImage: `url(${resolvedWallpaper || ''})` }
     : { background: resolvedWallpaper || '' };
