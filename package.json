@@ -8,9 +8,8 @@
     "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-     "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win --x64"
-
+    "build:mac": "tsc && vite build && electron-builder --mac",
+    "build:win": "tsc && vite build && electron-builder --win --x64"
   },
   "dependencies": {
     "@fix-webm-duration/fix": "^1.0.1",
