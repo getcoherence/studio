@@ -3,6 +3,7 @@ import { useTimelineContext } from "dnd-timeline";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import TimelineWrapper from "./TimelineWrapper";
 import Row from "./Row";
 import Item from "./Item";
@@ -151,41 +152,21 @@ function PlaybackCursor({
     <div
       className="absolute top-0 bottom-0 pointer-events-none z-50"
       style={{
-        [sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth - 8}px`,
+        [sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth - 1}px`,
       }}
     >
       <div
-        className="absolute top-3 bottom-3 w-[2px] bg-red-500/90 shadow-[0_0_8px_rgba(239,68,68,0.5)]"
+        className="absolute top-0 bottom-0 w-[2px] bg-[#34B27B] shadow-[0_0_10px_rgba(52,178,123,0.5)]"
         style={{
           [sideProperty]: `${offset}px`,
         }}
       >
         <div
-          className="absolute -top-2 left-1/2 -translate-x-1/2 flex flex-col items-center"
-          style={{ width: '32px' }}
+          className="absolute -top-1 left-1/2 -translate-x-1/2"
+          style={{ width: '12px', height: '12px' }}
         >
-          <div
-            style={{
-              width: '8px',
-              height: '8px',
-              background: '#ef4444',
-              borderRadius: '12px 12px 12px 12px/14px 14px 8px 8px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '11px',
-              fontWeight: 600,
-              color: '#ef4444',
-              letterSpacing: '-0.5px',
-              position: 'relative',
-            }}
-          >
-  
-          </div>
-         
+          <div className="w-full h-full bg-[#34B27B] rotate-45 rounded-sm shadow-lg border border-white/20" />
         </div>
-        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-red-500/30 rounded-full blur-sm" />
       </div>
     </div>
   );
@@ -241,7 +222,7 @@ function TimelineAxis({
 
   return (
     <div
-      className="h-10 bg-black border-b border-[#18181b] relative overflow-hidden"
+      className="h-8 bg-[#09090b] border-b border-white/5 relative overflow-hidden select-none"
       style={{
         [sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth}px`,
       }}
@@ -260,29 +241,13 @@ function TimelineAxis({
 
         return (
           <div key={marker.time} style={markerStyle}>
-            <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-              <div
-                style={{
-                  width: '5px',
-                  height: '5px',
-                  borderRadius: '50%',
-                  backgroundColor: marker.time === currentTimeMs ? '#34B27B' : '#94a3b8',
-                  boxShadow: marker.time === currentTimeMs ? '0 0 4px #34B27B55' : 'none',
-                  marginRight: '5px',
-                  marginTop: '2px',
-                  transition: 'background 0.2s, box-shadow 0.2s',
-                }}
-              />
+            <div className="flex flex-col items-center pb-1">
+              <div className="h-1.5 w-[1px] bg-white/20 mb-1" />
               <span
-                style={{
-                  fontWeight: marker.time === currentTimeMs ? 700 : 500,
-                  color: marker.time === currentTimeMs ? '#34B27B' : '#94a3b8',
-                  fontSize: '11px',
-                  letterSpacing: '-0.5px',
-                  textShadow: marker.time === currentTimeMs ? '0 1px 6px #34B27B33' : 'none',
-                  marginTop: '2px',
-                }}
-                className="select-none"
+                className={cn(
+                  "text-[10px] font-medium tabular-nums tracking-tight",
+                  marker.time === currentTimeMs ? "text-[#34B27B]" : "text-slate-500"
+                )}
               >
                 {marker.label}
               </span>
@@ -298,7 +263,7 @@ function Timeline({
   items,
   videoDurationMs,
   intervalMs,
-     currentTimeMs,
+  currentTimeMs,
   onSeek,
   onSelectZoom,
   selectedZoomId,
@@ -333,10 +298,11 @@ function Timeline({
     <div
       ref={setTimelineRef}
       style={style}
-      className="select-none bg-black min-h-[120px] relative cursor-pointer"
+      className="select-none bg-[#09090b] min-h-[140px] relative cursor-pointer group"
       onClick={handleTimelineClick}
     >
-         <TimelineAxis intervalMs={intervalMs} videoDurationMs={videoDurationMs} currentTimeMs={currentTimeMs} />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px)] bg-[length:20px_100%] pointer-events-none" />
+      <TimelineAxis intervalMs={intervalMs} videoDurationMs={videoDurationMs} currentTimeMs={currentTimeMs} />
       <PlaybackCursor currentTimeMs={currentTimeMs} videoDurationMs={videoDurationMs} />
       <Row id={ROW_ID}>
         {items.map((item) => (
@@ -468,33 +434,37 @@ export default function TimelineEditor({
 
   if (!videoDuration || videoDuration === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center rounded-lg">
-        <span className="text-slate-400 text-sm">Load a video to see timeline</span>
+      <div className="flex-1 flex items-center justify-center rounded-lg bg-[#09090b]">
+        <span className="text-slate-500 text-sm">Load a video to see timeline</span>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-black border border-none rounded-xl shadow-lg overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-2.5">
-        <Button onClick={handleAddZoom} variant="outline" size="sm" className="gap-2 h-8 px-3 text-xs bg-[#23232a] border-none text-slate-200 hover:bg-white hover:text-black">
-          <Plus className="w-3.5 h-3.5 text-slate-400" />
+    <div className="flex-1 flex flex-col bg-[#09090b] overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-white/5 bg-[#09090b]">
+        <Button 
+          onClick={handleAddZoom} 
+          variant="outline" 
+          size="sm" 
+          className="gap-2 h-7 px-3 text-xs bg-white/5 border-white/10 text-slate-200 hover:bg-[#34B27B] hover:text-white hover:border-[#34B27B] transition-all"
+        >
+          <Plus className="w-3.5 h-3.5" />
           Add Zoom
         </Button>
         <div className="flex-1" />
-        <div className="flex items-center gap-3 text-[10px] text-slate-400 font-medium">
-          <span className="flex items-center gap-1">
-            <kbd className="px-1.5 py-0.5 bg-[#23232a]  rounded text-slate-300">Command + Shift + Scroll</kbd>
+        <div className="flex items-center gap-4 text-[10px] text-slate-500 font-medium">
+          <span className="flex items-center gap-1.5">
+            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-slate-400 font-sans">⇧ + ⌘ + Scroll</kbd>
             <span>Pan</span>
           </span>
-          <span className="text-slate-600">•</span>
-          <span className="flex items-center gap-1">
-            <kbd className="px-1.5 py-0.5 bg-[#23232a]  rounded text-slate-300">Command + Scroll</kbd>
+          <span className="flex items-center gap-1.5">
+            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-slate-400 font-sans">⌘ + Scroll</kbd>
             <span>Zoom</span>
           </span>
         </div>
       </div>
-      <div className="mt-4 flex-1 overflow-x-auto overflow-y-hidden bg-[#000]">
+      <div className="flex-1 overflow-hidden bg-[#09090b] relative">
         <TimelineWrapper
           range={clampedRange}
           videoDuration={videoDuration}

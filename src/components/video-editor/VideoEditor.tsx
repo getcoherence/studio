@@ -1,6 +1,6 @@
 
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 
@@ -22,7 +22,7 @@ import {
 } from "./types";
 import { VideoExporter, type ExportProgress } from "@/lib/exporter";
 
-const WALLPAPER_COUNT = 12;
+const WALLPAPER_COUNT = 23;
 const WALLPAPER_PATHS = Array.from({ length: WALLPAPER_COUNT }, (_, i) => `/wallpapers/wallpaper${i + 1}.jpg`);
 
 export default function VideoEditor() {
@@ -153,10 +153,7 @@ export default function VideoEditor() {
     }
   }, [selectedZoomId]);
 
-  const selectedZoom = useMemo(() => {
-    if (!selectedZoomId) return null;
-    return zoomRegions.find((region) => region.id === selectedZoomId) ?? null;
-  }, [selectedZoomId, zoomRegions]);
+
 
   useEffect(() => {
     if (selectedZoomId && !zoomRegions.some((region) => region.id === selectedZoomId)) {
@@ -271,35 +268,26 @@ export default function VideoEditor() {
   const isMac = navigator.userAgent.includes('Mac');
 
   return (
-    <div className="flex flex-col h-screen bg-background bg-black">
+    <div className="flex flex-col h-screen bg-[#09090b] text-slate-200 overflow-hidden selection:bg-[#34B27B]/30">
       {/* Drag region for window - more padding on macOS for traffic lights */}
       <div 
-        className={`h-8 flex-shrink-0 bg-black/50 backdrop-blur-sm flex items-center justify-between ${isMac ? 'pl-20 pr-4' : 'px-4'}`}
+        className={`h-10 flex-shrink-0 bg-[#09090b]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between ${isMac ? 'pl-20 pr-4' : 'px-4'} z-50`}
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         <div className="flex-1" />
         <WindowControls />
       </div>
-      <div className="flex flex-1 p-4 gap-4 overflow-hidden">
-        <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <Toaster position="top-center" />
-        </div>
-        <ExportDialog
-          isOpen={showExportDialog}
-          onClose={() => setShowExportDialog(false)}
-          progress={exportProgress}
-          isExporting={isExporting}
-          error={exportError}
-          onCancel={handleCancelExport}
-        />
-      <div className="flex flex-col flex-[7] min-w-0 gap-4">
-        <div className="flex flex-col gap-2 flex-1">
-          {videoPath && (
-            <>
-              <div className="flex justify-center w-full">
+
+      <div className="flex-1 p-4 gap-4 flex min-h-0 relative">
+        {/* Left Column - Video & Timeline */}
+        <div className="flex-[7] flex flex-col gap-4 min-w-0 h-full">
+          {/* Video Preview Area */}
+          <div className="flex-1 min-h-0 bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden relative group">
+            <div className="absolute inset-0 flex flex-col">
+              <div className="flex-1 relative min-h-0 flex items-center justify-center">
                 <VideoPlayback
                   ref={videoPlaybackRef}
-                  videoPath={videoPath}
+                  videoPath={videoPath || ''}
                   onDurationChange={setDuration}
                   onTimeUpdate={setCurrentTime}
                   onPlayStateChange={setIsPlaying}
@@ -315,45 +303,67 @@ export default function VideoEditor() {
                   cropRegion={cropRegion}
                 />
               </div>
-              <PlaybackControls
-                isPlaying={isPlaying}
-                currentTime={currentTime}
-                duration={duration}
-                onTogglePlayPause={togglePlayPause}
-                onSeek={handleSeek}
-              />
-            </>
-          )}
+              
+              {/* Floating Playback Controls */}
+              <div className="px-6 pb-6 pt-2 pointer-events-none">
+                <div className="pointer-events-auto">
+                  <PlaybackControls
+                    isPlaying={isPlaying}
+                    currentTime={currentTime}
+                    duration={duration}
+                    onTogglePlayPause={togglePlayPause}
+                    onSeek={handleSeek}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Timeline Area */}
+          <div className="h-[220px] flex-shrink-0 bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden flex flex-col">
+            <TimelineEditor
+              videoDuration={duration}
+              currentTime={currentTime}
+              onSeek={handleSeek}
+              zoomRegions={zoomRegions}
+              onZoomAdded={handleZoomAdded}
+              onZoomSpanChange={handleZoomSpanChange}
+              onZoomDelete={handleZoomDelete}
+              selectedZoomId={selectedZoomId}
+              onSelectZoom={handleSelectZoom}
+            />
+          </div>
         </div>
-        <TimelineEditor
-          videoDuration={duration}
-          currentTime={currentTime}
-          onSeek={handleSeek}
-          zoomRegions={zoomRegions}
-          onZoomAdded={handleZoomAdded}
-          onZoomSpanChange={handleZoomSpanChange}
-          onZoomDelete={handleZoomDelete}
+
+          {/* Right Column - Settings */}
+        <SettingsPanel
+          selected={wallpaper}
+          onWallpaperChange={setWallpaper}
+          selectedZoomDepth={selectedZoomId ? zoomRegions.find(z => z.id === selectedZoomId)?.depth : null}
+          onZoomDepthChange={(depth) => selectedZoomId && handleZoomDepthChange(depth)}
           selectedZoomId={selectedZoomId}
-          onSelectZoom={handleSelectZoom}
+          onZoomDelete={handleZoomDelete}
+          showShadow={showShadow}
+          onShadowChange={setShowShadow}
+          showBlur={showBlur}
+          onBlurChange={setShowBlur}
+          cropRegion={cropRegion}
+          onCropChange={setCropRegion}
+          videoElement={videoPlaybackRef.current?.video || null}
+          onExport={handleExport}
         />
       </div>
-      <SettingsPanel
-        selected={wallpaper}
-        onWallpaperChange={setWallpaper}
-        selectedZoomDepth={selectedZoom?.depth}
-        onZoomDepthChange={handleZoomDepthChange}
-        selectedZoomId={selectedZoomId}
-        onZoomDelete={handleZoomDelete}
-        showShadow={showShadow}
-        onShadowChange={setShowShadow}
-        showBlur={showBlur}
-        onBlurChange={setShowBlur}
-        cropRegion={cropRegion}
-        onCropChange={setCropRegion}
-        videoElement={videoPlaybackRef.current?.video || null}
-        onExport={handleExport}
+
+      <Toaster theme="dark" className="pointer-events-auto" />
+      
+      <ExportDialog
+        isOpen={showExportDialog}
+        onClose={() => setShowExportDialog(false)}
+        progress={exportProgress}
+        isExporting={isExporting}
+        error={exportError}
+        onCancel={handleCancelExport}
       />
-      </div>
     </div>
   );
 }

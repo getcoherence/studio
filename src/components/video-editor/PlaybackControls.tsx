@@ -1,5 +1,6 @@
 import { Button } from "../ui/button";
-import { MdPlayArrow, MdPause } from "react-icons/md";
+import { Play, Pause } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface PlaybackControlsProps {
   isPlaying: boolean;
@@ -27,36 +28,63 @@ export default function PlaybackControls({
     onSeek(parseFloat(e.target.value));
   }
 
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
   return (
-    <div className="flex items-center gap-4 px-4 rounded-xl py-3">
+    <div className="flex items-center gap-4 px-6 py-3 rounded-full bg-black/60 backdrop-blur-md border border-white/10 shadow-xl transition-all duration-300 hover:bg-black/70 hover:border-white/20">
       <Button
         onClick={onTogglePlayPause}
         size="icon"
-        className="w-8 h-8 rounded-full bg-transparent text-slate-200 hover:bg-[#18181b] transition-colors border border-white"
+        className={cn(
+          "w-10 h-10 rounded-full transition-all duration-200 border border-white/10",
+          isPlaying 
+            ? "bg-white/10 text-white hover:bg-white/20" 
+            : "bg-white text-black hover:bg-white/90 hover:scale-105 shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+        )}
         aria-label={isPlaying ? 'Pause' : 'Play'}
       >
         {isPlaying ? (
-          <MdPause width={18} height={18} />
+          <Pause className="w-4 h-4 fill-current" />
         ) : (
-          <MdPlayArrow width={18} height={18} />
+          <Play className="w-4 h-4 fill-current ml-0.5" />
         )}
       </Button>
-      <span className="text-xs text-slate-400 font-mono">
+      
+      <span className="text-xs font-medium text-slate-300 tabular-nums w-[40px] text-right">
         {formatTime(currentTime)}
       </span>
-      <input
-        type="range"
-        min="0"
-        max={duration}
-        value={currentTime}
-        onChange={handleSeekChange}
-        step="0.01"
-        className="flex-1 h-2 rounded-full transition-all duration-[33ms] custom-playback-range"
-        style={{
-          background: `linear-gradient(to right, #34B27B 0%, #34B27B ${(currentTime / duration) * 100}%, #23232a ${(currentTime / duration) * 100}%, #23232a 100%)`,
-        }}
-      />
-      <span className="text-xs text-slate-400 font-mono">
+      
+      <div className="flex-1 relative h-8 flex items-center group">
+        {/* Custom Track Background */}
+        <div className="absolute left-0 right-0 h-1 bg-white/10 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-[#34B27B] rounded-full"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        
+        {/* Interactive Input */}
+        <input
+          type="range"
+          min="0"
+          max={duration || 100}
+          value={currentTime}
+          onChange={handleSeekChange}
+          step="0.01"
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+        />
+        
+        {/* Custom Thumb (visual only, follows progress) */}
+        <div 
+          className="absolute w-3 h-3 bg-white rounded-full shadow-lg pointer-events-none group-hover:scale-125 transition-transform duration-100"
+          style={{ 
+            left: `${progress}%`,
+            transform: 'translateX(-50%)'
+          }}
+        />
+      </div>
+      
+      <span className="text-xs font-medium text-slate-500 tabular-nums w-[40px]">
         {formatTime(duration)}
       </span>
     </div>
