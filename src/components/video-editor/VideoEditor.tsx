@@ -280,47 +280,50 @@ export default function VideoEditor() {
 
       <div className="flex-1 p-4 gap-4 flex min-h-0 relative">
         {/* Left Column - Video & Timeline */}
-        <div className="flex-[7] flex flex-col gap-4 min-w-0 h-full">
+        <div className="flex-[7] flex flex-col gap-3 min-w-0 h-full">
           {/* Video Preview Area */}
-          <div className="flex-1 min-h-0 bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden relative group">
-            <div className="absolute inset-0 flex flex-col">
-              <div className="flex-1 relative min-h-0 flex items-center justify-center">
-                <VideoPlayback
-                  ref={videoPlaybackRef}
-                  videoPath={videoPath || ''}
-                  onDurationChange={setDuration}
-                  onTimeUpdate={setCurrentTime}
-                  onPlayStateChange={setIsPlaying}
-                  onError={setError}
-                  wallpaper={wallpaper}
-                  zoomRegions={zoomRegions}
-                  selectedZoomId={selectedZoomId}
-                  onSelectZoom={handleSelectZoom}
-                  onZoomFocusChange={handleZoomFocusChange}
-                  isPlaying={isPlaying}
-                  showShadow={showShadow}
-                  showBlur={showBlur}
-                  cropRegion={cropRegion}
-                />
+          <div className="flex-shrink-0 bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden">
+            <div className="flex flex-col">
+              {/* Video Container - Fixed aspect ratio */}
+              <div className="relative w-full" style={{ paddingBottom: '56.25%' }}> {/* 16:9 aspect ratio */}
+                <div className="absolute inset-0 flex items-center justify-center p-4">
+                  <div className="relative w-full h-full max-w-full max-h-full">
+                    <VideoPlayback
+                      ref={videoPlaybackRef}
+                      videoPath={videoPath || ''}
+                      onDurationChange={setDuration}
+                      onTimeUpdate={setCurrentTime}
+                      onPlayStateChange={setIsPlaying}
+                      onError={setError}
+                      wallpaper={wallpaper}
+                      zoomRegions={zoomRegions}
+                      selectedZoomId={selectedZoomId}
+                      onSelectZoom={handleSelectZoom}
+                      onZoomFocusChange={handleZoomFocusChange}
+                      isPlaying={isPlaying}
+                      showShadow={showShadow}
+                      showBlur={showBlur}
+                      cropRegion={cropRegion}
+                    />
+                  </div>
+                </div>
               </div>
               
-              {/* Floating Playback Controls */}
-              <div className="px-6 pb-6 pt-2 pointer-events-none">
-                <div className="pointer-events-auto">
-                  <PlaybackControls
-                    isPlaying={isPlaying}
-                    currentTime={currentTime}
-                    duration={duration}
-                    onTogglePlayPause={togglePlayPause}
-                    onSeek={handleSeek}
-                  />
-                </div>
+              {/* Playback Controls - Below video */}
+              <div className="px-4 pb-3 pt-2">
+                <PlaybackControls
+                  isPlaying={isPlaying}
+                  currentTime={currentTime}
+                  duration={duration}
+                  onTogglePlayPause={togglePlayPause}
+                  onSeek={handleSeek}
+                />
               </div>
             </div>
           </div>
 
           {/* Timeline Area */}
-          <div className="h-[220px] flex-shrink-0 bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-[180px] bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden flex flex-col">
             <TimelineEditor
               videoDuration={duration}
               currentTime={currentTime}

@@ -57,9 +57,16 @@ export class FrameRenderer {
     const canvas = document.createElement('canvas');
     canvas.width = this.config.width;
     canvas.height = this.config.height;
-    if ('colorSpace' in canvas) {
-      // @ts-ignore
-      canvas.colorSpace = 'srgb';
+    
+    // Try to set colorSpace if supported (may not be available on all platforms)
+    try {
+      if (canvas && 'colorSpace' in canvas) {
+        // @ts-ignore
+        canvas.colorSpace = 'srgb';
+      }
+    } catch (error) {
+      // Silently ignore colorSpace errors on platforms that don't support it
+      console.warn('[FrameRenderer] colorSpace not supported on this platform:', error);
     }
 
     // Initialize PixiJS app with transparent background (background rendered separately)
@@ -95,6 +102,10 @@ export class FrameRenderer {
     this.compositeCanvas.width = this.config.width;
     this.compositeCanvas.height = this.config.height;
     this.compositeCtx = this.compositeCanvas.getContext('2d', { willReadFrequently: false });
+    
+    if (!this.compositeCtx) {
+      throw new Error('Failed to get 2D context for composite canvas');
+    }
 
     // Setup shadow canvas if needed
     if (this.config.showShadow) {
@@ -102,6 +113,10 @@ export class FrameRenderer {
       this.shadowCanvas.width = this.config.width;
       this.shadowCanvas.height = this.config.height;
       this.shadowCtx = this.shadowCanvas.getContext('2d', { willReadFrequently: false });
+      
+      if (!this.shadowCtx) {
+        throw new Error('Failed to get 2D context for shadow canvas');
+      }
     }
 
     // Setup mask
