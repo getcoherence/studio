@@ -159,6 +159,9 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
           <Crop className="w-4 h-4" />
           Crop Video
         </Button>
+        <p className="text-[10px] text-slate-400/60 text-center mt-2">
+          If the preview looks weirdly positioned at any time, try force reloading
+        </p>
       </div>
       
       {showCropDropdown && cropRegion && onCropChange && (

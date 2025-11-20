@@ -38,6 +38,9 @@ interface Window {
     onStopRecordingFromTray: (callback: () => void) => () => void
     openExternalUrl: (url: string) => Promise<{ success: boolean; error?: string }>
     saveExportedVideo: (videoData: ArrayBuffer, fileName: string) => Promise<{ success: boolean; path?: string; message?: string }>
+    minimizeWindow: () => Promise<void>
+    maximizeWindow: () => Promise<void>
+    closeWindow: () => Promise<void>
   }
 }
 

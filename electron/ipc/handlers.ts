@@ -178,4 +178,30 @@ export function registerIpcHandlers(
       }
     }
   })
+
+  // Window control handlers for frameless window
+  ipcMain.handle('minimize-window', () => {
+    const mainWin = getMainWindow()
+    if (mainWin) {
+      mainWin.minimize()
+    }
+  })
+
+  ipcMain.handle('maximize-window', () => {
+    const mainWin = getMainWindow()
+    if (mainWin) {
+      if (mainWin.isMaximized()) {
+        mainWin.unmaximize()
+      } else {
+        mainWin.maximize()
+      }
+    }
+  })
+
+  ipcMain.handle('close-window', () => {
+    const mainWin = getMainWindow()
+    if (mainWin) {
+      mainWin.close()
+    }
+  })
 }

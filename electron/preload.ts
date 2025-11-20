@@ -49,4 +49,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveExportedVideo: (videoData: ArrayBuffer, fileName: string) => {
     return ipcRenderer.invoke('save-exported-video', videoData, fileName)
   },
+  minimizeWindow: () => {
+    return ipcRenderer.invoke('minimize-window')
+  },
+  maximizeWindow: () => {
+    return ipcRenderer.invoke('maximize-window')
+  },
+  closeWindow: () => {
+    return ipcRenderer.invoke('close-window')
+  },
 })

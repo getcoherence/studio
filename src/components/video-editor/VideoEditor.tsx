@@ -9,6 +9,7 @@ import PlaybackControls from "./PlaybackControls";
 import TimelineEditor from "./timeline/TimelineEditor";
 import { SettingsPanel } from "./SettingsPanel";
 import { ExportDialog } from "./ExportDialog";
+import { WindowControls } from "./WindowControls";
 import type { Span } from "dnd-timeline";
 import {
   DEFAULT_ZOOM_DEPTH,
@@ -267,19 +268,32 @@ export default function VideoEditor() {
     );
   }
 
+  const isMac = navigator.userAgent.includes('Mac');
+
   return (
-    <div className="flex h-screen bg-background bg-black p-8 gap-8">
-      <Toaster position="top-center" />
-      <ExportDialog
-        isOpen={showExportDialog}
-        onClose={() => setShowExportDialog(false)}
-        progress={exportProgress}
-        isExporting={isExporting}
-        error={exportError}
-        onCancel={handleCancelExport}
-      />
-      <div className="flex flex-col flex-[7] min-w-0 gap-6">
-        <div className="flex flex-col gap-3 flex-1">
+    <div className="flex flex-col h-screen bg-background bg-black">
+      {/* Drag region for window - more padding on macOS for traffic lights */}
+      <div 
+        className={`h-8 flex-shrink-0 bg-black/50 backdrop-blur-sm flex items-center justify-between ${isMac ? 'pl-20 pr-4' : 'px-4'}`}
+        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      >
+        <div className="flex-1" />
+        <WindowControls />
+      </div>
+      <div className="flex flex-1 p-4 gap-4 overflow-hidden">
+        <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <Toaster position="top-center" />
+        </div>
+        <ExportDialog
+          isOpen={showExportDialog}
+          onClose={() => setShowExportDialog(false)}
+          progress={exportProgress}
+          isExporting={isExporting}
+          error={exportError}
+          onCancel={handleCancelExport}
+        />
+      <div className="flex flex-col flex-[7] min-w-0 gap-4">
+        <div className="flex flex-col gap-2 flex-1">
           {videoPath && (
             <>
               <div className="flex justify-center w-full">
@@ -339,6 +353,7 @@ export default function VideoEditor() {
         videoElement={videoPlaybackRef.current?.video || null}
         onExport={handleExport}
       />
+      </div>
     </div>
   );
 }

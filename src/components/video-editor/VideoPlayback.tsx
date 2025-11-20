@@ -728,21 +728,24 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
             : 'none',
         }}
       />
-      <div
-        ref={overlayRef}
-        className="absolute inset-0 select-none"
-        style={{ pointerEvents: 'none' }}
-        onPointerDown={handleOverlayPointerDown}
-        onPointerMove={handleOverlayPointerMove}
-        onPointerUp={handleOverlayPointerUp}
-        onPointerLeave={handleOverlayPointerLeave}
-      >
+      {/* Only render overlay after PIXI and video are fully initialized */}
+      {pixiReady && videoReady && (
         <div
-          ref={focusIndicatorRef}
-          className="absolute rounded-md border border-sky-400/80 bg-sky-400/20 shadow-[0_0_0_1px_rgba(56,189,248,0.35)]"
-          style={{ display: 'none', pointerEvents: 'none' }}
-        />
-      </div>
+          ref={overlayRef}
+          className="absolute inset-0 select-none"
+          style={{ pointerEvents: 'none' }}
+          onPointerDown={handleOverlayPointerDown}
+          onPointerMove={handleOverlayPointerMove}
+          onPointerUp={handleOverlayPointerUp}
+          onPointerLeave={handleOverlayPointerLeave}
+        >
+          <div
+            ref={focusIndicatorRef}
+            className="absolute rounded-md border border-sky-400/80 bg-sky-400/20 shadow-[0_0_0_1px_rgba(56,189,248,0.35)]"
+            style={{ display: 'none', pointerEvents: 'none' }}
+          />
+        </div>
+      )}
       <video
         ref={videoRef}
         src={videoPath}

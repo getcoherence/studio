@@ -47,17 +47,27 @@ export function createHudOverlayWindow(): BrowserWindow {
 }
 
 export function createEditorWindow(): BrowserWindow {
+  const isMac = process.platform === 'darwin'
+  
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    frame: true,
+    // On macOS, use hiddenInset for native controls; on Windows, frameless
+    ...(isMac ? {
+      titleBarStyle: 'hiddenInset',
+      trafficLightPosition: { x: 12, y: 12 },
+    } : {
+      frame: false,
+      icon: undefined, // No app icon on Windows
+    }),
     transparent: false,
     resizable: true,
     alwaysOnTop: false,
     skipTaskbar: false,
-    title: '',
+    title: 'OpenScreen',
+    backgroundColor: '#000000',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       nodeIntegration: false,
