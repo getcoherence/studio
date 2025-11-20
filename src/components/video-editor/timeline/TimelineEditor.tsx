@@ -39,6 +39,7 @@ interface TimelineRenderItem {
   rowId: string;
   span: Span;
   label: string;
+  zoomDepth: number;
 }
 
 const SCALE_CANDIDATES = [
@@ -186,7 +187,7 @@ function TimelineAxis({
 
   const markers = useMemo(() => {
     if (intervalMs <= 0) {
-      return [] as { time: number; label: string }[];
+      return { markers: [], minorTicks: [] };
     }
 
     const maxTime = videoDurationMs > 0 ? videoDurationMs : range.end;
@@ -214,10 +215,27 @@ function TimelineAxis({
       .filter(time => time <= maxTime)
       .sort((a, b) => a - b);
 
-    return sorted.map((time) => ({
-      time,
-      label: formatTimeLabel(time, intervalMs),
-    }));
+    // Generate minor ticks (4 ticks between major intervals)
+    const minorTicks = [];
+    const minorInterval = intervalMs / 5;
+    
+    for (let time = firstMarker; time <= maxTime; time += minorInterval) {
+      if (time >= visibleStart && time <= visibleEnd) {
+        // Skip if it's close to a major marker
+        const isMajor = Math.abs(time % intervalMs) < 1;
+        if (!isMajor) {
+          minorTicks.push(time);
+        }
+      }
+    }
+
+    return { 
+      markers: sorted.map((time) => ({
+        time,
+        label: formatTimeLabel(time, intervalMs),
+      })), 
+      minorTicks 
+    };
   }, [intervalMs, range.end, range.start, videoDurationMs]);
 
   return (
@@ -227,7 +245,20 @@ function TimelineAxis({
         [sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth}px`,
       }}
     >
-      {markers.map((marker) => {
+      {/* Minor Ticks */}
+      {markers.minorTicks.map((time) => {
+        const offset = valueToPixels(time - range.start);
+        return (
+          <div
+            key={`minor-${time}`}
+            className="absolute bottom-0 h-1 w-[1px] bg-white/5"
+            style={{ [sideProperty]: `${offset}px` }}
+          />
+        );
+      })}
+
+      {/* Major Markers */}
+      {markers.markers.map((marker) => {
         const offset = valueToPixels(marker.time - range.start);
         const markerStyle: React.CSSProperties = {
           position: "absolute",
@@ -242,7 +273,7 @@ function TimelineAxis({
         return (
           <div key={marker.time} style={markerStyle}>
             <div className="flex flex-col items-center pb-1">
-              <div className="h-1.5 w-[1px] bg-white/20 mb-1" />
+              <div className="h-2 w-[1px] bg-white/20 mb-1" />
               <span
                 className={cn(
                   "text-[10px] font-medium tabular-nums tracking-tight",
@@ -313,6 +344,7 @@ function Timeline({
             span={item.span}
             isSelected={item.id === selectedZoomId}
             onSelect={() => onSelectZoom?.(item.id)}
+            zoomDepth={item.zoomDepth}
           >
             {item.label}
           </Item>
@@ -429,13 +461,20 @@ export default function TimelineEditor({
         rowId: ROW_ID,
         span: { start: region.startMs, end: region.endMs },
         label: `Zoom ${index + 1}`,
+        zoomDepth: region.depth,
       }));
   }, [zoomRegions]);
 
   if (!videoDuration || videoDuration === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center rounded-lg bg-[#09090b]">
-        <span className="text-slate-500 text-sm">Load a video to see timeline</span>
+      <div className="flex-1 flex flex-col items-center justify-center rounded-lg bg-[#09090b] gap-3">
+        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
+          <Plus className="w-6 h-6 text-slate-600" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-medium text-slate-300">No Video Loaded</p>
+          <p className="text-xs text-slate-500 mt-1">Drag and drop a video to start editing</p>
+        </div>
       </div>
     );
   }
