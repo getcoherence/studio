@@ -118,9 +118,20 @@ export class VideoExporter {
         if (this.cancelled) break;
 
         const canvas = this.renderer!.getCanvas();
+        
+        // CRITICAL FIX for Windows: Explicitly specify colorSpace when creating VideoFrame from canvas
+        // Without this, VideoFrame.colorSpace can be null on Windows, causing "Cannot read properties of null" error
+        // Using BT.709 with sRGB transfer (IEC 61966-2-1) which is standard for HD video
+        // @ts-ignore - TypeScript definitions may not include all VideoFrameInit properties
         const exportFrame = new VideoFrame(canvas, {
           timestamp,
           duration: frameDuration,
+          colorSpace: {
+            primaries: 'bt709',
+            transfer: 'iec61966-2-1',
+            matrix: 'rgb',
+            fullRange: true,
+          },
         });
 
         if (this.encoder && this.encoder.state === 'configured') {
