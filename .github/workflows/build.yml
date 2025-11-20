@@ -3,7 +3,7 @@ name: Build Electron App
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch: # Allows you to manually trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   build-windows:
@@ -15,19 +15,21 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '22'
           
       - name: Install dependencies
         run: npm ci
         
       - name: Build Windows app
         run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          path: dist/*.exe
+          path: release/**/*.exe
           retention-days: 30
 
   build-macos:
@@ -39,17 +41,24 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20'
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
           
       - name: Install dependencies
         run: npm ci
         
       - name: Build macOS app
         run: npm run build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
       - name: Upload macOS build
         uses: actions/upload-artifact@v4
         with:
           name: macos-installer
-          path: dist/*.dmg
+          path: release/**/*.dmg
           retention-days: 30
