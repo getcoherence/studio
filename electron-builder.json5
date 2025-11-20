@@ -4,6 +4,8 @@
   "appId": "com.siddharthvaddem.openscreen",
   "asar": true,
   "productName": "Openscreen",
+  "npmRebuild": true,
+  "buildDependenciesFromSource": true,
   "directories": {
     "output": "release/${version}"
   },
