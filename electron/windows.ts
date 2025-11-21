@@ -47,21 +47,13 @@ export function createHudOverlayWindow(): BrowserWindow {
 }
 
 export function createEditorWindow(): BrowserWindow {
-  const isMac = process.platform === 'darwin'
-  
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    // On macOS, use hiddenInset for native controls; on Windows, frameless
-    ...(isMac ? {
-      titleBarStyle: 'hiddenInset',
-      trafficLightPosition: { x: 12, y: 12 },
-    } : {
-      frame: false,
-      icon: undefined, // No app icon on Windows
-    }),
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 12, y: 12 },
     transparent: false,
     resizable: true,
     alwaysOnTop: false,

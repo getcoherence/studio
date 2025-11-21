@@ -37,7 +37,6 @@ OpenScreen is 100% free for personal and commercial use. Use it, modify it, dist
 - Motion blur and exponential easing for smoother pan and zoom effects
 
 **Note:**
-- OpenScreen is designed to support both Windows and macOS. We did not use any native APIs specific to one OS, so it should work on both. However, it hasn't been fully tested on Windows yet, if you run into issues, please let me know!
 - After you install the app, you'll need to grant it accessibility and screen recording permissions for it to work properly.
 
 

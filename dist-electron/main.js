@@ -41,21 +41,13 @@ function createHudOverlayWindow() {
   return win;
 }
 function createEditorWindow() {
-  const isMac = process.platform === "darwin";
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    // On macOS, use hiddenInset for native controls; on Windows, frameless
-    ...isMac ? {
-      titleBarStyle: "hiddenInset",
-      trafficLightPosition: { x: 12, y: 12 }
-    } : {
-      frame: false,
-      icon: void 0
-      // No app icon on Windows
-    },
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 12, y: 12 },
     transparent: false,
     resizable: true,
     alwaysOnTop: false,
@@ -369,28 +361,6 @@ function registerIpcHandlers(createEditorWindow2, createSourceSelectorWindow2, g
       };
     }
   });
-  ipcMain.handle("minimize-window", () => {
-    const mainWin = getMainWindow();
-    if (mainWin) {
-      mainWin.minimize();
-    }
-  });
-  ipcMain.handle("maximize-window", () => {
-    const mainWin = getMainWindow();
-    if (mainWin) {
-      if (mainWin.isMaximized()) {
-        mainWin.unmaximize();
-      } else {
-        mainWin.maximize();
-      }
-    }
-  });
-  ipcMain.handle("close-window", () => {
-    const mainWin = getMainWindow();
-    if (mainWin) {
-      mainWin.close();
-    }
-  });
 }
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RECORDINGS_DIR = path.join(app.getPath("userData"), "recordings");
@@ -469,11 +439,6 @@ function createSourceSelectorWindowWrapper() {
   return sourceSelectorWindow;
 }
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    cleanupMouseTracking();
-    app.quit();
-    mainWindow = null;
-  }
 });
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {

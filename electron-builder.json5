@@ -26,25 +26,6 @@
       "icon": "icons/icons/mac/icon.icns",
       "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
   },
-  "win": {
-    "target": [
-      {
-        "target": "nsis",
-        "arch": [
-          "x64"
-        ]
-      }
-    ],
-    "icon": "icons/icons/win/icon.ico",
-    "artifactName": "${productName}-Windows-${version}-Setup.${ext}",
-    "requestedExecutionLevel": "asInvoker"
-  },
-  "nsis": {
-    "oneClick": false,
-    "perMachine": false,
-    "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false
-  },
   "linux": {
     "target": [
       "AppImage"

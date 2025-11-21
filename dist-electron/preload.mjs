@@ -47,14 +47,5 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   },
   saveExportedVideo: (videoData, fileName) => {
     return electron.ipcRenderer.invoke("save-exported-video", videoData, fileName);
-  },
-  minimizeWindow: () => {
-    return electron.ipcRenderer.invoke("minimize-window");
-  },
-  maximizeWindow: () => {
-    return electron.ipcRenderer.invoke("maximize-window");
-  },
-  closeWindow: () => {
-    return electron.ipcRenderer.invoke("close-window");
   }
 });

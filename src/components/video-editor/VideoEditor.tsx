@@ -9,7 +9,7 @@ import PlaybackControls from "./PlaybackControls";
 import TimelineEditor from "./timeline/TimelineEditor";
 import { SettingsPanel } from "./SettingsPanel";
 import { ExportDialog } from "./ExportDialog";
-import { WindowControls } from "./WindowControls";
+
 import type { Span } from "dnd-timeline";
 import {
   DEFAULT_ZOOM_DEPTH,
@@ -275,7 +275,7 @@ export default function VideoEditor() {
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         <div className="flex-1" />
-        <WindowControls />
+
       </div>
 
       <div className="flex-1 p-4 gap-4 flex min-h-0 relative">
