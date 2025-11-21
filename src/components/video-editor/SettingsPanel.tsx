@@ -223,7 +223,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
           Crop Video
         </Button>
         <p className="text-[10px] text-slate-500 text-center mt-3 px-4 leading-relaxed">
-          If the preview looks weirdly positioned at any time, try force reloading (you will lose all your progress)
+          If the preview looks weirdly positioned or doesn't load, try force reloading the app a few times till it works.
         </p>
       </div>
       
