@@ -6,18 +6,28 @@
   "productName": "Openscreen",
   "npmRebuild": true,
   "buildDependenciesFromSource": true,
+  "compression": "maximum",
   "directories": {
     "output": "release/${version}"
   },
   "files": [
     "dist",
-    "dist-electron"
+    "dist-electron",
+    "!*.png",
+    "!preview*.png",
+    "!*.md",
+    "!README.md",
+    "!CONTRIBUTING.md",
+    "!LICENSE"
   ],
   "extraResources": [
     {
       "from": "public/wallpapers",
       "to": "assets/wallpapers"
     }
+  ],
+  "asarUnpack": [
+    "**/node_modules/uiohook-napi/**/*"
   ],
   "mac": {
       "target": [

@@ -1,4 +1,4 @@
-import * as PIXI from 'pixi.js';
+import { Application, Container, Sprite, Graphics, BlurFilter, Texture } from 'pixi.js';
 import type { ZoomRegion, CropRegion } from '@/components/video-editor/types';
 import { ZOOM_DEPTH_SCALES } from '@/components/video-editor/types';
 import { findDominantRegion } from '@/components/video-editor/videoPlayback/zoomRegionUtils';
@@ -27,13 +27,13 @@ interface AnimationState {
 // Renders video frames with all effects (background, zoom, crop, blur, shadow) to an offscreen canvas for export.
 
 export class FrameRenderer {
-  private app: PIXI.Application | null = null;
-  private cameraContainer: PIXI.Container | null = null;
-  private videoContainer: PIXI.Container | null = null;
-  private videoSprite: PIXI.Sprite | null = null;
-  private backgroundSprite: PIXI.Sprite | null = null;
-  private maskGraphics: PIXI.Graphics | null = null;
-  private blurFilter: PIXI.BlurFilter | null = null;
+  private app: Application | null = null;
+  private cameraContainer: Container | null = null;
+  private videoContainer: Container | null = null;
+  private videoSprite: Sprite | null = null;
+  private backgroundSprite: Sprite | null = null;
+  private maskGraphics: Graphics | null = null;
+  private blurFilter: BlurFilter | null = null;
   private shadowCanvas: HTMLCanvasElement | null = null;
   private shadowCtx: CanvasRenderingContext2D | null = null;
   private compositeCanvas: HTMLCanvasElement | null = null;
@@ -70,7 +70,7 @@ export class FrameRenderer {
     }
 
     // Initialize PixiJS with optimized settings for export performance
-    this.app = new PIXI.Application();
+    this.app = new Application();
     await this.app.init({
       canvas,
       width: this.config.width,
@@ -82,8 +82,8 @@ export class FrameRenderer {
     });
 
     // Setup containers
-    this.cameraContainer = new PIXI.Container();
-    this.videoContainer = new PIXI.Container();
+    this.cameraContainer = new Container();
+    this.videoContainer = new Container();
     this.app.stage.addChild(this.cameraContainer);
     this.cameraContainer.addChild(this.videoContainer);
 
@@ -91,7 +91,7 @@ export class FrameRenderer {
     await this.setupBackground();
 
     // Setup blur filter for video container
-    this.blurFilter = new PIXI.BlurFilter();
+    this.blurFilter = new BlurFilter();
     this.blurFilter.quality = 3;
     this.blurFilter.resolution = this.app.renderer.resolution;
     this.blurFilter.blur = 0;
@@ -120,7 +120,7 @@ export class FrameRenderer {
     }
 
     // Setup mask
-    this.maskGraphics = new PIXI.Graphics();
+    this.maskGraphics = new Graphics();
     this.videoContainer.addChild(this.maskGraphics);
     this.videoContainer.mask = this.maskGraphics;
   }
@@ -251,13 +251,13 @@ export class FrameRenderer {
 
     // Create or update video sprite from VideoFrame
     if (!this.videoSprite) {
-      const texture = PIXI.Texture.from(videoFrame as any);
-      this.videoSprite = new PIXI.Sprite(texture);
+      const texture = Texture.from(videoFrame as any);
+      this.videoSprite = new Sprite(texture);
       this.videoContainer.addChild(this.videoSprite);
     } else {
       // Destroy old texture to avoid memory leaks, then create new one
       const oldTexture = this.videoSprite.texture;
-      const newTexture = PIXI.Texture.from(videoFrame as any);
+      const newTexture = Texture.from(videoFrame as any);
       this.videoSprite.texture = newTexture;
       oldTexture.destroy(true);
     }

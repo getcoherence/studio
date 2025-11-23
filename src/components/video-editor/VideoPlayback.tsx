@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useRef, useImperativeHandle, forwardRef, useState, useMemo, useCallback } from "react";
 import { getAssetPath } from "@/lib/assetPath";
-import * as PIXI from 'pixi.js';
+import { Application, Container, Sprite, Graphics, BlurFilter, Texture, VideoSource } from 'pixi.js';
 import { ZOOM_DEPTH_SCALES, type ZoomRegion, type ZoomFocus, type ZoomDepth } from "./types";
 import { DEFAULT_FOCUS, SMOOTHING_FACTOR, MIN_DELTA } from "./videoPlayback/constants";
 import { clamp01 } from "./videoPlayback/mathUtils";
@@ -31,9 +31,9 @@ interface VideoPlaybackProps {
 
 export interface VideoPlaybackRef {
   video: HTMLVideoElement | null;
-  app: PIXI.Application | null;
-  videoSprite: PIXI.Sprite | null;
-  videoContainer: PIXI.Container | null;
+  app: Application | null;
+  videoSprite: Sprite | null;
+  videoContainer: Container | null;
   play: () => Promise<void>;
   pause: () => void;
 }
@@ -56,10 +56,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
 }, ref) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const appRef = useRef<PIXI.Application | null>(null);
-  const videoSpriteRef = useRef<PIXI.Sprite | null>(null);
-  const videoContainerRef = useRef<PIXI.Container | null>(null);
-  const cameraContainerRef = useRef<PIXI.Container | null>(null);
+  const appRef = useRef<Application | null>(null);
+  const videoSpriteRef = useRef<Sprite | null>(null);
+  const videoContainerRef = useRef<Container | null>(null);
+  const cameraContainerRef = useRef<Container | null>(null);
   const timeUpdateAnimationRef = useRef<number | null>(null);
   const [pixiReady, setPixiReady] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
@@ -69,7 +69,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   const zoomRegionsRef = useRef<ZoomRegion[]>([]);
   const selectedZoomIdRef = useRef<string | null>(null);
   const animationStateRef = useRef({ scale: 1, focusX: DEFAULT_FOCUS.cx, focusY: DEFAULT_FOCUS.cy });
-  const blurFilterRef = useRef<PIXI.BlurFilter | null>(null);
+  const blurFilterRef = useRef<BlurFilter | null>(null);
   const isDraggingFocusRef = useRef(false);
   const stageSizeRef = useRef({ width: 0, height: 0 });
   const videoSizeRef = useRef({ width: 0, height: 0 });
@@ -77,7 +77,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   const baseOffsetRef = useRef({ x: 0, y: 0 });
   const baseMaskRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
   const cropBoundsRef = useRef({ startX: 0, endX: 0, startY: 0, endY: 0 });
-  const maskGraphicsRef = useRef<PIXI.Graphics | null>(null);
+  const maskGraphicsRef = useRef<Graphics | null>(null);
   const isPlayingRef = useRef(isPlaying);
   const isSeekingRef = useRef(false);
   const allowPlaybackRef = useRef(false);
@@ -398,10 +398,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
     if (!container) return;
 
     let mounted = true;
-    let app: PIXI.Application | null = null;
+    let app: Application | null = null;
 
     (async () => {
-      app = new PIXI.Application();
+      app = new Application();
       
       await app.init({
         width: container.clientWidth,
@@ -423,12 +423,12 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
       container.appendChild(app.canvas);
 
       // Camera container - this will be scaled/positioned for zoom
-      const cameraContainer = new PIXI.Container();
+      const cameraContainer = new Container();
       cameraContainerRef.current = cameraContainer;
       app.stage.addChild(cameraContainer);
 
       // Video container - holds the masked video sprite
-      const videoContainer = new PIXI.Container();
+      const videoContainer = new Container();
       videoContainerRef.current = videoContainer;
       cameraContainer.addChild(videoContainer);
       
@@ -468,19 +468,19 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
     if (!video || !app || !videoContainer) return;
     if (video.videoWidth === 0 || video.videoHeight === 0) return;
     
-    const source = PIXI.VideoSource.from(video);
+    const source = VideoSource.from(video);
     if ('autoPlay' in source) {
       (source as { autoPlay?: boolean }).autoPlay = false;
     }
     if ('autoUpdate' in source) {
       (source as { autoUpdate?: boolean }).autoUpdate = true;
     }
-    const videoTexture = PIXI.Texture.from(source);
+    const videoTexture = Texture.from(source);
     
-    const videoSprite = new PIXI.Sprite(videoTexture);
+    const videoSprite = new Sprite(videoTexture);
     videoSpriteRef.current = videoSprite;
     
-    const maskGraphics = new PIXI.Graphics();
+    const maskGraphics = new Graphics();
     videoContainer.addChild(videoSprite);
     videoContainer.addChild(maskGraphics);
     videoContainer.mask = maskGraphics;
@@ -492,7 +492,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
       focusY: DEFAULT_FOCUS.cy,
     };
 
-    const blurFilter = new PIXI.BlurFilter();
+    const blurFilter = new BlurFilter();
     blurFilter.quality = 3;
     blurFilter.resolution = app.renderer.resolution;
     blurFilter.blur = 0;
