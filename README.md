@@ -36,6 +36,8 @@ OpenScreen is 100% free for personal and commercial use. Use it, modify it, dist
 - Choose between wallpapers, solid colors, gradients or your own picture for your background
 - Motion blur and exponential easing for smoother pan and zoom effects
 
+## macOS Installation instructions
+
 Download the latest installer for your platform from the [GitHub Releases](https://github.com/siddharthvaddem/openscreen/releases) page.
 
 If you encounter issues with macOS Gatekeeper blocking the app (since it does not come with a developer certificate), you can bypass this by running the following command in your terminal after installation:
@@ -60,5 +62,6 @@ After running this command, proceed to **System Preferences > Security & Privacy
 _I'm new to open source, idk what I'm doing lol. If something is wrong please raise an issue 🙏_
 
 ## License
+
 
 This project is licensed under the [MIT License](./LICENSE). By using this software, you agree that the authors are not liable for any issues, damages, or claims arising from its use.
