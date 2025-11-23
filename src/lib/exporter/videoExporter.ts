@@ -69,69 +69,73 @@ export class VideoExporter {
         throw new Error('Video element not available');
       }
 
-      // Process frames with optimized seeking (no unnecessary timeouts)
+      // Process frames with optimized seeking
       const frameDuration = 1_000_000 / this.config.frameRate; // in microseconds
       let frameIndex = 0;
       const timeStep = 1 / this.config.frameRate;
+      const BATCH_SIZE = 5; // Process frames in batches for better throughput
 
       while (frameIndex < totalFrames && !this.cancelled) {
-        const timestamp = frameIndex * frameDuration;
-        const videoTime = frameIndex * timeStep;
+        // Process a batch of frames
+        const batchEnd = Math.min(frameIndex + BATCH_SIZE, totalFrames);
         
-        // Seek if needed or wait for first frame to be ready
-        const needsSeek = Math.abs(videoElement.currentTime - videoTime) > 0.001;
-        if (needsSeek || frameIndex === 0) {
-          if (needsSeek) {
-            videoElement.currentTime = videoTime;
+        for (let i = frameIndex; i < batchEnd && !this.cancelled; i++) {
+          const timestamp = i * frameDuration;
+          const videoTime = i * timeStep;
+          
+          // Seek if needed or wait for first frame to be ready
+          const needsSeek = Math.abs(videoElement.currentTime - videoTime) > 0.001;
+          if (needsSeek || i === 0) {
+            if (needsSeek) {
+              videoElement.currentTime = videoTime;
+            }
+            // Wait for video frame to be ready
+            await new Promise<void>(resolve => {
+              videoElement.requestVideoFrameCallback(() => resolve());
+            });
           }
-          // Wait for video frame to be ready
-          await new Promise<void>(resolve => {
-            videoElement.requestVideoFrameCallback(() => resolve());
+
+          // Create a VideoFrame from the video element (on GPU!)
+          const videoFrame = new VideoFrame(videoElement, {
+            timestamp,
           });
+
+          // Render the frame with all effects
+          await this.renderer!.renderFrame(videoFrame, timestamp);
+          
+          videoFrame.close();
+
+          const canvas = this.renderer!.getCanvas();
+
+          // Create VideoFrame from canvas on GPU without reading pixels
+          // @ts-ignore - colorSpace not in TypeScript definitions but works at runtime
+          const exportFrame = new VideoFrame(canvas, {
+            timestamp,
+            duration: frameDuration,
+            colorSpace: {
+              primaries: 'bt709',
+              transfer: 'iec61966-2-1',
+              matrix: 'rgb',
+              fullRange: true,
+            },
+          });
+
+          if (this.encoder && this.encoder.state === 'configured') {
+            this.encodeQueue++;
+            this.encoder.encode(exportFrame, { keyFrame: i % 150 === 0 });
+          }
+          exportFrame.close();
         }
-
-        // Create a VideoFrame from the video element (on GPU!)
-        const videoFrame = new VideoFrame(videoElement, {
-          timestamp,
-        });
-
-        // Render the frame with all effects
-        await this.renderer!.renderFrame(videoFrame, timestamp);
         
-        videoFrame.close();
-
-        // Wait for encoder queue to have space (yield immediately instead of 1ms timeout)
+        // Wait for encoder queue once per batch
         while (this.encodeQueue >= this.MAX_ENCODE_QUEUE && !this.cancelled) {
           await new Promise(resolve => setTimeout(resolve, 0));
         }
 
-        if (this.cancelled) break;
+        frameIndex = batchEnd;
 
-        const canvas = this.renderer!.getCanvas();
-
-        // Create VideoFrame from canvas on GPU without reading pixels
-        // @ts-ignore - colorSpace not in TypeScript definitions but works at runtime
-        const exportFrame = new VideoFrame(canvas, {
-          timestamp,
-          duration: frameDuration,
-          colorSpace: {
-            primaries: 'bt709',
-            transfer: 'iec61966-2-1',
-            matrix: 'rgb',
-            fullRange: true,
-          },
-        });
-
-        if (this.encoder && this.encoder.state === 'configured') {
-          this.encodeQueue++;
-          this.encoder.encode(exportFrame, { keyFrame: frameIndex % 150 === 0 });
-        }
-        exportFrame.close();
-
-        frameIndex++;
-
-        // Batch progress updates to reduce callback overhead (every 5 frames)
-        if (frameIndex % 5 === 0 && this.config.onProgress) {
+        // Batch progress updates to reduce callback overhead
+        if (this.config.onProgress) {
           this.config.onProgress({
             currentFrame: frameIndex,
             totalFrames,
@@ -155,7 +159,7 @@ export class VideoExporter {
         const chunk = this.encodedChunks[i];
         const meta: EncodedVideoChunkMetadata = {};
         
-        // Add decoder config with colorSpace metadata for the first chunk
+        // Add decoder config for the first chunk
         if (i === 0 && this.videoDescription) {
           // Use captured colorSpace from encoder or fallback to default sRGB colorspace
           const colorSpace = this.videoColorSpace || {

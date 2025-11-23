@@ -53,7 +53,7 @@ export class FrameRenderer {
   }
 
   async initialize(): Promise<void> {
-    // Create offscreen canvas with sRGB color space for fidelity
+    // Create canvas for rendering
     const canvas = document.createElement('canvas');
     canvas.width = this.config.width;
     canvas.height = this.config.height;
@@ -249,7 +249,7 @@ export class FrameRenderer {
 
     this.currentVideoTime = timestamp / 1000000;
 
-    // Create or update video sprite from VideoFrame (optimized to reuse sprite)
+    // Create or update video sprite from VideoFrame
     if (!this.videoSprite) {
       const texture = PIXI.Texture.from(videoFrame as any);
       this.videoSprite = new PIXI.Sprite(texture);
@@ -444,7 +444,7 @@ export class FrameRenderer {
       console.warn('[FrameRenderer] No background sprite found during compositing!');
     }
 
-    // Draw video layer with shadows on top of background (using CSS filter for accuracy)
+    // Draw video layer with shadows on top of background
     if (this.config.showShadow && this.shadowCanvas && this.shadowCtx) {
       const shadowCtx = this.shadowCtx;
       shadowCtx.clearRect(0, 0, w, h);
