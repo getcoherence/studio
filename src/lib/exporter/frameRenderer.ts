@@ -53,7 +53,7 @@ export class FrameRenderer {
   }
 
   async initialize(): Promise<void> {
-    // Create offscreen canvas with sRGB color space for fidelity
+    // Create canvas for rendering
     const canvas = document.createElement('canvas');
     canvas.width = this.config.width;
     canvas.height = this.config.height;
@@ -69,15 +69,15 @@ export class FrameRenderer {
       console.warn('[FrameRenderer] colorSpace not supported on this platform:', error);
     }
 
-    // Initialize PixiJS app with transparent background (background rendered separately)
+    // Initialize PixiJS with optimized settings for export performance
     this.app = new PIXI.Application();
     await this.app.init({
       canvas,
       width: this.config.width,
       height: this.config.height,
       backgroundAlpha: 0,
-      antialias: true,
-      resolution: 2,
+      antialias: false,
+      resolution: 1,
       autoDensity: true,
     });
 
@@ -255,9 +255,11 @@ export class FrameRenderer {
       this.videoSprite = new PIXI.Sprite(texture);
       this.videoContainer.addChild(this.videoSprite);
     } else {
-      // Update texture with new frame
-      const texture = PIXI.Texture.from(videoFrame as any);
-      this.videoSprite.texture = texture;
+      // Destroy old texture to avoid memory leaks, then create new one
+      const oldTexture = this.videoSprite.texture;
+      const newTexture = PIXI.Texture.from(videoFrame as any);
+      this.videoSprite.texture = newTexture;
+      oldTexture.destroy(true);
     }
 
     // Apply layout
@@ -442,7 +444,7 @@ export class FrameRenderer {
       console.warn('[FrameRenderer] No background sprite found during compositing!');
     }
 
-    // Step 2: Draw video layer with shadows on top of background
+    // Draw video layer with shadows on top of background
     if (this.config.showShadow && this.shadowCanvas && this.shadowCtx) {
       const shadowCtx = this.shadowCtx;
       shadowCtx.clearRect(0, 0, w, h);
