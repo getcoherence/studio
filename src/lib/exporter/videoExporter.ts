@@ -25,6 +25,7 @@ export class VideoExporter {
   private encodeQueue = 0;
   private readonly MAX_ENCODE_QUEUE = 60;
   private videoDescription: Uint8Array | undefined;
+  private videoColorSpace: VideoColorSpaceInit | undefined;
 
   constructor(config: VideoExporterConfig) {
     this.config = config;
@@ -164,13 +165,22 @@ export class VideoExporter {
         const chunk = this.encodedChunks[i];
         const meta: EncodedVideoChunkMetadata = {};
         
-        // Add decoder config for the first chunk
+        // Add decoder config with colorSpace metadata for the first chunk
         if (i === 0 && this.videoDescription) {
+          // Use captured colorSpace from encoder or fallback to default sRGB colorspace
+          const colorSpace = this.videoColorSpace || {
+            primaries: 'bt709',
+            transfer: 'iec61966-2-1',
+            matrix: 'rgb',
+            fullRange: true,
+          };
+          
           meta.decoderConfig = {
             codec: this.config.codec || 'avc1.640033',
             codedWidth: this.config.width,
             codedHeight: this.config.height,
             description: this.videoDescription,
+            colorSpace,
           };
         }
         
@@ -199,10 +209,15 @@ export class VideoExporter {
 
     this.encoder = new VideoEncoder({
       output: (chunk, meta) => {
+        // Capture decoder config metadata from encoder output
         if (meta?.decoderConfig?.description && !videoDescription) {
           const desc = meta.decoderConfig.description;
           videoDescription = new Uint8Array(desc instanceof ArrayBuffer ? desc : (desc as any));
           this.videoDescription = videoDescription;
+        }
+        // Capture colorSpace from encoder metadata if provided
+        if (meta?.decoderConfig?.colorSpace && !this.videoColorSpace) {
+          this.videoColorSpace = meta.decoderConfig.colorSpace;
         }
         this.encodedChunks.push(chunk);
         this.encodeQueue--;
@@ -265,5 +280,6 @@ export class VideoExporter {
     this.encodedChunks = [];
     this.encodeQueue = 0;
     this.videoDescription = undefined;
+    this.videoColorSpace = undefined;
   }
 }

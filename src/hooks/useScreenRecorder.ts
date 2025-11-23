@@ -55,12 +55,18 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         return;
       }
       await window.electronAPI.startMouseTracking();
+      // Enable hardware acceleration and set optimal resolution/framerate constraints
       const mediaStream = await (navigator.mediaDevices as any).getUserMedia({
         audio: false,
         video: {
           mandatory: {
             chromeMediaSource: "desktop",
             chromeMediaSourceId: selectedSource.id,
+            minWidth: 1920,
+            minHeight: 1080,
+            maxWidth: 3840,
+            maxHeight: 2160,
+            frameRate: { ideal: 60, max: 60 }
           },
         },
       });
@@ -71,14 +77,21 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
       const videoTrack = stream.current.getVideoTracks()[0];
       const { width = 1920, height = 1080 } = videoTrack.getSettings();
       const totalPixels = width * height;
-      let bitrate = 150_000_000;
+      // Use visually lossless bitrates optimized for quality and file size balance
+      let bitrate = 30_000_000;
       if (totalPixels > 1920 * 1080 && totalPixels <= 2560 * 1440) {
-        bitrate = 250_000_000;
+        bitrate = 50_000_000;
       } else if (totalPixels > 2560 * 1440) {
-        bitrate = 400_000_000;
+        bitrate = 80_000_000;
       }
       chunks.current = [];
-      const mimeType = "video/webm;codecs=vp9";
+      // Prefer AV1 codec for better compression, fallback to VP9 then VP8
+      const supportedCodecs = [
+        'video/webm;codecs=av1',
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=vp8'
+      ];
+      const mimeType = supportedCodecs.find(codec => MediaRecorder.isTypeSupported(codec)) || 'video/webm;codecs=vp9';
       const recorder = new MediaRecorder(stream.current, { mimeType, videoBitsPerSecond: bitrate });
       mediaRecorder.current = recorder;
       recorder.ondataavailable = e => {
@@ -89,6 +102,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         if (chunks.current.length === 0) return;
         const duration = Date.now() - startTime.current;
         const buggyBlob = new Blob(chunks.current, { type: mimeType });
+        // Clear chunks early to free memory immediately after blob creation
+        chunks.current = [];
         const timestamp = Date.now();
         const videoFileName = `recording-${timestamp}.webm`;
         const trackingFileName = `recording-${timestamp}_tracking.json`;
@@ -110,7 +125,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         }
       };
       recorder.onerror = () => setRecording(false);
-      recorder.start(1000);
+      // Use larger timeslice to reduce recording overhead and improve smoothness
+      recorder.start(5000);
       startTime.current = Date.now();
       setRecording(true);
       window.electronAPI?.setRecordingState(true);

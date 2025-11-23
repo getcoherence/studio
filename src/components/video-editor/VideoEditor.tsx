@@ -187,12 +187,21 @@ export default function VideoEditor() {
       const width = 1920;
       const height = 1080;
 
+      // Calculate visually lossless bitrate matching screen recording optimization
+      const totalPixels = width * height;
+      let bitrate = 30_000_000;
+      if (totalPixels > 1920 * 1080 && totalPixels <= 2560 * 1440) {
+        bitrate = 50_000_000;
+      } else if (totalPixels > 2560 * 1440) {
+        bitrate = 80_000_000;
+      }
+
       const exporter = new VideoExporter({
         videoUrl: videoPath,
         width,
         height,
         frameRate: 60,
-        bitrate: 15_000_000,
+        bitrate,
         codec: 'avc1.640033',
         wallpaper,
         zoomRegions,
