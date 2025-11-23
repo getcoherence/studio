@@ -184,8 +184,15 @@ export default function VideoEditor() {
         videoPlaybackRef.current?.pause();
       }
 
-      const width = 1920;
-      const height = 1080;
+      // Get actual video dimensions to match recording resolution
+      const video = videoPlaybackRef.current?.video;
+      if (!video) {
+        toast.error('Video not ready');
+        return;
+      }
+      
+      const width = video.videoWidth || 1920;
+      const height = video.videoHeight || 1080;
 
       // Calculate visually lossless bitrate matching screen recording optimization
       const totalPixels = width * height;

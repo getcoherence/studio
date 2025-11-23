@@ -55,17 +55,13 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         return;
       }
       await window.electronAPI.startMouseTracking();
-      // Enable hardware acceleration and set optimal resolution/framerate constraints
+      // Capture screen at source resolution without constraints
       const mediaStream = await (navigator.mediaDevices as any).getUserMedia({
         audio: false,
         video: {
           mandatory: {
             chromeMediaSource: "desktop",
             chromeMediaSourceId: selectedSource.id,
-            minWidth: 1920,
-            minHeight: 1080,
-            maxWidth: 3840,
-            maxHeight: 2160,
             frameRate: { ideal: 60, max: 60 }
           },
         },
@@ -75,7 +71,14 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         throw new Error("Media stream is not available.");
       }
       const videoTrack = stream.current.getVideoTracks()[0];
-      const { width = 1920, height = 1080 } = videoTrack.getSettings();
+      let { width = 1920, height = 1080 } = videoTrack.getSettings();
+      
+      // Ensure dimensions are divisible by 2 for VP9/AV1 codec compatibility
+      width = Math.floor(width / 2) * 2;
+      height = Math.floor(height / 2) * 2;
+      
+      console.log(`Recording at ${width}x${height}`);
+      
       const totalPixels = width * height;
       // Use visually lossless bitrates optimized for quality and file size balance
       let bitrate = 30_000_000;

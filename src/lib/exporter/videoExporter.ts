@@ -23,7 +23,8 @@ export class VideoExporter {
   private cancelled = false;
   private encodedChunks: EncodedVideoChunk[] = [];
   private encodeQueue = 0;
-  private readonly MAX_ENCODE_QUEUE = 60;
+  // Increased queue size for better throughput with hardware encoding
+  private readonly MAX_ENCODE_QUEUE = 120;
   private videoDescription: Uint8Array | undefined;
   private videoColorSpace: VideoColorSpaceInit | undefined;
 
@@ -68,38 +69,25 @@ export class VideoExporter {
         throw new Error('Video element not available');
       }
 
-      // Process frames with optimized seeking
+      // Process frames with optimized seeking (no unnecessary timeouts)
       const frameDuration = 1_000_000 / this.config.frameRate; // in microseconds
       let frameIndex = 0;
       const timeStep = 1 / this.config.frameRate;
 
-      // Pre-load first frame
-      videoElement.currentTime = 0;
-      await new Promise(resolve => {
-        const onSeeked = () => {
-          videoElement.removeEventListener('seeked', onSeeked);
-          resolve(null);
-        };
-        videoElement.addEventListener('seeked', onSeeked);
-      });
-
       while (frameIndex < totalFrames && !this.cancelled) {
         const timestamp = frameIndex * frameDuration;
         const videoTime = frameIndex * timeStep;
-        // Seek to frame (only seek if not already there)
-        if (Math.abs(videoElement.currentTime - videoTime) > 0.001) {
-          videoElement.currentTime = videoTime;
-          await Promise.race([
-            new Promise(resolve => {
-              const onSeeked = () => {
-                videoElement.removeEventListener('seeked', onSeeked);
-                // Wait for video to render the frame
-                videoElement.requestVideoFrameCallback(() => resolve(null));
-              };
-              videoElement.addEventListener('seeked', onSeeked, { once: true });
-            }),
-            new Promise(resolve => setTimeout(resolve, 200)) // higher this number, slower the export, but better capture/ no frame drops
-          ]);
+        
+        // Seek if needed or wait for first frame to be ready
+        const needsSeek = Math.abs(videoElement.currentTime - videoTime) > 0.001;
+        if (needsSeek || frameIndex === 0) {
+          if (needsSeek) {
+            videoElement.currentTime = videoTime;
+          }
+          // Wait for video frame to be ready
+          await new Promise<void>(resolve => {
+            videoElement.requestVideoFrameCallback(() => resolve());
+          });
         }
 
         // Create a VideoFrame from the video element (on GPU!)
@@ -112,16 +100,17 @@ export class VideoExporter {
         
         videoFrame.close();
 
+        // Wait for encoder queue to have space (yield immediately instead of 1ms timeout)
         while (this.encodeQueue >= this.MAX_ENCODE_QUEUE && !this.cancelled) {
-          await new Promise(resolve => setTimeout(resolve, 1));
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
 
         if (this.cancelled) break;
 
         const canvas = this.renderer!.getCanvas();
-        
 
-        // @ts-ignore - TypeScript definitions may not include all VideoFrameInit properties
+        // Create VideoFrame from canvas on GPU without reading pixels
+        // @ts-ignore - colorSpace not in TypeScript definitions but works at runtime
         const exportFrame = new VideoFrame(canvas, {
           timestamp,
           duration: frameDuration,
@@ -141,7 +130,8 @@ export class VideoExporter {
 
         frameIndex++;
 
-        if (this.config.onProgress) {
+        // Batch progress updates to reduce callback overhead (every 5 frames)
+        if (frameIndex % 5 === 0 && this.config.onProgress) {
           this.config.onProgress({
             currentFrame: frameIndex,
             totalFrames,
