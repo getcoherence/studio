@@ -28,14 +28,14 @@
   ],
 
   "mac": {
-      "target": [
-        "dmg"
-      ],
-      "arch": [
-        "universal"
-      ],
-      "icon": "icons/icons/mac/icon.icns",
-      "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["x64", "arm64"]
+      }
+    ],
+    "icon": "icons/icons/mac/icon.icns",
+    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
   },
   "linux": {
     "target": [
