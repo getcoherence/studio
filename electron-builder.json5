@@ -39,5 +39,10 @@
       "AppImage"
     ],
     "artifactName": "${productName}-Linux-${version}.${ext}"
+  },
+  "win": {
+    "target": [
+      "nsis"
+    ]
   }
 }
