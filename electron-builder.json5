@@ -31,6 +31,9 @@
       "target": [
         "dmg"
       ],
+      "arch": [
+        "universal"
+      ],
       "icon": "icons/icons/mac/icon.icns",
       "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
   },
