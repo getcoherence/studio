@@ -1,12 +1,12 @@
-import * as PIXI from 'pixi.js';
+import { Application, Sprite, Graphics } from 'pixi.js';
 import { VIEWPORT_SCALE } from "./constants";
 import type { CropRegion } from '../types';
 
 interface LayoutParams {
   container: HTMLDivElement;
-  app: PIXI.Application;
-  videoSprite: PIXI.Sprite;
-  maskGraphics: PIXI.Graphics;
+  app: Application;
+  videoSprite: Sprite;
+  maskGraphics: Graphics;
   videoElement: HTMLVideoElement;
   cropRegion?: CropRegion;
   lockedVideoDimensions?: { width: number; height: number } | null;

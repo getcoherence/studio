@@ -1,8 +1,8 @@
-import * as PIXI from 'pixi.js';
+import { Container, BlurFilter } from 'pixi.js';
 
 interface TransformParams {
-  cameraContainer: PIXI.Container;
-  blurFilter: PIXI.BlurFilter | null;
+  cameraContainer: Container;
+  blurFilter: BlurFilter | null;
   stageSize: { width: number; height: number };
   baseMask: { x: number; y: number; width: number; height: number };
   zoomScale: number;
