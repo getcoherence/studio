@@ -20,7 +20,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
       }
       mediaRecorder.current.stop();
       setRecording(false);
-      window.electronAPI.stopMouseTracking();
+
       window.electronAPI?.setRecordingState(false);
     }
   });
@@ -54,7 +54,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         alert("Please select a source to record");
         return;
       }
-      await window.electronAPI.startMouseTracking();
+
       // Capture screen at source resolution without constraints
       const mediaStream = await (navigator.mediaDevices as any).getUserMedia({
         audio: false,
@@ -109,7 +109,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         chunks.current = [];
         const timestamp = Date.now();
         const videoFileName = `recording-${timestamp}.webm`;
-        const trackingFileName = `recording-${timestamp}_tracking.json`;
+
         try {
           const videoBlob = await fixWebmDuration(buggyBlob, duration);
           const arrayBuffer = await videoBlob.arrayBuffer();
@@ -118,10 +118,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
             console.error('Failed to store video:', videoResult.message);
             return;
           }
-          const trackingResult = await window.electronAPI.storeMouseTrackingData(trackingFileName);
-          if (!trackingResult.success) {
-            console.warn('Failed to store mouse tracking:', trackingResult.message);
-          }
+
           await window.electronAPI.switchToEditor();
         } catch (error) {
           console.error('Error saving recording:', error);

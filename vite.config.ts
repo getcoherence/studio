@@ -14,9 +14,7 @@ export default defineConfig({
         entry: 'electron/main.ts',
         vite: {
           build: {
-            rollupOptions: {
-              external: ['uiohook-napi']
-            }
+
           }
         }
       },

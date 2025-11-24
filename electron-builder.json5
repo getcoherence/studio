@@ -26,9 +26,7 @@
       "to": "assets/wallpapers"
     }
   ],
-  "asarUnpack": [
-    "**/node_modules/uiohook-napi/**/*"
-  ],
+
   "mac": {
       "target": [
         "dmg"

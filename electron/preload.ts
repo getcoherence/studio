@@ -20,18 +20,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSelectedSource: () => {
     return ipcRenderer.invoke('get-selected-source')
   },
-  startMouseTracking: () => {
-    return ipcRenderer.invoke('start-mouse-tracking')
-  },
-  stopMouseTracking: () => {
-    return ipcRenderer.invoke('stop-mouse-tracking')
-  },
+
   storeRecordedVideo: (videoData: ArrayBuffer, fileName: string) => {
     return ipcRenderer.invoke('store-recorded-video', videoData, fileName)
   },
-  storeMouseTrackingData: (fileName: string) => {
-    return ipcRenderer.invoke('store-mouse-tracking-data', fileName)
-  },
+
   getRecordedVideoPath: () => {
     return ipcRenderer.invoke('get-recorded-video-path')
   },

@@ -4,7 +4,7 @@ import path from 'node:path'
 import fs from 'node:fs/promises'
 import { createHudOverlayWindow, createEditorWindow, createSourceSelectorWindow } from './windows'
 import { registerIpcHandlers } from './ipc/handlers'
-import { cleanupMouseTracking } from './ipc/mouseTracking'
+
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -126,7 +126,7 @@ app.on('activate', () => {
 // Cleanup old recordings on quit (both macOS and other platforms)
 app.on('before-quit', async (event) => {
   event.preventDefault()
-  cleanupMouseTracking()
+
   await cleanupOldRecordings()
   app.exit(0)
 })
