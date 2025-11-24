@@ -47,16 +47,43 @@ export default function VideoEditor() {
   const nextZoomIdRef = useRef(1);
   const exporterRef = useRef<VideoExporter | null>(null);
 
+  // Helper to convert file path to proper file:// URL
+  const toFileUrl = (filePath: string): string => {
+    console.log('[VIDEO-EDITOR] Converting path to URL:', filePath);
+    // Normalize path separators to forward slashes
+    const normalized = filePath.replace(/\\/g, '/');
+    console.log('[VIDEO-EDITOR] Normalized path:', normalized);
+    
+    // Check if it's a Windows absolute path (e.g., C:/Users/...)
+    if (normalized.match(/^[a-zA-Z]:/)) {
+      const fileUrl = `file:///${normalized}`;
+      console.log('[VIDEO-EDITOR] Windows file URL:', fileUrl);
+      return fileUrl;
+    }
+    
+    // Unix-style absolute path
+    const fileUrl = `file://${normalized}`;
+    console.log('[VIDEO-EDITOR] Unix file URL:', fileUrl);
+    return fileUrl;
+  };
+
   useEffect(() => {
     async function loadVideo() {
       try {
+        console.log('[VIDEO-EDITOR] Loading video...');
         const result = await window.electronAPI.getRecordedVideoPath();
+        console.log('[VIDEO-EDITOR] getRecordedVideoPath result:', result);
+        
         if (result.success && result.path) {
-          setVideoPath(`file://${result.path}`);
+          const videoUrl = toFileUrl(result.path);
+          console.log('[VIDEO-EDITOR] Setting video path:', videoUrl);
+          setVideoPath(videoUrl);
         } else {
+          console.error('[VIDEO-EDITOR] Failed to get video path:', result.message);
           setError(result.message || 'Failed to load video');
         }
       } catch (err) {
+        console.error('[VIDEO-EDITOR] Error loading video:', err);
         setError('Error loading video: ' + String(err));
       } finally {
         setLoading(false);

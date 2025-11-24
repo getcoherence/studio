@@ -34,9 +34,13 @@ async function cleanupOldRecordings() {
 async function ensureRecordingsDir() {
   try {
     await fs.mkdir(RECORDINGS_DIR, { recursive: true })
-    console.log('Recordings directory ready:', RECORDINGS_DIR)
+    console.log('='.repeat(60))
+    console.log('[STARTUP] Platform:', process.platform)
+    console.log('[STARTUP] RECORDINGS_DIR:', RECORDINGS_DIR)
+    console.log('[STARTUP] User Data Path:', app.getPath('userData'))
+    console.log('='.repeat(60))
   } catch (error) {
-    console.error('Failed to create recordings directory:', error)
+    console.error('[STARTUP] Failed to create recordings directory:', error)
   }
 }
 
