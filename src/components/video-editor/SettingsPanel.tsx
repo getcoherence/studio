@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import Colorful from '@uiw/react-color-colorful';
 import { hsvaToHex } from '@uiw/color-convert';
-import { Trash2, Download, Crop, X, Bug, Upload } from "lucide-react";
+import { Trash2, Download, Crop, X, Bug, Upload, Coffee } from "lucide-react";
 import { toast } from "sonner";
 import type { ZoomDepth, CropRegion } from "./types";
 import { CropControl } from "./CropControl";
@@ -401,16 +401,28 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
           <Download className="w-5 h-5" />
           <span>Export Video</span>
         </Button>
-        <button
-          type="button"
-          onClick={() => {
-            window.electronAPI?.openExternalUrl('https://github.com/siddharthvaddem/openscreen/issues/new');
-          }}
-          className="w-full mt-4 flex items-center justify-center gap-2 text-xs text-slate-500 hover:text-slate-300 transition-colors py-2 group"
-        >
-          <Bug className="w-3 h-3 group-hover:text-[#34B27B] transition-colors" />
-          <span>Report a Bug</span>
-        </button>
+        <div className="flex gap-2 mt-4">
+          <button
+            type="button"
+            onClick={() => {
+              window.electronAPI?.openExternalUrl('https://github.com/siddharthvaddem/openscreen/issues/new');
+            }}
+            className="flex-1 flex items-center justify-center gap-2 text-xs text-slate-500 hover:text-slate-300 transition-colors py-2 group"
+          >
+            <Bug className="w-3 h-3 group-hover:text-[#34B27B] transition-colors" />
+            <span>Report a Bug</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              window.electronAPI?.openExternalUrl('https://buymeacoffee.com/siddharthvaddem');
+            }}
+            className="flex-1 flex items-center justify-center gap-2 text-xs text-slate-500 hover:text-slate-300 transition-colors py-2 group"
+          >
+            <Coffee className="w-3 h-3 group-hover:text-[#FFDD00] transition-colors" />
+            <span>Buy me a Coffee</span>
+          </button>
+        </div>
       </div>
     </div>
   );
