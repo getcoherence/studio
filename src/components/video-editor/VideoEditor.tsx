@@ -33,7 +33,7 @@ export default function VideoEditor() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [wallpaper, setWallpaper] = useState<string>(WALLPAPER_PATHS[0]);
-  const [showShadow, setShowShadow] = useState(false);
+  const [shadowIntensity, setShadowIntensity] = useState(0);
   const [showBlur, setShowBlur] = useState(false);
   const [cropRegion, setCropRegion] = useState<CropRegion>(DEFAULT_CROP_REGION);
   const [zoomRegions, setZoomRegions] = useState<ZoomRegion[]>([]);
@@ -229,7 +229,8 @@ export default function VideoEditor() {
         codec: 'avc1.640033',
         wallpaper,
         zoomRegions,
-        showShadow,
+        showShadow: shadowIntensity > 0,
+        shadowIntensity,
         showBlur,
         cropRegion,
         onProgress: (progress: ExportProgress) => {
@@ -270,7 +271,7 @@ export default function VideoEditor() {
       setIsExporting(false);
       exporterRef.current = null;
     }
-  }, [videoPath, wallpaper, zoomRegions, showShadow, showBlur, cropRegion, isPlaying]);
+  }, [videoPath, wallpaper, zoomRegions, shadowIntensity, showBlur, cropRegion, isPlaying]);
 
   const handleCancelExport = useCallback(() => {
     if (exporterRef.current) {
@@ -329,7 +330,8 @@ export default function VideoEditor() {
                   onSelectZoom={handleSelectZoom}
                   onZoomFocusChange={handleZoomFocusChange}
                   isPlaying={isPlaying}
-                  showShadow={showShadow}
+                  showShadow={shadowIntensity > 0}
+                  shadowIntensity={shadowIntensity}
                   showBlur={showBlur}
                   cropRegion={cropRegion}
                 />
@@ -373,8 +375,8 @@ export default function VideoEditor() {
           onZoomDepthChange={(depth) => selectedZoomId && handleZoomDepthChange(depth)}
           selectedZoomId={selectedZoomId}
           onZoomDelete={handleZoomDelete}
-          showShadow={showShadow}
-          onShadowChange={setShowShadow}
+          shadowIntensity={shadowIntensity}
+          onShadowChange={setShadowIntensity}
           showBlur={showBlur}
           onBlurChange={setShowBlur}
           cropRegion={cropRegion}

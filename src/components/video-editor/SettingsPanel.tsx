@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { useEffect, useRef } from "react";
 import { getAssetPath } from "@/lib/assetPath";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -48,8 +49,8 @@ interface SettingsPanelProps {
   onZoomDepthChange?: (depth: ZoomDepth) => void;
   selectedZoomId?: string | null;
   onZoomDelete?: (id: string) => void;
-  showShadow?: boolean;
-  onShadowChange?: (showShadow: boolean) => void;
+  shadowIntensity?: number;
+  onShadowChange?: (intensity: number) => void;
   showBlur?: boolean;
   onBlurChange?: (showBlur: boolean) => void;
   cropRegion?: CropRegion;
@@ -68,7 +69,7 @@ const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
   { depth: 5, label: "3.5×" },
 ];
 
-export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, showShadow, onShadowChange, showBlur, onBlurChange, cropRegion, onCropChange, videoElement, onExport }: SettingsPanelProps) {
+export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, shadowIntensity = 0, onShadowChange, showBlur, onBlurChange, cropRegion, onCropChange, videoElement, onExport }: SettingsPanelProps) {
   const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
   const [customImages, setCustomImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -194,22 +195,32 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
         )}
       </div>
 
-      <div className="mb-6 space-y-4">
-        <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-          <div className="text-sm font-medium text-slate-200">Drop Shadow</div>
-          <Switch
-            checked={showShadow}
-            onCheckedChange={onShadowChange}
-            className="data-[state=checked]:bg-[#34B27B]"
-          />
-        </div>
-        <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-          <div className="text-sm font-medium text-slate-200">Blur Background</div>
-          <Switch
-            checked={showBlur}
-            onCheckedChange={onBlurChange}
-            className="data-[state=checked]:bg-[#34B27B]"
-          />
+      <div className="mb-6">
+        <div className="grid grid-cols-2 gap-3">
+          {/* Drop Shadow Slider */}
+          <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-medium text-slate-200">Shadow</div>
+              <span className="text-[10px] text-slate-400 font-mono">{Math.round(shadowIntensity * 100)}%</span>
+            </div>
+            <Slider
+              value={[shadowIntensity]}
+              onValueChange={(values) => onShadowChange?.(values[0])}
+              min={0}
+              max={1}
+              step={0.01}
+              className="w-full [&_[role=slider]]:bg-[#34B27B] [&_[role=slider]]:border-[#34B27B]"
+            />
+          </div>
+          {/* Blur Background Switch */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+            <div className="text-xs font-medium text-slate-200">Blur</div>
+            <Switch
+              checked={showBlur}
+              onCheckedChange={onBlurChange}
+              className="data-[state=checked]:bg-[#34B27B]"
+            />
+          </div>
         </div>
       </div>
 

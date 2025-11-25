@@ -9,6 +9,7 @@ interface VideoExporterConfig extends ExportConfig {
   wallpaper: string;
   zoomRegions: ZoomRegion[];
   showShadow: boolean;
+  shadowIntensity: number;
   showBlur: boolean;
   cropRegion: CropRegion;
   onProgress?: (progress: ExportProgress) => void;
@@ -50,6 +51,7 @@ export class VideoExporter {
         wallpaper: this.config.wallpaper,
         zoomRegions: this.config.zoomRegions,
         showShadow: this.config.showShadow,
+        shadowIntensity: this.config.shadowIntensity,
         showBlur: this.config.showBlur,
         cropRegion: this.config.cropRegion,
         videoWidth: videoInfo.width,

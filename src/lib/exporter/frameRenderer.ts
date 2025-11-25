@@ -12,6 +12,7 @@ interface FrameRenderConfig {
   wallpaper: string;
   zoomRegions: ZoomRegion[];
   showShadow: boolean;
+  shadowIntensity: number;
   showBlur: boolean;
   cropRegion: CropRegion;
   videoWidth: number;
@@ -434,7 +435,7 @@ export class FrameRenderer {
       
       if (this.config.showBlur) {
         ctx.save();
-        ctx.filter = 'blur(2px)';
+        ctx.filter = 'blur(3px)';
         ctx.drawImage(bgCanvas, 0, 0, w, h);
         ctx.restore();
       } else {
@@ -445,11 +446,22 @@ export class FrameRenderer {
     }
 
     // Draw video layer with shadows on top of background
-    if (this.config.showShadow && this.shadowCanvas && this.shadowCtx) {
+    if (this.config.showShadow && this.config.shadowIntensity > 0 && this.shadowCanvas && this.shadowCtx) {
       const shadowCtx = this.shadowCtx;
       shadowCtx.clearRect(0, 0, w, h);
       shadowCtx.save();
-      shadowCtx.filter = 'drop-shadow(0 12px 48px rgba(0,0,0,0.7)) drop-shadow(0 4px 16px rgba(0,0,0,0.5)) drop-shadow(0 2px 8px rgba(0,0,0,0.3))';
+      
+      // Calculate shadow parameters based on intensity (0-1)
+      const intensity = this.config.shadowIntensity;
+      const baseBlur1 = 48 * intensity;
+      const baseBlur2 = 16 * intensity;
+      const baseBlur3 = 8 * intensity;
+      const baseAlpha1 = 0.7 * intensity;
+      const baseAlpha2 = 0.5 * intensity;
+      const baseAlpha3 = 0.3 * intensity;
+      const baseOffset = 12 * intensity;
+      
+      shadowCtx.filter = `drop-shadow(0 ${baseOffset}px ${baseBlur1}px rgba(0,0,0,${baseAlpha1})) drop-shadow(0 ${baseOffset/3}px ${baseBlur2}px rgba(0,0,0,${baseAlpha2})) drop-shadow(0 ${baseOffset/6}px ${baseBlur3}px rgba(0,0,0,${baseAlpha3}))`;
       shadowCtx.drawImage(videoCanvas, 0, 0, w, h);
       shadowCtx.restore();
       ctx.drawImage(this.shadowCanvas, 0, 0, w, h);

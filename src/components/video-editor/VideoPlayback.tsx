@@ -25,6 +25,7 @@ interface VideoPlaybackProps {
   onZoomFocusChange: (id: string, focus: ZoomFocus) => void;
   isPlaying: boolean;
   showShadow?: boolean;
+  shadowIntensity?: number;
   showBlur?: boolean;
   cropRegion?: import('./types').CropRegion;
 }
@@ -51,6 +52,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   onZoomFocusChange,
   isPlaying,
   showShadow,
+  shadowIntensity = 0,
   showBlur,
   cropRegion,
 }, ref) => {
@@ -722,15 +724,15 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
         className="absolute inset-0 bg-cover bg-center"
         style={{
           ...backgroundStyle,
-          filter: showBlur ? 'blur(2px)' : 'none',
+          filter: showBlur ? 'blur(3px)' : 'none',
         }}
       />
       <div
         ref={containerRef}
         className="absolute inset-0"
         style={{
-          filter: showShadow
-            ? 'drop-shadow(0 12px 48px rgba(0,0,0,0.7)) drop-shadow(0 4px 16px rgba(0,0,0,0.5)) drop-shadow(0 2px 8px rgba(0,0,0,0.3))'
+          filter: (showShadow && shadowIntensity > 0)
+            ? `drop-shadow(0 ${shadowIntensity * 12}px ${shadowIntensity * 48}px rgba(0,0,0,${shadowIntensity * 0.7})) drop-shadow(0 ${shadowIntensity * 4}px ${shadowIntensity * 16}px rgba(0,0,0,${shadowIntensity * 0.5})) drop-shadow(0 ${shadowIntensity * 2}px ${shadowIntensity * 8}px rgba(0,0,0,${shadowIntensity * 0.3}))`
             : 'none',
         }}
       />
