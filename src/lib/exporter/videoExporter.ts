@@ -83,11 +83,17 @@ export class VideoExporter {
           
         // Seek if needed or wait for first frame to be ready
         const needsSeek = Math.abs(videoElement.currentTime - videoTime) > 0.001;
-        if (needsSeek || i === 0) {
-          if (needsSeek) {
-            videoElement.currentTime = videoTime;
-          }
-          // Wait for video frame to be ready
+        
+        if (needsSeek) {
+          // Attach listener BEFORE setting currentTime to avoid race condition
+          const seekedPromise = new Promise<void>(resolve => {
+            videoElement.addEventListener('seeked', () => resolve(), { once: true });
+          });
+          
+          videoElement.currentTime = videoTime;
+          await seekedPromise;
+        } else if (i === 0) {
+          // Only for the very first frame, wait for it to be ready
           await new Promise<void>(resolve => {
             videoElement.requestVideoFrameCallback(() => resolve());
           });
@@ -126,11 +132,13 @@ export class VideoExporter {
         if (this.encoder && this.encoder.state === 'configured') {
           this.encodeQueue++;
           this.encoder.encode(exportFrame, { keyFrame: i % 150 === 0 });
+        } else {
+          console.warn(`[Frame ${i}] Encoder not ready! State: ${this.encoder?.state}`);
         }
         exportFrame.close();
 
         frameIndex++;
-
+        
         // Update progress
         if (this.config.onProgress) {
           this.config.onProgress({
@@ -226,7 +234,9 @@ export class VideoExporter {
         this.encodeQueue--;
       },
       error: (error) => {
-        console.error('VideoEncoder error:', error);
+        console.error('[VideoExporter] Encoder error:', error);
+        // Stop export encoding failed
+        this.cancelled = true;
       },
     });
 
@@ -243,30 +253,24 @@ export class VideoExporter {
       hardwareAcceleration: 'prefer-hardware',
     };
 
-    try {
-      console.log('[VideoExporter] Configuring encoder with hardware acceleration...', {
-        codec,
-        resolution: `${this.config.width}x${this.config.height}`,
-        bitrate: this.config.bitrate,
-        framerate: this.config.frameRate,
-      });
-      
-      this.encoder.configure(encoderConfig as VideoEncoderConfig);
-      
-      console.log('[VideoExporter] Hardware encoder configured successfully');
-    } catch (error) {
-      console.warn('[VideoExporter] Hardware encoding failed, falling back to software encoding...', error);
-      
-      // Fallback to software encoding if hardware fails
+    // Check hardware support first
+    const hardwareSupport = await VideoEncoder.isConfigSupported(encoderConfig);
+    
+    if (hardwareSupport.supported) {
+      // Use hardware encoding
+      console.log('[VideoExporter] Using hardware acceleration');
+      this.encoder.configure(encoderConfig);
+    } else {
+      // Fall back to software encoding
+      console.log('[VideoExporter] Hardware not supported, using software encoding');
       encoderConfig.hardwareAcceleration = 'prefer-software';
       
-      try {
-        this.encoder.configure(encoderConfig as VideoEncoderConfig);
-        console.log('[VideoExporter] Software encoder configured successfully');
-      } catch (softwareError) {
-        console.error('[VideoExporter] Software encoding also failed:', softwareError);
-        throw new Error(`Failed to initialize video encoder: ${softwareError instanceof Error ? softwareError.message : String(softwareError)}`);
+      const softwareSupport = await VideoEncoder.isConfigSupported(encoderConfig);
+      if (!softwareSupport.supported) {
+        throw new Error('Video encoding not supported on this system');
       }
+      
+      this.encoder.configure(encoderConfig);
     }
   }
 
