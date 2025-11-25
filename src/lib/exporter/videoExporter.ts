@@ -205,7 +205,7 @@ export class VideoExporter {
               
               const metadata: EncodedVideoChunkMetadata = {
                 decoderConfig: {
-                  codec: this.config.codec || 'avc1.640033',
+                  codec: this.config.codec || 'avc1.64001f',
                   codedWidth: this.config.width,
                   codedHeight: this.config.height,
                   description: this.videoDescription,
@@ -230,9 +230,9 @@ export class VideoExporter {
       },
     });
 
-    const codec = this.config.codec || 'avc1.640033';
+    const codec = this.config.codec || 'avc1.64001f';
     
-    this.encoder.configure({
+    const encoderConfig: VideoEncoderConfig = {
       codec,
       width: this.config.width,
       height: this.config.height,
@@ -241,7 +241,33 @@ export class VideoExporter {
       latencyMode: 'realtime',
       bitrateMode: 'variable',
       hardwareAcceleration: 'prefer-hardware',
-    } as VideoEncoderConfig);
+    };
+
+    try {
+      console.log('[VideoExporter] Configuring encoder with hardware acceleration...', {
+        codec,
+        resolution: `${this.config.width}x${this.config.height}`,
+        bitrate: this.config.bitrate,
+        framerate: this.config.frameRate,
+      });
+      
+      this.encoder.configure(encoderConfig as VideoEncoderConfig);
+      
+      console.log('[VideoExporter] Hardware encoder configured successfully');
+    } catch (error) {
+      console.warn('[VideoExporter] Hardware encoding failed, falling back to software encoding...', error);
+      
+      // Fallback to software encoding if hardware fails
+      encoderConfig.hardwareAcceleration = 'prefer-software';
+      
+      try {
+        this.encoder.configure(encoderConfig as VideoEncoderConfig);
+        console.log('[VideoExporter] Software encoder configured successfully');
+      } catch (softwareError) {
+        console.error('[VideoExporter] Software encoding also failed:', softwareError);
+        throw new Error(`Failed to initialize video encoder: ${softwareError instanceof Error ? softwareError.message : String(softwareError)}`);
+      }
+    }
   }
 
   cancel(): void {

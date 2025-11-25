@@ -143,18 +143,14 @@ function registerIpcHandlers(createEditorWindow2, createSourceSelectorWindow2, g
   ipcMain.handle("store-recorded-video", async (_, videoData, fileName) => {
     try {
       const videoPath = path.join(RECORDINGS_DIR, fileName);
-      console.log("[STORE-VIDEO] Saving to:", videoPath);
-      console.log("[STORE-VIDEO] RECORDINGS_DIR:", RECORDINGS_DIR);
-      console.log("[STORE-VIDEO] Platform:", process.platform);
       await fs.writeFile(videoPath, Buffer.from(videoData));
-      console.log("[STORE-VIDEO] Success! File size:", Buffer.from(videoData).length, "bytes");
       return {
         success: true,
         path: videoPath,
         message: "Video stored successfully"
       };
     } catch (error) {
-      console.error("[STORE-VIDEO] Failed to store video:", error);
+      console.error("Failed to store video:", error);
       return {
         success: false,
         message: "Failed to store video",
@@ -164,23 +160,16 @@ function registerIpcHandlers(createEditorWindow2, createSourceSelectorWindow2, g
   });
   ipcMain.handle("get-recorded-video-path", async () => {
     try {
-      console.log("[GET-VIDEO] RECORDINGS_DIR:", RECORDINGS_DIR);
-      console.log("[GET-VIDEO] Platform:", process.platform);
       const files = await fs.readdir(RECORDINGS_DIR);
-      console.log("[GET-VIDEO] All files:", files);
       const videoFiles = files.filter((file) => file.endsWith(".webm"));
-      console.log("[GET-VIDEO] Video files:", videoFiles);
       if (videoFiles.length === 0) {
-        console.log("[GET-VIDEO] No video files found");
         return { success: false, message: "No recorded video found" };
       }
       const latestVideo = videoFiles.sort().reverse()[0];
       const videoPath = path.join(RECORDINGS_DIR, latestVideo);
-      console.log("[GET-VIDEO] Latest video path:", videoPath);
-      console.log("[GET-VIDEO] Path separators:", videoPath.includes("\\") ? "backslash" : "forward slash");
       return { success: true, path: videoPath };
     } catch (error) {
-      console.error("[GET-VIDEO] Failed to get video path:", error);
+      console.error("Failed to get video path:", error);
       return { success: false, message: "Failed to get video path", error: String(error) };
     }
   });
@@ -252,13 +241,10 @@ async function cleanupOldRecordings() {
 async function ensureRecordingsDir() {
   try {
     await fs.mkdir(RECORDINGS_DIR, { recursive: true });
-    console.log("=".repeat(60));
-    console.log("[STARTUP] Platform:", process.platform);
-    console.log("[STARTUP] RECORDINGS_DIR:", RECORDINGS_DIR);
-    console.log("[STARTUP] User Data Path:", app.getPath("userData"));
-    console.log("=".repeat(60));
+    console.log("RECORDINGS_DIR:", RECORDINGS_DIR);
+    console.log("User Data Path:", app.getPath("userData"));
   } catch (error) {
-    console.error("[STARTUP] Failed to create recordings directory:", error);
+    console.error("Failed to create recordings directory:", error);
   }
 }
 process.env.APP_ROOT = path.join(__dirname, "..");
