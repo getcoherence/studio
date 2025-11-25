@@ -205,7 +205,7 @@ export class VideoExporter {
               
               const metadata: EncodedVideoChunkMetadata = {
                 decoderConfig: {
-                  codec: this.config.codec || 'avc1.64001f',
+                  codec: this.config.codec || 'avc1.640033',
                   codedWidth: this.config.width,
                   codedHeight: this.config.height,
                   description: this.videoDescription,
@@ -230,7 +230,7 @@ export class VideoExporter {
       },
     });
 
-    const codec = this.config.codec || 'avc1.64001f';
+    const codec = this.config.codec || 'avc1.640033';
     
     const encoderConfig: VideoEncoderConfig = {
       codec,
