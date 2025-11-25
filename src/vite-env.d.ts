@@ -36,6 +36,7 @@ interface Window {
       success: boolean
       path?: string
       message?: string
+      cancelled?: boolean
     }>
   }
 }

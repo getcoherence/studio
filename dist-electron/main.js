@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, ipcMain, desktopCapturer, shell, app, nativeImage, Tray, Menu } from "electron";
+import { BrowserWindow, screen, ipcMain, desktopCapturer, shell, app, dialog, nativeImage, Tray, Menu } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -202,12 +202,25 @@ function registerIpcHandlers(createEditorWindow2, createSourceSelectorWindow2, g
   });
   ipcMain.handle("save-exported-video", async (_, videoData, fileName) => {
     try {
-      const downloadsPath = app.getPath("downloads");
-      const videoPath = path.join(downloadsPath, fileName);
-      await fs.writeFile(videoPath, Buffer.from(videoData));
+      const result = await dialog.showSaveDialog({
+        title: "Save Exported Video",
+        defaultPath: path.join(app.getPath("downloads"), fileName),
+        filters: [
+          { name: "MP4 Video", extensions: ["mp4"] }
+        ],
+        properties: ["createDirectory", "showOverwriteConfirmation"]
+      });
+      if (result.canceled || !result.filePath) {
+        return {
+          success: false,
+          cancelled: true,
+          message: "Export cancelled"
+        };
+      }
+      await fs.writeFile(result.filePath, Buffer.from(videoData));
       return {
         success: true,
-        path: videoPath,
+        path: result.filePath,
         message: "Video exported successfully"
       };
     } catch (error) {

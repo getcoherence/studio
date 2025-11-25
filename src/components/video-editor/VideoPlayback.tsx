@@ -724,7 +724,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
         className="absolute inset-0 bg-cover bg-center"
         style={{
           ...backgroundStyle,
-          filter: showBlur ? 'blur(3px)' : 'none',
+          filter: showBlur ? 'blur(2px)' : 'none',
         }}
       />
       <div

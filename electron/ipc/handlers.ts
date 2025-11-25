@@ -1,4 +1,4 @@
-import { ipcMain, desktopCapturer, BrowserWindow, shell, app } from 'electron'
+import { ipcMain, desktopCapturer, BrowserWindow, shell, app, dialog } from 'electron'
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -128,22 +128,40 @@ export function registerIpcHandlers(
 
   ipcMain.handle('save-exported-video', async (_, videoData: ArrayBuffer, fileName: string) => {
     try {
-      const downloadsPath = app.getPath('downloads')
-      const videoPath = path.join(downloadsPath, fileName)
-      await fs.writeFile(videoPath, Buffer.from(videoData))
+      // Show save dialog to let user choose location and filename
+      const result = await dialog.showSaveDialog({
+        title: 'Save Exported Video',
+        defaultPath: path.join(app.getPath('downloads'), fileName),
+        filters: [
+          { name: 'MP4 Video', extensions: ['mp4'] }
+        ],
+        properties: ['createDirectory', 'showOverwriteConfirmation']
+      });
+
+      // User cancelled the dialog
+      if (result.canceled || !result.filePath) {
+        return {
+          success: false,
+          cancelled: true,
+          message: 'Export cancelled'
+        };
+      }
+
+      // Write the file to the chosen location
+      await fs.writeFile(result.filePath, Buffer.from(videoData));
       
       return {
         success: true,
-        path: videoPath,
+        path: result.filePath,
         message: 'Video exported successfully'
-      }
+      };
     } catch (error) {
-      console.error('Failed to save exported video:', error)
+      console.error('Failed to save exported video:', error);
       return {
         success: false,
         message: 'Failed to save exported video',
         error: String(error)
-      }
+      };
     }
   })
 }

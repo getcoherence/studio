@@ -248,8 +248,10 @@ export default function VideoEditor() {
         
         const saveResult = await window.electronAPI.saveExportedVideo(arrayBuffer, fileName);
         
-        if (saveResult.success) {
-          toast.success('Video exported successfully!');
+        if (saveResult.cancelled) {
+          toast.info('Export cancelled');
+        } else if (saveResult.success) {
+          toast.success(`Video exported successfully to ${saveResult.path}`);
         } else {
           setExportError(saveResult.message || 'Failed to save video');
           toast.error(saveResult.message || 'Failed to save video');
