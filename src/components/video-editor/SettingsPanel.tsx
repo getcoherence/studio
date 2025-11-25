@@ -145,8 +145,8 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
   };
 
   return (
-    <div className="flex-[3] min-w-0 bg-[#09090b] border border-white/5 rounded-2xl p-6 flex flex-col shadow-xl h-full overflow-y-auto custom-scrollbar">
-      <div className="mb-8">
+    <div className="flex-[2] min-w-0 bg-[#09090b] border border-white/5 rounded-2xl p-4 flex flex-col shadow-xl h-full overflow-y-auto custom-scrollbar">
+      <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <span className="text-sm font-medium text-slate-200">Zoom Level</span>
           {zoomEnabled && selectedZoomDepth && (
@@ -194,7 +194,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
         )}
       </div>
 
-      <div className="mb-8 space-y-4">
+      <div className="mb-6 space-y-4">
         <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
           <div className="text-sm font-medium text-slate-200">Drop Shadow</div>
           <Switch
@@ -213,7 +213,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
         </div>
       </div>
 
-      <div className="mb-8">
+      <div className="mb-6">
         <Button
           onClick={() => setShowCropDropdown(!showCropDropdown)}
           variant="outline"
@@ -292,7 +292,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
               Upload Custom Image
             </Button>
 
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-7 gap-1.5">
               {/* Custom Images */}
               {customImages.map((imageUrl, idx) => {
                 const isSelected = selected === imageUrl;
@@ -300,10 +300,10 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
                   <div
                     key={`custom-${idx}`}
                     className={cn(
-                      "aspect-square rounded-lg border-2 overflow-hidden cursor-pointer transition-all duration-200 relative group",
+                      "aspect-square w-12 h-12 rounded-md border-2 overflow-hidden cursor-pointer transition-all duration-200 relative group shadow-sm",
                       isSelected
                         ? "border-[#34B27B] ring-2 ring-[#34B27B]/30 scale-105 shadow-lg shadow-[#34B27B]/10"
-                        : "border-white/5 hover:border-white/20 hover:scale-105 opacity-70 hover:opacity-100"
+                        : "border-white/10 hover:border-[#34B27B]/40 hover:scale-105 opacity-80 hover:opacity-100 bg-white/5"
                     )}
                     style={{ backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
                     aria-label={`Custom Image ${idx + 1}`}
@@ -312,10 +312,10 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
                   >
                     <button
                       onClick={(e) => handleRemoveCustomImage(imageUrl, e)}
-                      className="absolute top-1 right-1 w-5 h-5 bg-red-500/90 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      className="absolute top-1 right-1 w-4 h-4 bg-red-500/90 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
                       aria-label="Remove custom image"
                     >
-                      <X className="w-3 h-3 text-white" />
+                      <X className="w-2.5 h-2.5 text-white" />
                     </button>
                   </div>
                 );
@@ -325,25 +325,22 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
               {(wallpaperPaths.length > 0 ? wallpaperPaths : WALLPAPER_RELATIVE.map(p => `/${p}`)).map((path, idx) => {
                 const isSelected = (() => {
                   if (!selected) return false;
-                  
                   if (selected === path) return true;
                   try {
                     const clean = (s: string) => s.replace(/^file:\/\//, '').replace(/^\//, '')
                     if (clean(selected).endsWith(clean(path))) return true;
                     if (clean(path).endsWith(clean(selected))) return true;
-                  } catch {
-                  }
+                  } catch {}
                   return false;
                 })();
-
                 return (
                   <div
                     key={path}
                     className={cn(
-                      "aspect-square rounded-lg border-2 overflow-hidden cursor-pointer transition-all duration-200",
+                      "aspect-square w-12 h-12 rounded-md border-2 overflow-hidden cursor-pointer transition-all duration-200 shadow-sm",
                       isSelected
                         ? "border-[#34B27B] ring-2 ring-[#34B27B]/30 scale-105 shadow-lg shadow-[#34B27B]/10"
-                        : "border-white/5 hover:border-white/20 hover:scale-105 opacity-70 hover:opacity-100"
+                        : "border-white/10 hover:border-[#34B27B]/40 hover:scale-105 opacity-80 hover:opacity-100 bg-white/5"
                     )}
                     style={{ backgroundImage: `url(${path})`, backgroundSize: "cover", backgroundPosition: "center" }}
                     aria-label={`Wallpaper ${idx + 1}`}
@@ -370,15 +367,15 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
           </TabsContent>
           
           <TabsContent value="gradient" className="mt-0">
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-7 gap-1.5">
               {GRADIENTS.map((g, idx) => (
                 <div
                   key={g}
                   className={cn(
-                    "aspect-square rounded-lg border-2 overflow-hidden cursor-pointer transition-all duration-200",
+                    "aspect-square w-12 h-12 rounded-md border-2 overflow-hidden cursor-pointer transition-all duration-200 shadow-sm",
                     gradient === g 
                       ? "border-[#34B27B] ring-2 ring-[#34B27B]/30 scale-105 shadow-lg shadow-[#34B27B]/10" 
-                      : "border-white/5 hover:border-white/20 hover:scale-105 opacity-70 hover:opacity-100"
+                      : "border-white/10 hover:border-[#34B27B]/40 hover:scale-105 opacity-80 hover:opacity-100 bg-white/5"
                   )}
                   style={{ background: g }}
                   aria-label={`Gradient ${idx + 1}`}

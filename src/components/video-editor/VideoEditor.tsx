@@ -298,52 +298,46 @@ export default function VideoEditor() {
     );
   }
 
-  const isMac = navigator.userAgent.includes('Mac');
 
   return (
     <div className="flex flex-col h-screen bg-[#09090b] text-slate-200 overflow-hidden selection:bg-[#34B27B]/30">
-      {/* Drag region for window - more padding on macOS for traffic lights */}
       <div 
-        className={`h-10 flex-shrink-0 bg-[#09090b]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between ${isMac ? 'pl-20 pr-4' : 'px-4'} z-50`}
+        className="h-10 flex-shrink-0 bg-[#09090b]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-6 z-50"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         <div className="flex-1" />
-
       </div>
 
       <div className="flex-1 p-4 gap-4 flex min-h-0 relative">
         {/* Left Column - Video & Timeline */}
         <div className="flex-[7] flex flex-col gap-3 min-w-0 h-full">
-          {/* Video Preview Area */}
-          <div className="flex-shrink-0 bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden">
-            <div className="flex flex-col">
-              {/* Video Container - Fixed aspect ratio */}
-              <div className="relative w-full" style={{ paddingBottom: '56.25%' }}> {/* 16:9 aspect ratio */}
-                <div className="absolute inset-0 flex items-center justify-center p-4">
-                  <div className="relative w-full h-full max-w-full max-h-full">
-                    <VideoPlayback
-                      ref={videoPlaybackRef}
-                      videoPath={videoPath || ''}
-                      onDurationChange={setDuration}
-                      onTimeUpdate={setCurrentTime}
-                      onPlayStateChange={setIsPlaying}
-                      onError={setError}
-                      wallpaper={wallpaper}
-                      zoomRegions={zoomRegions}
-                      selectedZoomId={selectedZoomId}
-                      onSelectZoom={handleSelectZoom}
-                      onZoomFocusChange={handleZoomFocusChange}
-                      isPlaying={isPlaying}
-                      showShadow={showShadow}
-                      showBlur={showBlur}
-                      cropRegion={cropRegion}
-                    />
-                  </div>
-                </div>
+          {/* Top section: video preview and controls */}
+          <div className="w-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden" style={{ height: '80%' }}>
+            {/* Video preview */}
+            <div className="w-full flex justify-center items-center" style={{ flex: '1 1 auto', padding: '24px 0' }}>
+              <div className="relative" style={{ width: '100%', maxWidth: '1000px', aspectRatio: '16/9', boxSizing: 'border-box', overflow: 'hidden' }}>
+                <VideoPlayback
+                  ref={videoPlaybackRef}
+                  videoPath={videoPath || ''}
+                  onDurationChange={setDuration}
+                  onTimeUpdate={setCurrentTime}
+                  onPlayStateChange={setIsPlaying}
+                  onError={setError}
+                  wallpaper={wallpaper}
+                  zoomRegions={zoomRegions}
+                  selectedZoomId={selectedZoomId}
+                  onSelectZoom={handleSelectZoom}
+                  onZoomFocusChange={handleZoomFocusChange}
+                  isPlaying={isPlaying}
+                  showShadow={showShadow}
+                  showBlur={showBlur}
+                  cropRegion={cropRegion}
+                />
               </div>
-              
-              {/* Playback Controls - Below video */}
-              <div className="px-4 pb-3 pt-2">
+            </div>
+            {/* Playback controls */}
+            <div className="w-full flex justify-center items-center" style={{ padding: '0 0 24px 0' }}>
+              <div style={{ maxWidth: '700px', width: '80%' }}>
                 <PlaybackControls
                   isPlaying={isPlaying}
                   currentTime={currentTime}
@@ -355,7 +349,7 @@ export default function VideoEditor() {
             </div>
           </div>
 
-          {/* Timeline Area */}
+          {/* Timeline section */}
           <div className="flex-1 min-h-[180px] bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden flex flex-col">
             <TimelineEditor
               videoDuration={duration}
@@ -371,7 +365,7 @@ export default function VideoEditor() {
           </div>
         </div>
 
-          {/* Right Column - Settings */}
+          {/* Right section: settings panel */}
         <SettingsPanel
           selected={wallpaper}
           onWallpaperChange={setWallpaper}
