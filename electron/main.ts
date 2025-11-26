@@ -10,26 +10,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export const RECORDINGS_DIR = path.join(app.getPath('userData'), 'recordings')
 
-// Cleanup old recordings (older than 1 day)
-async function cleanupOldRecordings() {
-  try {
-    const files = await fs.readdir(RECORDINGS_DIR)
-    const now = Date.now()
-    const maxAge = 1 * 24 * 60 * 60 * 1000
-    
-    for (const file of files) {
-      const filePath = path.join(RECORDINGS_DIR, file)
-      const stats = await fs.stat(filePath)
-      
-      if (now - stats.mtimeMs > maxAge) {
-        await fs.unlink(filePath)
-        console.log(`Deleted old recording: ${file}`)
-      }
-    }
-  } catch (error) {
-    console.error('Failed to cleanup old recordings:', error)
-  }
-}
 
 async function ensureRecordingsDir() {
   try {
@@ -124,19 +104,13 @@ app.on('activate', () => {
   }
 })
 
-// Cleanup old recordings on quit (both macOS and other platforms)
-app.on('before-quit', async (event) => {
-  event.preventDefault()
 
-  await cleanupOldRecordings()
-  app.exit(0)
-})
 
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
   // Ensure recordings directory exists
   await ensureRecordingsDir()
-  
+
   registerIpcHandlers(
     createEditorWindowWrapper,
     createSourceSelectorWindowWrapper,

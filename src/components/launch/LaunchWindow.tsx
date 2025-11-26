@@ -5,6 +5,8 @@ import { Button } from "../ui/button";
 import { BsRecordCircle } from "react-icons/bs";
 import { FaRegStopCircle } from "react-icons/fa";
 import { MdMonitor } from "react-icons/md";
+import { RxDragHandleDots2 } from "react-icons/rx";
+import { FaFolderMinus } from "react-icons/fa6";
 
 export function LaunchWindow() {
   const { recording, toggleRecording } = useScreenRecorder();
@@ -42,10 +44,23 @@ export function LaunchWindow() {
     }
   };
 
+  const openVideoFile = async () => {
+    const result = await window.electronAPI.openVideoFilePicker();
+    
+    if (result.cancelled) {
+      return;
+    }
+    
+    if (result.success && result.path) {
+      await window.electronAPI.setCurrentVideoPath(result.path);
+      await window.electronAPI.switchToEditor();
+    }
+  };
+
   return (
     <div className="w-full h-full flex items-center bg-transparent">
       <div
-        className={`w-full max-w-2xl mx-auto flex items-center justify-between px-3 py-1.5 ${styles.electronDrag}`}
+        className={`w-full max-w-3xl mx-auto flex items-center justify-between px-3 py-1.5 ${styles.electronDrag}`}
         style={{
           borderRadius: 14,
           background: 'linear-gradient(135deg, rgba(30,30,40,0.85) 0%, rgba(20,20,30,0.75) 100%)',
@@ -56,6 +71,10 @@ export function LaunchWindow() {
           minHeight: 36,
         }}
       >
+        <div className={`flex items-center gap-1 ${styles.electronDrag}`}>
+          <RxDragHandleDots2 size={16} className="text-white/40" />
+        </div>
+
         <Button
           variant="link"
           size="sm"
@@ -63,7 +82,7 @@ export function LaunchWindow() {
           onClick={openSourceSelector}
         >
           <MdMonitor size={13} className="text-white" />
-          {truncateText(selectedSource)}
+          {truncateText(selectedSource, 6)}
         </Button>
 
         <div className="w-px h-5 bg-white/30" />
@@ -73,7 +92,7 @@ export function LaunchWindow() {
           size="sm"
           onClick={hasSelectedSource ? toggleRecording : openSourceSelector}
           disabled={!hasSelectedSource && !recording}
-          className={`gap-1 bg-transparent hover:bg-transparent px-0 flex-1 text-right text-xs ${styles.electronNoDrag}`}
+          className={`gap-1 bg-transparent hover:bg-transparent px-0 flex-1 text-center text-xs ${styles.electronNoDrag}`}
         >
           {recording ? (
             <>
@@ -86,6 +105,17 @@ export function LaunchWindow() {
               <span className={hasSelectedSource ? "text-white" : "text-white/50"}>Record</span>
             </>
           )}
+        </Button>
+
+        <div className="w-px h-5 bg-white/30" />
+
+        <Button
+          variant="link"
+          size="sm"
+          onClick={openVideoFile}
+          className={`gap-1 bg-transparent hover:bg-transparent px-0 flex-1 text-right text-xs ${styles.electronNoDrag} folderButton`}
+        >
+          <FaFolderMinus size={13} className="text-white" />
         </Button>
       </div>
     </div>

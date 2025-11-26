@@ -38,5 +38,17 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   },
   saveExportedVideo: (videoData, fileName) => {
     return electron.ipcRenderer.invoke("save-exported-video", videoData, fileName);
+  },
+  openVideoFilePicker: () => {
+    return electron.ipcRenderer.invoke("open-video-file-picker");
+  },
+  setCurrentVideoPath: (path) => {
+    return electron.ipcRenderer.invoke("set-current-video-path", path);
+  },
+  getCurrentVideoPath: () => {
+    return electron.ipcRenderer.invoke("get-current-video-path");
+  },
+  clearCurrentVideoPath: () => {
+    return electron.ipcRenderer.invoke("clear-current-video-path");
   }
 });

@@ -10,10 +10,10 @@ const RENDERER_DIST = path.join(APP_ROOT, 'dist')
 
 export function createHudOverlayWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 250,
+    width: 350,
     height: 80,
-    minWidth: 250,
-    maxWidth: 250,
+    minWidth: 350,
+    maxWidth: 350,
     minHeight: 80,
     maxHeight: 80,
     frame: false,

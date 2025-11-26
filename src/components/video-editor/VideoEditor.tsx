@@ -66,13 +66,13 @@ export default function VideoEditor() {
   useEffect(() => {
     async function loadVideo() {
       try {
-        const result = await window.electronAPI.getRecordedVideoPath();
+        const result = await window.electronAPI.getCurrentVideoPath();
         
         if (result.success && result.path) {
           const videoUrl = toFileUrl(result.path);
           setVideoPath(videoUrl);
         } else {
-          setError(result.message || 'Failed to load video');
+          setError('No video to load. Please record or select a video.');
         }
       } catch (err) {
         setError('Error loading video: ' + String(err));

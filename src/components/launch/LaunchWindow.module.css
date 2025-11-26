@@ -1,6 +1,15 @@
 .electronDrag {
   -webkit-app-region: drag;
 }
+
 .electronNoDrag {
   -webkit-app-region: no-drag;
+}
+
+.folderButton {
+  cursor: pointer;
+}
+
+.folderButton:hover {
+  text-decoration: underline;
 }

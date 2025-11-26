@@ -8,10 +8,10 @@ const VITE_DEV_SERVER_URL$1 = process.env["VITE_DEV_SERVER_URL"];
 const RENDERER_DIST$1 = path.join(APP_ROOT, "dist");
 function createHudOverlayWindow() {
   const win = new BrowserWindow({
-    width: 250,
+    width: 350,
     height: 80,
-    minWidth: 250,
-    maxWidth: 250,
+    minWidth: 350,
+    maxWidth: 350,
     minHeight: 80,
     maxHeight: 80,
     frame: false,
@@ -145,6 +145,7 @@ function registerIpcHandlers(createEditorWindow2, createSourceSelectorWindow2, g
     try {
       const videoPath = path.join(RECORDINGS_DIR, fileName);
       await fs.writeFile(videoPath, Buffer.from(videoData));
+      currentVideoPath = videoPath;
       return {
         success: true,
         path: videoPath,
@@ -232,26 +233,48 @@ function registerIpcHandlers(createEditorWindow2, createSourceSelectorWindow2, g
       };
     }
   });
+  ipcMain.handle("open-video-file-picker", async () => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: "Select Video File",
+        defaultPath: RECORDINGS_DIR,
+        filters: [
+          { name: "Video Files", extensions: ["webm", "mp4", "mov", "avi", "mkv"] },
+          { name: "All Files", extensions: ["*"] }
+        ],
+        properties: ["openFile"]
+      });
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, cancelled: true };
+      }
+      return {
+        success: true,
+        path: result.filePaths[0]
+      };
+    } catch (error) {
+      console.error("Failed to open file picker:", error);
+      return {
+        success: false,
+        message: "Failed to open file picker",
+        error: String(error)
+      };
+    }
+  });
+  let currentVideoPath = null;
+  ipcMain.handle("set-current-video-path", (_, path2) => {
+    currentVideoPath = path2;
+    return { success: true };
+  });
+  ipcMain.handle("get-current-video-path", () => {
+    return currentVideoPath ? { success: true, path: currentVideoPath } : { success: false };
+  });
+  ipcMain.handle("clear-current-video-path", () => {
+    currentVideoPath = null;
+    return { success: true };
+  });
 }
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RECORDINGS_DIR = path.join(app.getPath("userData"), "recordings");
-async function cleanupOldRecordings() {
-  try {
-    const files = await fs.readdir(RECORDINGS_DIR);
-    const now = Date.now();
-    const maxAge = 1 * 24 * 60 * 60 * 1e3;
-    for (const file of files) {
-      const filePath = path.join(RECORDINGS_DIR, file);
-      const stats = await fs.stat(filePath);
-      if (now - stats.mtimeMs > maxAge) {
-        await fs.unlink(filePath);
-        console.log(`Deleted old recording: ${file}`);
-      }
-    }
-  } catch (error) {
-    console.error("Failed to cleanup old recordings:", error);
-  }
-}
 async function ensureRecordingsDir() {
   try {
     await fs.mkdir(RECORDINGS_DIR, { recursive: true });
@@ -316,11 +339,6 @@ app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
-});
-app.on("before-quit", async (event) => {
-  event.preventDefault();
-  await cleanupOldRecordings();
-  app.exit(0);
 });
 app.whenReady().then(async () => {
   await ensureRecordingsDir();

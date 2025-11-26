@@ -60,6 +60,7 @@ export function registerIpcHandlers(
     try {
       const videoPath = path.join(RECORDINGS_DIR, fileName)
       await fs.writeFile(videoPath, Buffer.from(videoData))
+      currentVideoPath = videoPath;
       return {
         success: true,
         path: videoPath,
@@ -128,7 +129,6 @@ export function registerIpcHandlers(
 
   ipcMain.handle('save-exported-video', async (_, videoData: ArrayBuffer, fileName: string) => {
     try {
-      // Show save dialog to let user choose location and filename
       const result = await dialog.showSaveDialog({
         title: 'Save Exported Video',
         defaultPath: path.join(app.getPath('downloads'), fileName),
@@ -138,7 +138,6 @@ export function registerIpcHandlers(
         properties: ['createDirectory', 'showOverwriteConfirmation']
       });
 
-      // User cancelled the dialog
       if (result.canceled || !result.filePath) {
         return {
           success: false,
@@ -146,8 +145,6 @@ export function registerIpcHandlers(
           message: 'Export cancelled'
         };
       }
-
-      // Write the file to the chosen location
       await fs.writeFile(result.filePath, Buffer.from(videoData));
       
       return {
@@ -156,12 +153,58 @@ export function registerIpcHandlers(
         message: 'Video exported successfully'
       };
     } catch (error) {
-      console.error('Failed to save exported video:', error);
+      console.error('Failed to save exported video:', error)
       return {
         success: false,
         message: 'Failed to save exported video',
         error: String(error)
-      };
+      }
     }
   })
+
+  ipcMain.handle('open-video-file-picker', async () => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: 'Select Video File',
+        defaultPath: RECORDINGS_DIR,
+        filters: [
+          { name: 'Video Files', extensions: ['webm', 'mp4', 'mov', 'avi', 'mkv'] },
+          { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['openFile']
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, cancelled: true };
+      }
+
+      return {
+        success: true,
+        path: result.filePaths[0]
+      };
+    } catch (error) {
+      console.error('Failed to open file picker:', error);
+      return {
+        success: false,
+        message: 'Failed to open file picker',
+        error: String(error)
+      };
+    }
+  });
+
+  let currentVideoPath: string | null = null;
+
+  ipcMain.handle('set-current-video-path', (_, path: string) => {
+    currentVideoPath = path;
+    return { success: true };
+  });
+
+  ipcMain.handle('get-current-video-path', () => {
+    return currentVideoPath ? { success: true, path: currentVideoPath } : { success: false };
+  });
+
+  ipcMain.handle('clear-current-video-path', () => {
+    currentVideoPath = null;
+    return { success: true };
+  });
 }

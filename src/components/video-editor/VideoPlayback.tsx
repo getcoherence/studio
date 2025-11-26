@@ -665,7 +665,13 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
     video.pause();
     allowPlaybackRef.current = false;
     currentTimeRef.current = 0;
-    setVideoReady(true);
+    
+    // hacky fix: To ensure video is fully ready for PixiJS
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setVideoReady(true);
+      });
+    });
   };
 
   const [resolvedWallpaper, setResolvedWallpaper] = useState<string | null>(null);

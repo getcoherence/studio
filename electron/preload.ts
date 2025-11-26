@@ -42,4 +42,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveExportedVideo: (videoData: ArrayBuffer, fileName: string) => {
     return ipcRenderer.invoke('save-exported-video', videoData, fileName)
   },
+  openVideoFilePicker: () => {
+    return ipcRenderer.invoke('open-video-file-picker')
+  },
+  setCurrentVideoPath: (path: string) => {
+    return ipcRenderer.invoke('set-current-video-path', path)
+  },
+  getCurrentVideoPath: () => {
+    return ipcRenderer.invoke('get-current-video-path')
+  },
+  clearCurrentVideoPath: () => {
+    return ipcRenderer.invoke('clear-current-video-path')
+  },
 })
