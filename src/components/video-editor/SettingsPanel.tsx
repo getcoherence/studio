@@ -15,7 +15,7 @@ import type { ZoomDepth, CropRegion } from "./types";
 import { CropControl } from "./CropControl";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 
-const WALLPAPER_COUNT = 23;
+const WALLPAPER_COUNT = 20;
 const WALLPAPER_RELATIVE = Array.from({ length: WALLPAPER_COUNT }, (_, i) => `wallpapers/wallpaper${i + 1}.jpg`);
 const GRADIENTS = [
   "linear-gradient( 111.6deg,  rgba(114,167,232,1) 9.4%, rgba(253,129,82,1) 43.9%, rgba(253,129,82,1) 54.8%, rgba(249,202,86,1) 86.3% )",
@@ -309,7 +309,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
               Upload Custom Image
             </Button>
 
-            <div className="grid grid-cols-7 gap-1.5">
+            <div className="grid grid-cols-6 gap-2.5">
               {/* Custom Images */}
               {customImages.map((imageUrl, idx) => {
                 const isSelected = selected === imageUrl;
@@ -384,7 +384,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
           </TabsContent>
           
           <TabsContent value="gradient" className="mt-0">
-            <div className="grid grid-cols-7 gap-1.5">
+            <div className="grid grid-cols-6 gap-2.5">
               {GRADIENTS.map((g, idx) => (
                 <div
                   key={g}

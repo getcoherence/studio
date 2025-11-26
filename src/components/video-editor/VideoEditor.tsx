@@ -22,7 +22,7 @@ import {
 } from "./types";
 import { VideoExporter, type ExportProgress } from "@/lib/exporter";
 
-const WALLPAPER_COUNT = 23;
+const WALLPAPER_COUNT = 20;
 const WALLPAPER_PATHS = Array.from({ length: WALLPAPER_COUNT }, (_, i) => `/wallpapers/wallpaper${i + 1}.jpg`);
 
 export default function VideoEditor() {
