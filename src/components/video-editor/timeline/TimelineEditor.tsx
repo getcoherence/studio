@@ -401,24 +401,6 @@ export default function TimelineEditor({
     onSelectZoom(null);
   }, [selectedZoomId, onZoomDelete, onSelectZoom]);
 
-  // Listen for F key to add keyframe, Ctrl+D to remove selected keyframe or zoom item
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'f' || e.key === 'F') {
-        addKeyframe();
-      }
-      if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
-        if (selectedKeyframeId) {
-          deleteSelectedKeyframe();
-        } else if (selectedZoomId) {
-          deleteSelectedZoom();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [addKeyframe, deleteSelectedKeyframe, deleteSelectedZoom, selectedKeyframeId, selectedZoomId]);
-
   useEffect(() => {
     setRange(createInitialRange(totalMs));
   }, [totalMs]);
@@ -484,6 +466,27 @@ export default function TimelineEditor({
     onZoomAdded({ start: startPos, end: startPos + actualDuration });
   }, [videoDuration, totalMs, currentTimeMs, zoomRegions, onZoomAdded]);
 
+  // Listen for F key to add keyframe, Z key to add zoom, Ctrl+D to remove selected keyframe or zoom item
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'f' || e.key === 'F') {
+        addKeyframe();
+      }
+      if (e.key === 'z' || e.key === 'Z') {
+        handleAddZoom();
+      }
+      if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
+        if (selectedKeyframeId) {
+          deleteSelectedKeyframe();
+        } else if (selectedZoomId) {
+          deleteSelectedZoom();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [addKeyframe, handleAddZoom, deleteSelectedKeyframe, deleteSelectedZoom, selectedKeyframeId, selectedZoomId]);
+
   const clampedRange = useMemo<Range>(() => {
     if (totalMs === 0) {
       return range;
@@ -542,10 +545,6 @@ export default function TimelineEditor({
           <span className="flex items-center gap-1.5">
             <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">⌘ + Scroll</kbd>
             <span>Zoom</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">F</kbd>
-            <span>Add Keyframe</span>
           </span>
         </div>
       </div>

@@ -1,4 +1,4 @@
-export type ZoomDepth = 1 | 2 | 3 | 4 | 5;
+export type ZoomDepth = 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface ZoomFocus {
   cx: number; // normalized horizontal center (0-1)
@@ -33,6 +33,7 @@ export const ZOOM_DEPTH_SCALES: Record<ZoomDepth, number> = {
   3: 1.8,
   4: 2.2,
   5: 3.5,
+  6: 5.0,
 };
 
 export const DEFAULT_ZOOM_DEPTH: ZoomDepth = 3;

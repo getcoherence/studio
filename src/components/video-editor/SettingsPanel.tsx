@@ -13,6 +13,7 @@ import { GiHearts } from "react-icons/gi";
 import { toast } from "sonner";
 import type { ZoomDepth, CropRegion } from "./types";
 import { CropControl } from "./CropControl";
+import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 
 const WALLPAPER_COUNT = 23;
 const WALLPAPER_RELATIVE = Array.from({ length: WALLPAPER_COUNT }, (_, i) => `wallpapers/wallpaper${i + 1}.jpg`);
@@ -68,6 +69,7 @@ const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
   { depth: 3, label: "1.8×" },
   { depth: 4, label: "2.2×" },
   { depth: 5, label: "3.5×" },
+  { depth: 6, label: "5×" },
 ];
 
 export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, shadowIntensity = 0, onShadowChange, showBlur, onBlurChange, cropRegion, onCropChange, videoElement, onExport }: SettingsPanelProps) {
@@ -151,13 +153,16 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <span className="text-sm font-medium text-slate-200">Zoom Level</span>
-          {zoomEnabled && selectedZoomDepth && (
-            <span className="text-[10px] uppercase tracking-wider font-medium text-[#34B27B] bg-[#34B27B]/10 px-2 py-1 rounded-full">
-              {ZOOM_DEPTH_OPTIONS.find(o => o.depth === selectedZoomDepth)?.label} Active
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {zoomEnabled && selectedZoomDepth && (
+              <span className="text-[10px] uppercase tracking-wider font-medium text-[#34B27B] bg-[#34B27B]/10 px-2 py-1 rounded-full">
+                {ZOOM_DEPTH_OPTIONS.find(o => o.depth === selectedZoomDepth)?.label} Active
+              </span>
+            )}
+            <KeyboardShortcutsHelp />
+          </div>
         </div>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-6 gap-2">
           {ZOOM_DEPTH_OPTIONS.map((option) => {
             const isActive = selectedZoomDepth === option.depth;
             return (
