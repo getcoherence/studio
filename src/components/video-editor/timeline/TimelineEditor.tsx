@@ -7,8 +7,10 @@ import { cn } from "@/lib/utils";
 import TimelineWrapper from "./TimelineWrapper";
 import Row from "./Row";
 import Item from "./Item";
+import KeyframeMarkers from "./KeyframeMarkers";
 import type { Range, Span } from "dnd-timeline";
 import type { ZoomRegion } from "../types";
+import { v4 as uuidv4 } from 'uuid';
 
 const ROW_ID = "row-1";
 const FALLBACK_RANGE_MS = 1000;
@@ -361,6 +363,7 @@ export default function TimelineEditor({
   zoomRegions,
   onZoomAdded,
   onZoomSpanChange,
+  onZoomDelete,
   selectedZoomId,
   onSelectZoom,
 }: TimelineEditorProps) {
@@ -373,6 +376,48 @@ export default function TimelineEditor({
   );
 
   const [range, setRange] = useState<Range>(() => createInitialRange(totalMs));
+  const [keyframes, setKeyframes] = useState<{ id: string; time: number }[]>([]);
+  const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
+
+  // Add keyframe at current playhead position
+  const addKeyframe = useCallback(() => {
+    if (totalMs === 0) return;
+    const time = Math.max(0, Math.min(currentTimeMs, totalMs));
+    if (keyframes.some(kf => Math.abs(kf.time - time) < 1)) return;
+    setKeyframes(prev => [...prev, { id: uuidv4(), time }]);
+  }, [currentTimeMs, totalMs, keyframes]);
+
+  // Delete selected keyframe
+  const deleteSelectedKeyframe = useCallback(() => {
+    if (!selectedKeyframeId) return;
+    setKeyframes(prev => prev.filter(kf => kf.id !== selectedKeyframeId));
+    setSelectedKeyframeId(null);
+  }, [selectedKeyframeId]);
+
+  // Delete selected zoom item
+  const deleteSelectedZoom = useCallback(() => {
+    if (!selectedZoomId) return;
+    onZoomDelete(selectedZoomId);
+    onSelectZoom(null);
+  }, [selectedZoomId, onZoomDelete, onSelectZoom]);
+
+  // Listen for F key to add keyframe, Ctrl+D to remove selected keyframe or zoom item
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'f' || e.key === 'F') {
+        addKeyframe();
+      }
+      if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
+        if (selectedKeyframeId) {
+          deleteSelectedKeyframe();
+        } else if (selectedZoomId) {
+          deleteSelectedZoom();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [addKeyframe, deleteSelectedKeyframe, deleteSelectedZoom, selectedKeyframeId, selectedZoomId]);
 
   useEffect(() => {
     setRange(createInitialRange(totalMs));
@@ -491,16 +536,22 @@ export default function TimelineEditor({
         <div className="flex-1" />
         <div className="flex items-center gap-4 text-[10px] text-slate-500 font-medium">
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-slate-400 font-sans">⇧ + ⌘ + Scroll</kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">⇧ + ⌘ + Scroll</kbd>
             <span>Pan</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-slate-400 font-sans">⌘ + Scroll</kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">⌘ + Scroll</kbd>
             <span>Zoom</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">F</kbd>
+            <span>Add Keyframe</span>
           </span>
         </div>
       </div>
-      <div className="flex-1 overflow-hidden bg-[#09090b] relative">
+      <div className="flex-1 overflow-hidden bg-[#09090b] relative"
+        onClick={() => setSelectedKeyframeId(null)}
+      >
         <TimelineWrapper
           range={clampedRange}
           videoDuration={videoDuration}
@@ -511,6 +562,11 @@ export default function TimelineEditor({
           gridSizeMs={timelineScale.gridMs}
           onItemSpanChange={onZoomSpanChange}
         >
+          <KeyframeMarkers
+            keyframes={keyframes}
+            selectedKeyframeId={selectedKeyframeId}
+            setSelectedKeyframeId={setSelectedKeyframeId}
+          />
           <Timeline
             items={timelineItems}
             videoDurationMs={totalMs}

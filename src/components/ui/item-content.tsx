@@ -7,7 +7,8 @@ interface ItemContentProps extends PropsWithChildren {
 function ItemContent({ children, classes }: ItemContentProps) {
 	return (
 		<div
-			className={`border-2 rounded-sm shadow-md w-full overflow-hidden flex flex-row pl-3 h-items-center ${classes}`}
+			className={`bg-white/5 border border-white/10 rounded-md shadow-sm w-full flex flex-row items-center px-3 py-1 gap-2 transition-all duration-150 hover:bg-[#34B27B]/10 hover:shadow-lg ${classes}`}
+			style={{ minHeight: 40 }}
 		>
 			{children}
 		</div>

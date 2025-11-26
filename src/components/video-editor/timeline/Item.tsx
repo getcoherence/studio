@@ -42,19 +42,26 @@ export default function Item({ id, span, rowId, isSelected = false, onSelect, zo
       <div style={itemContentStyle}>
         <div
           className={cn(
-            "w-full h-full overflow-hidden flex items-center justify-center gap-1.5 cursor-grab active:cursor-grabbing relative",
             glassStyles.glassGreen,
+            "w-full h-full overflow-hidden flex items-center justify-center gap-1.5 cursor-grab active:cursor-grabbing relative",
             isSelected && glassStyles.selected
           )}
-          style={{ height: 48 }}
+          style={{ height: 48, color: '#fff' }}
           onClick={(event) => {
             event.stopPropagation();
             onSelect?.();
           }}
         >
-          <div className={cn(glassStyles.zoomEndCap, glassStyles.left)} />
-          <div className={cn(glassStyles.zoomEndCap, glassStyles.right)} />
-          
+          <div
+            className={cn(glassStyles.zoomEndCap, glassStyles.left)}
+            style={{ cursor: 'col-resize', pointerEvents: 'auto', width: 8, opacity: 0.9, background: '#21916A' }}
+            title="Resize left"
+          />
+          <div
+            className={cn(glassStyles.zoomEndCap, glassStyles.right)}
+            style={{ cursor: 'col-resize', pointerEvents: 'auto', width: 8, opacity: 0.9, background: '#21916A' }}
+            title="Resize right"
+          />
           {/* Content */}
           <div className="relative z-10 flex items-center gap-1.5 text-white/90 opacity-80 group-hover:opacity-100 transition-opacity select-none">
             <ZoomIn className="w-3.5 h-3.5" />
