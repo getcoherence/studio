@@ -1,19 +1,27 @@
-import { BrowserWindow, screen, ipcMain, desktopCapturer, shell, app, dialog, nativeImage, Tray, Menu } from "electron";
+import { screen, BrowserWindow, ipcMain, desktopCapturer, shell, app, dialog, nativeImage, Tray, Menu } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs/promises";
-const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
-const APP_ROOT = path.join(__dirname$1, "..");
+const __dirname$2 = path.dirname(fileURLToPath(import.meta.url));
+const APP_ROOT = path.join(__dirname$2, "..");
 const VITE_DEV_SERVER_URL$1 = process.env["VITE_DEV_SERVER_URL"];
 const RENDERER_DIST$1 = path.join(APP_ROOT, "dist");
 function createHudOverlayWindow() {
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { workArea } = primaryDisplay;
+  const windowWidth = 350;
+  const windowHeight = 80;
+  const x = Math.floor(workArea.x + workArea.width - windowWidth - 5);
+  const y = Math.floor(workArea.y + workArea.height - (windowHeight - 30));
   const win = new BrowserWindow({
-    width: 350,
-    height: 80,
+    width: windowWidth,
+    height: windowHeight,
     minWidth: 350,
     maxWidth: 350,
     minHeight: 80,
     maxHeight: 80,
+    x,
+    y,
     frame: false,
     transparent: true,
     resizable: false,
@@ -21,7 +29,7 @@ function createHudOverlayWindow() {
     skipTaskbar: true,
     hasShadow: false,
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.mjs"),
+      preload: path.join(__dirname$2, "preload.mjs"),
       nodeIntegration: false,
       contextIsolation: true,
       backgroundThrottling: false
@@ -54,7 +62,7 @@ function createEditorWindow() {
     title: "OpenScreen",
     backgroundColor: "#000000",
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.mjs"),
+      preload: path.join(__dirname$2, "preload.mjs"),
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: false,
@@ -72,6 +80,7 @@ function createEditorWindow() {
       query: { windowType: "editor" }
     });
   }
+  win.webContents.openDevTools();
   return win;
 }
 function createSourceSelectorWindow() {
@@ -89,7 +98,7 @@ function createSourceSelectorWindow() {
     transparent: true,
     backgroundColor: "#00000000",
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.mjs"),
+      preload: path.join(__dirname$2, "preload.mjs"),
       nodeIntegration: false,
       contextIsolation: true
     }
@@ -273,7 +282,7 @@ function registerIpcHandlers(createEditorWindow2, createSourceSelectorWindow2, g
     return { success: true };
   });
 }
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
 const RECORDINGS_DIR = path.join(app.getPath("userData"), "recordings");
 async function ensureRecordingsDir() {
   try {
@@ -284,7 +293,7 @@ async function ensureRecordingsDir() {
     console.error("Failed to create recordings directory:", error);
   }
 }
-process.env.APP_ROOT = path.join(__dirname, "..");
+process.env.APP_ROOT = path.join(__dirname$1, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
 const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
