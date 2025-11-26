@@ -9,13 +9,26 @@ const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 const RENDERER_DIST = path.join(APP_ROOT, 'dist')
 
 export function createHudOverlayWindow(): BrowserWindow {
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { workArea } = primaryDisplay;
+
+  // Define the desired window size
+  const windowWidth = 350;
+  const windowHeight = 80;
+
+  const x = Math.floor(workArea.x + workArea.width - windowWidth - 5); // Align to the right edge of the work area
+  // const x = Math.floor(workArea.x + (workArea.width - windowWidth) / 2); // Center horizontally within the work area
+  const y = Math.floor(workArea.y + workArea.height - (windowHeight - 30));
+
   const win = new BrowserWindow({
-    width: 350,
-    height: 80,
+    width: windowWidth,
+    height: windowHeight,
     minWidth: 350,
     maxWidth: 350,
     minHeight: 80,
     maxHeight: 80,
+    x: x,
+    y: y,
     frame: false,
     transparent: true,
     resizable: false,
@@ -83,6 +96,8 @@ export function createEditorWindow(): BrowserWindow {
       query: { windowType: 'editor' } 
     })
   }
+
+  win.webContents.openDevTools();
 
   return win
 }
