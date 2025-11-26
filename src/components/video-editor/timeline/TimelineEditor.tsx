@@ -413,34 +413,31 @@ export default function TimelineEditor({
       return;
     }
 
-    const defaultDuration = Math.min(
-      Math.max(3000, safeMinDurationMs),
-      totalMs,
-    );
 
+    const defaultDuration = Math.min(1000, totalMs);
     if (defaultDuration <= 0) {
       return;
     }
 
-    let startPos = 0;
+    // Always place zoom at playhead
+    const startPos = Math.max(0, Math.min(currentTimeMs, totalMs));
+    // Find the next zoom region after the playhead
     const sorted = [...zoomRegions].sort((a, b) => a.startMs - b.startMs);
+    const nextRegion = sorted.find(region => region.startMs > startPos);
+    const gapToNext = nextRegion ? nextRegion.startMs - startPos : totalMs - startPos;
 
-    for (const region of sorted) {
-      if (startPos + defaultDuration <= region.startMs) {
-        break;
-      }
-      startPos = Math.max(startPos, region.endMs);
-    }
-
-    if (startPos + defaultDuration > totalMs) {
-      toast.error("No space available", {
-        description: "Remove or resize existing zoom regions to add more.",
+    // Check if playhead is inside any zoom region
+    const isOverlapping = sorted.some(region => startPos >= region.startMs && startPos < region.endMs);
+    if (isOverlapping || gapToNext <= 0) {
+      toast.error("Cannot place zoom here", {
+        description: "Zoom already exists at this location or not enough space available.",
       });
       return;
     }
 
-    onZoomAdded({ start: startPos, end: startPos + defaultDuration });
-  }, [videoDuration, totalMs, timelineScale.defaultItemDurationMs, safeMinDurationMs, zoomRegions, onZoomAdded]);
+    const actualDuration = Math.min(1000, gapToNext);
+    onZoomAdded({ start: startPos, end: startPos + actualDuration });
+  }, [videoDuration, totalMs, currentTimeMs, zoomRegions, onZoomAdded]);
 
   const clampedRange = useMemo<Range>(() => {
     if (totalMs === 0) {
