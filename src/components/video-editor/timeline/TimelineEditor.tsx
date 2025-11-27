@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTimelineContext } from "dnd-timeline";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Scissors, ZoomIn } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import TimelineWrapper from "./TimelineWrapper";
@@ -9,10 +9,11 @@ import Row from "./Row";
 import Item from "./Item";
 import KeyframeMarkers from "./KeyframeMarkers";
 import type { Range, Span } from "dnd-timeline";
-import type { ZoomRegion } from "../types";
+import type { ZoomRegion, TrimRegion } from "../types";
 import { v4 as uuidv4 } from 'uuid';
 
-const ROW_ID = "row-1";
+const ZOOM_ROW_ID = "row-zoom";
+const TRIM_ROW_ID = "row-trim";
 const FALLBACK_RANGE_MS = 1000;
 const TARGET_MARKER_COUNT = 12;
 
@@ -26,6 +27,13 @@ interface TimelineEditorProps {
   onZoomDelete: (id: string) => void;
   selectedZoomId: string | null;
   onSelectZoom: (id: string | null) => void;
+  // Trim props
+  trimRegions?: TrimRegion[];
+  onTrimAdded?: (span: Span) => void;
+  onTrimSpanChange?: (id: string, span: Span) => void;
+  onTrimDelete?: (id: string) => void;
+  selectedTrimId?: string | null;
+  onSelectTrim?: (id: string | null) => void;
 }
 
 interface TimelineScaleConfig {
@@ -41,7 +49,8 @@ interface TimelineRenderItem {
   rowId: string;
   span: Span;
   label: string;
-  zoomDepth: number;
+  zoomDepth?: number;
+  variant: 'zoom' | 'trim';
 }
 
 const SCALE_CANDIDATES = [
@@ -299,7 +308,9 @@ function Timeline({
   currentTimeMs,
   onSeek,
   onSelectZoom,
+  onSelectTrim,
   selectedZoomId,
+  selectedTrimId,
 }: {
   items: TimelineRenderItem[];
   videoDurationMs: number;
@@ -307,13 +318,19 @@ function Timeline({
   currentTimeMs: number;
   onSeek?: (time: number) => void;
   onSelectZoom?: (id: string | null) => void;
+  onSelectTrim?: (id: string | null) => void;
   selectedZoomId: string | null;
+  selectedTrimId?: string | null;
 }) {
   const { setTimelineRef, style, sidebarWidth, range, pixelsToValue } = useTimelineContext();
 
   const handleTimelineClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!onSeek || videoDurationMs <= 0) return;
+    
+    // Only clear selection if clicking on empty space (not on items)
+    // This is handled by event propagation - items stop propagation
     onSelectZoom?.(null);
+    onSelectTrim?.(null);
 
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left - sidebarWidth;
@@ -325,7 +342,10 @@ function Timeline({
     const timeInSeconds = absoluteMs / 1000;
     
     onSeek(timeInSeconds);
-  }, [onSeek, onSelectZoom, videoDurationMs, sidebarWidth, range.start, pixelsToValue]);
+  }, [onSeek, onSelectZoom, onSelectTrim, videoDurationMs, sidebarWidth, range.start, pixelsToValue]);
+
+  const zoomItems = items.filter(item => item.rowId === ZOOM_ROW_ID);
+  const trimItems = items.filter(item => item.rowId === TRIM_ROW_ID);
 
   return (
     <div
@@ -337,8 +357,9 @@ function Timeline({
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px)] bg-[length:20px_100%] pointer-events-none" />
       <TimelineAxis intervalMs={intervalMs} videoDurationMs={videoDurationMs} currentTimeMs={currentTimeMs} />
       <PlaybackCursor currentTimeMs={currentTimeMs} videoDurationMs={videoDurationMs} />
-      <Row id={ROW_ID}>
-        {items.map((item) => (
+      
+      <Row id={ZOOM_ROW_ID}>
+        {zoomItems.map((item) => (
           <Item
             id={item.id}
             key={item.id}
@@ -347,6 +368,23 @@ function Timeline({
             isSelected={item.id === selectedZoomId}
             onSelect={() => onSelectZoom?.(item.id)}
             zoomDepth={item.zoomDepth}
+            variant="zoom"
+          >
+            {item.label}
+          </Item>
+        ))}
+      </Row>
+
+      <Row id={TRIM_ROW_ID}>
+        {trimItems.map((item) => (
+          <Item
+            id={item.id}
+            key={item.id}
+            rowId={item.rowId}
+            span={item.span}
+            isSelected={item.id === selectedTrimId}
+            onSelect={() => onSelectTrim?.(item.id)}
+            variant="trim"
           >
             {item.label}
           </Item>
@@ -366,6 +404,12 @@ export default function TimelineEditor({
   onZoomDelete,
   selectedZoomId,
   onSelectZoom,
+  trimRegions = [],
+  onTrimAdded,
+  onTrimSpanChange,
+  onTrimDelete,
+  selectedTrimId,
+  onSelectTrim,
 }: TimelineEditorProps) {
   const totalMs = useMemo(() => Math.max(0, Math.round(videoDuration * 1000)), [videoDuration]);
   const currentTimeMs = useMemo(() => Math.round(currentTime * 1000), [currentTime]);
@@ -401,6 +445,13 @@ export default function TimelineEditor({
     onSelectZoom(null);
   }, [selectedZoomId, onZoomDelete, onSelectZoom]);
 
+  // Delete selected trim item
+  const deleteSelectedTrim = useCallback(() => {
+    if (!selectedTrimId || !onTrimDelete || !onSelectTrim) return;
+    onTrimDelete(selectedTrimId);
+    onSelectTrim(null);
+  }, [selectedTrimId, onTrimDelete, onSelectTrim]);
+
   useEffect(() => {
     setRange(createInitialRange(totalMs));
   }, [totalMs]);
@@ -421,25 +472,52 @@ export default function TimelineEditor({
         onZoomSpanChange(region.id, { start: normalizedStart, end: normalizedEnd });
       }
     });
-  }, [zoomRegions, totalMs, safeMinDurationMs, onZoomSpanChange]);
+
+    trimRegions.forEach((region) => {
+      const clampedStart = Math.max(0, Math.min(region.startMs, totalMs));
+      const minEnd = clampedStart + safeMinDurationMs;
+      const clampedEnd = Math.min(totalMs, Math.max(minEnd, region.endMs));
+      const normalizedStart = Math.max(0, Math.min(clampedStart, totalMs - safeMinDurationMs));
+      const normalizedEnd = Math.max(minEnd, Math.min(clampedEnd, totalMs));
+
+      if (normalizedStart !== region.startMs || normalizedEnd !== region.endMs) {
+        onTrimSpanChange?.(region.id, { start: normalizedStart, end: normalizedEnd });
+      }
+    });
+  }, [zoomRegions, trimRegions, totalMs, safeMinDurationMs, onZoomSpanChange, onTrimSpanChange]);
 
   const hasOverlap = useCallback((newSpan: Span, excludeId?: string): boolean => {
-    // Snap if gap is 2ms or less
-    return zoomRegions.some((region) => {
-      if (region.id === excludeId) return false;
-      const gapBefore = newSpan.start - region.endMs;
-      const gapAfter = region.startMs - newSpan.end;
-      if (gapBefore > 0 && gapBefore <= 2) return true;
-      if (gapAfter > 0 && gapAfter <= 2) return true;
-      return !(newSpan.end <= region.startMs || newSpan.start >= region.endMs);
-    });
-  }, [zoomRegions]);
+    // Determine which row the item belongs to
+    const isZoomItem = zoomRegions.some(r => r.id === excludeId);
+    const isTrimItem = trimRegions.some(r => r.id === excludeId);
+
+    // Helper to check overlap against a specific set of regions
+    const checkOverlap = (regions: (ZoomRegion | TrimRegion)[]) => {
+      return regions.some((region) => {
+        if (region.id === excludeId) return false;
+        const gapBefore = newSpan.start - region.endMs;
+        const gapAfter = region.startMs - newSpan.end;
+        // Snap if gap is 2ms or less
+        if (gapBefore > 0 && gapBefore <= 2) return true;
+        if (gapAfter > 0 && gapAfter <= 2) return true;
+        return !(newSpan.end <= region.startMs || newSpan.start >= region.endMs);
+      });
+    };
+
+    if (isZoomItem) {
+      return checkOverlap(zoomRegions);
+    }
+
+    if (isTrimItem) {
+      return checkOverlap(trimRegions);
+    }
+    return false;
+  }, [zoomRegions, trimRegions]);
 
   const handleAddZoom = useCallback(() => {
     if (!videoDuration || videoDuration === 0 || totalMs === 0) {
       return;
     }
-
 
     const defaultDuration = Math.min(1000, totalMs);
     if (defaultDuration <= 0) {
@@ -466,26 +544,66 @@ export default function TimelineEditor({
     onZoomAdded({ start: startPos, end: startPos + actualDuration });
   }, [videoDuration, totalMs, currentTimeMs, zoomRegions, onZoomAdded]);
 
-  // Listen for F key to add keyframe, Z key to add zoom, Ctrl+D to remove selected keyframe or zoom item
+  const handleAddTrim = useCallback(() => {
+    if (!videoDuration || videoDuration === 0 || totalMs === 0 || !onTrimAdded) {
+      return;
+    }
+
+    const defaultDuration = Math.min(1000, totalMs);
+    if (defaultDuration <= 0) {
+      return;
+    }
+
+    // Always place trim at playhead
+    const startPos = Math.max(0, Math.min(currentTimeMs, totalMs));
+    // Find the next trim region after the playhead
+    const sorted = [...trimRegions].sort((a, b) => a.startMs - b.startMs);
+    const nextRegion = sorted.find(region => region.startMs > startPos);
+    const gapToNext = nextRegion ? nextRegion.startMs - startPos : totalMs - startPos;
+
+    // Check if playhead is inside any trim region
+    const isOverlapping = sorted.some(region => startPos >= region.startMs && startPos < region.endMs);
+    if (isOverlapping || gapToNext <= 0) {
+      toast.error("Cannot place trim here", {
+        description: "Trim already exists at this location or not enough space available.",
+      });
+      return;
+    }
+
+    const actualDuration = Math.min(1000, gapToNext);
+    onTrimAdded({ start: startPos, end: startPos + actualDuration });
+  }, [videoDuration, totalMs, currentTimeMs, trimRegions, onTrimAdded]);
+
+  // Listen for F key to add keyframe, Z key to add zoom, T key to add trim, Ctrl+D to remove selected keyframe or zoom item
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
       if (e.key === 'f' || e.key === 'F') {
         addKeyframe();
       }
       if (e.key === 'z' || e.key === 'Z') {
         handleAddZoom();
       }
+      if (e.key === 't' || e.key === 'T') {
+        handleAddTrim();
+      }
       if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
         if (selectedKeyframeId) {
           deleteSelectedKeyframe();
         } else if (selectedZoomId) {
           deleteSelectedZoom();
+        } else if (selectedTrimId) {
+          deleteSelectedTrim();
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [addKeyframe, handleAddZoom, deleteSelectedKeyframe, deleteSelectedZoom, selectedKeyframeId, selectedZoomId]);
+  }, [addKeyframe, handleAddZoom, handleAddTrim, deleteSelectedKeyframe, deleteSelectedZoom, deleteSelectedTrim, selectedKeyframeId, selectedZoomId, selectedTrimId]);
 
   const clampedRange = useMemo<Range>(() => {
     if (totalMs === 0) {
@@ -499,16 +617,34 @@ export default function TimelineEditor({
   }, [range, totalMs]);
 
   const timelineItems = useMemo<TimelineRenderItem[]>(() => {
-    return [...zoomRegions]
-      .sort((a, b) => a.startMs - b.startMs)
-      .map((region, index) => ({
-        id: region.id,
-        rowId: ROW_ID,
-        span: { start: region.startMs, end: region.endMs },
-        label: `Zoom ${index + 1}`,
-        zoomDepth: region.depth,
-      }));
-  }, [zoomRegions]);
+    const zooms: TimelineRenderItem[] = zoomRegions.map((region, index) => ({
+      id: region.id,
+      rowId: ZOOM_ROW_ID,
+      span: { start: region.startMs, end: region.endMs },
+      label: `Zoom ${index + 1}`,
+      zoomDepth: region.depth,
+      variant: 'zoom',
+    }));
+
+    const trims: TimelineRenderItem[] = trimRegions.map((region, index) => ({
+      id: region.id,
+      rowId: TRIM_ROW_ID,
+      span: { start: region.startMs, end: region.endMs },
+      label: `Trim ${index + 1}`,
+      variant: 'trim',
+    }));
+
+    return [...zooms, ...trims];
+  }, [zoomRegions, trimRegions]);
+
+  const handleItemSpanChange = useCallback((id: string, span: Span) => {
+    // Check if it's a zoom or trim item
+    if (zoomRegions.some(r => r.id === id)) {
+      onZoomSpanChange(id, span);
+    } else if (trimRegions.some(r => r.id === id)) {
+      onTrimSpanChange?.(id, span);
+    }
+  }, [zoomRegions, trimRegions, onZoomSpanChange, onTrimSpanChange]);
 
   if (!videoDuration || videoDuration === 0) {
     return (
@@ -526,16 +662,27 @@ export default function TimelineEditor({
 
   return (
     <div className="flex-1 flex flex-col bg-[#09090b] overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-white/5 bg-[#09090b]">
-        <Button 
-          onClick={handleAddZoom} 
-          variant="outline" 
-          size="sm" 
-          className="gap-2 h-7 px-3 text-xs bg-white/5 border-white/10 text-slate-200 hover:bg-[#34B27B] hover:text-white hover:border-[#34B27B] transition-all"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add Zoom
-        </Button>
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5 bg-[#09090b]">
+        <div className="flex items-center gap-1">
+          <Button
+            onClick={handleAddZoom}
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-slate-400 hover:text-[#34B27B] hover:bg-[#34B27B]/10 transition-all"
+            title="Add Zoom (Z)"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </Button>
+          <Button
+            onClick={handleAddTrim}
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-slate-400 hover:text-[#ef4444] hover:bg-[#ef4444]/10 transition-all"
+            title="Add Trim (T)"
+          >
+            <Scissors className="w-4 h-4" />
+          </Button>
+        </div>
         <div className="flex-1" />
         <div className="flex items-center gap-4 text-[10px] text-slate-500 font-medium">
           <span className="flex items-center gap-1.5">
@@ -559,7 +706,7 @@ export default function TimelineEditor({
           minItemDurationMs={timelineScale.minItemDurationMs}
           minVisibleRangeMs={timelineScale.minVisibleRangeMs}
           gridSizeMs={timelineScale.gridMs}
-          onItemSpanChange={onZoomSpanChange}
+          onItemSpanChange={handleItemSpanChange}
         >
           <KeyframeMarkers
             keyframes={keyframes}
@@ -573,7 +720,9 @@ export default function TimelineEditor({
             currentTimeMs={currentTimeMs}
             onSeek={onSeek}
             onSelectZoom={onSelectZoom}
+            onSelectTrim={onSelectTrim}
             selectedZoomId={selectedZoomId}
+            selectedTrimId={selectedTrimId}
           />
         </TimelineWrapper>
       </div>

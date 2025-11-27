@@ -13,6 +13,12 @@ export interface ZoomRegion {
   focus: ZoomFocus;
 }
 
+export interface TrimRegion {
+  id: string;
+  startMs: number;
+  endMs: number;
+}
+
 export interface CropRegion {
   x: number; // 0-1 normalized
   y: number; // 0-1 normalized

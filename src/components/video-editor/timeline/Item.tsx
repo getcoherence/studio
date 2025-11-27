@@ -1,7 +1,7 @@
 import { useItem } from "dnd-timeline";
 import type { Span } from "dnd-timeline";
 import { cn } from "@/lib/utils";
-import { ZoomIn } from "lucide-react";
+import { ZoomIn, Scissors } from "lucide-react";
 import glassStyles from "./ItemGlass.module.css";
 
 interface ItemProps {
@@ -11,7 +11,8 @@ interface ItemProps {
   children: React.ReactNode;
   isSelected?: boolean;
   onSelect?: () => void;
-  zoomDepth: number;
+  zoomDepth?: number;
+  variant?: 'zoom' | 'trim';
 }
 
 // Map zoom depth to multiplier labels
@@ -23,12 +24,24 @@ const ZOOM_LABELS: Record<number, string> = {
   5: "3.5×",
 };
 
-export default function Item({ id, span, rowId, isSelected = false, onSelect, zoomDepth }: ItemProps) {
+export default function Item({ 
+  id, 
+  span, 
+  rowId, 
+  isSelected = false, 
+  onSelect, 
+  zoomDepth = 1,
+  variant = 'zoom' 
+}: ItemProps) {
   const { setNodeRef, attributes, listeners, itemStyle, itemContentStyle } = useItem({
     id,
     span,
     data: { rowId },
   });
+
+  const isZoom = variant === 'zoom';
+  const glassClass = isZoom ? glassStyles.glassGreen : glassStyles.glassRed;
+  const endCapColor = isZoom ? '#21916A' : '#ef4444';
 
   return (
     <div
@@ -42,7 +55,7 @@ export default function Item({ id, span, rowId, isSelected = false, onSelect, zo
       <div style={itemContentStyle}>
         <div
           className={cn(
-            glassStyles.glassGreen,
+            glassClass,
             "w-full h-full overflow-hidden flex items-center justify-center gap-1.5 cursor-grab active:cursor-grabbing relative",
             isSelected && glassStyles.selected
           )}
@@ -54,20 +67,31 @@ export default function Item({ id, span, rowId, isSelected = false, onSelect, zo
         >
           <div
             className={cn(glassStyles.zoomEndCap, glassStyles.left)}
-            style={{ cursor: 'col-resize', pointerEvents: 'auto', width: 8, opacity: 0.9, background: '#21916A' }}
+            style={{ cursor: 'col-resize', pointerEvents: 'auto', width: 8, opacity: 0.9, background: endCapColor }}
             title="Resize left"
           />
           <div
             className={cn(glassStyles.zoomEndCap, glassStyles.right)}
-            style={{ cursor: 'col-resize', pointerEvents: 'auto', width: 8, opacity: 0.9, background: '#21916A' }}
+            style={{ cursor: 'col-resize', pointerEvents: 'auto', width: 8, opacity: 0.9, background: endCapColor }}
             title="Resize right"
           />
           {/* Content */}
           <div className="relative z-10 flex items-center gap-1.5 text-white/90 opacity-80 group-hover:opacity-100 transition-opacity select-none">
-            <ZoomIn className="w-3.5 h-3.5" />
-            <span className="text-[11px] font-semibold tracking-tight">
-              {ZOOM_LABELS[zoomDepth] || `${zoomDepth}×`}
-            </span>
+            {isZoom ? (
+              <>
+                <ZoomIn className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-semibold tracking-tight">
+                  {ZOOM_LABELS[zoomDepth] || `${zoomDepth}×`}
+                </span>
+              </>
+            ) : (
+              <>
+                <Scissors className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-semibold tracking-tight">
+                  Trim
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>

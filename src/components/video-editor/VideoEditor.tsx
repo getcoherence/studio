@@ -19,6 +19,7 @@ import {
   type ZoomDepth,
   type ZoomFocus,
   type ZoomRegion,
+  type TrimRegion,
   type CropRegion,
 } from "./types";
 import { VideoExporter, type ExportProgress } from "@/lib/exporter";
@@ -39,6 +40,8 @@ export default function VideoEditor() {
   const [cropRegion, setCropRegion] = useState<CropRegion>(DEFAULT_CROP_REGION);
   const [zoomRegions, setZoomRegions] = useState<ZoomRegion[]>([]);
   const [selectedZoomId, setSelectedZoomId] = useState<string | null>(null);
+  const [trimRegions, setTrimRegions] = useState<TrimRegion[]>([]);
+  const [selectedTrimId, setSelectedTrimId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -46,6 +49,7 @@ export default function VideoEditor() {
 
   const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
   const nextZoomIdRef = useRef(1);
+  const nextTrimIdRef = useRef(1);
   const exporterRef = useRef<VideoExporter | null>(null);
 
   // Helper to convert file path to proper file:// URL
@@ -104,6 +108,12 @@ export default function VideoEditor() {
 
   const handleSelectZoom = useCallback((id: string | null) => {
     setSelectedZoomId(id);
+    if (id) setSelectedTrimId(null);
+  }, []);
+
+  const handleSelectTrim = useCallback((id: string | null) => {
+    setSelectedTrimId(id);
+    if (id) setSelectedZoomId(null);
   }, []);
 
   const handleZoomAdded = useCallback((span: Span) => {
@@ -118,11 +128,40 @@ export default function VideoEditor() {
     console.log('Zoom region added:', newRegion);
     setZoomRegions((prev) => [...prev, newRegion]);
     setSelectedZoomId(id);
+    setSelectedTrimId(null);
+  }, []);
+
+  const handleTrimAdded = useCallback((span: Span) => {
+    const id = `trim-${nextTrimIdRef.current++}`;
+    const newRegion: TrimRegion = {
+      id,
+      startMs: Math.round(span.start),
+      endMs: Math.round(span.end),
+    };
+    console.log('Trim region added:', newRegion);
+    setTrimRegions((prev) => [...prev, newRegion]);
+    setSelectedTrimId(id);
+    setSelectedZoomId(null);
   }, []);
 
   const handleZoomSpanChange = useCallback((id: string, span: Span) => {
     console.log('Zoom span changed:', { id, start: Math.round(span.start), end: Math.round(span.end) });
     setZoomRegions((prev) =>
+      prev.map((region) =>
+        region.id === id
+          ? {
+              ...region,
+              startMs: Math.round(span.start),
+              endMs: Math.round(span.end),
+            }
+          : region,
+      ),
+    );
+  }, []);
+
+  const handleTrimSpanChange = useCallback((id: string, span: Span) => {
+    console.log('Trim span changed:', { id, start: Math.round(span.start), end: Math.round(span.end) });
+    setTrimRegions((prev) =>
       prev.map((region) =>
         region.id === id
           ? {
@@ -171,13 +210,25 @@ export default function VideoEditor() {
     }
   }, [selectedZoomId]);
 
-
+  const handleTrimDelete = useCallback((id: string) => {
+    console.log('Trim region deleted:', id);
+    setTrimRegions((prev) => prev.filter((region) => region.id !== id));
+    if (selectedTrimId === id) {
+      setSelectedTrimId(null);
+    }
+  }, [selectedTrimId]);
 
   useEffect(() => {
     if (selectedZoomId && !zoomRegions.some((region) => region.id === selectedZoomId)) {
       setSelectedZoomId(null);
     }
   }, [selectedZoomId, zoomRegions]);
+
+  useEffect(() => {
+    if (selectedTrimId && !trimRegions.some((region) => region.id === selectedTrimId)) {
+      setSelectedTrimId(null);
+    }
+  }, [selectedTrimId, trimRegions]);
 
   const handleExport = useCallback(async () => {
     if (!videoPath) {
@@ -374,6 +425,12 @@ export default function VideoEditor() {
                   onZoomDelete={handleZoomDelete}
                   selectedZoomId={selectedZoomId}
                   onSelectZoom={handleSelectZoom}
+                  trimRegions={trimRegions}
+                  onTrimAdded={handleTrimAdded}
+                  onTrimSpanChange={handleTrimSpanChange}
+                  onTrimDelete={handleTrimDelete}
+                  selectedTrimId={selectedTrimId}
+                  onSelectTrim={handleSelectTrim}
                 />
               </div>
             </Panel>
