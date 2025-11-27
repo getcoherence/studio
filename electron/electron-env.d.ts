@@ -39,6 +39,8 @@ interface Window {
     setCurrentVideoPath: (path: string) => Promise<{ success: boolean }>
     getCurrentVideoPath: () => Promise<{ success: boolean; path?: string }>
     clearCurrentVideoPath: () => Promise<{ success: boolean }>
+    hudOverlayHide: () => void;
+    hudOverlayClose: () => void;
   }
 }
 

@@ -108,6 +108,13 @@ app.on('activate', () => {
 
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
+    // Listen for HUD overlay quit event (macOS only)
+    const { ipcMain } = await import('electron');
+    ipcMain.on('hud-overlay-close', () => {
+      if (process.platform === 'darwin') {
+        app.quit();
+      }
+    });
   // Ensure recordings directory exists
   await ensureRecordingsDir()
 
@@ -121,7 +128,6 @@ app.whenReady().then(async () => {
       if (recording) {
         if (!tray) createTray();
         updateTrayMenu();
-        if (mainWindow) mainWindow.minimize();
       } else {
         if (tray) {
           tray.destroy();
