@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
 import VideoPlayback, { VideoPlaybackRef } from "./VideoPlayback";
 import PlaybackControls from "./PlaybackControls";
@@ -311,62 +312,72 @@ export default function VideoEditor() {
         <div className="flex-1" />
       </div>
 
-      <div className="flex-1 p-4 gap-4 flex min-h-0 relative">
+      <div className="flex-1 p-5 gap-4 flex min-h-0 relative">
         {/* Left Column - Video & Timeline */}
         <div className="flex-[7] flex flex-col gap-3 min-w-0 h-full">
-          {/* Top section: video preview and controls */}
-          <div className="w-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden" style={{ height: '80%' }}>
-            {/* Video preview */}
-            <div className="w-full flex justify-center items-center" style={{ flex: '1 1 auto', padding: '24px 0' }}>
-              <div className="relative" style={{ width: '100%', maxWidth: '1000px', aspectRatio: '16/9', boxSizing: 'border-box', overflow: 'hidden' }}>
-                <VideoPlayback
-                  ref={videoPlaybackRef}
-                  videoPath={videoPath || ''}
-                  onDurationChange={setDuration}
-                  onTimeUpdate={setCurrentTime}
-                  onPlayStateChange={setIsPlaying}
-                  onError={setError}
-                  wallpaper={wallpaper}
+          <PanelGroup direction="vertical" className="gap-3">
+            {/* Top section: video preview and controls */}
+            <Panel defaultSize={45} minSize={40}>
+              <div className="w-full h-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden">
+                {/* Video preview */}
+                <div className="w-full flex justify-center items-center" style={{ flex: '1 1 auto', margin: '6px 0 0' }}>
+                  <div className="relative" style={{ width: 'auto', height: '100%', aspectRatio: '16/9', maxWidth: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+                    <VideoPlayback
+                      ref={videoPlaybackRef}
+                      videoPath={videoPath || ''}
+                      onDurationChange={setDuration}
+                      onTimeUpdate={setCurrentTime}
+                      onPlayStateChange={setIsPlaying}
+                      onError={setError}
+                      wallpaper={wallpaper}
+                      zoomRegions={zoomRegions}
+                      selectedZoomId={selectedZoomId}
+                      onSelectZoom={handleSelectZoom}
+                      onZoomFocusChange={handleZoomFocusChange}
+                      isPlaying={isPlaying}
+                      showShadow={shadowIntensity > 0}
+                      shadowIntensity={shadowIntensity}
+                      showBlur={showBlur}
+                      cropRegion={cropRegion}
+                    />
+                  </div>
+                </div>
+                {/* Playback controls */}
+                <div className="w-full flex justify-center items-center" style={{ height: '48px', flexShrink: 0, padding: '6px 12px', margin: '6px 0 6px 0' }}>
+                  <div style={{ width: '100%', maxWidth: '700px' }}>
+                    <PlaybackControls
+                      isPlaying={isPlaying}
+                      currentTime={currentTime}
+                      duration={duration}
+                      onTogglePlayPause={togglePlayPause}
+                      onSeek={handleSeek}
+                    />
+                  </div>
+                </div>
+              </div>
+            </Panel>
+
+            <PanelResizeHandle className="h-3 bg-[#09090b]/80 hover:bg-[#09090b] transition-colors rounded-full mx-4 flex items-center justify-center">
+              <div className="w-8 h-1 bg-white/20 rounded-full"></div>
+            </PanelResizeHandle>
+
+            {/* Timeline section */}
+            <Panel defaultSize={55} minSize={20}>
+              <div className="h-full bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden flex flex-col">
+                <TimelineEditor
+                  videoDuration={duration}
+                  currentTime={currentTime}
+                  onSeek={handleSeek}
                   zoomRegions={zoomRegions}
+                  onZoomAdded={handleZoomAdded}
+                  onZoomSpanChange={handleZoomSpanChange}
+                  onZoomDelete={handleZoomDelete}
                   selectedZoomId={selectedZoomId}
                   onSelectZoom={handleSelectZoom}
-                  onZoomFocusChange={handleZoomFocusChange}
-                  isPlaying={isPlaying}
-                  showShadow={shadowIntensity > 0}
-                  shadowIntensity={shadowIntensity}
-                  showBlur={showBlur}
-                  cropRegion={cropRegion}
                 />
               </div>
-            </div>
-            {/* Playback controls */}
-            <div className="w-full flex justify-center items-center" style={{ padding: '0 0 24px 0' }}>
-              <div style={{ maxWidth: '700px', width: '80%' }}>
-                <PlaybackControls
-                  isPlaying={isPlaying}
-                  currentTime={currentTime}
-                  duration={duration}
-                  onTogglePlayPause={togglePlayPause}
-                  onSeek={handleSeek}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline section */}
-          <div className="flex-1 min-h-[180px] bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden flex flex-col">
-            <TimelineEditor
-              videoDuration={duration}
-              currentTime={currentTime}
-              onSeek={handleSeek}
-              zoomRegions={zoomRegions}
-              onZoomAdded={handleZoomAdded}
-              onZoomSpanChange={handleZoomSpanChange}
-              onZoomDelete={handleZoomDelete}
-              selectedZoomId={selectedZoomId}
-              onSelectZoom={handleSelectZoom}
-            />
-          </div>
+            </Panel>
+          </PanelGroup>
         </div>
 
           {/* Right section: settings panel */}
