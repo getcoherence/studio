@@ -390,6 +390,7 @@ export default function VideoEditor() {
                       shadowIntensity={shadowIntensity}
                       showBlur={showBlur}
                       cropRegion={cropRegion}
+                      trimRegions={trimRegions}
                     />
                   </div>
                 </div>

@@ -1,4 +1,5 @@
 import type React from 'react';
+import type { TrimRegion } from '../types';
 
 interface VideoEventHandlersParams {
   video: HTMLVideoElement;
@@ -9,6 +10,7 @@ interface VideoEventHandlersParams {
   timeUpdateAnimationRef: React.MutableRefObject<number | null>;
   onPlayStateChange: (playing: boolean) => void;
   onTimeUpdate: (time: number) => void;
+  trimRegionsRef: React.MutableRefObject<TrimRegion[]>;
 }
 
 export function createVideoEventHandlers(params: VideoEventHandlersParams) {
@@ -21,6 +23,7 @@ export function createVideoEventHandlers(params: VideoEventHandlersParams) {
     timeUpdateAnimationRef,
     onPlayStateChange,
     onTimeUpdate,
+    trimRegionsRef,
   } = params;
 
   const emitTime = (timeValue: number) => {
@@ -28,9 +31,35 @@ export function createVideoEventHandlers(params: VideoEventHandlersParams) {
     onTimeUpdate(timeValue);
   };
 
+  // Helper function to check if current time is within a trim region
+  const findActiveTrimRegion = (currentTimeMs: number): TrimRegion | null => {
+    const trimRegions = trimRegionsRef.current;
+    return trimRegions.find(
+      (region) => currentTimeMs >= region.startMs && currentTimeMs < region.endMs
+    ) || null;
+  };
+
   function updateTime() {
     if (!video) return;
-    emitTime(video.currentTime);
+    
+    const currentTimeMs = video.currentTime * 1000;
+    const activeTrimRegion = findActiveTrimRegion(currentTimeMs);
+    
+    // If we're in a trim region during playback, skip to the end of it
+    if (activeTrimRegion && !video.paused && !video.ended) {
+      const skipToTime = activeTrimRegion.endMs / 1000;
+      
+      // If the skip would take us past the video duration, pause instead
+      if (skipToTime >= video.duration) {
+        video.pause();
+      } else {
+        video.currentTime = skipToTime;
+        emitTime(skipToTime);
+      }
+    } else {
+      emitTime(video.currentTime);
+    }
+    
     if (!video.paused && !video.ended) {
       timeUpdateAnimationRef.current = requestAnimationFrame(updateTime);
     }
@@ -68,10 +97,25 @@ export function createVideoEventHandlers(params: VideoEventHandlersParams) {
   const handleSeeked = () => {
     isSeekingRef.current = false;
 
-    if (!isPlayingRef.current && !video.paused) {
-      video.pause();
+    const currentTimeMs = video.currentTime * 1000;
+    const activeTrimRegion = findActiveTrimRegion(currentTimeMs);
+    
+    // If we seeked into a trim region while playing, skip to the end
+    if (activeTrimRegion && isPlayingRef.current && !video.paused) {
+      const skipToTime = activeTrimRegion.endMs / 1000;
+      
+      if (skipToTime >= video.duration) {
+        video.pause();
+      } else {
+        video.currentTime = skipToTime;
+        emitTime(skipToTime);
+      }
+    } else {
+      if (!isPlayingRef.current && !video.paused) {
+        video.pause();
+      }
+      emitTime(video.currentTime);
     }
-    emitTime(video.currentTime);
   };
 
   const handleSeeking = () => {
