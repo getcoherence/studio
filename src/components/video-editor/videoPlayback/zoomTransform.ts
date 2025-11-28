@@ -10,6 +10,7 @@ interface TransformParams {
   focusY: number;
   motionIntensity: number;
   isPlaying: boolean;
+  motionBlurEnabled?: boolean;
 }
 
 export function applyZoomTransform({
@@ -22,6 +23,7 @@ export function applyZoomTransform({
   focusY,
   motionIntensity,
   isPlaying,
+  motionBlurEnabled = true,
 }: TransformParams) {
   if (
     stageSize.width <= 0 ||
@@ -52,7 +54,7 @@ export function applyZoomTransform({
   cameraContainer.position.set(cameraX, cameraY);
 
   if (blurFilter) {
-    const shouldBlur = isPlaying && motionIntensity > 0.0005;
+    const shouldBlur = motionBlurEnabled && isPlaying && motionIntensity > 0.0005;
     const motionBlur = shouldBlur ? Math.min(6, motionIntensity * 120) : 0;
     blurFilter.blur = motionBlur;
   }

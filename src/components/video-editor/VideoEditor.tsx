@@ -37,6 +37,7 @@ export default function VideoEditor() {
   const [wallpaper, setWallpaper] = useState<string>(WALLPAPER_PATHS[0]);
   const [shadowIntensity, setShadowIntensity] = useState(0);
   const [showBlur, setShowBlur] = useState(false);
+  const [motionBlurEnabled, setMotionBlurEnabled] = useState(true);
   const [cropRegion, setCropRegion] = useState<CropRegion>(DEFAULT_CROP_REGION);
   const [zoomRegions, setZoomRegions] = useState<ZoomRegion[]>([]);
   const [selectedZoomId, setSelectedZoomId] = useState<string | null>(null);
@@ -285,6 +286,7 @@ export default function VideoEditor() {
         showShadow: shadowIntensity > 0,
         shadowIntensity,
         showBlur,
+        motionBlurEnabled,
         cropRegion,
         onProgress: (progress: ExportProgress) => {
           setExportProgress(progress);
@@ -390,6 +392,7 @@ export default function VideoEditor() {
                       showShadow={shadowIntensity > 0}
                       shadowIntensity={shadowIntensity}
                       showBlur={showBlur}
+                      motionBlurEnabled={motionBlurEnabled}
                       cropRegion={cropRegion}
                       trimRegions={trimRegions}
                     />
@@ -440,7 +443,7 @@ export default function VideoEditor() {
         </div>
 
           {/* Right section: settings panel */}
-        <SettingsPanel
+          <SettingsPanel
           selected={wallpaper}
           onWallpaperChange={setWallpaper}
           selectedZoomDepth={selectedZoomId ? zoomRegions.find(z => z.id === selectedZoomId)?.depth : null}
@@ -451,6 +454,8 @@ export default function VideoEditor() {
           onShadowChange={setShadowIntensity}
           showBlur={showBlur}
           onBlurChange={setShowBlur}
+          motionBlurEnabled={motionBlurEnabled}
+          onMotionBlurChange={setMotionBlurEnabled}
           cropRegion={cropRegion}
           onCropChange={setCropRegion}
           videoElement={videoPlaybackRef.current?.video || null}

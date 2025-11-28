@@ -14,6 +14,7 @@ interface FrameRenderConfig {
   showShadow: boolean;
   shadowIntensity: number;
   showBlur: boolean;
+  motionBlurEnabled?: boolean;
   cropRegion: CropRegion;
   videoWidth: number;
   videoHeight: number;
@@ -286,6 +287,7 @@ export class FrameRenderer {
       focusY: this.animationState.focusY,
       motionIntensity: maxMotionIntensity,
       isPlaying: true,
+      motionBlurEnabled: this.config.motionBlurEnabled ?? true,
     });
 
     // Render the PixiJS stage to its canvas (video only, transparent background)
@@ -311,7 +313,7 @@ export class FrameRenderer {
 
     const croppedVideoWidth = videoWidth * (cropEndX - cropStartX);
     const croppedVideoHeight = videoHeight * (cropEndY - cropStartY);
-
+    
     // Calculate scale to fit in viewport
     const viewportWidth = width * VIEWPORT_SCALE;
     const viewportHeight = height * VIEWPORT_SCALE;

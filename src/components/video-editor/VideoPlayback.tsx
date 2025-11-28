@@ -27,6 +27,7 @@ interface VideoPlaybackProps {
   showShadow?: boolean;
   shadowIntensity?: number;
   showBlur?: boolean;
+  motionBlurEnabled?: boolean;
   cropRegion?: import('./types').CropRegion;
   trimRegions?: TrimRegion[];
 }
@@ -55,6 +56,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   showShadow,
   shadowIntensity = 0,
   showBlur,
+  motionBlurEnabled = true,
   cropRegion,
   trimRegions = [],
 }, ref) => {
@@ -88,6 +90,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   const lockedVideoDimensionsRef = useRef<{ width: number; height: number } | null>(null);
   const layoutVideoContentRef = useRef<(() => void) | null>(null);
   const trimRegionsRef = useRef<TrimRegion[]>([]);
+  const motionBlurEnabledRef = useRef(motionBlurEnabled);
 
   const clampFocusToStage = useCallback((focus: ZoomFocus, depth: ZoomDepth) => {
     return clampFocusToStageUtil(focus, depth, stageSizeRef.current);
@@ -295,6 +298,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   }, [trimRegions]);
 
   useEffect(() => {
+    motionBlurEnabledRef.current = motionBlurEnabled;
+  }, [motionBlurEnabled]);
+
+  useEffect(() => {
     if (!pixiReady || !videoReady) return;
 
     const app = appRef.current;
@@ -351,6 +358,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
         focusY: DEFAULT_FOCUS.cy,
         motionIntensity: 0,
         isPlaying: false,
+        motionBlurEnabled: motionBlurEnabledRef.current,
       });
 
       requestAnimationFrame(() => {
@@ -585,6 +593,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
         focusY: state.focusY,
         motionIntensity,
         isPlaying: isPlayingRef.current,
+        motionBlurEnabled: motionBlurEnabledRef.current,
       });
     };
 

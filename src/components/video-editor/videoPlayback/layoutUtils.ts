@@ -24,7 +24,6 @@ interface LayoutResult {
 export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
   const { container, app, videoSprite, maskGraphics, videoElement, cropRegion, lockedVideoDimensions } = params;
 
-
   const videoWidth = lockedVideoDimensions?.width || videoElement.videoWidth;
   const videoHeight = lockedVideoDimensions?.height || videoElement.videoHeight;
 

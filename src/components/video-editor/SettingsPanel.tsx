@@ -55,6 +55,8 @@ interface SettingsPanelProps {
   onShadowChange?: (intensity: number) => void;
   showBlur?: boolean;
   onBlurChange?: (showBlur: boolean) => void;
+  motionBlurEnabled?: boolean;
+  onMotionBlurChange?: (enabled: boolean) => void;
   cropRegion?: CropRegion;
   onCropChange?: (region: CropRegion) => void;
   videoElement?: HTMLVideoElement | null;
@@ -72,7 +74,7 @@ const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
   { depth: 6, label: "5×" },
 ];
 
-export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, shadowIntensity = 0, onShadowChange, showBlur, onBlurChange, cropRegion, onCropChange, videoElement, onExport }: SettingsPanelProps) {
+export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, shadowIntensity = 0, onShadowChange, showBlur, onBlurChange, motionBlurEnabled = true, onMotionBlurChange, cropRegion, onCropChange, videoElement, onExport }: SettingsPanelProps) {
   const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
   const [customImages, setCustomImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -224,6 +226,20 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
             <Switch
               checked={showBlur}
               onCheckedChange={onBlurChange}
+              className="data-[state=checked]:bg-[#34B27B]"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <div className="grid grid-cols-2 gap-3">
+          {/* Motion Blur Switch */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+            <div className="text-xs font-medium text-slate-200">Motion Blur</div>
+            <Switch
+              checked={motionBlurEnabled}
+              onCheckedChange={onMotionBlurChange}
               className="data-[state=checked]:bg-[#34B27B]"
             />
           </div>
