@@ -2,12 +2,13 @@ import type { ExportConfig, ExportProgress, ExportResult } from './types';
 import { VideoFileDecoder } from './videoDecoder';
 import { FrameRenderer } from './frameRenderer';
 import { VideoMuxer } from './muxer';
-import type { ZoomRegion, CropRegion } from '@/components/video-editor/types';
+import type { ZoomRegion, CropRegion, TrimRegion } from '@/components/video-editor/types';
 
 interface VideoExporterConfig extends ExportConfig {
   videoUrl: string;
   wallpaper: string;
   zoomRegions: ZoomRegion[];
+  trimRegions?: TrimRegion[];
   showShadow: boolean;
   shadowIntensity: number;
   showBlur: boolean;
@@ -35,6 +36,36 @@ export class VideoExporter {
     this.config = config;
   }
 
+  // Calculate the total duration excluding trim regions (in seconds)
+  private getEffectiveDuration(totalDuration: number): number {
+    const trimRegions = this.config.trimRegions || [];
+    const totalTrimDuration = trimRegions.reduce((sum, region) => {
+      return sum + (region.endMs - region.startMs) / 1000;
+    }, 0);
+    return totalDuration - totalTrimDuration;
+  }
+
+  private mapEffectiveToSourceTime(effectiveTimeMs: number): number {
+    const trimRegions = this.config.trimRegions || [];
+    // Sort trim regions by start time
+    const sortedTrims = [...trimRegions].sort((a, b) => a.startMs - b.startMs);
+    
+    let sourceTimeMs = effectiveTimeMs;
+    
+    for (const trim of sortedTrims) {
+      // If the source time hasn't reached this trim region yet, we're done
+      if (sourceTimeMs < trim.startMs) {
+        break;
+      }
+      
+      // Add the duration of this trim region to the source time
+      const trimDuration = trim.endMs - trim.startMs;
+      sourceTimeMs += trimDuration;
+    }
+    
+    return sourceTimeMs;
+  }
+
   async export(): Promise<ExportResult> {
     try {
       this.cleanup();
@@ -60,7 +91,6 @@ export class VideoExporter {
       await this.renderer.initialize();
 
       // Initialize video encoder
-      const totalFrames = Math.ceil(videoInfo.duration * this.config.frameRate);
       await this.initializeEncoder();
 
       // Initialize muxer
@@ -73,6 +103,14 @@ export class VideoExporter {
         throw new Error('Video element not available');
       }
 
+      // Calculate effective duration and frame count (excluding trim regions)
+      const effectiveDuration = this.getEffectiveDuration(videoInfo.duration);
+      const totalFrames = Math.ceil(effectiveDuration * this.config.frameRate);
+      
+      console.log('[VideoExporter] Original duration:', videoInfo.duration, 's');
+      console.log('[VideoExporter] Effective duration:', effectiveDuration, 's');
+      console.log('[VideoExporter] Total frames to export:', totalFrames);
+
       // Process frames continuously without batching delays
       const frameDuration = 1_000_000 / this.config.frameRate; // in microseconds
       let frameIndex = 0;
@@ -81,7 +119,11 @@ export class VideoExporter {
       while (frameIndex < totalFrames && !this.cancelled) {
         const i = frameIndex;
         const timestamp = i * frameDuration;
-        const videoTime = i * timeStep;
+        
+        // Map effective time to source time (accounting for trim regions)
+        const effectiveTimeMs = (i * timeStep) * 1000;
+        const sourceTimeMs = this.mapEffectiveToSourceTime(effectiveTimeMs);
+        const videoTime = sourceTimeMs / 1000;
           
         // Seek if needed or wait for first frame to be ready
         const needsSeek = Math.abs(videoElement.currentTime - videoTime) > 0.001;
@@ -106,8 +148,9 @@ export class VideoExporter {
           timestamp,
         });
 
-        // Render the frame with all effects
-        await this.renderer!.renderFrame(videoFrame, timestamp);
+        // Render the frame with all effects using source timestamp
+        const sourceTimestamp = sourceTimeMs * 1000; // Convert to microseconds
+        await this.renderer!.renderFrame(videoFrame, sourceTimestamp);
         
         videoFrame.close();
 

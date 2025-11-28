@@ -92,7 +92,6 @@ function createEditorWindow() {
       query: { windowType: "editor" }
     });
   }
-  win.webContents.openDevTools();
   return win;
 }
 function createSourceSelectorWindow() {

@@ -156,7 +156,7 @@ export function LaunchWindow() {
           className={`gap-1 text-white bg-transparent hover:bg-transparent px-0 flex-1 text-right text-xs ${styles.electronNoDrag} ${styles.folderButton}`}
         >
           <FaFolderMinus size={14} className="text-white" />
-          <span className={styles.folderText}>Load</span>
+          <span className={styles.folderText}>Open</span>
         </Button>
 
          {/* Separator before hide/close buttons */}

@@ -114,8 +114,6 @@ export function createEditorWindow(): BrowserWindow {
     })
   }
 
-  win.webContents.openDevTools();
-
   return win
 }
 

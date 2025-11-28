@@ -281,6 +281,7 @@ export default function VideoEditor() {
         codec: 'avc1.640033',
         wallpaper,
         zoomRegions,
+        trimRegions,
         showShadow: shadowIntensity > 0,
         shadowIntensity,
         showBlur,
@@ -325,7 +326,7 @@ export default function VideoEditor() {
       setIsExporting(false);
       exporterRef.current = null;
     }
-  }, [videoPath, wallpaper, zoomRegions, shadowIntensity, showBlur, cropRegion, isPlaying]);
+  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, cropRegion, isPlaying]);
 
   const handleCancelExport = useCallback(() => {
     if (exporterRef.current) {
