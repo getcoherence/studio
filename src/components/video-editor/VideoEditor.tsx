@@ -369,7 +369,7 @@ export default function VideoEditor() {
         <div className="flex-[7] flex flex-col gap-3 min-w-0 h-full">
           <PanelGroup direction="vertical" className="gap-3">
             {/* Top section: video preview and controls */}
-            <Panel defaultSize={45} minSize={40}>
+            <Panel defaultSize={70} minSize={40}>
               <div className="w-full h-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden">
                 {/* Video preview */}
                 <div className="w-full flex justify-center items-center" style={{ flex: '1 1 auto', margin: '6px 0 0' }}>
@@ -415,7 +415,7 @@ export default function VideoEditor() {
             </PanelResizeHandle>
 
             {/* Timeline section */}
-            <Panel defaultSize={55} minSize={20}>
+            <Panel defaultSize={30} minSize={20}>
               <div className="h-full bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden flex flex-col">
                 <TimelineEditor
                   videoDuration={duration}

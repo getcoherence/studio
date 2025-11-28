@@ -59,7 +59,7 @@ export default function Item({
             "w-full h-full overflow-hidden flex items-center justify-center gap-1.5 cursor-grab active:cursor-grabbing relative",
             isSelected && glassStyles.selected
           )}
-          style={{ height: 48, color: '#fff' }}
+          style={{ height: 40, color: '#fff' }}
           onClick={(event) => {
             event.stopPropagation();
             onSelect?.();

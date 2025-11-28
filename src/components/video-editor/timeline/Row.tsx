@@ -11,7 +11,7 @@ export default function Row({ id, children }: RowProps) {
   return (
     <div
       className="border-b border-[#18181b] bg-[#18181b]"
-      style={{ ...rowWrapperStyle, minHeight: 60 }}
+      style={{ ...rowWrapperStyle, minHeight: 48, marginBottom: 4 }}
     >
       <div ref={setNodeRef} style={rowStyle}>
         {children}
