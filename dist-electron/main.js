@@ -1,25 +1,31 @@
-import { screen, BrowserWindow, ipcMain, desktopCapturer, shell, app, dialog, nativeImage, Tray, Menu } from "electron";
+import { ipcMain, screen, BrowserWindow, desktopCapturer, shell, app, dialog, nativeImage, Tray, Menu } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs/promises";
-const __dirname$2 = path.dirname(fileURLToPath(import.meta.url));
-const APP_ROOT = path.join(__dirname$2, "..");
+const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
+const APP_ROOT = path.join(__dirname$1, "..");
 const VITE_DEV_SERVER_URL$1 = process.env["VITE_DEV_SERVER_URL"];
 const RENDERER_DIST$1 = path.join(APP_ROOT, "dist");
+let hudOverlayWindow = null;
+ipcMain.on("hud-overlay-hide", () => {
+  if (hudOverlayWindow && !hudOverlayWindow.isDestroyed()) {
+    hudOverlayWindow.minimize();
+  }
+});
 function createHudOverlayWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { workArea } = primaryDisplay;
-  const windowWidth = 350;
-  const windowHeight = 80;
-  const x = Math.floor(workArea.x + workArea.width - windowWidth - 5);
-  const y = Math.floor(workArea.y + workArea.height - (windowHeight - 30));
+  const windowWidth = 500;
+  const windowHeight = 100;
+  const x = Math.floor(workArea.x + (workArea.width - windowWidth) / 2);
+  const y = Math.floor(workArea.y + workArea.height - windowHeight - 5);
   const win = new BrowserWindow({
     width: windowWidth,
     height: windowHeight,
-    minWidth: 350,
-    maxWidth: 350,
-    minHeight: 80,
-    maxHeight: 80,
+    minWidth: 500,
+    maxWidth: 500,
+    minHeight: 100,
+    maxHeight: 100,
     x,
     y,
     frame: false,
@@ -29,7 +35,7 @@ function createHudOverlayWindow() {
     skipTaskbar: true,
     hasShadow: false,
     webPreferences: {
-      preload: path.join(__dirname$2, "preload.mjs"),
+      preload: path.join(__dirname$1, "preload.mjs"),
       nodeIntegration: false,
       contextIsolation: true,
       backgroundThrottling: false
@@ -37,6 +43,12 @@ function createHudOverlayWindow() {
   });
   win.webContents.on("did-finish-load", () => {
     win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+  });
+  hudOverlayWindow = win;
+  win.on("closed", () => {
+    if (hudOverlayWindow === win) {
+      hudOverlayWindow = null;
+    }
   });
   if (VITE_DEV_SERVER_URL$1) {
     win.loadURL(VITE_DEV_SERVER_URL$1 + "?windowType=hud-overlay");
@@ -62,7 +74,7 @@ function createEditorWindow() {
     title: "OpenScreen",
     backgroundColor: "#000000",
     webPreferences: {
-      preload: path.join(__dirname$2, "preload.mjs"),
+      preload: path.join(__dirname$1, "preload.mjs"),
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: false,
@@ -80,7 +92,6 @@ function createEditorWindow() {
       query: { windowType: "editor" }
     });
   }
-  win.webContents.openDevTools();
   return win;
 }
 function createSourceSelectorWindow() {
@@ -98,7 +109,7 @@ function createSourceSelectorWindow() {
     transparent: true,
     backgroundColor: "#00000000",
     webPreferences: {
-      preload: path.join(__dirname$2, "preload.mjs"),
+      preload: path.join(__dirname$1, "preload.mjs"),
       nodeIntegration: false,
       contextIsolation: true
     }
@@ -282,7 +293,7 @@ function registerIpcHandlers(createEditorWindow2, createSourceSelectorWindow2, g
     return { success: true };
   });
 }
-const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RECORDINGS_DIR = path.join(app.getPath("userData"), "recordings");
 async function ensureRecordingsDir() {
   try {
@@ -293,7 +304,7 @@ async function ensureRecordingsDir() {
     console.error("Failed to create recordings directory:", error);
   }
 }
-process.env.APP_ROOT = path.join(__dirname$1, "..");
+process.env.APP_ROOT = path.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
 const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
@@ -350,6 +361,12 @@ app.on("activate", () => {
   }
 });
 app.whenReady().then(async () => {
+  const { ipcMain: ipcMain2 } = await import("electron");
+  ipcMain2.on("hud-overlay-close", () => {
+    if (process.platform === "darwin") {
+      app.quit();
+    }
+  });
   await ensureRecordingsDir();
   registerIpcHandlers(
     createEditorWindowWrapper,
@@ -361,7 +378,6 @@ app.whenReady().then(async () => {
       if (recording) {
         if (!tray) createTray();
         updateTrayMenu();
-        if (mainWindow) mainWindow.minimize();
       } else {
         if (tray) {
           tray.destroy();

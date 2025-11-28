@@ -1,6 +1,12 @@
 "use strict";
 const electron = require("electron");
 electron.contextBridge.exposeInMainWorld("electronAPI", {
+  hudOverlayHide: () => {
+    electron.ipcRenderer.send("hud-overlay-hide");
+  },
+  hudOverlayClose: () => {
+    electron.ipcRenderer.send("hud-overlay-close");
+  },
   getAssetBasePath: async () => {
     return await electron.ipcRenderer.invoke("get-asset-base-path");
   },

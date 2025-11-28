@@ -2,7 +2,7 @@ import type React from "react";
 import { useEffect, useRef, useImperativeHandle, forwardRef, useState, useMemo, useCallback } from "react";
 import { getAssetPath } from "@/lib/assetPath";
 import { Application, Container, Sprite, Graphics, BlurFilter, Texture, VideoSource } from 'pixi.js';
-import { ZOOM_DEPTH_SCALES, type ZoomRegion, type ZoomFocus, type ZoomDepth } from "./types";
+import { ZOOM_DEPTH_SCALES, type ZoomRegion, type ZoomFocus, type ZoomDepth, type TrimRegion } from "./types";
 import { DEFAULT_FOCUS, SMOOTHING_FACTOR, MIN_DELTA } from "./videoPlayback/constants";
 import { clamp01 } from "./videoPlayback/mathUtils";
 import { findDominantRegion } from "./videoPlayback/zoomRegionUtils";
@@ -28,6 +28,7 @@ interface VideoPlaybackProps {
   shadowIntensity?: number;
   showBlur?: boolean;
   cropRegion?: import('./types').CropRegion;
+  trimRegions?: TrimRegion[];
 }
 
 export interface VideoPlaybackRef {
@@ -55,6 +56,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   shadowIntensity = 0,
   showBlur,
   cropRegion,
+  trimRegions = [],
 }, ref) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -85,6 +87,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   const allowPlaybackRef = useRef(false);
   const lockedVideoDimensionsRef = useRef<{ width: number; height: number } | null>(null);
   const layoutVideoContentRef = useRef<(() => void) | null>(null);
+  const trimRegionsRef = useRef<TrimRegion[]>([]);
 
   const clampFocusToStage = useCallback((focus: ZoomFocus, depth: ZoomDepth) => {
     return clampFocusToStageUtil(focus, depth, stageSizeRef.current);
@@ -286,6 +289,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+
+  useEffect(() => {
+    trimRegionsRef.current = trimRegions;
+  }, [trimRegions]);
 
   useEffect(() => {
     if (!pixiReady || !videoReady) return;
@@ -513,6 +520,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
       timeUpdateAnimationRef,
       onPlayStateChange,
       onTimeUpdate,
+      trimRegionsRef,
     });
     
     video.addEventListener('play', handlePlay);

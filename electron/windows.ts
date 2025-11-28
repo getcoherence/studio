@@ -1,4 +1,5 @@
 import { BrowserWindow, screen } from 'electron'
+import { ipcMain } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -8,25 +9,32 @@ const APP_ROOT = path.join(__dirname, '..')
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 const RENDERER_DIST = path.join(APP_ROOT, 'dist')
 
+let hudOverlayWindow: BrowserWindow | null = null;
+
+ipcMain.on('hud-overlay-hide', () => {
+  if (hudOverlayWindow && !hudOverlayWindow.isDestroyed()) {
+    hudOverlayWindow.minimize();
+  }
+});
+
 export function createHudOverlayWindow(): BrowserWindow {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { workArea } = primaryDisplay;
 
-  // Define the desired window size
-  const windowWidth = 350;
-  const windowHeight = 80;
 
-  const x = Math.floor(workArea.x + workArea.width - windowWidth - 5); // Align to the right edge of the work area
-  // const x = Math.floor(workArea.x + (workArea.width - windowWidth) / 2); // Center horizontally within the work area
-  const y = Math.floor(workArea.y + workArea.height - (windowHeight - 30));
+  const windowWidth = 500;
+  const windowHeight = 100;
+
+  const x = Math.floor(workArea.x + (workArea.width - windowWidth) / 2);
+  const y = Math.floor(workArea.y + workArea.height - windowHeight - 5);
 
   const win = new BrowserWindow({
     width: windowWidth,
     height: windowHeight,
-    minWidth: 350,
-    maxWidth: 350,
-    minHeight: 80,
-    maxHeight: 80,
+    minWidth: 500,
+    maxWidth: 500,
+    minHeight: 100,
+    maxHeight: 100,
     x: x,
     y: y,
     frame: false,
@@ -47,6 +55,15 @@ export function createHudOverlayWindow(): BrowserWindow {
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', (new Date).toLocaleString())
   })
+
+  hudOverlayWindow = win;
+
+  win.on('closed', () => {
+    if (hudOverlayWindow === win) {
+      hudOverlayWindow = null;
+    }
+  });
+
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL + '?windowType=hud-overlay')
@@ -96,8 +113,6 @@ export function createEditorWindow(): BrowserWindow {
       query: { windowType: 'editor' } 
     })
   }
-
-  win.webContents.openDevTools();
 
   return win
 }
