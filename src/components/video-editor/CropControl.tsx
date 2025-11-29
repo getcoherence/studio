@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { type AspectRatio, formatAspectRatioForCSS } from "@/utils/aspectRatioUtils";
 
 interface CropRegion {
   x: number; // 0-1 normalized
@@ -12,11 +13,12 @@ interface CropControlProps {
   videoElement: HTMLVideoElement | null;
   cropRegion: CropRegion;
   onCropChange: (region: CropRegion) => void;
+  aspectRatio: AspectRatio;
 }
 
 type DragHandle = 'top' | 'right' | 'bottom' | 'left' | null;
 
-export function CropControl({ videoElement, cropRegion, onCropChange }: CropControlProps) {
+export function CropControl({ videoElement, cropRegion, onCropChange, aspectRatio }: CropControlProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState<DragHandle>(null);
@@ -119,7 +121,8 @@ export function CropControl({ videoElement, cropRegion, onCropChange }: CropCont
     <div className="w-full p-8">
       <div
         ref={containerRef}
-        className="relative w-full aspect-video bg-black rounded-lg overflow-visible cursor-default select-none shadow-2xl"
+        className="relative w-full bg-black rounded-lg overflow-visible cursor-default select-none shadow-2xl"
+        style={{ aspectRatio: formatAspectRatioForCSS(aspectRatio) }}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}

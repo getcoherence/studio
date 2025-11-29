@@ -23,6 +23,7 @@ import {
   type CropRegion,
 } from "./types";
 import { VideoExporter, type ExportProgress } from "@/lib/exporter";
+import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
 
 const WALLPAPER_COUNT = 18;
 const WALLPAPER_PATHS = Array.from({ length: WALLPAPER_COUNT }, (_, i) => `/wallpapers/wallpaper${i + 1}.jpg`);
@@ -49,6 +50,7 @@ export default function VideoEditor() {
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
 
   const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
   const nextZoomIdRef = useRef(1);
@@ -395,8 +397,9 @@ export default function VideoEditor() {
               <div className="w-full h-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden">
                 {/* Video preview */}
                 <div className="w-full flex justify-center items-center" style={{ flex: '1 1 auto', margin: '6px 0 0' }}>
-                  <div className="relative" style={{ width: 'auto', height: '100%', aspectRatio: '16/9', maxWidth: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+                  <div className="relative" style={{ width: 'auto', height: '100%', aspectRatio: getAspectRatioValue(aspectRatio), maxWidth: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
                     <VideoPlayback
+                      aspectRatio={aspectRatio}
                       ref={videoPlaybackRef}
                       videoPath={videoPath || ''}
                       onDurationChange={setDuration}
@@ -484,6 +487,8 @@ export default function VideoEditor() {
           onPaddingChange={setPadding}
           cropRegion={cropRegion}
           onCropChange={setCropRegion}
+          aspectRatio={aspectRatio}
+          onAspectRatioChange={setAspectRatio}
           videoElement={videoPlaybackRef.current?.video || null}
           onExport={handleExport}
         />

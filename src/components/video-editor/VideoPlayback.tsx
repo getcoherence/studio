@@ -11,6 +11,7 @@ import { updateOverlayIndicator } from "./videoPlayback/overlayUtils";
 import { layoutVideoContent as layoutVideoContentUtil } from "./videoPlayback/layoutUtils";
 import { applyZoomTransform } from "./videoPlayback/zoomTransform";
 import { createVideoEventHandlers } from "./videoPlayback/videoEventHandlers";
+import { type AspectRatio, formatAspectRatioForCSS } from "@/utils/aspectRatioUtils";
 
 interface VideoPlaybackProps {
   videoPath: string;
@@ -32,6 +33,7 @@ interface VideoPlaybackProps {
   padding?: number;
   cropRegion?: import('./types').CropRegion;
   trimRegions?: TrimRegion[];
+  aspectRatio: AspectRatio;
 }
 
 export interface VideoPlaybackRef {
@@ -63,6 +65,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   padding = 50,
   cropRegion,
   trimRegions = [],
+  aspectRatio,
 }, ref) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -747,7 +750,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
     : { background: resolvedWallpaper || '' };
 
   return (
-    <div className="relative aspect-video rounded-sm overflow-hidden" style={{ width: '100%' }}>
+    <div className="relative rounded-sm overflow-hidden" style={{ width: '100%', aspectRatio: formatAspectRatioForCSS(aspectRatio) }}>
       {/* Background layer - always render as DOM element with blur */}
       <div
         className="absolute inset-0 bg-cover bg-center"
