@@ -65,7 +65,6 @@ interface SettingsPanelProps {
   cropRegion?: CropRegion;
   onCropChange?: (region: CropRegion) => void;
   aspectRatio: AspectRatio;
-  onAspectRatioChange: (aspectRatio: AspectRatio) => void;
   videoElement?: HTMLVideoElement | null;
   onExport?: () => void;
 }
@@ -81,7 +80,7 @@ const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
   { depth: 6, label: "5×" },
 ];
 
-export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, shadowIntensity = 0, onShadowChange, showBlur, onBlurChange, motionBlurEnabled = true, onMotionBlurChange, borderRadius = 0, onBorderRadiusChange, padding = 50, onPaddingChange, cropRegion, onCropChange, aspectRatio, onAspectRatioChange, videoElement, onExport }: SettingsPanelProps) {
+export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, shadowIntensity = 0, onShadowChange, showBlur, onBlurChange, motionBlurEnabled = true, onMotionBlurChange, borderRadius = 0, onBorderRadiusChange, padding = 50, onPaddingChange, cropRegion, onCropChange, aspectRatio, videoElement, onExport }: SettingsPanelProps) {
   const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
   const [customImages, setCustomImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -234,36 +233,10 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
       </div>
 
       <div className="mb-6">
-        <span className="text-sm font-medium text-slate-200 mb-3 block">Aspect Ratio</span>
-        <div className="grid grid-cols-4 gap-2">
-          {(['16:9', '9:16', '1:1', '4:3'] as AspectRatio[]).map((ratio) => {
-            const isActive = aspectRatio === ratio;
-            return (
-              <Button
-                key={ratio}
-                type="button"
-                onClick={() => onAspectRatioChange(ratio)}
-                className={cn(
-                  "h-auto w-full rounded-xl border px-2 py-3 text-center shadow-sm transition-all flex items-center justify-center",
-                  "duration-200 ease-out",
-                  isActive
-                    ? "border-[#34B27B] bg-[#34B27B] text-white shadow-[#34B27B]/20 scale-105 ring-2 ring-[#34B27B]/20"
-                    : "border-white/5 bg-white/5 text-slate-400 hover:bg-white/10 hover:border-white/10 hover:text-slate-200"
-                )}
-              >
-                <span className="text-sm font-semibold tracking-tight">{ratio}</span>
-              </Button>
-            );
-          })}
-        </div>
-      </div>
-
-
-      <div className="mb-6">
         <div className="grid grid-cols-2 gap-3">
           {/* Drop Shadow Slider */}
           <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
-            <div className="flex items-center justify-between">\n
+            <div className="flex items-center justify-between">
               <div className="text-xs font-medium text-slate-200">Shadow</div>
               <span className="text-[10px] text-slate-400 font-mono">{Math.round(shadowIntensity * 100)}%</span>
             </div>
@@ -329,7 +302,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
             className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 animate-in fade-in duration-200"
             onClick={() => setShowCropDropdown(false)}
           />
-          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[60] bg-[#09090b] rounded-2xl shadow-2xl border border-white/10 p-8 w-[90vw] max-w-5xl animate-in zoom-in-95 duration-200">
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[60] bg-[#09090b] rounded-2xl shadow-2xl border border-white/10 p-8 w-[90vw] max-w-5xl max-h-[90vh] overflow-auto animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <span className="text-xl font-bold text-slate-200">Crop Video</span>

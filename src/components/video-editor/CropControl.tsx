@@ -116,13 +116,22 @@ export function CropControl({ videoElement, cropRegion, onCropChange, aspectRati
   const cropPixelY = cropRegion.y * 100;
   const cropPixelWidth = cropRegion.width * 100;
   const cropPixelHeight = cropRegion.height * 100;
+  const videoAspectRatio = videoElement ? videoElement.videoWidth / videoElement.videoHeight : 16/9;
+  const isVideoPortrait = videoAspectRatio < 1;
+  const maxContainerWidth = isVideoPortrait ? '40vw' : '75vw';
+  const maxContainerHeight = '75vh';
 
   return (
     <div className="w-full p-8">
       <div
         ref={containerRef}
         className="relative w-full bg-black rounded-lg overflow-visible cursor-default select-none shadow-2xl"
-        style={{ aspectRatio: formatAspectRatioForCSS(aspectRatio) }}
+        style={{ 
+          aspectRatio: videoAspectRatio,
+          maxWidth: maxContainerWidth,
+          maxHeight: maxContainerHeight,
+          margin: '0 auto',
+        }}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}

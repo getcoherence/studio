@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTimelineContext } from "dnd-timeline";
 import { Button } from "@/components/ui/button";
-import { Plus, Scissors, ZoomIn } from "lucide-react";
+import { Plus, Scissors, ZoomIn, ChevronDown, Check } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import TimelineWrapper from "./TimelineWrapper";
@@ -11,6 +11,13 @@ import KeyframeMarkers from "./KeyframeMarkers";
 import type { Range, Span } from "dnd-timeline";
 import type { ZoomRegion, TrimRegion } from "../types";
 import { v4 as uuidv4 } from 'uuid';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { type AspectRatio, getAspectRatioLabel } from "@/utils/aspectRatioUtils";
 
 const ZOOM_ROW_ID = "row-zoom";
 const TRIM_ROW_ID = "row-trim";
@@ -34,6 +41,8 @@ interface TimelineEditorProps {
   onTrimDelete?: (id: string) => void;
   selectedTrimId?: string | null;
   onSelectTrim?: (id: string | null) => void;
+  aspectRatio: AspectRatio;
+  onAspectRatioChange: (aspectRatio: AspectRatio) => void;
 }
 
 interface TimelineScaleConfig {
@@ -410,6 +419,8 @@ export default function TimelineEditor({
   onTrimDelete,
   selectedTrimId,
   onSelectTrim,
+  aspectRatio,
+  onAspectRatioChange,
 }: TimelineEditorProps) {
   const totalMs = useMemo(() => Math.max(0, Math.round(videoDuration * 1000)), [videoDuration]);
   const currentTimeMs = useMemo(() => Math.round(currentTime * 1000), [currentTime]);
@@ -682,6 +693,32 @@ export default function TimelineEditor({
           >
             <Scissors className="w-4 h-4" />
           </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-slate-400 hover:text-slate-200 hover:bg-white/10 transition-all gap-1"
+              >
+                <span className="font-medium">{getAspectRatioLabel(aspectRatio)}</span>
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-white/10">
+              {(['16:9', '9:16', '1:1', '4:3', '4:5'] as AspectRatio[]).map((ratio) => (
+                <DropdownMenuItem
+                  key={ratio}
+                  onClick={() => onAspectRatioChange(ratio)}
+                  className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer flex items-center justify-between gap-3"
+                >
+                  <span>{getAspectRatioLabel(ratio)}</span>
+                  {aspectRatio === ratio && <Check className="w-3 h-3 text-[#34B27B]" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-4 text-[10px] text-slate-500 font-medium">

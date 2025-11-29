@@ -265,24 +265,53 @@ export default function VideoEditor() {
         return;
       }
       
+      const aspectRatioValue = getAspectRatioValue(aspectRatio);
       const sourceWidth = video.videoWidth || 1920;
       const sourceHeight = video.videoHeight || 1080;
-      const targetAspectRatio = 16 / 9;
-      const sourceAspectRatio = sourceWidth / sourceHeight;
       
-      let exportWidth: number;
-      let exportHeight: number;
-      
-      if (sourceAspectRatio > targetAspectRatio) {
-        exportHeight = sourceHeight;
-        exportWidth = Math.round(exportHeight * targetAspectRatio);
+      let exportWidth: number = sourceWidth;
+      let exportHeight: number = sourceHeight;
+
+      if (aspectRatioValue === 1) {
+        // Square (1:1): use smaller dimension to avoid codec limits
+        const baseDimension = Math.floor(Math.min(sourceWidth, sourceHeight) / 2) * 2;
+        exportWidth = baseDimension;
+        exportHeight = baseDimension;
+      } else if (aspectRatioValue > 1) {
+        // Landscape: find largest even dimensions that exactly match aspect ratio
+        const baseWidth = Math.floor(sourceWidth / 2) * 2;
+        // Iterate down from baseWidth to find exact match
+        let found = false;
+        for (let w = baseWidth; w >= 100 && !found; w -= 2) {
+          const h = Math.round(w / aspectRatioValue);
+          if (h % 2 === 0 && Math.abs((w / h) - aspectRatioValue) < 0.0001) {
+            exportWidth = w;
+            exportHeight = h;
+            found = true;
+          }
+        }
+        if (!found) {
+          exportWidth = baseWidth;
+          exportHeight = Math.floor((baseWidth / aspectRatioValue) / 2) * 2;
+        }
       } else {
-        exportWidth = sourceWidth;
-        exportHeight = Math.round(exportWidth / targetAspectRatio);
+        // Portrait: find largest even dimensions that exactly match aspect ratio
+        const baseHeight = Math.floor(sourceHeight / 2) * 2;
+        // Iterate down from baseHeight to find exact match
+        let found = false;
+        for (let h = baseHeight; h >= 100 && !found; h -= 2) {
+          const w = Math.round(h * aspectRatioValue);
+          if (w % 2 === 0 && Math.abs((w / h) - aspectRatioValue) < 0.0001) {
+            exportWidth = w;
+            exportHeight = h;
+            found = true;
+          }
+        }
+        if (!found) {
+          exportHeight = baseHeight;
+          exportWidth = Math.floor((baseHeight * aspectRatioValue) / 2) * 2;
+        }
       }
-      
-      exportWidth = Math.round(exportWidth / 2) * 2;
-      exportHeight = Math.round(exportHeight / 2) * 2;
 
       // Calculate visually lossless bitrate matching screen recording optimization
       const totalPixels = exportWidth * exportHeight;
@@ -350,7 +379,7 @@ export default function VideoEditor() {
       setIsExporting(false);
       exporterRef.current = null;
     }
-  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, borderRadius, padding, cropRegion, isPlaying]);
+  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, borderRadius, padding, cropRegion, isPlaying, aspectRatio]);
 
   const handleCancelExport = useCallback(() => {
     if (exporterRef.current) {
@@ -446,22 +475,24 @@ export default function VideoEditor() {
             <Panel defaultSize={30} minSize={20}>
               <div className="h-full bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden flex flex-col">
                 <TimelineEditor
-                  videoDuration={duration}
-                  currentTime={currentTime}
-                  onSeek={handleSeek}
-                  zoomRegions={zoomRegions}
-                  onZoomAdded={handleZoomAdded}
-                  onZoomSpanChange={handleZoomSpanChange}
-                  onZoomDelete={handleZoomDelete}
-                  selectedZoomId={selectedZoomId}
-                  onSelectZoom={handleSelectZoom}
-                  trimRegions={trimRegions}
-                  onTrimAdded={handleTrimAdded}
-                  onTrimSpanChange={handleTrimSpanChange}
-                  onTrimDelete={handleTrimDelete}
-                  selectedTrimId={selectedTrimId}
-                  onSelectTrim={handleSelectTrim}
-                />
+              videoDuration={duration}
+              currentTime={currentTime}
+              onSeek={handleSeek}
+              zoomRegions={zoomRegions}
+              onZoomAdded={handleZoomAdded}
+              onZoomSpanChange={handleZoomSpanChange}
+              onZoomDelete={handleZoomDelete}
+              selectedZoomId={selectedZoomId}
+              onSelectZoom={handleSelectZoom}
+              trimRegions={trimRegions}
+              onTrimAdded={handleTrimAdded}
+              onTrimSpanChange={handleTrimSpanChange}
+              onTrimDelete={handleTrimDelete}
+              selectedTrimId={selectedTrimId}
+              onSelectTrim={handleSelectTrim}
+              aspectRatio={aspectRatio}
+              onAspectRatioChange={setAspectRatio}
+            />
               </div>
             </Panel>
           </PanelGroup>
@@ -488,7 +519,6 @@ export default function VideoEditor() {
           cropRegion={cropRegion}
           onCropChange={setCropRegion}
           aspectRatio={aspectRatio}
-          onAspectRatioChange={setAspectRatio}
           videoElement={videoPlaybackRef.current?.video || null}
           onExport={handleExport}
         />
