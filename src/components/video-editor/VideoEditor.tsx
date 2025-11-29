@@ -344,7 +344,7 @@ export default function VideoEditor() {
       setIsExporting(false);
       exporterRef.current = null;
     }
-  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, cropRegion, isPlaying]);
+  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, cropRegion, isPlaying]);
 
   const handleCancelExport = useCallback(() => {
     if (exporterRef.current) {
