@@ -16,6 +16,10 @@ export function KeyboardShortcutsHelp() {
             <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">F</kbd>
           </div>
           <div className="flex items-center justify-between">
+            <span className="text-slate-400">Add Trim</span>
+            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">T</kbd>
+          </div>
+          <div className="flex items-center justify-between">
             <span className="text-slate-400">Delete Selected</span>
             <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">⌘ + D</kbd>
           </div>

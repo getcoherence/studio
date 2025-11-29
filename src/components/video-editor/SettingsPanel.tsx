@@ -15,7 +15,7 @@ import type { ZoomDepth, CropRegion } from "./types";
 import { CropControl } from "./CropControl";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 
-const WALLPAPER_COUNT = 20;
+const WALLPAPER_COUNT = 18;
 const WALLPAPER_RELATIVE = Array.from({ length: WALLPAPER_COUNT }, (_, i) => `wallpapers/wallpaper${i + 1}.jpg`);
 const GRADIENTS = [
   "linear-gradient( 111.6deg,  rgba(114,167,232,1) 9.4%, rgba(253,129,82,1) 43.9%, rgba(253,129,82,1) 54.8%, rgba(249,202,86,1) 86.3% )",
@@ -209,19 +209,13 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
 
       <div className="mb-6">
         <div className="grid grid-cols-2 gap-3">
-          {/* Drop Shadow Slider */}
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-medium text-slate-200">Shadow</div>
-              <span className="text-[10px] text-slate-400 font-mono">{Math.round(shadowIntensity * 100)}%</span>
-            </div>
-            <Slider
-              value={[shadowIntensity]}
-              onValueChange={(values) => onShadowChange?.(values[0])}
-              min={0}
-              max={1}
-              step={0.01}
-              className="w-full [&_[role=slider]]:bg-[#34B27B] [&_[role=slider]]:border-[#34B27B]"
+          {/* Motion Blur Switch */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+            <div className="text-xs font-medium text-slate-200">Motion Blur</div>
+            <Switch
+              checked={motionBlurEnabled}
+              onCheckedChange={onMotionBlurChange}
+              className="data-[state=checked]:bg-[#34B27B]"
             />
           </div>
           {/* Blur Background Switch */}
@@ -238,13 +232,19 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
 
       <div className="mb-6">
         <div className="grid grid-cols-2 gap-3">
-          {/* Motion Blur Switch */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-            <div className="text-xs font-medium text-slate-200">Motion Blur</div>
-            <Switch
-              checked={motionBlurEnabled}
-              onCheckedChange={onMotionBlurChange}
-              className="data-[state=checked]:bg-[#34B27B]"
+          {/* Drop Shadow Slider */}
+          <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-medium text-slate-200">Shadow</div>
+              <span className="text-[10px] text-slate-400 font-mono">{Math.round(shadowIntensity * 100)}%</span>
+            </div>
+            <Slider
+              value={[shadowIntensity]}
+              onValueChange={(values) => onShadowChange?.(values[0])}
+              min={0}
+              max={1}
+              step={0.01}
+              className="w-full [&_[role=slider]]:bg-[#34B27B] [&_[role=slider]]:border-[#34B27B]"
             />
           </div>
           {/* Corner Roundness Slider */}
