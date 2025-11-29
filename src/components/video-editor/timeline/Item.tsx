@@ -22,6 +22,7 @@ const ZOOM_LABELS: Record<number, string> = {
   3: "1.8×",
   4: "2.2×",
   5: "3.5×",
+  6: "5×",
 };
 
 export default function Item({ 
