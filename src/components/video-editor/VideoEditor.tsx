@@ -39,7 +39,7 @@ export default function VideoEditor() {
   const [showBlur, setShowBlur] = useState(false);
   const [motionBlurEnabled, setMotionBlurEnabled] = useState(true);
   const [borderRadius, setBorderRadius] = useState(0);
-  const [padding, setPadding] = useState(0);
+  const [padding, setPadding] = useState(50);
   const [cropRegion, setCropRegion] = useState<CropRegion>(DEFAULT_CROP_REGION);
   const [zoomRegions, setZoomRegions] = useState<ZoomRegion[]>([]);
   const [selectedZoomId, setSelectedZoomId] = useState<string | null>(null);
@@ -306,6 +306,7 @@ export default function VideoEditor() {
         showBlur,
         motionBlurEnabled,
         borderRadius,
+        padding,
         cropRegion,
         onProgress: (progress: ExportProgress) => {
           setExportProgress(progress);
@@ -347,7 +348,7 @@ export default function VideoEditor() {
       setIsExporting(false);
       exporterRef.current = null;
     }
-  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, borderRadius, cropRegion, isPlaying]);
+  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, borderRadius, padding, cropRegion, isPlaying]);
 
   const handleCancelExport = useCallback(() => {
     if (exporterRef.current) {
@@ -413,6 +414,7 @@ export default function VideoEditor() {
                       showBlur={showBlur}
                       motionBlurEnabled={motionBlurEnabled}
                       borderRadius={borderRadius}
+                      padding={padding}
                       cropRegion={cropRegion}
                       trimRegions={trimRegions}
                     />

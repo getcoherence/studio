@@ -78,7 +78,7 @@ const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
   { depth: 6, label: "5×" },
 ];
 
-export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, shadowIntensity = 0, onShadowChange, showBlur, onBlurChange, motionBlurEnabled = true, onMotionBlurChange, borderRadius = 0, onBorderRadiusChange, padding = 0, onPaddingChange, cropRegion, onCropChange, videoElement, onExport }: SettingsPanelProps) {
+export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, shadowIntensity = 0, onShadowChange, showBlur, onBlurChange, motionBlurEnabled = true, onMotionBlurChange, borderRadius = 0, onBorderRadiusChange, padding = 50, onPaddingChange, cropRegion, onCropChange, videoElement, onExport }: SettingsPanelProps) {
   const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
   const [customImages, setCustomImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -265,8 +265,8 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
           {/* Padding Slider */}
           <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
             <div className="flex items-center justify-between">
-              <div className="text-xs font-medium text-slate-200">Padding (TODO)</div>
-              <span className="text-[10px] text-slate-400 font-mono">{padding}px</span>
+              <div className="text-xs font-medium text-slate-200">Padding</div>
+              <span className="text-[10px] text-slate-400 font-mono">{padding}%</span>
             </div>
             <Slider
               value={[padding]}

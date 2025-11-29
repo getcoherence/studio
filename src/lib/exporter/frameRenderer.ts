@@ -16,6 +16,7 @@ interface FrameRenderConfig {
   showBlur: boolean;
   motionBlurEnabled?: boolean;
   borderRadius?: number;
+  padding?: number;
   cropRegion: CropRegion;
   videoWidth: number;
   videoHeight: number;
@@ -302,19 +303,9 @@ export class FrameRenderer {
     if (!this.app || !this.videoSprite || !this.maskGraphics || !this.videoContainer) return;
 
     const { width, height } = this.config;
-    const { cropRegion, borderRadius = 0 } = this.config;
+    const { cropRegion, borderRadius = 0, padding = 0 } = this.config;
     const videoWidth = this.config.videoWidth;
     const videoHeight = this.config.videoHeight;
-
-    // Log layout calculation once (only on first layout)
-    if (!this.layoutCache) {
-      console.log('[FrameRenderer] Initial updateLayout', {
-        canvasSize: { width, height },
-        videoSize: { width: videoWidth, height: videoHeight },
-        cropRegion,
-        borderRadius,
-      });
-    }
 
     // Calculate cropped video dimensions
     const cropStartX = cropRegion.x;
@@ -325,9 +316,11 @@ export class FrameRenderer {
     const croppedVideoWidth = videoWidth * (cropEndX - cropStartX);
     const croppedVideoHeight = videoHeight * (cropEndY - cropStartY);
     
-    // Calculate scale to fit in viewport (using VIEWPORT_SCALE from constants)
-    const viewportWidth = width * 0.8; // VIEWPORT_SCALE = 0.8
-    const viewportHeight = height * 0.8;
+    // Calculate scale to fit in viewport
+    // Padding is a percentage (0-100), where 50% ~ 0.8 scale
+    const paddingScale = 1.0 - (padding / 100) * 0.4;
+    const viewportWidth = width * paddingScale;
+    const viewportHeight = height * paddingScale;
     const scale = Math.min(viewportWidth / croppedVideoWidth, viewportHeight / croppedVideoHeight);
 
     // Position video sprite
@@ -348,22 +341,6 @@ export class FrameRenderer {
     this.videoContainer.y = centerOffsetY;
 
     // Update mask
-    // Scale the border radius if needed?
-    // In preview, we use the raw pixel value from the slider.
-    // In export, the canvas might be much larger (e.g. 4K vs 800px preview).
-    // If we use the raw value (e.g. 20px), it will look tiny on 4K.
-    // We should probably scale it based on the resolution ratio relative to a "standard" preview size (e.g. 1920x1080 or similar).
-    // Or, we can assume the user sees it on a ~1000px wide preview.
-    // Let's scale it by (width / 1280) as a rough heuristic to match visual appearance?
-    // Actually, let's just use the raw value for now as requested "fine grain control".
-    // If the user sets 20px, they might expect 20px.
-    // BUT, if they are editing on a small screen and exporting to 4K, 20px will look different.
-    // Let's stick to raw value first as it's safer than guessing.
-    // Wait, the previous hardcoded value was percentage based: radius = min(w, h) * 0.02
-    // If I use raw pixels, I break that "responsiveness".
-    // However, the slider is in pixels (0-40).
-    // I will use the raw value for now.
-    
     this.maskGraphics.clear();
     this.maskGraphics.roundRect(0, 0, croppedDisplayWidth, croppedDisplayHeight, borderRadius);
     this.maskGraphics.fill({ color: 0xffffff });

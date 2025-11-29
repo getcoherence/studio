@@ -11,6 +11,7 @@ interface LayoutParams {
   cropRegion?: CropRegion;
   lockedVideoDimensions?: { width: number; height: number } | null;
   borderRadius?: number;
+  padding?: number;
 }
 
 interface LayoutResult {
@@ -23,7 +24,7 @@ interface LayoutResult {
 }
 
 export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
-  const { container, app, videoSprite, maskGraphics, videoElement, cropRegion, lockedVideoDimensions, borderRadius = 0 } = params;
+  const { container, app, videoSprite, maskGraphics, videoElement, cropRegion, lockedVideoDimensions, borderRadius = 0, padding = 0 } = params;
 
   const videoWidth = lockedVideoDimensions?.width || videoElement.videoWidth;
   const videoHeight = lockedVideoDimensions?.height || videoElement.videoHeight;
@@ -56,8 +57,10 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
   const cropEndY = cropStartY + croppedVideoHeight;
   
   // Calculate scale to fit the cropped area in the viewport
-  const maxDisplayWidth = width * VIEWPORT_SCALE;
-  const maxDisplayHeight = height * VIEWPORT_SCALE;
+  // Padding is a percentage (0-100), where 50 matches the original VIEWPORT_SCALE of 0.8
+  const paddingScale = 1.0 - (padding / 100) * 0.4;
+  const maxDisplayWidth = width * paddingScale;
+  const maxDisplayHeight = height * paddingScale;
 
   const scale = Math.min(
     maxDisplayWidth / croppedVideoWidth,
