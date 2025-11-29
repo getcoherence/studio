@@ -3,8 +3,9 @@ import type { ZoomRegion, CropRegion } from '@/components/video-editor/types';
 import { ZOOM_DEPTH_SCALES } from '@/components/video-editor/types';
 import { findDominantRegion } from '@/components/video-editor/videoPlayback/zoomRegionUtils';
 import { applyZoomTransform } from '@/components/video-editor/videoPlayback/zoomTransform';
-import { DEFAULT_FOCUS, SMOOTHING_FACTOR, MIN_DELTA, VIEWPORT_SCALE } from '@/components/video-editor/videoPlayback/constants';
+import { DEFAULT_FOCUS, SMOOTHING_FACTOR, MIN_DELTA } from '@/components/video-editor/videoPlayback/constants';
 import { clampFocusToStage as clampFocusToStageUtil } from '@/components/video-editor/videoPlayback/focusUtils';
+import { layoutVideoContent as layoutVideoContentUtil } from '@/components/video-editor/videoPlayback/layoutUtils';
 
 interface FrameRenderConfig {
   width: number;
@@ -298,57 +299,53 @@ export class FrameRenderer {
   }
 
   private updateLayout(): void {
-    if (!this.app || !this.videoSprite || !this.maskGraphics || !this.videoContainer) return;
+    if (!this.app || !this.videoSprite || !this.maskGraphics || !this.videoContainer || !this.cameraContainer) return;
 
     const { width, height } = this.config;
-    const { cropRegion } = this.config;
     const videoWidth = this.config.videoWidth;
     const videoHeight = this.config.videoHeight;
 
-    // Calculate cropped video dimensions
-    const cropStartX = cropRegion.x;
-    const cropStartY = cropRegion.y;
-    const cropEndX = cropRegion.x + cropRegion.width;
-    const cropEndY = cropRegion.y + cropRegion.height;
+    // Create a mock container element for layoutVideoContentUtil
+    const mockContainer = {
+      clientWidth: width,
+      clientHeight: height,
+    } as HTMLDivElement;
 
-    const croppedVideoWidth = videoWidth * (cropEndX - cropStartX);
-    const croppedVideoHeight = videoHeight * (cropEndY - cropStartY);
-    
-    // Calculate scale to fit in viewport
-    const viewportWidth = width * VIEWPORT_SCALE;
-    const viewportHeight = height * VIEWPORT_SCALE;
-    const scale = Math.min(viewportWidth / croppedVideoWidth, viewportHeight / croppedVideoHeight);
+    // Create a mock video element with the actual dimensions
+    const mockVideoElement = {
+      videoWidth,
+      videoHeight,
+    } as HTMLVideoElement;
 
-    // Position video sprite
-    this.videoSprite.width = videoWidth * scale;
-    this.videoSprite.height = videoHeight * scale;
+    // Use the same layout logic as preview
+    const layoutResult = layoutVideoContentUtil({
+      container: mockContainer,
+      app: this.app,
+      videoSprite: this.videoSprite,
+      maskGraphics: this.maskGraphics,
+      videoElement: mockVideoElement,
+      cropRegion: this.config.cropRegion,
+      lockedVideoDimensions: { width: videoWidth, height: videoHeight },
+    });
 
-    const cropPixelX = cropStartX * videoWidth * scale;
-    const cropPixelY = cropStartY * videoHeight * scale;
-    this.videoSprite.x = -cropPixelX;
-    this.videoSprite.y = -cropPixelY;
+    if (!layoutResult) {
+      console.warn('[FrameRenderer] layoutVideoContentUtil returned null');
+      return;
+    }
 
-    // Position video container
-    const croppedDisplayWidth = croppedVideoWidth * scale;
-    const croppedDisplayHeight = croppedVideoHeight * scale;
-    const centerOffsetX = (width - croppedDisplayWidth) / 2;
-    const centerOffsetY = (height - croppedDisplayHeight) / 2;
-    this.videoContainer.x = centerOffsetX;
-    this.videoContainer.y = centerOffsetY;
-
-    // Update mask
-    const radius = Math.min(croppedDisplayWidth, croppedDisplayHeight) * 0.02;
-    this.maskGraphics.clear();
-    this.maskGraphics.roundRect(0, 0, croppedDisplayWidth, croppedDisplayHeight, radius);
-    this.maskGraphics.fill({ color: 0xffffff });
+    // Position the videoContainer (which contains the sprite and mask)
+    // Note: layoutVideoContentUtil positions the sprite within the container at (0,0)
+    // but in export we need to position the container itself
+    this.videoContainer.x = 0;
+    this.videoContainer.y = 0;
 
     // Cache layout info
     this.layoutCache = {
-      stageSize: { width, height },
-      videoSize: { width: croppedVideoWidth, height: croppedVideoHeight },
-      baseScale: scale,
-      baseOffset: { x: centerOffsetX, y: centerOffsetY },
-      maskRect: { x: 0, y: 0, width: croppedDisplayWidth, height: croppedDisplayHeight },
+      stageSize: layoutResult.stageSize,
+      videoSize: layoutResult.videoSize,
+      baseScale: layoutResult.baseScale,
+      baseOffset: layoutResult.baseOffset,
+      maskRect: layoutResult.maskRect,
     };
   }
 

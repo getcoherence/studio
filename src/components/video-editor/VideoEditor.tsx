@@ -261,11 +261,27 @@ export default function VideoEditor() {
         return;
       }
       
-      const width = video.videoWidth || 1920;
-      const height = video.videoHeight || 1080;
+      const sourceWidth = video.videoWidth || 1920;
+      const sourceHeight = video.videoHeight || 1080;
+      const targetAspectRatio = 16 / 9;
+      const sourceAspectRatio = sourceWidth / sourceHeight;
+      
+      let exportWidth: number;
+      let exportHeight: number;
+      
+      if (sourceAspectRatio > targetAspectRatio) {
+        exportHeight = sourceHeight;
+        exportWidth = Math.round(exportHeight * targetAspectRatio);
+      } else {
+        exportWidth = sourceWidth;
+        exportHeight = Math.round(exportWidth / targetAspectRatio);
+      }
+      
+      exportWidth = Math.round(exportWidth / 2) * 2;
+      exportHeight = Math.round(exportHeight / 2) * 2;
 
       // Calculate visually lossless bitrate matching screen recording optimization
-      const totalPixels = width * height;
+      const totalPixels = exportWidth * exportHeight;
       let bitrate = 30_000_000;
       if (totalPixels > 1920 * 1080 && totalPixels <= 2560 * 1440) {
         bitrate = 50_000_000;
@@ -275,8 +291,8 @@ export default function VideoEditor() {
 
       const exporter = new VideoExporter({
         videoUrl: videoPath,
-        width,
-        height,
+        width: exportWidth,
+        height: exportHeight,
         frameRate: 60,
         bitrate,
         codec: 'avc1.640033',
