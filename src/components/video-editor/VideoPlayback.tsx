@@ -28,6 +28,7 @@ interface VideoPlaybackProps {
   shadowIntensity?: number;
   showBlur?: boolean;
   motionBlurEnabled?: boolean;
+  borderRadius?: number;
   cropRegion?: import('./types').CropRegion;
   trimRegions?: TrimRegion[];
 }
@@ -57,6 +58,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   shadowIntensity = 0,
   showBlur,
   motionBlurEnabled = true,
+  borderRadius = 0,
   cropRegion,
   trimRegions = [],
 }, ref) => {
@@ -150,6 +152,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
       videoElement,
       cropRegion,
       lockedVideoDimensions: lockedVideoDimensionsRef.current,
+      borderRadius,
     });
 
     if (result) {
@@ -171,7 +174,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
 
       updateOverlayForRegion(activeRegion);
     }
-  }, [updateOverlayForRegion, cropRegion]);
+  }, [updateOverlayForRegion, cropRegion, borderRadius]);
 
   useEffect(() => {
     layoutVideoContentRef.current = layoutVideoContent;

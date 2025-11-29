@@ -38,6 +38,8 @@ export default function VideoEditor() {
   const [shadowIntensity, setShadowIntensity] = useState(0);
   const [showBlur, setShowBlur] = useState(false);
   const [motionBlurEnabled, setMotionBlurEnabled] = useState(true);
+  const [borderRadius, setBorderRadius] = useState(0);
+  const [padding, setPadding] = useState(0);
   const [cropRegion, setCropRegion] = useState<CropRegion>(DEFAULT_CROP_REGION);
   const [zoomRegions, setZoomRegions] = useState<ZoomRegion[]>([]);
   const [selectedZoomId, setSelectedZoomId] = useState<string | null>(null);
@@ -303,6 +305,7 @@ export default function VideoEditor() {
         shadowIntensity,
         showBlur,
         motionBlurEnabled,
+        borderRadius,
         cropRegion,
         onProgress: (progress: ExportProgress) => {
           setExportProgress(progress);
@@ -344,7 +347,7 @@ export default function VideoEditor() {
       setIsExporting(false);
       exporterRef.current = null;
     }
-  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, cropRegion, isPlaying]);
+  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, borderRadius, cropRegion, isPlaying]);
 
   const handleCancelExport = useCallback(() => {
     if (exporterRef.current) {
@@ -409,6 +412,7 @@ export default function VideoEditor() {
                       shadowIntensity={shadowIntensity}
                       showBlur={showBlur}
                       motionBlurEnabled={motionBlurEnabled}
+                      borderRadius={borderRadius}
                       cropRegion={cropRegion}
                       trimRegions={trimRegions}
                     />
@@ -472,6 +476,10 @@ export default function VideoEditor() {
           onBlurChange={setShowBlur}
           motionBlurEnabled={motionBlurEnabled}
           onMotionBlurChange={setMotionBlurEnabled}
+          borderRadius={borderRadius}
+          onBorderRadiusChange={setBorderRadius}
+          padding={padding}
+          onPaddingChange={setPadding}
           cropRegion={cropRegion}
           onCropChange={setCropRegion}
           videoElement={videoPlaybackRef.current?.video || null}

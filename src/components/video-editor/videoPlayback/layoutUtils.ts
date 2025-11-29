@@ -10,6 +10,7 @@ interface LayoutParams {
   videoElement: HTMLVideoElement;
   cropRegion?: CropRegion;
   lockedVideoDimensions?: { width: number; height: number } | null;
+  borderRadius?: number;
 }
 
 interface LayoutResult {
@@ -22,7 +23,7 @@ interface LayoutResult {
 }
 
 export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
-  const { container, app, videoSprite, maskGraphics, videoElement, cropRegion, lockedVideoDimensions } = params;
+  const { container, app, videoSprite, maskGraphics, videoElement, cropRegion, lockedVideoDimensions, borderRadius = 0 } = params;
 
   const videoWidth = lockedVideoDimensions?.width || videoElement.videoWidth;
   const videoHeight = lockedVideoDimensions?.height || videoElement.videoHeight;
@@ -91,9 +92,10 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
   // Create a mask that only shows the cropped region (centered in container)
   const maskX = centerOffsetX;
   const maskY = centerOffsetY;
-  const radius = Math.min(croppedDisplayWidth, croppedDisplayHeight) * 0.02;
+  
+  // Apply border radius
   maskGraphics.clear();
-  maskGraphics.roundRect(maskX, maskY, croppedDisplayWidth, croppedDisplayHeight, radius);
+  maskGraphics.roundRect(maskX, maskY, croppedDisplayWidth, croppedDisplayHeight, borderRadius);
   maskGraphics.fill({ color: 0xffffff });
 
   return {
