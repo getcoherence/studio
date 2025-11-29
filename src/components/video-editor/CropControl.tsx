@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { type AspectRatio, formatAspectRatioForCSS } from "@/utils/aspectRatioUtils";
 
 interface CropRegion {
   x: number; // 0-1 normalized
@@ -12,11 +13,12 @@ interface CropControlProps {
   videoElement: HTMLVideoElement | null;
   cropRegion: CropRegion;
   onCropChange: (region: CropRegion) => void;
+  aspectRatio: AspectRatio;
 }
 
 type DragHandle = 'top' | 'right' | 'bottom' | 'left' | null;
 
-export function CropControl({ videoElement, cropRegion, onCropChange }: CropControlProps) {
+export function CropControl({ videoElement, cropRegion, onCropChange, aspectRatio }: CropControlProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState<DragHandle>(null);
@@ -114,12 +116,22 @@ export function CropControl({ videoElement, cropRegion, onCropChange }: CropCont
   const cropPixelY = cropRegion.y * 100;
   const cropPixelWidth = cropRegion.width * 100;
   const cropPixelHeight = cropRegion.height * 100;
+  const videoAspectRatio = videoElement ? videoElement.videoWidth / videoElement.videoHeight : 16/9;
+  const isVideoPortrait = videoAspectRatio < 1;
+  const maxContainerWidth = isVideoPortrait ? '40vw' : '75vw';
+  const maxContainerHeight = '75vh';
 
   return (
     <div className="w-full p-8">
       <div
         ref={containerRef}
-        className="relative w-full aspect-video bg-black rounded-lg overflow-visible cursor-default select-none shadow-2xl"
+        className="relative w-full bg-black rounded-lg overflow-visible cursor-default select-none shadow-2xl"
+        style={{ 
+          aspectRatio: videoAspectRatio,
+          maxWidth: maxContainerWidth,
+          maxHeight: maxContainerHeight,
+          margin: '0 auto',
+        }}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}

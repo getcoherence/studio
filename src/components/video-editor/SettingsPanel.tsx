@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import type { ZoomDepth, CropRegion } from "./types";
 import { CropControl } from "./CropControl";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
+import { type AspectRatio } from "@/utils/aspectRatioUtils";
 
 const WALLPAPER_COUNT = 18;
 const WALLPAPER_RELATIVE = Array.from({ length: WALLPAPER_COUNT }, (_, i) => `wallpapers/wallpaper${i + 1}.jpg`);
@@ -63,6 +64,7 @@ interface SettingsPanelProps {
   onPaddingChange?: (padding: number) => void;
   cropRegion?: CropRegion;
   onCropChange?: (region: CropRegion) => void;
+  aspectRatio: AspectRatio;
   videoElement?: HTMLVideoElement | null;
   onExport?: () => void;
 }
@@ -78,7 +80,7 @@ const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
   { depth: 6, label: "5×" },
 ];
 
-export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, shadowIntensity = 0, onShadowChange, showBlur, onBlurChange, motionBlurEnabled = true, onMotionBlurChange, borderRadius = 0, onBorderRadiusChange, padding = 50, onPaddingChange, cropRegion, onCropChange, videoElement, onExport }: SettingsPanelProps) {
+export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, shadowIntensity = 0, onShadowChange, showBlur, onBlurChange, motionBlurEnabled = true, onMotionBlurChange, borderRadius = 0, onBorderRadiusChange, padding = 50, onPaddingChange, cropRegion, onCropChange, aspectRatio, videoElement, onExport }: SettingsPanelProps) {
   const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
   const [customImages, setCustomImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -300,7 +302,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
             className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 animate-in fade-in duration-200"
             onClick={() => setShowCropDropdown(false)}
           />
-          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[60] bg-[#09090b] rounded-2xl shadow-2xl border border-white/10 p-8 w-[90vw] max-w-5xl animate-in zoom-in-95 duration-200">
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[60] bg-[#09090b] rounded-2xl shadow-2xl border border-white/10 p-8 w-[90vw] max-w-5xl max-h-[90vh] overflow-auto animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <span className="text-xl font-bold text-slate-200">Crop Video</span>
@@ -319,6 +321,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
               videoElement={videoElement || null}
               cropRegion={cropRegion}
               onCropChange={onCropChange}
+              aspectRatio={aspectRatio}
             />
             <div className="mt-6 flex justify-end">
               <Button
