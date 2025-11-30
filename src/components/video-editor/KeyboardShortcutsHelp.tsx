@@ -1,4 +1,5 @@
 import { HelpCircle } from "lucide-react";
+import { formatShortcut } from "@/utils/platformUtils";
 
 export function KeyboardShortcutsHelp() {
   return (
@@ -21,15 +22,15 @@ export function KeyboardShortcutsHelp() {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-slate-400">Delete Selected</span>
-            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">⌘ + D</kbd>
+            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{formatShortcut(['mod', 'D'])}</kbd>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-slate-400">Pan Timeline</span>
-            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">⇧ + ⌘ + Scroll</kbd>
+            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{formatShortcut(['shift', 'mod', 'Scroll'])}</kbd>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-slate-400">Zoom Timeline</span>
-            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">⌘ + Scroll</kbd>
+            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{formatShortcut(['mod', 'Scroll'])}</kbd>
           </div>
         </div>
       </div>

@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { type AspectRatio, getAspectRatioLabel } from "@/utils/aspectRatioUtils";
+import { formatShortcut } from "@/utils/platformUtils";
 
 const ZOOM_ROW_ID = "row-zoom";
 const TRIM_ROW_ID = "row-trim";
