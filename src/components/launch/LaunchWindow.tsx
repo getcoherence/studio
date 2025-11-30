@@ -118,6 +118,7 @@ export function LaunchWindow() {
           size="sm"
           className={`gap-1 text-white bg-transparent hover:bg-transparent px-0 flex-1 text-left text-xs ${styles.electronNoDrag}`}
           onClick={openSourceSelector}
+          disabled={recording}
         >
           <MdMonitor size={14} className="text-white" />
           {truncateText(selectedSource, 6)}
@@ -154,6 +155,7 @@ export function LaunchWindow() {
           size="sm"
           onClick={openVideoFile}
           className={`gap-1 text-white bg-transparent hover:bg-transparent px-0 flex-1 text-right text-xs ${styles.electronNoDrag} ${styles.folderButton}`}
+          disabled={recording}
         >
           <FaFolderMinus size={14} className="text-white" />
           <span className={styles.folderText}>Open</span>
