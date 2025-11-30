@@ -1,0 +1,189 @@
+import { Rnd } from "react-rnd";
+import type { AnnotationRegion } from "./types";
+import { cn } from "@/lib/utils";
+
+interface AnnotationOverlayProps {
+  annotation: AnnotationRegion;
+  isSelected: boolean;
+  containerWidth: number;
+  containerHeight: number;
+  onPositionChange: (id: string, position: { x: number; y: number }) => void;
+  onSizeChange: (id: string, size: { width: number; height: number }) => void;
+  onClick: (id: string) => void;
+}
+
+export function AnnotationOverlay({
+  annotation,
+  isSelected,
+  containerWidth,
+  containerHeight,
+  onPositionChange,
+  onSizeChange,
+  onClick,
+}: AnnotationOverlayProps) {
+  const x = (annotation.position.x / 100) * containerWidth;
+  const y = (annotation.position.y / 100) * containerHeight;
+  const width = (annotation.size.width / 100) * containerWidth;
+  const height = (annotation.size.height / 100) * containerHeight;
+
+  console.log('[AnnotationOverlay] Rendering:', {
+    id: annotation.id,
+    type: annotation.type,
+    content: annotation.content.substring(0, 30),
+    position: annotation.position,
+    size: annotation.size,
+    containerWidth,
+    containerHeight,
+    calculatedPixels: { x, y, width, height },
+    isSelected
+  });
+
+  const renderContent = () => {
+    switch (annotation.type) {
+      case 'text':
+        return (
+          <div
+            className="w-full h-full flex items-center p-2 overflow-hidden"
+            style={{
+              justifyContent: annotation.style.textAlign === 'left' ? 'flex-start' : 
+                            annotation.style.textAlign === 'right' ? 'flex-end' : 'center',
+              alignItems: 'center',
+            }}
+          >
+            <span
+              style={{
+                color: annotation.style.color,
+                backgroundColor: annotation.style.backgroundColor,
+                fontSize: `${annotation.style.fontSize}px`,
+                fontFamily: annotation.style.fontFamily,
+                fontWeight: annotation.style.fontWeight,
+                fontStyle: annotation.style.fontStyle,
+                textDecoration: annotation.style.textDecoration,
+                textAlign: annotation.style.textAlign,
+                wordBreak: 'break-word',
+                whiteSpace: 'pre-wrap',
+                textShadow: '0 2px 8px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.8)',
+                boxDecorationBreak: 'clone',
+                WebkitBoxDecorationBreak: 'clone',
+                padding: '0.1em 0.2em',
+                borderRadius: '4px',
+                lineHeight: '1.4',
+              }}
+            >
+              {annotation.content}
+            </span>
+          </div>
+        );
+
+
+
+      case 'image':
+        if (annotation.content && annotation.content.startsWith('data:image')) {
+          return (
+            <img
+              src={annotation.content}
+              alt="Annotation"
+              className="w-full h-full object-contain"
+              draggable={false}
+            />
+          );
+        }
+        return (
+          <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
+            No image
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Rnd
+      position={{ x, y }}
+      size={{ width, height }}
+      onDragStop={(_e, d) => {
+        const xPercent = (d.x / containerWidth) * 100;
+        const yPercent = (d.y / containerHeight) * 100;
+        onPositionChange(annotation.id, { x: xPercent, y: yPercent });
+      }}
+      onResizeStop={(_e, _direction, ref, _delta, position) => {
+        const xPercent = (position.x / containerWidth) * 100;
+        const yPercent = (position.y / containerHeight) * 100;
+        const widthPercent = (ref.offsetWidth / containerWidth) * 100;
+        const heightPercent = (ref.offsetHeight / containerHeight) * 100;
+        onPositionChange(annotation.id, { x: xPercent, y: yPercent });
+        onSizeChange(annotation.id, { width: widthPercent, height: heightPercent });
+      }}
+      onClick={() => onClick(annotation.id)}
+      bounds="parent"
+      className={cn(
+        "cursor-move transition-all",
+        isSelected && "ring-2 ring-[#34B27B] ring-offset-2 ring-offset-transparent"
+      )}
+      style={{
+        zIndex: 9999,
+        pointerEvents: isSelected ? 'auto' : 'none',
+        border: isSelected ? '2px solid rgba(52, 178, 123, 0.8)' : 'none',
+        backgroundColor: isSelected ? 'rgba(52, 178, 123, 0.1)' : 'transparent',
+        boxShadow: isSelected ? '0 0 0 1px rgba(52, 178, 123, 0.35)' : 'none',
+      }}
+      enableResizing={isSelected}
+      disableDragging={!isSelected}
+      resizeHandleStyles={{
+        topLeft: {
+          width: '12px',
+          height: '12px',
+          backgroundColor: isSelected ? 'white' : 'transparent',
+          border: isSelected ? '2px solid #34B27B' : 'none',
+          borderRadius: '50%',
+          left: '-6px',
+          top: '-6px',
+          cursor: 'nwse-resize',
+        },
+        topRight: {
+          width: '12px',
+          height: '12px',
+          backgroundColor: isSelected ? 'white' : 'transparent',
+          border: isSelected ? '2px solid #34B27B' : 'none',
+          borderRadius: '50%',
+          right: '-6px',
+          top: '-6px',
+          cursor: 'nesw-resize',
+        },
+        bottomLeft: {
+          width: '12px',
+          height: '12px',
+          backgroundColor: isSelected ? 'white' : 'transparent',
+          border: isSelected ? '2px solid #34B27B' : 'none',
+          borderRadius: '50%',
+          left: '-6px',
+          bottom: '-6px',
+          cursor: 'nesw-resize',
+        },
+        bottomRight: {
+          width: '12px',
+          height: '12px',
+          backgroundColor: isSelected ? 'white' : 'transparent',
+          border: isSelected ? '2px solid #34B27B' : 'none',
+          borderRadius: '50%',
+          right: '-6px',
+          bottom: '-6px',
+          cursor: 'nwse-resize',
+        },
+      }}
+    >
+      <div
+        className={cn(
+          "w-full h-full rounded-lg",
+          annotation.type === 'text' && "bg-transparent",
+          annotation.type === 'image' && "bg-transparent",
+          isSelected && "shadow-lg"
+        )}
+      >
+        {renderContent()}
+      </div>
+    </Rnd>
+  );
+}

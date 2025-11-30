@@ -2,7 +2,7 @@ import type React from "react";
 import { useEffect, useRef, useImperativeHandle, forwardRef, useState, useMemo, useCallback } from "react";
 import { getAssetPath } from "@/lib/assetPath";
 import { Application, Container, Sprite, Graphics, BlurFilter, Texture, VideoSource } from 'pixi.js';
-import { ZOOM_DEPTH_SCALES, type ZoomRegion, type ZoomFocus, type ZoomDepth, type TrimRegion } from "./types";
+import { ZOOM_DEPTH_SCALES, type ZoomRegion, type ZoomFocus, type ZoomDepth, type TrimRegion, type AnnotationRegion } from "./types";
 import { DEFAULT_FOCUS, SMOOTHING_FACTOR, MIN_DELTA } from "./videoPlayback/constants";
 import { clamp01 } from "./videoPlayback/mathUtils";
 import { findDominantRegion } from "./videoPlayback/zoomRegionUtils";
@@ -12,11 +12,13 @@ import { layoutVideoContent as layoutVideoContentUtil } from "./videoPlayback/la
 import { applyZoomTransform } from "./videoPlayback/zoomTransform";
 import { createVideoEventHandlers } from "./videoPlayback/videoEventHandlers";
 import { type AspectRatio, formatAspectRatioForCSS } from "@/utils/aspectRatioUtils";
+import { AnnotationOverlay } from "./AnnotationOverlay";
 
 interface VideoPlaybackProps {
   videoPath: string;
   onDurationChange: (duration: number) => void;
   onTimeUpdate: (time: number) => void;
+  currentTime: number;
   onPlayStateChange: (playing: boolean) => void;
   onError: (error: string) => void;
   wallpaper?: string;
@@ -34,6 +36,11 @@ interface VideoPlaybackProps {
   cropRegion?: import('./types').CropRegion;
   trimRegions?: TrimRegion[];
   aspectRatio: AspectRatio;
+  annotationRegions?: AnnotationRegion[];
+  selectedAnnotationId?: string | null;
+  onSelectAnnotation?: (id: string | null) => void;
+  onAnnotationPositionChange?: (id: string, position: { x: number; y: number }) => void;
+  onAnnotationSizeChange?: (id: string, size: { width: number; height: number }) => void;
 }
 
 export interface VideoPlaybackRef {
@@ -49,6 +56,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   videoPath,
   onDurationChange,
   onTimeUpdate,
+  currentTime,
   onPlayStateChange,
   onError,
   wallpaper,
@@ -66,6 +74,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   cropRegion,
   trimRegions = [],
   aspectRatio,
+  annotationRegions = [],
+  selectedAnnotationId,
+  onSelectAnnotation,
+  onAnnotationPositionChange,
+  onAnnotationSizeChange,
 }, ref) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -784,6 +797,25 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
             className="absolute rounded-md border border-[#34B27B]/80 bg-[#34B27B]/20 shadow-[0_0_0_1px_rgba(52,178,123,0.35)]"
             style={{ display: 'none', pointerEvents: 'none' }}
           />
+          {(() => {
+            const filtered = (annotationRegions || []).filter((annotation) => {
+              if (typeof annotation.startMs !== 'number' || typeof annotation.endMs !== 'number') return false;
+              const timeMs = Math.round(currentTime * 1000);
+              return timeMs >= annotation.startMs && timeMs <= annotation.endMs;
+            });
+            return filtered.map((annotation) => (
+              <AnnotationOverlay
+                key={annotation.id}
+                annotation={annotation}
+                isSelected={annotation.id === selectedAnnotationId}
+                containerWidth={overlayRef.current?.clientWidth || 800}
+                containerHeight={overlayRef.current?.clientHeight || 600}
+                onPositionChange={(id, position) => onAnnotationPositionChange?.(id, position)}
+                onSizeChange={(id, size) => onAnnotationSizeChange?.(id, size)}
+                onClick={(id) => onSelectAnnotation?.(id)}
+              />
+            ));
+          })()}
         </div>
       )}
       <video

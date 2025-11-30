@@ -19,11 +19,70 @@ export interface TrimRegion {
   endMs: number;
 }
 
+export type AnnotationType = 'text' | 'image';
+
+
+
+export interface AnnotationPosition {
+  x: number;
+  y: number;
+}
+
+export interface AnnotationSize {
+  width: number;
+  height: number;
+}
+
+export interface AnnotationTextStyle {
+  color: string;
+  backgroundColor: string;
+  fontSize: number; // pixels
+  fontFamily: string;
+  fontWeight: 'normal' | 'bold';
+  fontStyle: 'normal' | 'italic';
+  textDecoration: 'none' | 'underline';
+  textAlign: 'left' | 'center' | 'right';
+}
+
+export interface AnnotationRegion {
+  id: string;
+  startMs: number;
+  endMs: number;
+  type: AnnotationType;
+  content: string;
+  position: AnnotationPosition;
+  size: AnnotationSize;
+  style: AnnotationTextStyle;
+}
+
+export const DEFAULT_ANNOTATION_POSITION: AnnotationPosition = {
+  x: 50,
+  y: 50,
+};
+
+export const DEFAULT_ANNOTATION_SIZE: AnnotationSize = {
+  width: 30,
+  height: 20,
+};
+
+export const DEFAULT_ANNOTATION_STYLE: AnnotationTextStyle = {
+  color: '#ffffff',
+  backgroundColor: 'transparent',
+  fontSize: 32,
+  fontFamily: 'Inter',
+  fontWeight: 'bold',
+  fontStyle: 'normal',
+  textDecoration: 'none',
+  textAlign: 'center',
+};
+
+
+
 export interface CropRegion {
-  x: number; // 0-1 normalized
-  y: number; // 0-1 normalized
-  width: number; // 0-1 normalized
-  height: number; // 0-1 normalized
+  x: number; 
+  y: number; 
+  width: number; 
+  height: number; 
 }
 
 export const DEFAULT_CROP_REGION: CropRegion = {

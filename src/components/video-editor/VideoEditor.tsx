@@ -16,10 +16,14 @@ import {
   DEFAULT_ZOOM_DEPTH,
   clampFocusToDepth,
   DEFAULT_CROP_REGION,
+  DEFAULT_ANNOTATION_POSITION,
+  DEFAULT_ANNOTATION_SIZE,
+  DEFAULT_ANNOTATION_STYLE,
   type ZoomDepth,
   type ZoomFocus,
   type ZoomRegion,
   type TrimRegion,
+  type AnnotationRegion,
   type CropRegion,
 } from "./types";
 import { VideoExporter, type ExportProgress } from "@/lib/exporter";
@@ -46,6 +50,8 @@ export default function VideoEditor() {
   const [selectedZoomId, setSelectedZoomId] = useState<string | null>(null);
   const [trimRegions, setTrimRegions] = useState<TrimRegion[]>([]);
   const [selectedTrimId, setSelectedTrimId] = useState<string | null>(null);
+  const [annotationRegions, setAnnotationRegions] = useState<AnnotationRegion[]>([]);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -55,6 +61,7 @@ export default function VideoEditor() {
   const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
   const nextZoomIdRef = useRef(1);
   const nextTrimIdRef = useRef(1);
+  const nextAnnotationIdRef = useRef(1);
   const exporterRef = useRef<VideoExporter | null>(null);
 
   // Helper to convert file path to proper file:// URL
@@ -118,7 +125,18 @@ export default function VideoEditor() {
 
   const handleSelectTrim = useCallback((id: string | null) => {
     setSelectedTrimId(id);
-    if (id) setSelectedZoomId(null);
+    if (id) {
+      setSelectedZoomId(null);
+      setSelectedAnnotationId(null);
+    }
+  }, []);
+
+  const handleSelectAnnotation = useCallback((id: string | null) => {
+    setSelectedAnnotationId(id);
+    if (id) {
+      setSelectedZoomId(null);
+      setSelectedTrimId(null);
+    }
   }, []);
 
   const handleZoomAdded = useCallback((span: Span) => {
@@ -134,6 +152,7 @@ export default function VideoEditor() {
     setZoomRegions((prev) => [...prev, newRegion]);
     setSelectedZoomId(id);
     setSelectedTrimId(null);
+    setSelectedAnnotationId(null);
   }, []);
 
   const handleTrimAdded = useCallback((span: Span) => {
@@ -147,6 +166,7 @@ export default function VideoEditor() {
     setTrimRegions((prev) => [...prev, newRegion]);
     setSelectedTrimId(id);
     setSelectedZoomId(null);
+    setSelectedAnnotationId(null);
   }, []);
 
   const handleZoomSpanChange = useCallback((id: string, span: Span) => {
@@ -223,6 +243,109 @@ export default function VideoEditor() {
     }
   }, [selectedTrimId]);
 
+  const handleAnnotationAdded = useCallback((span: Span) => {
+    const id = `annotation-${nextAnnotationIdRef.current++}`;
+    const newRegion: AnnotationRegion = {
+      id,
+      startMs: Math.round(span.start),
+      endMs: Math.round(span.end),
+      type: 'text',
+      content: 'Enter text...',
+      position: { ...DEFAULT_ANNOTATION_POSITION },
+      size: { ...DEFAULT_ANNOTATION_SIZE },
+      style: { ...DEFAULT_ANNOTATION_STYLE },
+    };
+    console.log('Annotation region added:', newRegion);
+    setAnnotationRegions((prev) => [...prev, newRegion]);
+    setSelectedAnnotationId(id);
+    setSelectedZoomId(null);
+    setSelectedTrimId(null);
+  }, []);
+
+  const handleAnnotationSpanChange = useCallback((id: string, span: Span) => {
+    console.log('Annotation span changed:', { id, start: Math.round(span.start), end: Math.round(span.end) });
+    setAnnotationRegions((prev) =>
+      prev.map((region) =>
+        region.id === id
+          ? {
+              ...region,
+              startMs: Math.round(span.start),
+              endMs: Math.round(span.end),
+            }
+          : region,
+      ),
+    );
+  }, []);
+
+  const handleAnnotationDelete = useCallback((id: string) => {
+    console.log('Annotation region deleted:', id);
+    setAnnotationRegions((prev) => prev.filter((region) => region.id !== id));
+    if (selectedAnnotationId === id) {
+      setSelectedAnnotationId(null);
+    }
+  }, [selectedAnnotationId]);
+
+  const handleAnnotationContentChange = useCallback((id: string, content: string) => {
+    console.log('[VideoEditor] Annotation content changed:', { id, content });
+    setAnnotationRegions((prev) => {
+      const updated = prev.map((region) =>
+        region.id === id
+          ? { ...region, content }
+          : region,
+      );
+      console.log('[VideoEditor] Updated annotation regions:', updated);
+      return updated;
+    });
+  }, []);
+
+  const handleAnnotationTypeChange = useCallback((id: string, type: AnnotationRegion['type']) => {
+    console.log('[VideoEditor] Annotation type changed:', { id, type });
+    setAnnotationRegions((prev) => {
+      const updated = prev.map((region) =>
+        region.id === id
+          ? { 
+              ...region, 
+              type,
+              content: type === 'text' ? 'Enter text...' : ''
+            }
+          : region,
+      );
+      console.log('[VideoEditor] Updated annotation regions after type change:', updated);
+      return updated;
+    });
+  }, []);
+
+  const handleAnnotationStyleChange = useCallback((id: string, style: Partial<AnnotationRegion['style']>) => {
+    console.log('Annotation style changed:', { id, style });
+    setAnnotationRegions((prev) =>
+      prev.map((region) =>
+        region.id === id
+          ? { ...region, style: { ...region.style, ...style } }
+          : region,
+      ),
+    );
+  }, []);
+
+  const handleAnnotationPositionChange = useCallback((id: string, position: { x: number; y: number }) => {
+    setAnnotationRegions((prev) =>
+      prev.map((region) =>
+        region.id === id
+          ? { ...region, position }
+          : region,
+      ),
+    );
+  }, []);
+
+  const handleAnnotationSizeChange = useCallback((id: string, size: { width: number; height: number }) => {
+    setAnnotationRegions((prev) =>
+      prev.map((region) =>
+        region.id === id
+          ? { ...region, size }
+          : region,
+      ),
+    );
+  }, []);
+
   useEffect(() => {
     if (selectedZoomId && !zoomRegions.some((region) => region.id === selectedZoomId)) {
       setSelectedZoomId(null);
@@ -234,6 +357,12 @@ export default function VideoEditor() {
       setSelectedTrimId(null);
     }
   }, [selectedTrimId, trimRegions]);
+
+  useEffect(() => {
+    if (selectedAnnotationId && !annotationRegions.some((region) => region.id === selectedAnnotationId)) {
+      setSelectedAnnotationId(null);
+    }
+  }, [selectedAnnotationId, annotationRegions]);
 
   const handleExport = useCallback(async () => {
     if (!videoPath) {
@@ -433,6 +562,7 @@ export default function VideoEditor() {
                       videoPath={videoPath || ''}
                       onDurationChange={setDuration}
                       onTimeUpdate={setCurrentTime}
+                      currentTime={currentTime}
                       onPlayStateChange={setIsPlaying}
                       onError={setError}
                       wallpaper={wallpaper}
@@ -449,6 +579,11 @@ export default function VideoEditor() {
                       padding={padding}
                       cropRegion={cropRegion}
                       trimRegions={trimRegions}
+                      annotationRegions={annotationRegions}
+                      selectedAnnotationId={selectedAnnotationId}
+                      onSelectAnnotation={handleSelectAnnotation}
+                      onAnnotationPositionChange={handleAnnotationPositionChange}
+                      onAnnotationSizeChange={handleAnnotationSizeChange}
                     />
                   </div>
                 </div>
@@ -490,6 +625,12 @@ export default function VideoEditor() {
               onTrimDelete={handleTrimDelete}
               selectedTrimId={selectedTrimId}
               onSelectTrim={handleSelectTrim}
+              annotationRegions={annotationRegions}
+              onAnnotationAdded={handleAnnotationAdded}
+              onAnnotationSpanChange={handleAnnotationSpanChange}
+              onAnnotationDelete={handleAnnotationDelete}
+              selectedAnnotationId={selectedAnnotationId}
+              onSelectAnnotation={handleSelectAnnotation}
               aspectRatio={aspectRatio}
               onAspectRatioChange={setAspectRatio}
             />
@@ -521,6 +662,12 @@ export default function VideoEditor() {
           aspectRatio={aspectRatio}
           videoElement={videoPlaybackRef.current?.video || null}
           onExport={handleExport}
+          selectedAnnotationId={selectedAnnotationId}
+          annotationRegions={annotationRegions}
+          onAnnotationContentChange={handleAnnotationContentChange}
+          onAnnotationTypeChange={handleAnnotationTypeChange}
+          onAnnotationStyleChange={handleAnnotationStyleChange}
+          onAnnotationDelete={handleAnnotationDelete}
         />
       </div>
 

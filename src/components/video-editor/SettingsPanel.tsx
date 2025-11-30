@@ -11,9 +11,10 @@ import { hsvaToHex } from '@uiw/color-convert';
 import { Trash2, Download, Crop, X, Bug, Upload } from "lucide-react";
 import { GiHearts } from "react-icons/gi";
 import { toast } from "sonner";
-import type { ZoomDepth, CropRegion } from "./types";
+import type { ZoomDepth, CropRegion, AnnotationRegion, AnnotationType } from "./types";
 import { CropControl } from "./CropControl";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
+import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import { type AspectRatio } from "@/utils/aspectRatioUtils";
 
 const WALLPAPER_COUNT = 18;
@@ -67,6 +68,12 @@ interface SettingsPanelProps {
   aspectRatio: AspectRatio;
   videoElement?: HTMLVideoElement | null;
   onExport?: () => void;
+  selectedAnnotationId?: string | null;
+  annotationRegions?: AnnotationRegion[];
+  onAnnotationContentChange?: (id: string, content: string) => void;
+  onAnnotationTypeChange?: (id: string, type: AnnotationType) => void;
+  onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion['style']>) => void;
+  onAnnotationDelete?: (id: string) => void;
 }
 
 export default SettingsPanel;
@@ -80,7 +87,35 @@ const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
   { depth: 6, label: "5×" },
 ];
 
-export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, shadowIntensity = 0, onShadowChange, showBlur, onBlurChange, motionBlurEnabled = true, onMotionBlurChange, borderRadius = 0, onBorderRadiusChange, padding = 50, onPaddingChange, cropRegion, onCropChange, aspectRatio, videoElement, onExport }: SettingsPanelProps) {
+export function SettingsPanel({ 
+  selected, 
+  onWallpaperChange, 
+  selectedZoomDepth, 
+  onZoomDepthChange, 
+  selectedZoomId, 
+  onZoomDelete, 
+  shadowIntensity = 0, 
+  onShadowChange, 
+  showBlur, 
+  onBlurChange, 
+  motionBlurEnabled = true, 
+  onMotionBlurChange, 
+  borderRadius = 0, 
+  onBorderRadiusChange, 
+  padding = 50, 
+  onPaddingChange, 
+  cropRegion, 
+  onCropChange, 
+  aspectRatio, 
+  videoElement, 
+  onExport,
+  selectedAnnotationId,
+  annotationRegions = [],
+  onAnnotationContentChange,
+  onAnnotationTypeChange,
+  onAnnotationStyleChange,
+  onAnnotationDelete,
+}: SettingsPanelProps) {
   const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
   const [customImages, setCustomImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -155,6 +190,24 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
       onWallpaperChange(wallpaperPaths[0] || WALLPAPER_RELATIVE[0]);
     }
   };
+
+  // Find selected annotation
+  const selectedAnnotation = selectedAnnotationId 
+    ? annotationRegions.find(a => a.id === selectedAnnotationId)
+    : null;
+
+  // If an annotation is selected, show annotation settings instead
+  if (selectedAnnotation && onAnnotationContentChange && onAnnotationTypeChange && onAnnotationStyleChange && onAnnotationDelete) {
+    return (
+      <AnnotationSettingsPanel
+        annotation={selectedAnnotation}
+        onContentChange={(content) => onAnnotationContentChange(selectedAnnotation.id, content)}
+        onTypeChange={(type) => onAnnotationTypeChange(selectedAnnotation.id, type)}
+        onStyleChange={(style) => onAnnotationStyleChange(selectedAnnotation.id, style)}
+        onDelete={() => onAnnotationDelete(selectedAnnotation.id)}
+      />
+    );
+  }
 
   return (
     <div className="flex-[2] min-w-0 bg-[#09090b] border border-white/5 rounded-2xl p-4 flex flex-col shadow-xl h-full overflow-y-auto custom-scrollbar">

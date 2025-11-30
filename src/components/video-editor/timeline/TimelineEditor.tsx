@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTimelineContext } from "dnd-timeline";
 import { Button } from "@/components/ui/button";
-import { Plus, Scissors, ZoomIn, ChevronDown, Check } from "lucide-react";
+import { Plus, Scissors, ZoomIn, MessageSquare, ChevronDown, Check } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import TimelineWrapper from "./TimelineWrapper";
@@ -9,7 +9,7 @@ import Row from "./Row";
 import Item from "./Item";
 import KeyframeMarkers from "./KeyframeMarkers";
 import type { Range, Span } from "dnd-timeline";
-import type { ZoomRegion, TrimRegion } from "../types";
+import type { ZoomRegion, TrimRegion, AnnotationRegion } from "../types";
 import { v4 as uuidv4 } from 'uuid';
 import {
   DropdownMenu,
@@ -21,6 +21,7 @@ import { type AspectRatio, getAspectRatioLabel } from "@/utils/aspectRatioUtils"
 
 const ZOOM_ROW_ID = "row-zoom";
 const TRIM_ROW_ID = "row-trim";
+const ANNOTATION_ROW_ID = "row-annotation";
 const FALLBACK_RANGE_MS = 1000;
 const TARGET_MARKER_COUNT = 12;
 
@@ -34,13 +35,18 @@ interface TimelineEditorProps {
   onZoomDelete: (id: string) => void;
   selectedZoomId: string | null;
   onSelectZoom: (id: string | null) => void;
-  // Trim props
   trimRegions?: TrimRegion[];
   onTrimAdded?: (span: Span) => void;
   onTrimSpanChange?: (id: string, span: Span) => void;
   onTrimDelete?: (id: string) => void;
   selectedTrimId?: string | null;
   onSelectTrim?: (id: string | null) => void;
+  annotationRegions?: AnnotationRegion[];
+  onAnnotationAdded?: (span: Span) => void;
+  onAnnotationSpanChange?: (id: string, span: Span) => void;
+  onAnnotationDelete?: (id: string) => void;
+  selectedAnnotationId?: string | null;
+  onSelectAnnotation?: (id: string | null) => void;
   aspectRatio: AspectRatio;
   onAspectRatioChange: (aspectRatio: AspectRatio) => void;
 }
@@ -59,7 +65,7 @@ interface TimelineRenderItem {
   span: Span;
   label: string;
   zoomDepth?: number;
-  variant: 'zoom' | 'trim';
+  variant: 'zoom' | 'trim' | 'annotation';
 }
 
 const SCALE_CANDIDATES = [
@@ -318,8 +324,10 @@ function Timeline({
   onSeek,
   onSelectZoom,
   onSelectTrim,
+  onSelectAnnotation,
   selectedZoomId,
   selectedTrimId,
+  selectedAnnotationId,
 }: {
   items: TimelineRenderItem[];
   videoDurationMs: number;
@@ -328,8 +336,10 @@ function Timeline({
   onSeek?: (time: number) => void;
   onSelectZoom?: (id: string | null) => void;
   onSelectTrim?: (id: string | null) => void;
+  onSelectAnnotation?: (id: string | null) => void;
   selectedZoomId: string | null;
   selectedTrimId?: string | null;
+  selectedAnnotationId?: string | null;
 }) {
   const { setTimelineRef, style, sidebarWidth, range, pixelsToValue } = useTimelineContext();
 
@@ -340,6 +350,7 @@ function Timeline({
     // This is handled by event propagation - items stop propagation
     onSelectZoom?.(null);
     onSelectTrim?.(null);
+    onSelectAnnotation?.(null);
 
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left - sidebarWidth;
@@ -351,10 +362,11 @@ function Timeline({
     const timeInSeconds = absoluteMs / 1000;
     
     onSeek(timeInSeconds);
-  }, [onSeek, onSelectZoom, onSelectTrim, videoDurationMs, sidebarWidth, range.start, pixelsToValue]);
+  }, [onSeek, onSelectZoom, onSelectTrim, onSelectAnnotation, videoDurationMs, sidebarWidth, range.start, pixelsToValue]);
 
   const zoomItems = items.filter(item => item.rowId === ZOOM_ROW_ID);
   const trimItems = items.filter(item => item.rowId === TRIM_ROW_ID);
+  const annotationItems = items.filter(item => item.rowId === ANNOTATION_ROW_ID);
 
   return (
     <div
@@ -399,6 +411,22 @@ function Timeline({
           </Item>
         ))}
       </Row>
+
+      <Row id={ANNOTATION_ROW_ID}>
+        {annotationItems.map((item) => (
+          <Item
+            id={item.id}
+            key={item.id}
+            rowId={item.rowId}
+            span={item.span}
+            isSelected={item.id === selectedAnnotationId}
+            onSelect={() => onSelectAnnotation?.(item.id)}
+            variant="annotation"
+          >
+            {item.label}
+          </Item>
+        ))}
+      </Row>
     </div>
   );
 }
@@ -419,6 +447,12 @@ export default function TimelineEditor({
   onTrimDelete,
   selectedTrimId,
   onSelectTrim,
+  annotationRegions = [],
+  onAnnotationAdded,
+  onAnnotationSpanChange,
+  onAnnotationDelete,
+  selectedAnnotationId,
+  onSelectAnnotation,
   aspectRatio,
   onAspectRatioChange,
 }: TimelineEditorProps) {
@@ -463,6 +497,12 @@ export default function TimelineEditor({
     onSelectTrim(null);
   }, [selectedTrimId, onTrimDelete, onSelectTrim]);
 
+  const deleteSelectedAnnotation = useCallback(() => {
+    if (!selectedAnnotationId || !onAnnotationDelete || !onSelectAnnotation) return;
+    onAnnotationDelete(selectedAnnotationId);
+    onSelectAnnotation(null);
+  }, [selectedAnnotationId, onAnnotationDelete, onSelectAnnotation]);
+
   useEffect(() => {
     setRange(createInitialRange(totalMs));
   }, [totalMs]);
@@ -495,12 +535,13 @@ export default function TimelineEditor({
         onTrimSpanChange?.(region.id, { start: normalizedStart, end: normalizedEnd });
       }
     });
-  }, [zoomRegions, trimRegions, totalMs, safeMinDurationMs, onZoomSpanChange, onTrimSpanChange]);
+  }, [zoomRegions, trimRegions, annotationRegions, totalMs, safeMinDurationMs, onZoomSpanChange, onTrimSpanChange, onAnnotationSpanChange]);
 
   const hasOverlap = useCallback((newSpan: Span, excludeId?: string): boolean => {
     // Determine which row the item belongs to
     const isZoomItem = zoomRegions.some(r => r.id === excludeId);
     const isTrimItem = trimRegions.some(r => r.id === excludeId);
+    const isAnnotationItem = annotationRegions.some(r => r.id === excludeId);
 
     // Helper to check overlap against a specific set of regions
     const checkOverlap = (regions: (ZoomRegion | TrimRegion)[]) => {
@@ -522,8 +563,12 @@ export default function TimelineEditor({
     if (isTrimItem) {
       return checkOverlap(trimRegions);
     }
+
+    if (isAnnotationItem) {
+      return checkOverlap(annotationRegions);
+    }
     return false;
-  }, [zoomRegions, trimRegions]);
+  }, [zoomRegions, trimRegions, annotationRegions]);
 
   const handleAddZoom = useCallback(() => {
     if (!videoDuration || videoDuration === 0 || totalMs === 0) {
@@ -585,10 +630,35 @@ export default function TimelineEditor({
     onTrimAdded({ start: startPos, end: startPos + actualDuration });
   }, [videoDuration, totalMs, currentTimeMs, trimRegions, onTrimAdded]);
 
-  // Listen for F key to add keyframe, Z key to add zoom, T key to add trim, Ctrl+D to remove selected keyframe or zoom item
+  const handleAddAnnotation = useCallback(() => {
+    if (!videoDuration || videoDuration === 0 || totalMs === 0 || !onAnnotationAdded) {
+      return;
+    }
+
+    const defaultDuration = Math.min(1000, totalMs);
+    if (defaultDuration <= 0) {
+      return;
+    }
+
+    const startPos = Math.max(0, Math.min(currentTimeMs, totalMs));
+    const sorted = [...annotationRegions].sort((a, b) => a.startMs - b.startMs);
+    const nextRegion = sorted.find(region => region.startMs > startPos);
+    const gapToNext = nextRegion ? nextRegion.startMs - startPos : totalMs - startPos;
+
+    const isOverlapping = sorted.some(region => startPos >= region.startMs && startPos < region.endMs);
+    if (isOverlapping || gapToNext <= 0) {
+      toast.error("Cannot place annotation here", {
+        description: "Annotation already exists at this location or not enough space available.",
+      });
+      return;
+    }
+
+    const actualDuration = Math.min(1000, gapToNext);
+    onAnnotationAdded({ start: startPos, end: startPos + actualDuration });
+  }, [videoDuration, totalMs, currentTimeMs, annotationRegions, onAnnotationAdded]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
@@ -602,6 +672,9 @@ export default function TimelineEditor({
       if (e.key === 't' || e.key === 'T') {
         handleAddTrim();
       }
+      if (e.key === 'a' || e.key === 'A') {
+        handleAddAnnotation();
+      }
       if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
         if (selectedKeyframeId) {
           deleteSelectedKeyframe();
@@ -609,12 +682,14 @@ export default function TimelineEditor({
           deleteSelectedZoom();
         } else if (selectedTrimId) {
           deleteSelectedTrim();
+        } else if (selectedAnnotationId) {
+          deleteSelectedAnnotation();
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [addKeyframe, handleAddZoom, handleAddTrim, deleteSelectedKeyframe, deleteSelectedZoom, deleteSelectedTrim, selectedKeyframeId, selectedZoomId, selectedTrimId]);
+  }, [addKeyframe, handleAddZoom, handleAddTrim, handleAddAnnotation, deleteSelectedKeyframe, deleteSelectedZoom, deleteSelectedTrim, deleteSelectedAnnotation, selectedKeyframeId, selectedZoomId, selectedTrimId, selectedAnnotationId]);
 
   const clampedRange = useMemo<Range>(() => {
     if (totalMs === 0) {
@@ -645,8 +720,16 @@ export default function TimelineEditor({
       variant: 'trim',
     }));
 
-    return [...zooms, ...trims];
-  }, [zoomRegions, trimRegions]);
+    const annotations: TimelineRenderItem[] = annotationRegions.map((region, index) => ({
+      id: region.id,
+      rowId: ANNOTATION_ROW_ID,
+      span: { start: region.startMs, end: region.endMs },
+      label: `Note ${index + 1}`,
+      variant: 'annotation',
+    }));
+
+    return [...zooms, ...trims, ...annotations];
+  }, [zoomRegions, trimRegions, annotationRegions]);
 
   const handleItemSpanChange = useCallback((id: string, span: Span) => {
     // Check if it's a zoom or trim item
@@ -654,8 +737,10 @@ export default function TimelineEditor({
       onZoomSpanChange(id, span);
     } else if (trimRegions.some(r => r.id === id)) {
       onTrimSpanChange?.(id, span);
+    } else if (annotationRegions.some(r => r.id === id)) {
+      onAnnotationSpanChange?.(id, span);
     }
-  }, [zoomRegions, trimRegions, onZoomSpanChange, onTrimSpanChange]);
+  }, [zoomRegions, trimRegions, annotationRegions, onZoomSpanChange, onTrimSpanChange, onAnnotationSpanChange]);
 
   if (!videoDuration || videoDuration === 0) {
     return (
@@ -692,6 +777,15 @@ export default function TimelineEditor({
             title="Add Trim (T)"
           >
             <Scissors className="w-4 h-4" />
+          </Button>
+          <Button
+            onClick={handleAddAnnotation}
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-slate-400 hover:text-[#B4A046] hover:bg-[#B4A046]/10 transition-all"
+            title="Add Annotation (A)"
+          >
+            <MessageSquare className="w-4 h-4" />
           </Button>
         </div>
         <div className="flex items-center gap-2">
@@ -758,8 +852,10 @@ export default function TimelineEditor({
             onSeek={onSeek}
             onSelectZoom={onSelectZoom}
             onSelectTrim={onSelectTrim}
+            onSelectAnnotation={onSelectAnnotation}
             selectedZoomId={selectedZoomId}
             selectedTrimId={selectedTrimId}
+            selectedAnnotationId={selectedAnnotationId}
           />
         </TimelineWrapper>
       </div>
