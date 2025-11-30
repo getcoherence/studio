@@ -482,12 +482,6 @@ export class FrameRenderer {
     return this.compositeCanvas;
   }
 
-  updateConfig(config: Partial<FrameRenderConfig>): void {
-    this.config = { ...this.config, ...config };
-    if (config.wallpaper) {
-      this.setupBackground();
-    }
-  }
 
   destroy(): void {
     if (this.videoSprite) {
