@@ -688,8 +688,7 @@ export default function TimelineEditor({
             onSelectAnnotation?.(overlapping[nextIndex].id);
           }
         }
-      }
-      
+      }    
       if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
         if (selectedKeyframeId) {
           deleteSelectedKeyframe();
@@ -743,7 +742,7 @@ export default function TimelineEditor({
         const preview = region.content.trim() || 'Empty text';
         label = preview.length > 20 ? `${preview.substring(0, 20)}...` : preview;
       } else if (region.type === 'image') {
-        label = '🖼️ Image';
+        label = 'Image';
       } else {
         label = 'Annotation';
       }

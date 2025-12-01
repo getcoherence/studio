@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Rnd } from "react-rnd";
 import type { AnnotationRegion } from "./types";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,8 @@ export function AnnotationOverlay({
     calculatedPixels: { x, y, width, height },
     isSelected
   });
+
+  const isDraggingRef = useRef(false);
 
   const renderContent = () => {
     switch (annotation.type) {
@@ -107,10 +110,18 @@ export function AnnotationOverlay({
     <Rnd
       position={{ x, y }}
       size={{ width, height }}
+      onDragStart={() => {
+        isDraggingRef.current = true;
+      }}
       onDragStop={(_e, d) => {
         const xPercent = (d.x / containerWidth) * 100;
         const yPercent = (d.y / containerHeight) * 100;
         onPositionChange(annotation.id, { x: xPercent, y: yPercent });
+        
+        // Reset dragging flag after a short delay to prevent click event
+        setTimeout(() => {
+          isDraggingRef.current = false;
+        }, 100);
       }}
       onResizeStop={(_e, _direction, ref, _delta, position) => {
         const xPercent = (position.x / containerWidth) * 100;
@@ -120,7 +131,10 @@ export function AnnotationOverlay({
         onPositionChange(annotation.id, { x: xPercent, y: yPercent });
         onSizeChange(annotation.id, { width: widthPercent, height: heightPercent });
       }}
-      onClick={() => onClick(annotation.id)}
+      onClick={() => {
+        if (isDraggingRef.current) return;
+        onClick(annotation.id);
+      }}
       bounds="parent"
       className={cn(
         "cursor-move transition-all",

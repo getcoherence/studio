@@ -32,7 +32,8 @@ export default function Item({
   isSelected = false, 
   onSelect, 
   zoomDepth = 1,
-  variant = 'zoom' 
+  variant = 'zoom',
+  children
 }: ItemProps) {
   const { setNodeRef, attributes, listeners, itemStyle, itemContentStyle } = useItem({
     id,
@@ -107,7 +108,7 @@ export default function Item({
               <>
                 <MessageSquare className="w-3.5 h-3.5" />
                 <span className="text-[11px] font-semibold tracking-tight">
-                  Note
+                  {children}
                 </span>
               </>
             )}

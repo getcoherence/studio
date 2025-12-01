@@ -800,6 +800,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
           {(() => {
             const filtered = (annotationRegions || []).filter((annotation) => {
               if (typeof annotation.startMs !== 'number' || typeof annotation.endMs !== 'number') return false;
+              
+              if (annotation.id === selectedAnnotationId) return true;
+              
               const timeMs = Math.round(currentTime * 1000);
               return timeMs >= annotation.startMs && timeMs <= annotation.endMs;
             });

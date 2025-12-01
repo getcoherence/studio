@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Trash2, Type, Image as ImageIcon, Upload, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, ChevronDown } from "lucide-react";
+import { Trash2, Type, Image as ImageIcon, Upload, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, ChevronDown, Info } from "lucide-react";
 import { toast } from "sonner";
 import Colorful from '@uiw/react-color-colorful';
 import { hsvaToHex, hexToHsva } from '@uiw/color-convert';
@@ -351,6 +351,18 @@ export function AnnotationSettingsPanel({
           <Trash2 className="w-4 h-4" />
           Delete Annotation
         </Button>
+
+        <div className="mt-6 p-3 bg-white/5 rounded-lg border border-white/5">
+          <div className="flex items-center gap-2 mb-2 text-slate-300">
+            <Info className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">Shortcuts & Tips</span>
+          </div>
+          <ul className="text-[10px] text-slate-400 space-y-1.5 list-disc pl-3 leading-relaxed">
+            <li>Move playhead to overlapping annotation section and select an item.</li>
+            <li>Use <kbd className="px-1 py-0.5 bg-white/10 rounded text-slate-300 font-mono">Tab</kbd> to cycle through overlapping items.</li>
+            <li>Use <kbd className="px-1 py-0.5 bg-white/10 rounded text-slate-300 font-mono">Shift+Tab</kbd> to cycle backwards.</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
