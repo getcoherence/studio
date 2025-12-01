@@ -48,6 +48,7 @@ export interface VideoPlaybackRef {
   app: Application | null;
   videoSprite: Sprite | null;
   videoContainer: Container | null;
+  containerRef: React.RefObject<HTMLDivElement>;
   play: () => Promise<void>;
   pause: () => void;
 }
@@ -209,15 +210,13 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
     app: appRef.current,
     videoSprite: videoSpriteRef.current,
     videoContainer: videoContainerRef.current,
+    containerRef,
     play: async () => {
-      const video = videoRef.current;
-      if (!video) {
-        allowPlaybackRef.current = false;
-        return;
-      }
-      allowPlaybackRef.current = true;
+      const vid = videoRef.current;
+      if (!vid) return;
       try {
-        await video.play();
+        allowPlaybackRef.current = true;
+        await vid.play();
       } catch (error) {
         allowPlaybackRef.current = false;
         throw error;

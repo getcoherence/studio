@@ -151,7 +151,6 @@ export default function VideoEditor() {
       depth: DEFAULT_ZOOM_DEPTH,
       focus: { cx: 0.5, cy: 0.5 },
     };
-    console.log('Zoom region added:', newRegion);
     setZoomRegions((prev) => [...prev, newRegion]);
     setSelectedZoomId(id);
     setSelectedTrimId(null);
@@ -165,7 +164,6 @@ export default function VideoEditor() {
       startMs: Math.round(span.start),
       endMs: Math.round(span.end),
     };
-    console.log('Trim region added:', newRegion);
     setTrimRegions((prev) => [...prev, newRegion]);
     setSelectedTrimId(id);
     setSelectedZoomId(null);
@@ -173,7 +171,6 @@ export default function VideoEditor() {
   }, []);
 
   const handleZoomSpanChange = useCallback((id: string, span: Span) => {
-    console.log('Zoom span changed:', { id, start: Math.round(span.start), end: Math.round(span.end) });
     setZoomRegions((prev) =>
       prev.map((region) =>
         region.id === id
@@ -188,7 +185,6 @@ export default function VideoEditor() {
   }, []);
 
   const handleTrimSpanChange = useCallback((id: string, span: Span) => {
-    console.log('Trim span changed:', { id, start: Math.round(span.start), end: Math.round(span.end) });
     setTrimRegions((prev) =>
       prev.map((region) =>
         region.id === id
@@ -231,7 +227,6 @@ export default function VideoEditor() {
   }, [selectedZoomId]);
 
   const handleZoomDelete = useCallback((id: string) => {
-    console.log('Zoom region deleted:', id);
     setZoomRegions((prev) => prev.filter((region) => region.id !== id));
     if (selectedZoomId === id) {
       setSelectedZoomId(null);
@@ -239,7 +234,6 @@ export default function VideoEditor() {
   }, [selectedZoomId]);
 
   const handleTrimDelete = useCallback((id: string) => {
-    console.log('Trim region deleted:', id);
     setTrimRegions((prev) => prev.filter((region) => region.id !== id));
     if (selectedTrimId === id) {
       setSelectedTrimId(null);
@@ -260,7 +254,6 @@ export default function VideoEditor() {
       style: { ...DEFAULT_ANNOTATION_STYLE },
       zIndex,
     };
-    console.log('Annotation region added:', newRegion);
     setAnnotationRegions((prev) => [...prev, newRegion]);
     setSelectedAnnotationId(id);
     setSelectedZoomId(null);
@@ -268,7 +261,6 @@ export default function VideoEditor() {
   }, []);
 
   const handleAnnotationSpanChange = useCallback((id: string, span: Span) => {
-    console.log('Annotation span changed:', { id, start: Math.round(span.start), end: Math.round(span.end) });
     setAnnotationRegions((prev) =>
       prev.map((region) =>
         region.id === id
@@ -283,7 +275,6 @@ export default function VideoEditor() {
   }, []);
 
   const handleAnnotationDelete = useCallback((id: string) => {
-    console.log('Annotation region deleted:', id);
     setAnnotationRegions((prev) => prev.filter((region) => region.id !== id));
     if (selectedAnnotationId === id) {
       setSelectedAnnotationId(null);
@@ -291,7 +282,6 @@ export default function VideoEditor() {
   }, [selectedAnnotationId]);
 
   const handleAnnotationContentChange = useCallback((id: string, content: string) => {
-    console.log('[VideoEditor] Annotation content changed:', { id, content });
     setAnnotationRegions((prev) => {
       const updated = prev.map((region) => {
         if (region.id !== id) return region;
@@ -305,13 +295,11 @@ export default function VideoEditor() {
           return { ...region, content };
         }
       });
-      console.log('[VideoEditor] Updated annotation regions:', updated);
       return updated;
     });
-  }, []);
+  }, []);;
 
   const handleAnnotationTypeChange = useCallback((id: string, type: AnnotationRegion['type']) => {
-    console.log('[VideoEditor] Annotation type changed:', { id, type });
     setAnnotationRegions((prev) => {
       const updated = prev.map((region) => {
         if (region.id !== id) return region;
@@ -332,13 +320,11 @@ export default function VideoEditor() {
         
         return updatedRegion;
       });
-      console.log('[VideoEditor] Updated annotation regions after type change:', updated);
       return updated;
     });
   }, []);
 
   const handleAnnotationStyleChange = useCallback((id: string, style: Partial<AnnotationRegion['style']>) => {
-    console.log('Annotation style changed:', { id, style });
     setAnnotationRegions((prev) =>
       prev.map((region) =>
         region.id === id
@@ -349,7 +335,6 @@ export default function VideoEditor() {
   }, []);
 
   const handleAnnotationFigureDataChange = useCallback((id: string, figureData: FigureData) => {
-    console.log('Annotation figure data changed:', { id, figureData });
     setAnnotationRegions((prev) =>
       prev.map((region) =>
         region.id === id
@@ -500,6 +485,15 @@ export default function VideoEditor() {
         bitrate = 80_000_000;
       }
 
+      // Get preview CONTAINER dimensions for scaling
+      // Annotations render in HTML overlay matching container, not PixiJS canvas
+      const playbackRef = videoPlaybackRef.current;
+      const containerElement = playbackRef?.containerRef?.current;
+      const previewWidth = containerElement?.clientWidth || 1920;
+      const previewHeight = containerElement?.clientHeight || 1080;
+
+
+
       const exporter = new VideoExporter({
         videoUrl: videoPath,
         width: exportWidth,
@@ -517,6 +511,9 @@ export default function VideoEditor() {
         borderRadius,
         padding,
         cropRegion,
+        annotationRegions,
+        previewWidth,
+        previewHeight,
         onProgress: (progress: ExportProgress) => {
           setExportProgress(progress);
         },
@@ -557,7 +554,7 @@ export default function VideoEditor() {
       setIsExporting(false);
       exporterRef.current = null;
     }
-  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, borderRadius, padding, cropRegion, isPlaying, aspectRatio]);
+  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, borderRadius, padding, cropRegion, annotationRegions, isPlaying, aspectRatio]);
 
   const handleCancelExport = useCallback(() => {
     if (exporterRef.current) {

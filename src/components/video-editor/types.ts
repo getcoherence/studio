@@ -21,19 +21,12 @@ export interface TrimRegion {
 
 export type AnnotationType = 'text' | 'image' | 'figure';
 
-export type FigureType = 'arrow' | 'shape' | 'emoji';
 export type ArrowDirection = 'up' | 'down' | 'left' | 'right' | 'up-right' | 'up-left' | 'down-right' | 'down-left';
-export type ShapeType = 'circle' | 'square' | 'rectangle' | 'triangle' | 'star' | 'heart';
 
 export interface FigureData {
-  figureType: FigureType;
-  arrowDirection?: ArrowDirection;
-  shapeType?: ShapeType;
-  emoji?: string;
-  emojiSize?: number;
+  arrowDirection: ArrowDirection;
   color: string;
   strokeWidth: number;
-  filled: boolean;
 }
 
 export interface AnnotationPosition {
@@ -94,12 +87,9 @@ export const DEFAULT_ANNOTATION_STYLE: AnnotationTextStyle = {
 };
 
 export const DEFAULT_FIGURE_DATA: FigureData = {
-  figureType: 'arrow',
   arrowDirection: 'right',
   color: '#34B27B',
   strokeWidth: 4,
-  filled: true,
-  emojiSize: 64,
 };
 
 
