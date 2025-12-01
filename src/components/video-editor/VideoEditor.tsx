@@ -62,6 +62,7 @@ export default function VideoEditor() {
   const nextZoomIdRef = useRef(1);
   const nextTrimIdRef = useRef(1);
   const nextAnnotationIdRef = useRef(1);
+  const nextAnnotationZIndexRef = useRef(1); // Track z-index for stacking order
   const exporterRef = useRef<VideoExporter | null>(null);
 
   // Helper to convert file path to proper file:// URL
@@ -245,6 +246,7 @@ export default function VideoEditor() {
 
   const handleAnnotationAdded = useCallback((span: Span) => {
     const id = `annotation-${nextAnnotationIdRef.current++}`;
+    const zIndex = nextAnnotationZIndexRef.current++; // Assign z-index based on creation order
     const newRegion: AnnotationRegion = {
       id,
       startMs: Math.round(span.start),
@@ -254,6 +256,7 @@ export default function VideoEditor() {
       position: { ...DEFAULT_ANNOTATION_POSITION },
       size: { ...DEFAULT_ANNOTATION_SIZE },
       style: { ...DEFAULT_ANNOTATION_STYLE },
+      zIndex,
     };
     console.log('Annotation region added:', newRegion);
     setAnnotationRegions((prev) => [...prev, newRegion]);

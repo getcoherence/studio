@@ -803,7 +803,27 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
               const timeMs = Math.round(currentTime * 1000);
               return timeMs >= annotation.startMs && timeMs <= annotation.endMs;
             });
-            return filtered.map((annotation) => (
+            
+            // Sort by z-index (lowest to highest) so higher z-index renders on top
+            const sorted = [...filtered].sort((a, b) => a.zIndex - b.zIndex);
+            
+            // Handle click-through cycling: when clicking same annotation, cycle to next
+            const handleAnnotationClick = (clickedId: string) => {
+              if (!onSelectAnnotation) return;
+              
+              // If clicking on already selected annotation and there are multiple overlapping
+              if (clickedId === selectedAnnotationId && sorted.length > 1) {
+                // Find current index and cycle to next
+                const currentIndex = sorted.findIndex(a => a.id === clickedId);
+                const nextIndex = (currentIndex + 1) % sorted.length;
+                onSelectAnnotation(sorted[nextIndex].id);
+              } else {
+                // First click or clicking different annotation
+                onSelectAnnotation(clickedId);
+              }
+            };
+            
+            return sorted.map((annotation) => (
               <AnnotationOverlay
                 key={annotation.id}
                 annotation={annotation}
@@ -812,7 +832,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
                 containerHeight={overlayRef.current?.clientHeight || 600}
                 onPositionChange={(id, position) => onAnnotationPositionChange?.(id, position)}
                 onSizeChange={(id, size) => onAnnotationSizeChange?.(id, size)}
-                onClick={(id) => onSelectAnnotation?.(id)}
+                onClick={handleAnnotationClick}
+                zIndex={annotation.zIndex}
+                isSelectedBoost={annotation.id === selectedAnnotationId}
               />
             ));
           })()}

@@ -543,6 +543,10 @@ export default function TimelineEditor({
     const isTrimItem = trimRegions.some(r => r.id === excludeId);
     const isAnnotationItem = annotationRegions.some(r => r.id === excludeId);
 
+    if (isAnnotationItem) {
+      return false;
+    }
+
     // Helper to check overlap against a specific set of regions
     const checkOverlap = (regions: (ZoomRegion | TrimRegion)[]) => {
       return regions.some((region) => {
@@ -564,9 +568,6 @@ export default function TimelineEditor({
       return checkOverlap(trimRegions);
     }
 
-    if (isAnnotationItem) {
-      return checkOverlap(annotationRegions);
-    }
     return false;
   }, [zoomRegions, trimRegions, annotationRegions]);
 
@@ -640,22 +641,12 @@ export default function TimelineEditor({
       return;
     }
 
+    // Multiple annotations can exist at the same timestamp
     const startPos = Math.max(0, Math.min(currentTimeMs, totalMs));
-    const sorted = [...annotationRegions].sort((a, b) => a.startMs - b.startMs);
-    const nextRegion = sorted.find(region => region.startMs > startPos);
-    const gapToNext = nextRegion ? nextRegion.startMs - startPos : totalMs - startPos;
-
-    const isOverlapping = sorted.some(region => startPos >= region.startMs && startPos < region.endMs);
-    if (isOverlapping || gapToNext <= 0) {
-      toast.error("Cannot place annotation here", {
-        description: "Annotation already exists at this location or not enough space available.",
-      });
-      return;
-    }
-
-    const actualDuration = Math.min(1000, gapToNext);
-    onAnnotationAdded({ start: startPos, end: startPos + actualDuration });
-  }, [videoDuration, totalMs, currentTimeMs, annotationRegions, onAnnotationAdded]);
+    const endPos = Math.min(startPos + defaultDuration, totalMs);
+    
+    onAnnotationAdded({ start: startPos, end: endPos });
+  }, [videoDuration, totalMs, currentTimeMs, onAnnotationAdded]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -675,6 +666,30 @@ export default function TimelineEditor({
       if (e.key === 'a' || e.key === 'A') {
         handleAddAnnotation();
       }
+      
+      // Tab: Cycle through overlapping annotations at current time
+      if (e.key === 'Tab' && annotationRegions.length > 0) {
+        const currentTimeMs = Math.round(currentTime * 1000);
+        const overlapping = annotationRegions
+          .filter(a => currentTimeMs >= a.startMs && currentTimeMs <= a.endMs)
+          .sort((a, b) => a.zIndex - b.zIndex); // Sort by z-index
+        
+        if (overlapping.length > 0) {
+          e.preventDefault(); 
+          
+          if (!selectedAnnotationId || !overlapping.some(a => a.id === selectedAnnotationId)) {
+            onSelectAnnotation?.(overlapping[0].id);
+          } else {
+            // Cycle to next annotation
+            const currentIndex = overlapping.findIndex(a => a.id === selectedAnnotationId);
+            const nextIndex = e.shiftKey 
+              ? (currentIndex - 1 + overlapping.length) % overlapping.length // Shift+Tab = backward
+              : (currentIndex + 1) % overlapping.length; // Tab = forward
+            onSelectAnnotation?.(overlapping[nextIndex].id);
+          }
+        }
+      }
+      
       if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
         if (selectedKeyframeId) {
           deleteSelectedKeyframe();
@@ -689,7 +704,7 @@ export default function TimelineEditor({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [addKeyframe, handleAddZoom, handleAddTrim, handleAddAnnotation, deleteSelectedKeyframe, deleteSelectedZoom, deleteSelectedTrim, deleteSelectedAnnotation, selectedKeyframeId, selectedZoomId, selectedTrimId, selectedAnnotationId]);
+  }, [addKeyframe, handleAddZoom, handleAddTrim, handleAddAnnotation, deleteSelectedKeyframe, deleteSelectedZoom, deleteSelectedTrim, deleteSelectedAnnotation, selectedKeyframeId, selectedZoomId, selectedTrimId, selectedAnnotationId, annotationRegions, currentTime, onSelectAnnotation]);
 
   const clampedRange = useMemo<Range>(() => {
     if (totalMs === 0) {
@@ -720,13 +735,27 @@ export default function TimelineEditor({
       variant: 'trim',
     }));
 
-    const annotations: TimelineRenderItem[] = annotationRegions.map((region, index) => ({
-      id: region.id,
-      rowId: ANNOTATION_ROW_ID,
-      span: { start: region.startMs, end: region.endMs },
-      label: `Note ${index + 1}`,
-      variant: 'annotation',
-    }));
+    const annotations: TimelineRenderItem[] = annotationRegions.map((region) => {
+      let label: string;
+      
+      if (region.type === 'text') {
+        // Show text preview
+        const preview = region.content.trim() || 'Empty text';
+        label = preview.length > 20 ? `${preview.substring(0, 20)}...` : preview;
+      } else if (region.type === 'image') {
+        label = '🖼️ Image';
+      } else {
+        label = 'Annotation';
+      }
+      
+      return {
+        id: region.id,
+        rowId: ANNOTATION_ROW_ID,
+        span: { start: region.startMs, end: region.endMs },
+        label,
+        variant: 'annotation',
+      };
+    });
 
     return [...zooms, ...trims, ...annotations];
   }, [zoomRegions, trimRegions, annotationRegions]);

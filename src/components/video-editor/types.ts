@@ -53,6 +53,7 @@ export interface AnnotationRegion {
   position: AnnotationPosition;
   size: AnnotationSize;
   style: AnnotationTextStyle;
+  zIndex: number;
 }
 
 export const DEFAULT_ANNOTATION_POSITION: AnnotationPosition = {
