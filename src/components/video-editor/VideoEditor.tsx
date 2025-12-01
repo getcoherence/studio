@@ -374,6 +374,23 @@ export default function VideoEditor() {
         }
         e.preventDefault();
       }
+
+      if (e.key === ' ' || e.code === 'Space') {
+        // Allow space only in inputs/textareas
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+          return;
+        }
+        e.preventDefault();
+        
+        const playback = videoPlaybackRef.current;
+        if (playback?.video) {
+          if (playback.video.paused) {
+            playback.play().catch(console.error);
+          } else {
+            playback.pause();
+          }
+        }
+      }
     };
     
     window.addEventListener('keydown', handleKeyDown, { capture: true });

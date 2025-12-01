@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTimelineContext } from "dnd-timeline";
 import { Button } from "@/components/ui/button";
 import { Plus, Scissors, ZoomIn, MessageSquare, ChevronDown, Check } from "lucide-react";
@@ -155,13 +155,50 @@ function formatTimeLabel(milliseconds: number, intervalMs: number) {
 
 function PlaybackCursor({ 
   currentTimeMs, 
-  videoDurationMs 
+  videoDurationMs,
+  onSeek,
+  timelineRef,
 }: { 
   currentTimeMs: number; 
   videoDurationMs: number;
+  onSeek?: (time: number) => void;
+  timelineRef: React.RefObject<HTMLDivElement>;
 }) {
-  const { sidebarWidth, direction, range, valueToPixels } = useTimelineContext();
+  const { sidebarWidth, direction, range, valueToPixels, pixelsToValue } = useTimelineContext();
   const sideProperty = direction === "rtl" ? "right" : "left";
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!timelineRef.current || !onSeek) return;
+      
+      const rect = timelineRef.current.getBoundingClientRect();
+      const clickX = e.clientX - rect.left - sidebarWidth;
+      
+      // Allow dragging outside to 0 or max, but clamp the value
+      const relativeMs = pixelsToValue(clickX);
+      const absoluteMs = Math.max(0, Math.min(range.start + relativeMs, videoDurationMs));
+      
+      onSeek(absoluteMs / 1000);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.body.style.cursor = '';
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = 'ew-resize';
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+    };
+  }, [isDragging, onSeek, timelineRef, sidebarWidth, range.start, videoDurationMs, pixelsToValue]);
 
   if (videoDurationMs <= 0 || currentTimeMs < 0) {
     return null;
@@ -177,22 +214,27 @@ function PlaybackCursor({
 
   return (
     <div
-      className="absolute top-0 bottom-0 pointer-events-none z-50"
+      className="absolute top-0 bottom-0 z-50 group/cursor"
       style={{
         [sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth - 1}px`,
+        pointerEvents: 'none', // Allow clicks to pass through to timeline, but we'll enable pointer events on the handle
       }}
     >
       <div
-        className="absolute top-0 bottom-0 w-[2px] bg-[#34B27B] shadow-[0_0_10px_rgba(52,178,123,0.5)]"
+        className="absolute top-0 bottom-0 w-[2px] bg-[#34B27B] shadow-[0_0_10px_rgba(52,178,123,0.5)] cursor-ew-resize pointer-events-auto hover:shadow-[0_0_15px_rgba(52,178,123,0.7)] transition-shadow"
         style={{
           [sideProperty]: `${offset}px`,
         }}
+        onMouseDown={(e) => {
+          e.stopPropagation(); // Prevent timeline click
+          setIsDragging(true);
+        }}
       >
         <div
-          className="absolute -top-1 left-1/2 -translate-x-1/2"
-          style={{ width: '12px', height: '12px' }}
+          className="absolute -top-1 left-1/2 -translate-x-1/2 hover:scale-125 transition-transform"
+          style={{ width: '16px', height: '16px' }}
         >
-          <div className="w-full h-full bg-[#34B27B] rotate-45 rounded-sm shadow-lg border border-white/20" />
+          <div className="w-3 h-3 mx-auto mt-[2px] bg-[#34B27B] rotate-45 rounded-sm shadow-lg border border-white/20" />
         </div>
       </div>
     </div>
@@ -342,6 +384,12 @@ function Timeline({
   selectedAnnotationId?: string | null;
 }) {
   const { setTimelineRef, style, sidebarWidth, range, pixelsToValue } = useTimelineContext();
+  const localTimelineRef = useRef<HTMLDivElement | null>(null);
+
+  const setRefs = useCallback((node: HTMLDivElement | null) => {
+    setTimelineRef(node);
+    localTimelineRef.current = node;
+  }, [setTimelineRef]);
 
   const handleTimelineClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!onSeek || videoDurationMs <= 0) return;
@@ -370,14 +418,19 @@ function Timeline({
 
   return (
     <div
-      ref={setTimelineRef}
+      ref={setRefs}
       style={style}
       className="select-none bg-[#09090b] min-h-[140px] relative cursor-pointer group"
       onClick={handleTimelineClick}
     >
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px)] bg-[length:20px_100%] pointer-events-none" />
       <TimelineAxis intervalMs={intervalMs} videoDurationMs={videoDurationMs} currentTimeMs={currentTimeMs} />
-      <PlaybackCursor currentTimeMs={currentTimeMs} videoDurationMs={videoDurationMs} />
+      <PlaybackCursor 
+        currentTimeMs={currentTimeMs} 
+        videoDurationMs={videoDurationMs} 
+        onSeek={onSeek}
+        timelineRef={localTimelineRef}
+      />
       
       <Row id={ZOOM_ROW_ID}>
         {zoomItems.map((item) => (
