@@ -19,9 +19,22 @@ export interface TrimRegion {
   endMs: number;
 }
 
-export type AnnotationType = 'text' | 'image';
+export type AnnotationType = 'text' | 'image' | 'figure';
 
+export type FigureType = 'arrow' | 'shape' | 'emoji';
+export type ArrowDirection = 'up' | 'down' | 'left' | 'right' | 'up-right' | 'up-left' | 'down-right' | 'down-left';
+export type ShapeType = 'circle' | 'square' | 'rectangle' | 'triangle' | 'star' | 'heart';
 
+export interface FigureData {
+  figureType: FigureType;
+  arrowDirection?: ArrowDirection;
+  shapeType?: ShapeType;
+  emoji?: string;
+  emojiSize?: number;
+  color: string;
+  strokeWidth: number;
+  filled: boolean;
+}
 
 export interface AnnotationPosition {
   x: number;
@@ -49,11 +62,14 @@ export interface AnnotationRegion {
   startMs: number;
   endMs: number;
   type: AnnotationType;
-  content: string;
+  content: string; // Legacy - still used for current type
+  textContent?: string; // Separate storage for text
+  imageContent?: string; // Separate storage for image data URL
   position: AnnotationPosition;
   size: AnnotationSize;
   style: AnnotationTextStyle;
   zIndex: number;
+  figureData?: FigureData;
 }
 
 export const DEFAULT_ANNOTATION_POSITION: AnnotationPosition = {
@@ -75,6 +91,15 @@ export const DEFAULT_ANNOTATION_STYLE: AnnotationTextStyle = {
   fontStyle: 'normal',
   textDecoration: 'none',
   textAlign: 'center',
+};
+
+export const DEFAULT_FIGURE_DATA: FigureData = {
+  figureType: 'arrow',
+  arrowDirection: 'right',
+  color: '#34B27B',
+  strokeWidth: 4,
+  filled: true,
+  emojiSize: 64,
 };
 
 

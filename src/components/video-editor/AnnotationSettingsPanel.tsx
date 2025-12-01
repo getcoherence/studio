@@ -1,20 +1,34 @@
 import { useState, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Trash2, Type, Image as ImageIcon, Upload, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, ChevronDown, Info } from "lucide-react";
+import { Trash2, Type, Image as ImageIcon, Upload, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, ChevronDown, Info, Shapes, Smile } from "lucide-react";
 import { toast } from "sonner";
 import Colorful from '@uiw/react-color-colorful';
 import { hsvaToHex, hexToHsva } from '@uiw/color-convert';
-import type { AnnotationRegion, AnnotationType } from "./types";
+import type { AnnotationRegion, AnnotationType, FigureType, ArrowDirection, ShapeType, FigureData } from "./types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
+import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+import { 
+  FaArrowUp, FaArrowDown, FaArrowLeft, FaArrowRight,
+  FaCircle, FaSquare, FaStar, FaHeart
+} from "react-icons/fa";
+import { 
+  BsArrowUpRight, BsArrowDownRight, BsArrowDownLeft, BsArrowUpLeft
+} from "react-icons/bs";
+import { FaPlay } from "react-icons/fa";
+import { BiRectangle } from "react-icons/bi";
 
 interface AnnotationSettingsPanelProps {
   annotation: AnnotationRegion;
   onContentChange: (content: string) => void;
   onTypeChange: (type: AnnotationType) => void;
   onStyleChange: (style: Partial<AnnotationRegion['style']>) => void;
+  onFigureDataChange?: (figureData: FigureData) => void;
   onDelete: () => void;
 }
 
@@ -36,11 +50,16 @@ export function AnnotationSettingsPanel({
   onContentChange,
   onTypeChange,
   onStyleChange,
+  onFigureDataChange,
   onDelete,
 }: AnnotationSettingsPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [textColorHsva, setTextColorHsva] = useState(hexToHsva(annotation.style.color));
   const [bgColorHsva, setBgColorHsva] = useState(hexToHsva(annotation.style.backgroundColor || '#00000000'));
+  const [figureColorHsva, setFigureColorHsva] = useState(
+    hexToHsva(annotation.figureData?.color || '#34B27B')
+  );
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
 
 
@@ -92,7 +111,7 @@ export function AnnotationSettingsPanel({
         
         {/* Type Selector */}
         <Tabs value={annotation.type} onValueChange={(value) => onTypeChange(value as AnnotationType)} className="mb-6">
-          <TabsList className="mb-4 bg-white/5 border border-white/5 p-1 w-full grid grid-cols-2 h-auto rounded-xl">
+          <TabsList className="mb-4 bg-white/5 border border-white/5 p-1 w-full grid grid-cols-3 h-auto rounded-xl">
             <TabsTrigger value="text" className="data-[state=active]:bg-[#34B27B] data-[state=active]:text-white text-slate-400 py-2 rounded-lg transition-all gap-2">
               <Type className="w-4 h-4" />
               Text
@@ -101,6 +120,10 @@ export function AnnotationSettingsPanel({
               <ImageIcon className="w-4 h-4" />
               Image
             </TabsTrigger>
+            <TabsTrigger value="figure" className="data-[state=active]:bg-[#34B27B] data-[state=active]:text-white text-slate-400 py-2 rounded-lg transition-all gap-2">
+              <Shapes className="w-4 h-4" />
+              Figure
+            </TabsTrigger>
           </TabsList>
 
           {/* Text Content */}
@@ -108,7 +131,7 @@ export function AnnotationSettingsPanel({
             <div>
               <label className="text-xs font-medium text-slate-200 mb-2 block">Text Content</label>
               <textarea
-                value={annotation.content}
+                value={annotation.textContent || annotation.content}
                 onChange={(e) => onContentChange(e.target.value)}
                 placeholder="Enter your text..."
                 rows={5}
@@ -339,9 +362,246 @@ export function AnnotationSettingsPanel({
               Supported formats: JPG, PNG, GIF, WebP
             </p>
           </TabsContent>
+
+          <TabsContent value="figure" className="mt-0 space-y-4">
+            <div>
+              <label className="text-xs font-medium text-slate-200 mb-2 block">Figure Type</label>
+              <Tabs 
+                value={annotation.figureData?.figureType || 'arrow'} 
+                onValueChange={(value) => {
+                  const newFigureData: FigureData = {
+                    ...annotation.figureData!,
+                    figureType: value as FigureType,
+                  };
+                  onFigureDataChange?.(newFigureData);
+                }}
+                className="w-full"
+              >
+                <TabsList className="w-full grid grid-cols-3 bg-white/5 border border-white/5 p-1 h-auto rounded-lg">
+                  <TabsTrigger value="arrow" className="data-[state=active]:bg-[#34B27B] data-[state=active]:text-white text-slate-400 py-2 rounded-md transition-all gap-1.5 text-xs">
+                    <FaArrowRight className="w-3 h-3" />
+                    Arrow
+                  </TabsTrigger>
+                  <TabsTrigger value="shape" className="data-[state=active]:bg-[#34B27B] data-[state=active]:text-white text-slate-400 py-2 rounded-md transition-all gap-1.5 text-xs">
+                    <FaCircle className="w-3 h-3" />
+                    Shape
+                  </TabsTrigger>
+                  <TabsTrigger value="emoji" className="data-[state=active]:bg-[#34B27B] data-[state=active]:text-white text-slate-400 py-2 rounded-md transition-all gap-1.5 text-xs">
+                    <Smile className="w-3 h-3" />
+                    Emoji
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="arrow" className="mt-4 space-y-4">
+                  <div>
+                    <label className="text-xs font-medium text-slate-200 mb-3 block">Arrows</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { value: 'up' as ArrowDirection, icon: FaArrowUp },
+                        { value: 'down' as ArrowDirection, icon: FaArrowDown },
+                        { value: 'left' as ArrowDirection, icon: FaArrowLeft },
+                        { value: 'right' as ArrowDirection, icon: FaArrowRight },
+                        { value: 'up-right' as ArrowDirection, icon: BsArrowUpRight },
+                        { value: 'up-left' as ArrowDirection, icon: BsArrowUpLeft },
+                        { value: 'down-right' as ArrowDirection, icon: BsArrowDownRight },
+                        { value: 'down-left' as ArrowDirection, icon: BsArrowDownLeft },
+                      ].map(({ value, icon: Icon }) => (
+                        <button
+                          key={value}
+                          onClick={() => {
+                            const newFigureData: FigureData = {
+                              ...annotation.figureData!,
+                              arrowDirection: value,
+                            };
+                            onFigureDataChange?.(newFigureData);
+                          }}
+                          className={cn(
+                            "h-16 rounded-lg border flex flex-col items-center justify-center gap-1 transition-all",
+                            annotation.figureData?.arrowDirection === value
+                              ? "bg-[#34B27B] border-[#34B27B] text-white"
+                              : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:border-white/20"
+                          )}
+                        >
+                          <Icon className="w-5 h-5" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="shape" className="mt-4 space-y-4">
+                  <div>
+                    <label className="text-xs font-medium text-slate-200 mb-3 block">Shape Type</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { value: 'circle' as ShapeType, icon: FaCircle, label: 'Circle' },
+                        { value: 'square' as ShapeType, icon: FaSquare, label: 'Square' },
+                        { value: 'rectangle' as ShapeType, icon: BiRectangle, label: 'Rectangle' },
+                        { value: 'triangle' as ShapeType, icon: FaPlay, label: 'Triangle' },
+                        { value: 'star' as ShapeType, icon: FaStar, label: 'Star' },
+                        { value: 'heart' as ShapeType, icon: FaHeart, label: 'Heart' },
+                      ].map(({ value, icon: Icon, label }) => (
+                        <button
+                          key={value}
+                          onClick={() => {
+                            const newFigureData: FigureData = {
+                              ...annotation.figureData!,
+                              shapeType: value,
+                            };
+                            onFigureDataChange?.(newFigureData);
+                          }}
+                          className={cn(
+                            "h-16 rounded-lg border flex flex-col items-center justify-center gap-1 transition-all",
+                            annotation.figureData?.shapeType === value
+                              ? "bg-[#34B27B] border-[#34B27B] text-white"
+                              : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:border-white/20"
+                          )}
+                        >
+                          <Icon className="w-5 h-5" />
+                          <span className="text-[10px]">{label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5">
+                    <label className="text-xs font-medium text-slate-200">Filled</label>
+                    <Switch
+                      checked={annotation.figureData?.filled ?? true}
+                      onCheckedChange={(checked) => {
+                        const newFigureData: FigureData = {
+                          ...annotation.figureData!,
+                          filled: checked,
+                        };
+                        onFigureDataChange?.(newFigureData);
+                      }}
+                    />
+                  </div>
+
+                  {!annotation.figureData?.filled && (
+                    <div>
+                      <label className="text-xs font-medium text-slate-200 mb-2 block">
+                        Stroke Width: {annotation.figureData?.strokeWidth || 4}px
+                      </label>
+                      <Slider
+                        value={[annotation.figureData?.strokeWidth || 4]}
+                        onValueChange={([value]) => {
+                          const newFigureData: FigureData = {
+                            ...annotation.figureData!,
+                            strokeWidth: value,
+                          };
+                          onFigureDataChange?.(newFigureData);
+                        }}
+                        min={1}
+                        max={20}
+                        step={1}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="emoji" className="mt-4 space-y-4">
+                  <div>
+                    <label className="text-xs font-medium text-slate-200 mb-2 block">Selected Emoji</label>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-16 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-4xl">
+                        {annotation.figureData?.emoji || '😊'}
+                      </div>
+                      <Button
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        variant="outline"
+                        className="h-16 px-6 bg-[#34B27B] text-white border-[#34B27B] hover:bg-[#2a9163] hover:border-[#2a9163]"
+                      >
+                        {showEmojiPicker ? 'Close' : 'Pick'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-slate-200 mb-2 block">
+                      Emoji Size: {annotation.figureData?.emojiSize || 64}px
+                    </label>
+                    <Slider
+                      value={[annotation.figureData?.emojiSize || 64]}
+                      onValueChange={([value]) => {
+                        const newFigureData: FigureData = {
+                          ...annotation.figureData!,
+                          emojiSize: value,
+                        };
+                        onFigureDataChange?.(newFigureData);
+                      }}
+                      min={16}
+                      max={200}
+                      step={4}
+                      className="w-full"
+                    />
+                  </div>
+
+                  {showEmojiPicker && (
+                    <div className="border border-white/10 rounded-lg overflow-hidden">
+                      <EmojiPicker
+                        onEmojiClick={(emojiData: EmojiClickData) => {
+                          const newFigureData: FigureData = {
+                            ...annotation.figureData!,
+                            emoji: emojiData.emoji,
+                          };
+                          onFigureDataChange?.(newFigureData);
+                          setShowEmojiPicker(false);
+                        }}
+                        width="100%"
+                        height={300}
+                        searchPlaceHolder="Search emoji..."
+                        previewConfig={{ showPreview: false }}
+                      />
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            {annotation.figureData?.figureType !== 'emoji' && (
+              <div>
+                <label className="text-xs font-medium text-slate-200 mb-2 block">Color</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full h-10 justify-start gap-2 bg-white/5 border-white/10 hover:bg-white/10"
+                    >
+                      <div 
+                        className="w-5 h-5 rounded-full border border-white/20" 
+                        style={{ backgroundColor: annotation.figureData?.color || '#34B27B' }}
+                      />
+                      <span className="text-xs text-slate-300 truncate flex-1 text-left">
+                        {annotation.figureData?.color || '#34B27B'}
+                      </span>
+                      <ChevronDown className="h-3 w-3 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 border-none bg-transparent shadow-xl">
+                    <div className="p-2 bg-[#1a1a1c] border border-white/10 rounded-xl">
+                      <Colorful
+                        color={figureColorHsva}
+                        disableAlpha={true}
+                        onChange={(color) => {
+                          setFigureColorHsva(color.hsva);
+                          const newFigureData: FigureData = {
+                            ...annotation.figureData!,
+                            color: hsvaToHex(color.hsva),
+                          };
+                          onFigureDataChange?.(newFigureData);
+                        }}
+                        style={{ width: '100%', borderRadius: '8px' }}
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
 
-        {/* Delete Button */}
         <Button
           onClick={onDelete}
           variant="destructive"

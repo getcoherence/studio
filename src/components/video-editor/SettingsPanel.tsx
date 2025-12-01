@@ -73,6 +73,7 @@ interface SettingsPanelProps {
   onAnnotationContentChange?: (id: string, content: string) => void;
   onAnnotationTypeChange?: (id: string, type: AnnotationType) => void;
   onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion['style']>) => void;
+  onAnnotationFigureDataChange?: (id: string, figureData: any) => void;
   onAnnotationDelete?: (id: string) => void;
 }
 
@@ -114,6 +115,7 @@ export function SettingsPanel({
   onAnnotationContentChange,
   onAnnotationTypeChange,
   onAnnotationStyleChange,
+  onAnnotationFigureDataChange,
   onAnnotationDelete,
 }: SettingsPanelProps) {
   const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
@@ -204,6 +206,7 @@ export function SettingsPanel({
         onContentChange={(content) => onAnnotationContentChange(selectedAnnotation.id, content)}
         onTypeChange={(type) => onAnnotationTypeChange(selectedAnnotation.id, type)}
         onStyleChange={(style) => onAnnotationStyleChange(selectedAnnotation.id, style)}
+        onFigureDataChange={onAnnotationFigureDataChange ? (figureData) => onAnnotationFigureDataChange(selectedAnnotation.id, figureData) : undefined}
         onDelete={() => onAnnotationDelete(selectedAnnotation.id)}
       />
     );

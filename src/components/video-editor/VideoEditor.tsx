@@ -19,12 +19,14 @@ import {
   DEFAULT_ANNOTATION_POSITION,
   DEFAULT_ANNOTATION_SIZE,
   DEFAULT_ANNOTATION_STYLE,
+  DEFAULT_FIGURE_DATA,
   type ZoomDepth,
   type ZoomFocus,
   type ZoomRegion,
   type TrimRegion,
   type AnnotationRegion,
   type CropRegion,
+  type FigureData,
 } from "./types";
 import { VideoExporter, type ExportProgress } from "@/lib/exporter";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
@@ -291,11 +293,18 @@ export default function VideoEditor() {
   const handleAnnotationContentChange = useCallback((id: string, content: string) => {
     console.log('[VideoEditor] Annotation content changed:', { id, content });
     setAnnotationRegions((prev) => {
-      const updated = prev.map((region) =>
-        region.id === id
-          ? { ...region, content }
-          : region,
-      );
+      const updated = prev.map((region) => {
+        if (region.id !== id) return region;
+        
+        // Store content in type-specific fields
+        if (region.type === 'text') {
+          return { ...region, content, textContent: content };
+        } else if (region.type === 'image') {
+          return { ...region, content, imageContent: content };
+        } else {
+          return { ...region, content };
+        }
+      });
       console.log('[VideoEditor] Updated annotation regions:', updated);
       return updated;
     });
@@ -304,15 +313,25 @@ export default function VideoEditor() {
   const handleAnnotationTypeChange = useCallback((id: string, type: AnnotationRegion['type']) => {
     console.log('[VideoEditor] Annotation type changed:', { id, type });
     setAnnotationRegions((prev) => {
-      const updated = prev.map((region) =>
-        region.id === id
-          ? { 
-              ...region, 
-              type,
-              content: type === 'text' ? 'Enter text...' : ''
-            }
-          : region,
-      );
+      const updated = prev.map((region) => {
+        if (region.id !== id) return region;
+        
+        const updatedRegion = { ...region, type };
+        
+        // Restore content from type-specific storage
+        if (type === 'text') {
+          updatedRegion.content = region.textContent || 'Enter text...';
+        } else if (type === 'image') {
+          updatedRegion.content = region.imageContent || '';
+        } else if (type === 'figure') {
+          updatedRegion.content = '';
+          if (!region.figureData) {
+            updatedRegion.figureData = { ...DEFAULT_FIGURE_DATA };
+          }
+        }
+        
+        return updatedRegion;
+      });
       console.log('[VideoEditor] Updated annotation regions after type change:', updated);
       return updated;
     });
@@ -324,6 +343,17 @@ export default function VideoEditor() {
       prev.map((region) =>
         region.id === id
           ? { ...region, style: { ...region.style, ...style } }
+          : region,
+      ),
+    );
+  }, []);
+
+  const handleAnnotationFigureDataChange = useCallback((id: string, figureData: FigureData) => {
+    console.log('Annotation figure data changed:', { id, figureData });
+    setAnnotationRegions((prev) =>
+      prev.map((region) =>
+        region.id === id
+          ? { ...region, figureData }
           : region,
       ),
     );
@@ -686,6 +716,7 @@ export default function VideoEditor() {
           onAnnotationContentChange={handleAnnotationContentChange}
           onAnnotationTypeChange={handleAnnotationTypeChange}
           onAnnotationStyleChange={handleAnnotationStyleChange}
+          onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
           onAnnotationDelete={handleAnnotationDelete}
         />
       </div>
