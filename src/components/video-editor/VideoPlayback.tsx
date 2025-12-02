@@ -112,6 +112,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   const layoutVideoContentRef = useRef<(() => void) | null>(null);
   const trimRegionsRef = useRef<TrimRegion[]>([]);
   const motionBlurEnabledRef = useRef(motionBlurEnabled);
+  const videoReadyRafRef = useRef<number | null>(null);
 
   const clampFocusToStage = useCallback((focus: ZoomFocus, depth: ZoomDepth) => {
     return clampFocusToStageUtil(focus, depth, stageSizeRef.current);
@@ -492,6 +493,12 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
     video.pause();
     video.currentTime = 0;
     allowPlaybackRef.current = false;
+    lockedVideoDimensionsRef.current = null;
+    setVideoReady(false);
+    if (videoReadyRafRef.current) {
+      cancelAnimationFrame(videoReadyRafRef.current);
+      videoReadyRafRef.current = null;
+    }
   }, [videoPath]);
 
 
@@ -703,13 +710,24 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
     video.pause();
     allowPlaybackRef.current = false;
     currentTimeRef.current = 0;
-    
-    // hacky fix: To ensure video is fully ready for PixiJS
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+
+    if (videoReadyRafRef.current) {
+      cancelAnimationFrame(videoReadyRafRef.current);
+      videoReadyRafRef.current = null;
+    }
+
+    const waitForRenderableFrame = () => {
+      const hasDimensions = video.videoWidth > 0 && video.videoHeight > 0;
+      const hasData = video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
+      if (hasDimensions && hasData) {
+        videoReadyRafRef.current = null;
         setVideoReady(true);
-      });
-    });
+        return;
+      }
+      videoReadyRafRef.current = requestAnimationFrame(waitForRenderableFrame);
+    };
+
+    videoReadyRafRef.current = requestAnimationFrame(waitForRenderableFrame);
   };
 
   const [resolvedWallpaper, setResolvedWallpaper] = useState<string | null>(null);
@@ -755,6 +773,15 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
     })()
     return () => { mounted = false }
   }, [wallpaper])
+
+  useEffect(() => {
+    return () => {
+      if (videoReadyRafRef.current) {
+        cancelAnimationFrame(videoReadyRafRef.current);
+        videoReadyRafRef.current = null;
+      }
+    };
+  }, [])
 
   const isImageUrl = Boolean(resolvedWallpaper && (resolvedWallpaper.startsWith('file://') || resolvedWallpaper.startsWith('http') || resolvedWallpaper.startsWith('/') || resolvedWallpaper.startsWith('data:')))
   const backgroundStyle = isImageUrl
