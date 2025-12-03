@@ -28,7 +28,7 @@ import {
   type CropRegion,
   type FigureData,
 } from "./types";
-import { VideoExporter, type ExportProgress } from "@/lib/exporter";
+import { VideoExporter, type ExportProgress, type ExportQuality } from "@/lib/exporter";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
 
 const WALLPAPER_COUNT = 18;
@@ -59,6 +59,7 @@ export default function VideoEditor() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
+  const [exportQuality, setExportQuality] = useState<ExportQuality>('good');
 
   const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
   const nextZoomIdRef = useRef(1);
@@ -449,57 +450,81 @@ export default function VideoEditor() {
       const sourceWidth = video.videoWidth || 1920;
       const sourceHeight = video.videoHeight || 1080;
       
-      let exportWidth: number = sourceWidth;
-      let exportHeight: number = sourceHeight;
+      let exportWidth: number;
+      let exportHeight: number;
+      let bitrate: number;
 
-      if (aspectRatioValue === 1) {
-        // Square (1:1): use smaller dimension to avoid codec limits
-        const baseDimension = Math.floor(Math.min(sourceWidth, sourceHeight) / 2) * 2;
-        exportWidth = baseDimension;
-        exportHeight = baseDimension;
-      } else if (aspectRatioValue > 1) {
-        // Landscape: find largest even dimensions that exactly match aspect ratio
-        const baseWidth = Math.floor(sourceWidth / 2) * 2;
-        // Iterate down from baseWidth to find exact match
-        let found = false;
-        for (let w = baseWidth; w >= 100 && !found; w -= 2) {
-          const h = Math.round(w / aspectRatioValue);
-          if (h % 2 === 0 && Math.abs((w / h) - aspectRatioValue) < 0.0001) {
-            exportWidth = w;
-            exportHeight = h;
-            found = true;
+      if (exportQuality === 'source') {
+        // Use source resolution
+        exportWidth = sourceWidth;
+        exportHeight = sourceHeight;
+
+        if (aspectRatioValue === 1) {
+          // Square (1:1): use smaller dimension to avoid codec limits
+          const baseDimension = Math.floor(Math.min(sourceWidth, sourceHeight) / 2) * 2;
+          exportWidth = baseDimension;
+          exportHeight = baseDimension;
+        } else if (aspectRatioValue > 1) {
+          // Landscape: find largest even dimensions that exactly match aspect ratio
+          const baseWidth = Math.floor(sourceWidth / 2) * 2;
+          // Iterate down from baseWidth to find exact match
+          let found = false;
+          for (let w = baseWidth; w >= 100 && !found; w -= 2) {
+            const h = Math.round(w / aspectRatioValue);
+            if (h % 2 === 0 && Math.abs((w / h) - aspectRatioValue) < 0.0001) {
+              exportWidth = w;
+              exportHeight = h;
+              found = true;
+            }
+          }
+          if (!found) {
+            exportWidth = baseWidth;
+            exportHeight = Math.floor((baseWidth / aspectRatioValue) / 2) * 2;
+          }
+        } else {
+          // Portrait: find largest even dimensions that exactly match aspect ratio
+          const baseHeight = Math.floor(sourceHeight / 2) * 2;
+          // Iterate down from baseHeight to find exact match
+          let found = false;
+          for (let h = baseHeight; h >= 100 && !found; h -= 2) {
+            const w = Math.round(h * aspectRatioValue);
+            if (w % 2 === 0 && Math.abs((w / h) - aspectRatioValue) < 0.0001) {
+              exportWidth = w;
+              exportHeight = h;
+              found = true;
+            }
+          }
+          if (!found) {
+            exportHeight = baseHeight;
+            exportWidth = Math.floor((baseHeight * aspectRatioValue) / 2) * 2;
           }
         }
-        if (!found) {
-          exportWidth = baseWidth;
-          exportHeight = Math.floor((baseWidth / aspectRatioValue) / 2) * 2;
+
+        // Calculate visually lossless bitrate matching screen recording optimization
+        const totalPixels = exportWidth * exportHeight;
+        bitrate = 30_000_000;
+        if (totalPixels > 1920 * 1080 && totalPixels <= 2560 * 1440) {
+          bitrate = 50_000_000;
+        } else if (totalPixels > 2560 * 1440) {
+          bitrate = 80_000_000;
         }
       } else {
-        // Portrait: find largest even dimensions that exactly match aspect ratio
-        const baseHeight = Math.floor(sourceHeight / 2) * 2;
-        // Iterate down from baseHeight to find exact match
-        let found = false;
-        for (let h = baseHeight; h >= 100 && !found; h -= 2) {
-          const w = Math.round(h * aspectRatioValue);
-          if (w % 2 === 0 && Math.abs((w / h) - aspectRatioValue) < 0.0001) {
-            exportWidth = w;
-            exportHeight = h;
-            found = true;
-          }
+        // Use quality-based target resolution
+        const targetHeight = exportQuality === 'medium' ? 720 : 1080;
+        
+        // Calculate dimensions maintaining aspect ratio
+        exportHeight = Math.floor(targetHeight / 2) * 2; // Ensure even
+        exportWidth = Math.floor((exportHeight * aspectRatioValue) / 2) * 2; // Ensure even
+        
+        // Adjust bitrate for lower resolutions
+        const totalPixels = exportWidth * exportHeight;
+        if (totalPixels <= 1280 * 720) {
+          bitrate = 10_000_000; // 10 Mbps for 720p
+        } else if (totalPixels <= 1920 * 1080) {
+          bitrate = 20_000_000; // 20 Mbps for 1080p
+        } else {
+          bitrate = 30_000_000;
         }
-        if (!found) {
-          exportHeight = baseHeight;
-          exportWidth = Math.floor((baseHeight * aspectRatioValue) / 2) * 2;
-        }
-      }
-
-      // Calculate visually lossless bitrate matching screen recording optimization
-      const totalPixels = exportWidth * exportHeight;
-      let bitrate = 30_000_000;
-      if (totalPixels > 1920 * 1080 && totalPixels <= 2560 * 1440) {
-        bitrate = 50_000_000;
-      } else if (totalPixels > 2560 * 1440) {
-        bitrate = 80_000_000;
       }
 
       // Get preview CONTAINER dimensions for scaling
@@ -571,7 +596,7 @@ export default function VideoEditor() {
       setIsExporting(false);
       exporterRef.current = null;
     }
-  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, borderRadius, padding, cropRegion, annotationRegions, isPlaying, aspectRatio]);
+  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, borderRadius, padding, cropRegion, annotationRegions, isPlaying, aspectRatio, exportQuality]);
 
   const handleCancelExport = useCallback(() => {
     if (exporterRef.current) {
@@ -724,6 +749,8 @@ export default function VideoEditor() {
           onCropChange={setCropRegion}
           aspectRatio={aspectRatio}
           videoElement={videoPlaybackRef.current?.video || null}
+          exportQuality={exportQuality}
+          onExportQualityChange={setExportQuality}
           onExport={handleExport}
           selectedAnnotationId={selectedAnnotationId}
           annotationRegions={annotationRegions}

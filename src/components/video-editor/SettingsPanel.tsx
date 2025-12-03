@@ -16,6 +16,7 @@ import { CropControl } from "./CropControl";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import { type AspectRatio } from "@/utils/aspectRatioUtils";
+import type { ExportQuality } from "@/lib/exporter";
 
 const WALLPAPER_COUNT = 18;
 const WALLPAPER_RELATIVE = Array.from({ length: WALLPAPER_COUNT }, (_, i) => `wallpapers/wallpaper${i + 1}.jpg`);
@@ -67,6 +68,8 @@ interface SettingsPanelProps {
   onCropChange?: (region: CropRegion) => void;
   aspectRatio: AspectRatio;
   videoElement?: HTMLVideoElement | null;
+  exportQuality?: ExportQuality;
+  onExportQualityChange?: (quality: ExportQuality) => void;
   onExport?: () => void;
   selectedAnnotationId?: string | null;
   annotationRegions?: AnnotationRegion[];
@@ -109,6 +112,8 @@ export function SettingsPanel({
   onCropChange, 
   aspectRatio, 
   videoElement, 
+  exportQuality = 'good',
+  onExportQualityChange,
   onExport,
   selectedAnnotationId,
   annotationRegions = [],
@@ -515,6 +520,20 @@ export function SettingsPanel({
       </Tabs>
 
       <div className="mt-6 pt-6 border-t border-white/5">
+        {/* Export Quality Dropdown */}
+        <div className="mb-3">
+          <label className="text-xs font-medium text-slate-400 block mb-2">Export Quality</label>
+          <select
+            value={exportQuality}
+            onChange={(e) => onExportQualityChange?.(e.target.value as ExportQuality)}
+            className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-slate-200 focus:outline-none focus:border-[#34B27B] transition-colors cursor-pointer hover:bg-white/10"
+          >
+            <option value="medium">Medium</option>
+            <option value="good">Good</option>
+            <option value="source">Source</option>
+          </select>
+        </div>
+        
         <Button
           type="button"
           size="lg"
