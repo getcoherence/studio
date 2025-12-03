@@ -293,10 +293,10 @@ export function SettingsPanel({
         </div>
       </div>
 
-      <div className="mb-6">
-        <div className="grid grid-cols-2 gap-3">
+      <div className="mb-4">
+        <div className="grid grid-cols-2 gap-2.5">
           {/* Drop Shadow Slider */}
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
+          <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-1.5">
             <div className="flex items-center justify-between">
               <div className="text-xs font-medium text-slate-200">Shadow</div>
               <span className="text-[10px] text-slate-400 font-mono">{Math.round(shadowIntensity * 100)}%</span>
@@ -311,7 +311,7 @@ export function SettingsPanel({
             />
           </div>
           {/* Corner Roundness Slider */}
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
+          <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-1.5">
             <div className="flex items-center justify-between">
               <div className="text-xs font-medium text-slate-200">Roundness</div>
               <span className="text-[10px] text-slate-400 font-mono">{borderRadius}px</span>
@@ -326,7 +326,7 @@ export function SettingsPanel({
             />
           </div>
           {/* Padding Slider */}
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
+          <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-1.5 col-span-2">
             <div className="flex items-center justify-between">
               <div className="text-xs font-medium text-slate-200">Padding</div>
               <span className="text-[10px] text-slate-400 font-mono">{padding}%</span>
@@ -343,18 +343,15 @@ export function SettingsPanel({
         </div>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <Button
           onClick={() => setShowCropDropdown(!showCropDropdown)}
           variant="outline"
-          className="w-full gap-2 bg-white/5 text-slate-200 border-white/10 hover:bg-white/10 hover:border-white/20 hover:text-white h-11 transition-all"
+          className="w-full gap-2 bg-white/5 text-slate-200 border-white/10 hover:bg-white/10 hover:border-white/20 hover:text-white h-9 transition-all"
         >
           <Crop className="w-4 h-4" />
           Crop Video
         </Button>
-        <p className="text-[10px] text-slate-500 text-center mt-3 px-4 leading-relaxed">
-          If the preview looks weirdly positioned or doesn't load, try force reloading the app a few times till it works.
-        </p>
       </div>
       
       {showCropDropdown && cropRegion && onCropChange && (
@@ -405,7 +402,7 @@ export function SettingsPanel({
         </TabsList>
         
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-2">
-          <TabsContent value="image" className="mt-0 space-y-3">
+          <TabsContent value="image" className="mt-0 space-y-3 px-2">
             {/* Upload Button */}
             <input
               type="file"
@@ -483,7 +480,7 @@ export function SettingsPanel({
             </div>
           </TabsContent>
           
-          <TabsContent value="color" className="mt-0">
+          <TabsContent value="color" className="mt-0 px-2">
             <div className="p-1">
               <Colorful
                 color={hsva}
@@ -497,7 +494,7 @@ export function SettingsPanel({
             </div>
           </TabsContent>
           
-          <TabsContent value="gradient" className="mt-0">
+          <TabsContent value="gradient" className="mt-0 px-2">
             <div className="grid grid-cols-6 gap-2.5">
               {GRADIENTS.map((g, idx) => (
                 <div
@@ -519,19 +516,43 @@ export function SettingsPanel({
         </div>
       </Tabs>
 
-      <div className="mt-6 pt-6 border-t border-white/5">
-        {/* Export Quality Dropdown */}
-        <div className="mb-3">
-          <label className="text-xs font-medium text-slate-400 block mb-2">Export Quality</label>
-          <select
-            value={exportQuality}
-            onChange={(e) => onExportQualityChange?.(e.target.value as ExportQuality)}
-            className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-slate-200 focus:outline-none focus:border-[#34B27B] transition-colors cursor-pointer hover:bg-white/10"
+      <div className="mt-4 pt-4 border-t border-white/5">
+        <div className="mb-2 text-xs font-medium text-slate-400">Export Quality</div>
+        {/* Export Quality Button Group */}
+        <div className="mb-2.5 bg-white/5 border border-white/5 p-1 w-full grid grid-cols-3 h-auto rounded-xl">
+          <button
+            onClick={() => onExportQualityChange?.('medium')}
+            className={cn(
+              "py-2 rounded-lg transition-all text-xs font-medium",
+              exportQuality === 'medium'
+                ? "bg-white text-black"
+                : "text-slate-400 hover:text-slate-200"
+            )}
           >
-            <option value="medium">Medium</option>
-            <option value="good">Good</option>
-            <option value="source">Source</option>
-          </select>
+            Medium
+          </button>
+          <button
+            onClick={() => onExportQualityChange?.('good')}
+            className={cn(
+              "py-2 rounded-lg transition-all text-xs font-medium",
+              exportQuality === 'good'
+                ? "bg-white text-black"
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            Good
+          </button>
+          <button
+            onClick={() => onExportQualityChange?.('source')}
+            className={cn(
+              "py-2 rounded-lg transition-all text-xs font-medium",
+              exportQuality === 'source'
+                ? "bg-white text-black"
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            Source
+          </button>
         </div>
         
         <Button
