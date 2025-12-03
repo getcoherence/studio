@@ -114,13 +114,7 @@ export function ExportDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Current Frame</div>
-                <div className="text-slate-200 font-mono text-lg font-medium">
-                  {progress.currentFrame} <span className="text-slate-500 text-sm">/ {progress.totalFrames}</span>
-                </div>
-              </div>
+            <div className="grid grid-cols-1 gap-4">
               <div className="bg-white/5 rounded-xl p-3 border border-white/5">
                 <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Status</div>
                 <div className="text-slate-200 font-medium text-sm flex items-center gap-2 h-[28px]">

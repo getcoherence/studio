@@ -326,7 +326,7 @@ export function SettingsPanel({
             />
           </div>
           {/* Padding Slider */}
-          <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-1.5 col-span-2">
+          <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-1.5">
             <div className="flex items-center justify-between">
               <div className="text-xs font-medium text-slate-200">Padding</div>
               <span className="text-[10px] text-slate-400 font-mono">{padding}%</span>

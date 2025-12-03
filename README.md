@@ -34,7 +34,10 @@ OpenScreen is 100% free for personal and commercial use. Use it, modify it, dist
 - Customize the duration and position of zooms however you please
 - Crop video recordings to hide parts
 - Choose between wallpapers, solid colors, gradients or your own picture for your background
-- Motion blur and exponential easing for smoother pan and zoom effects
+- Motion blur for smoother pan and zoom effects
+- Add annotations (text, arrows, images)
+- Trim sections of the clip
+- Export in different aspect ratios and resolutions
 
 ## macOS Installation instructions
 
