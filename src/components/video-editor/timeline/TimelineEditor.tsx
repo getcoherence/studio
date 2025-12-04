@@ -434,6 +434,18 @@ export default function TimelineEditor({
   const [range, setRange] = useState<Range>(() => createInitialRange(totalMs));
   const [keyframes, setKeyframes] = useState<{ id: string; time: number }[]>([]);
   const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
+  const [shortcuts, setShortcuts] = useState({
+    pan: 'Shift + Ctrl + Scroll',
+    zoom: 'Ctrl + Scroll'
+  });
+
+  useEffect(() => {
+    formatShortcut(['shift', 'mod', 'Scroll']).then(pan => {
+      formatShortcut(['mod', 'Scroll']).then(zoom => {
+        setShortcuts({ pan, zoom });
+      });
+    });
+  }, []);
 
   // Add keyframe at current playhead position
   const addKeyframe = useCallback(() => {
@@ -724,11 +736,11 @@ export default function TimelineEditor({
         <div className="flex-1" />
         <div className="flex items-center gap-4 text-[10px] text-slate-500 font-medium">
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">⇧ + ⌘ + Scroll</kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">{shortcuts.pan}</kbd>
             <span>Pan</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">⌘ + Scroll</kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">{shortcuts.zoom}</kbd>            
             <span>Zoom</span>
           </span>
         </div>

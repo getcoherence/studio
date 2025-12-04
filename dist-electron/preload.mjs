@@ -56,5 +56,8 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   },
   clearCurrentVideoPath: () => {
     return electron.ipcRenderer.invoke("clear-current-video-path");
+  },
+  getPlatform: () => {
+    return electron.ipcRenderer.invoke("get-platform");
   }
 });
