@@ -1,10 +1,11 @@
 import { Application, Container, Sprite, Graphics, BlurFilter, Texture } from 'pixi.js';
-import type { ZoomRegion, CropRegion } from '@/components/video-editor/types';
+import type { ZoomRegion, CropRegion, AnnotationRegion } from '@/components/video-editor/types';
 import { ZOOM_DEPTH_SCALES } from '@/components/video-editor/types';
 import { findDominantRegion } from '@/components/video-editor/videoPlayback/zoomRegionUtils';
 import { applyZoomTransform } from '@/components/video-editor/videoPlayback/zoomTransform';
-import { DEFAULT_FOCUS, SMOOTHING_FACTOR, MIN_DELTA, VIEWPORT_SCALE } from '@/components/video-editor/videoPlayback/constants';
+import { DEFAULT_FOCUS, SMOOTHING_FACTOR, MIN_DELTA } from '@/components/video-editor/videoPlayback/constants';
 import { clampFocusToStage as clampFocusToStageUtil } from '@/components/video-editor/videoPlayback/focusUtils';
+import { renderAnnotations } from './annotationRenderer';
 
 interface FrameRenderConfig {
   width: number;
@@ -20,6 +21,9 @@ interface FrameRenderConfig {
   cropRegion: CropRegion;
   videoWidth: number;
   videoHeight: number;
+  annotationRegions?: AnnotationRegion[];
+  previewWidth?: number;
+  previewHeight?: number;
 }
 
 interface AnimationState {
@@ -297,6 +301,27 @@ export class FrameRenderer {
 
     // Composite with shadows to final output canvas
     this.compositeWithShadows();
+
+    // Render annotations on top if present
+    if (this.config.annotationRegions && this.config.annotationRegions.length > 0 && this.compositeCtx) {
+      // Calculate scale factor based on export vs preview dimensions
+      const previewWidth = this.config.previewWidth || 1920;
+      const previewHeight = this.config.previewHeight || 1080;
+      const scaleX = this.config.width / previewWidth;
+      const scaleY = this.config.height / previewHeight;
+      const scaleFactor = (scaleX + scaleY) / 2;
+
+
+
+      await renderAnnotations(
+        this.compositeCtx,
+        this.config.annotationRegions,
+        this.config.width,
+        this.config.height,
+        timeMs,
+        scaleFactor
+      );
+    }
   }
 
   private updateLayout(): void {
@@ -482,12 +507,6 @@ export class FrameRenderer {
     return this.compositeCanvas;
   }
 
-  updateConfig(config: Partial<FrameRenderConfig>): void {
-    this.config = { ...this.config, ...config };
-    if (config.wallpaper) {
-      this.setupBackground();
-    }
-  }
 
   destroy(): void {
     if (this.videoSprite) {

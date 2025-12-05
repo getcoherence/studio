@@ -13,6 +13,38 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
   const chunks = useRef<Blob[]>([]);
   const startTime = useRef<number>(0);
 
+  // Target visually lossless 4K @ 60fps; fall back gracefully when hardware cannot keep up
+  const TARGET_FRAME_RATE = 60;
+  const TARGET_WIDTH = 3840;
+  const TARGET_HEIGHT = 2160;
+  const FOUR_K_PIXELS = TARGET_WIDTH * TARGET_HEIGHT;
+  const selectMimeType = () => {
+    const preferred = [
+      "video/webm;codecs=av1",
+      "video/webm;codecs=h264",
+      "video/webm;codecs=vp9",
+      "video/webm;codecs=vp8",
+      "video/webm"
+    ];
+
+    return preferred.find(type => MediaRecorder.isTypeSupported(type)) ?? "video/webm";
+  };
+
+  const computeBitrate = (width: number, height: number) => {
+    const pixels = width * height;
+    const highFrameRateBoost = TARGET_FRAME_RATE >= 60 ? 1.7 : 1;
+
+    if (pixels >= FOUR_K_PIXELS) {
+      return Math.round(45_000_000 * highFrameRateBoost);
+    }
+
+    if (pixels >= 2560 * 1440) {
+      return Math.round(28_000_000 * highFrameRateBoost);
+    }
+
+    return Math.round(18_000_000 * highFrameRateBoost);
+  };
+
   const stopRecording = useRef(() => {
     if (mediaRecorder.current?.state === "recording") {
       if (stream.current) {
@@ -55,14 +87,16 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         return;
       }
 
-      // Capture screen at source resolution without constraints
       const mediaStream = await (navigator.mediaDevices as any).getUserMedia({
         audio: false,
         video: {
           mandatory: {
             chromeMediaSource: "desktop",
             chromeMediaSourceId: selectedSource.id,
-            frameRate: { ideal: 60, max: 60 }
+            maxWidth: TARGET_WIDTH,
+            maxHeight: TARGET_HEIGHT,
+            maxFrameRate: TARGET_FRAME_RATE,
+            minFrameRate: 30,
           },
         },
       });
@@ -71,31 +105,36 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         throw new Error("Media stream is not available.");
       }
       const videoTrack = stream.current.getVideoTracks()[0];
-      let { width = 1920, height = 1080 } = videoTrack.getSettings();
+      try {
+        await videoTrack.applyConstraints({
+          frameRate: { ideal: TARGET_FRAME_RATE, max: TARGET_FRAME_RATE },
+          width: { ideal: TARGET_WIDTH, max: TARGET_WIDTH },
+          height: { ideal: TARGET_HEIGHT, max: TARGET_HEIGHT },
+        });
+      } catch (error) {
+        console.warn("Unable to lock 4K/60fps constraints, using best available track settings.", error);
+      }
+
+      let { width = 1920, height = 1080, frameRate = TARGET_FRAME_RATE } = videoTrack.getSettings();
       
       // Ensure dimensions are divisible by 2 for VP9/AV1 codec compatibility
       width = Math.floor(width / 2) * 2;
       height = Math.floor(height / 2) * 2;
       
-      console.log(`Recording at ${width}x${height}`);
+      const videoBitsPerSecond = computeBitrate(width, height);
+      const mimeType = selectMimeType();
+
+      console.log(
+        `Recording at ${width}x${height} @ ${frameRate ?? TARGET_FRAME_RATE}fps using ${mimeType} / ${Math.round(
+          videoBitsPerSecond / 1_000_000
+        )} Mbps`
+      );
       
-      const totalPixels = width * height;
-      // Use visually lossless bitrates optimized for quality and file size balance
-      let bitrate = 30_000_000;
-      if (totalPixels > 1920 * 1080 && totalPixels <= 2560 * 1440) {
-        bitrate = 50_000_000;
-      } else if (totalPixels > 2560 * 1440) {
-        bitrate = 80_000_000;
-      }
       chunks.current = [];
-      // Prefer AV1 codec for better compression, fallback to VP9 then VP8
-      const supportedCodecs = [
-        'video/webm;codecs=av1',
-        'video/webm;codecs=vp9',
-        'video/webm;codecs=vp8'
-      ];
-      const mimeType = supportedCodecs.find(codec => MediaRecorder.isTypeSupported(codec)) || 'video/webm;codecs=vp9';
-      const recorder = new MediaRecorder(stream.current, { mimeType, videoBitsPerSecond: bitrate });
+      const recorder = new MediaRecorder(stream.current, {
+        mimeType,
+        videoBitsPerSecond,
+      });
       mediaRecorder.current = recorder;
       recorder.ondataavailable = e => {
         if (e.data && e.data.size > 0) chunks.current.push(e.data);
@@ -104,7 +143,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         stream.current = null;
         if (chunks.current.length === 0) return;
         const duration = Date.now() - startTime.current;
-        const buggyBlob = new Blob(chunks.current, { type: mimeType });
+        const recordedChunks = chunks.current;
+        const buggyBlob = new Blob(recordedChunks, { type: mimeType });
         // Clear chunks early to free memory immediately after blob creation
         chunks.current = [];
         const timestamp = Date.now();
@@ -119,14 +159,17 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
             return;
           }
 
+          if (videoResult.path) {
+            await window.electronAPI.setCurrentVideoPath(videoResult.path);
+          }
+
           await window.electronAPI.switchToEditor();
         } catch (error) {
           console.error('Error saving recording:', error);
         }
       };
       recorder.onerror = () => setRecording(false);
-      // Use larger timeslice to reduce recording overhead and improve smoothness
-      recorder.start(5000);
+      recorder.start(1000);
       startTime.current = Date.now();
       setRecording(true);
       window.electronAPI?.setRecordingState(true);

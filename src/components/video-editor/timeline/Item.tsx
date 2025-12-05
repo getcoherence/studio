@@ -1,7 +1,7 @@
 import { useItem } from "dnd-timeline";
 import type { Span } from "dnd-timeline";
 import { cn } from "@/lib/utils";
-import { ZoomIn, Scissors } from "lucide-react";
+import { ZoomIn, Scissors, MessageSquare } from "lucide-react";
 import glassStyles from "./ItemGlass.module.css";
 
 interface ItemProps {
@@ -12,7 +12,7 @@ interface ItemProps {
   isSelected?: boolean;
   onSelect?: () => void;
   zoomDepth?: number;
-  variant?: 'zoom' | 'trim';
+  variant?: 'zoom' | 'trim' | 'annotation';
 }
 
 // Map zoom depth to multiplier labels
@@ -32,7 +32,8 @@ export default function Item({
   isSelected = false, 
   onSelect, 
   zoomDepth = 1,
-  variant = 'zoom' 
+  variant = 'zoom',
+  children
 }: ItemProps) {
   const { setNodeRef, attributes, listeners, itemStyle, itemContentStyle } = useItem({
     id,
@@ -41,8 +42,19 @@ export default function Item({
   });
 
   const isZoom = variant === 'zoom';
-  const glassClass = isZoom ? glassStyles.glassGreen : glassStyles.glassRed;
-  const endCapColor = isZoom ? '#21916A' : '#ef4444';
+  const isTrim = variant === 'trim';
+  
+  const glassClass = isZoom 
+    ? glassStyles.glassGreen 
+    : isTrim 
+    ? glassStyles.glassRed 
+    : glassStyles.glassYellow;
+    
+  const endCapColor = isZoom 
+    ? '#21916A' 
+    : isTrim 
+    ? '#ef4444' 
+    : '#B4A046';
 
   return (
     <div
@@ -85,11 +97,18 @@ export default function Item({
                   {ZOOM_LABELS[zoomDepth] || `${zoomDepth}×`}
                 </span>
               </>
-            ) : (
+            ) : isTrim ? (
               <>
                 <Scissors className="w-3.5 h-3.5" />
                 <span className="text-[11px] font-semibold tracking-tight">
                   Trim
+                </span>
+              </>
+            ) : (
+              <>
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-semibold tracking-tight">
+                  {children}
                 </span>
               </>
             )}

@@ -11,10 +11,12 @@ import { hsvaToHex } from '@uiw/color-convert';
 import { Trash2, Download, Crop, X, Bug, Upload } from "lucide-react";
 import { GiHearts } from "react-icons/gi";
 import { toast } from "sonner";
-import type { ZoomDepth, CropRegion } from "./types";
+import type { ZoomDepth, CropRegion, AnnotationRegion, AnnotationType } from "./types";
 import { CropControl } from "./CropControl";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
+import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import { type AspectRatio } from "@/utils/aspectRatioUtils";
+import type { ExportQuality } from "@/lib/exporter";
 
 const WALLPAPER_COUNT = 18;
 const WALLPAPER_RELATIVE = Array.from({ length: WALLPAPER_COUNT }, (_, i) => `wallpapers/wallpaper${i + 1}.jpg`);
@@ -66,7 +68,16 @@ interface SettingsPanelProps {
   onCropChange?: (region: CropRegion) => void;
   aspectRatio: AspectRatio;
   videoElement?: HTMLVideoElement | null;
+  exportQuality?: ExportQuality;
+  onExportQualityChange?: (quality: ExportQuality) => void;
   onExport?: () => void;
+  selectedAnnotationId?: string | null;
+  annotationRegions?: AnnotationRegion[];
+  onAnnotationContentChange?: (id: string, content: string) => void;
+  onAnnotationTypeChange?: (id: string, type: AnnotationType) => void;
+  onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion['style']>) => void;
+  onAnnotationFigureDataChange?: (id: string, figureData: any) => void;
+  onAnnotationDelete?: (id: string) => void;
 }
 
 export default SettingsPanel;
@@ -80,7 +91,38 @@ const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
   { depth: 6, label: "5×" },
 ];
 
-export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, onZoomDepthChange, selectedZoomId, onZoomDelete, shadowIntensity = 0, onShadowChange, showBlur, onBlurChange, motionBlurEnabled = true, onMotionBlurChange, borderRadius = 0, onBorderRadiusChange, padding = 50, onPaddingChange, cropRegion, onCropChange, aspectRatio, videoElement, onExport }: SettingsPanelProps) {
+export function SettingsPanel({ 
+  selected, 
+  onWallpaperChange, 
+  selectedZoomDepth, 
+  onZoomDepthChange, 
+  selectedZoomId, 
+  onZoomDelete, 
+  shadowIntensity = 0, 
+  onShadowChange, 
+  showBlur, 
+  onBlurChange, 
+  motionBlurEnabled = true, 
+  onMotionBlurChange, 
+  borderRadius = 0, 
+  onBorderRadiusChange, 
+  padding = 50, 
+  onPaddingChange, 
+  cropRegion, 
+  onCropChange, 
+  aspectRatio, 
+  videoElement, 
+  exportQuality = 'good',
+  onExportQualityChange,
+  onExport,
+  selectedAnnotationId,
+  annotationRegions = [],
+  onAnnotationContentChange,
+  onAnnotationTypeChange,
+  onAnnotationStyleChange,
+  onAnnotationFigureDataChange,
+  onAnnotationDelete,
+}: SettingsPanelProps) {
   const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
   const [customImages, setCustomImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -155,6 +197,25 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
       onWallpaperChange(wallpaperPaths[0] || WALLPAPER_RELATIVE[0]);
     }
   };
+
+  // Find selected annotation
+  const selectedAnnotation = selectedAnnotationId 
+    ? annotationRegions.find(a => a.id === selectedAnnotationId)
+    : null;
+
+  // If an annotation is selected, show annotation settings instead
+  if (selectedAnnotation && onAnnotationContentChange && onAnnotationTypeChange && onAnnotationStyleChange && onAnnotationDelete) {
+    return (
+      <AnnotationSettingsPanel
+        annotation={selectedAnnotation}
+        onContentChange={(content) => onAnnotationContentChange(selectedAnnotation.id, content)}
+        onTypeChange={(type) => onAnnotationTypeChange(selectedAnnotation.id, type)}
+        onStyleChange={(style) => onAnnotationStyleChange(selectedAnnotation.id, style)}
+        onFigureDataChange={onAnnotationFigureDataChange ? (figureData) => onAnnotationFigureDataChange(selectedAnnotation.id, figureData) : undefined}
+        onDelete={() => onAnnotationDelete(selectedAnnotation.id)}
+      />
+    );
+  }
 
   return (
     <div className="flex-[2] min-w-0 bg-[#09090b] border border-white/5 rounded-2xl p-4 flex flex-col shadow-xl h-full overflow-y-auto custom-scrollbar">
@@ -232,10 +293,10 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
         </div>
       </div>
 
-      <div className="mb-6">
-        <div className="grid grid-cols-2 gap-3">
+      <div className="mb-4">
+        <div className="grid grid-cols-2 gap-2.5">
           {/* Drop Shadow Slider */}
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
+          <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-1.5">
             <div className="flex items-center justify-between">
               <div className="text-xs font-medium text-slate-200">Shadow</div>
               <span className="text-[10px] text-slate-400 font-mono">{Math.round(shadowIntensity * 100)}%</span>
@@ -250,7 +311,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
             />
           </div>
           {/* Corner Roundness Slider */}
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
+          <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-1.5">
             <div className="flex items-center justify-between">
               <div className="text-xs font-medium text-slate-200">Roundness</div>
               <span className="text-[10px] text-slate-400 font-mono">{borderRadius}px</span>
@@ -265,7 +326,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
             />
           </div>
           {/* Padding Slider */}
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
+          <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-1.5">
             <div className="flex items-center justify-between">
               <div className="text-xs font-medium text-slate-200">Padding</div>
               <span className="text-[10px] text-slate-400 font-mono">{padding}%</span>
@@ -282,18 +343,15 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
         </div>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <Button
           onClick={() => setShowCropDropdown(!showCropDropdown)}
           variant="outline"
-          className="w-full gap-2 bg-white/5 text-slate-200 border-white/10 hover:bg-white/10 hover:border-white/20 hover:text-white h-11 transition-all"
+          className="w-full gap-2 bg-white/5 text-slate-200 border-white/10 hover:bg-white/10 hover:border-white/20 hover:text-white h-9 transition-all"
         >
           <Crop className="w-4 h-4" />
           Crop Video
         </Button>
-        <p className="text-[10px] text-slate-500 text-center mt-3 px-4 leading-relaxed">
-          If the preview looks weirdly positioned or doesn't load, try force reloading the app a few times till it works.
-        </p>
       </div>
       
       {showCropDropdown && cropRegion && onCropChange && (
@@ -344,7 +402,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
         </TabsList>
         
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-2">
-          <TabsContent value="image" className="mt-0 space-y-3">
+          <TabsContent value="image" className="mt-0 space-y-3 px-2">
             {/* Upload Button */}
             <input
               type="file"
@@ -422,7 +480,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
             </div>
           </TabsContent>
           
-          <TabsContent value="color" className="mt-0">
+          <TabsContent value="color" className="mt-0 px-2">
             <div className="p-1">
               <Colorful
                 color={hsva}
@@ -436,7 +494,7 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
             </div>
           </TabsContent>
           
-          <TabsContent value="gradient" className="mt-0">
+          <TabsContent value="gradient" className="mt-0 px-2">
             <div className="grid grid-cols-6 gap-2.5">
               {GRADIENTS.map((g, idx) => (
                 <div
@@ -458,7 +516,45 @@ export function SettingsPanel({ selected, onWallpaperChange, selectedZoomDepth, 
         </div>
       </Tabs>
 
-      <div className="mt-6 pt-6 border-t border-white/5">
+      <div className="mt-4 pt-4 border-t border-white/5">
+        <div className="mb-2 text-xs font-medium text-slate-400">Export Quality</div>
+        {/* Export Quality Button Group */}
+        <div className="mb-2.5 bg-white/5 border border-white/5 p-1 w-full grid grid-cols-3 h-auto rounded-xl">
+          <button
+            onClick={() => onExportQualityChange?.('medium')}
+            className={cn(
+              "py-2 rounded-lg transition-all text-xs font-medium",
+              exportQuality === 'medium'
+                ? "bg-white text-black"
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            Medium
+          </button>
+          <button
+            onClick={() => onExportQualityChange?.('good')}
+            className={cn(
+              "py-2 rounded-lg transition-all text-xs font-medium",
+              exportQuality === 'good'
+                ? "bg-white text-black"
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            Good
+          </button>
+          <button
+            onClick={() => onExportQualityChange?.('source')}
+            className={cn(
+              "py-2 rounded-lg transition-all text-xs font-medium",
+              exportQuality === 'source'
+                ? "bg-white text-black"
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            Source
+          </button>
+        </div>
+        
         <Button
           type="button"
           size="lg"

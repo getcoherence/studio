@@ -19,11 +19,86 @@ export interface TrimRegion {
   endMs: number;
 }
 
+export type AnnotationType = 'text' | 'image' | 'figure';
+
+export type ArrowDirection = 'up' | 'down' | 'left' | 'right' | 'up-right' | 'up-left' | 'down-right' | 'down-left';
+
+export interface FigureData {
+  arrowDirection: ArrowDirection;
+  color: string;
+  strokeWidth: number;
+}
+
+export interface AnnotationPosition {
+  x: number;
+  y: number;
+}
+
+export interface AnnotationSize {
+  width: number;
+  height: number;
+}
+
+export interface AnnotationTextStyle {
+  color: string;
+  backgroundColor: string;
+  fontSize: number; // pixels
+  fontFamily: string;
+  fontWeight: 'normal' | 'bold';
+  fontStyle: 'normal' | 'italic';
+  textDecoration: 'none' | 'underline';
+  textAlign: 'left' | 'center' | 'right';
+}
+
+export interface AnnotationRegion {
+  id: string;
+  startMs: number;
+  endMs: number;
+  type: AnnotationType;
+  content: string; // Legacy - still used for current type
+  textContent?: string; // Separate storage for text
+  imageContent?: string; // Separate storage for image data URL
+  position: AnnotationPosition;
+  size: AnnotationSize;
+  style: AnnotationTextStyle;
+  zIndex: number;
+  figureData?: FigureData;
+}
+
+export const DEFAULT_ANNOTATION_POSITION: AnnotationPosition = {
+  x: 50,
+  y: 50,
+};
+
+export const DEFAULT_ANNOTATION_SIZE: AnnotationSize = {
+  width: 30,
+  height: 20,
+};
+
+export const DEFAULT_ANNOTATION_STYLE: AnnotationTextStyle = {
+  color: '#ffffff',
+  backgroundColor: 'transparent',
+  fontSize: 32,
+  fontFamily: 'Inter',
+  fontWeight: 'bold',
+  fontStyle: 'normal',
+  textDecoration: 'none',
+  textAlign: 'center',
+};
+
+export const DEFAULT_FIGURE_DATA: FigureData = {
+  arrowDirection: 'right',
+  color: '#34B27B',
+  strokeWidth: 4,
+};
+
+
+
 export interface CropRegion {
-  x: number; // 0-1 normalized
-  y: number; // 0-1 normalized
-  width: number; // 0-1 normalized
-  height: number; // 0-1 normalized
+  x: number; 
+  y: number; 
+  width: number; 
+  height: number; 
 }
 
 export const DEFAULT_CROP_REGION: CropRegion = {

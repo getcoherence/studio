@@ -104,6 +104,7 @@ export function registerIpcHandlers(
     }
   })
 
+
   ipcMain.handle('open-external-url', async (_, url: string) => {
     try {
       await shell.openExternal(url)

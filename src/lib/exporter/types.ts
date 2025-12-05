@@ -24,3 +24,5 @@ export interface VideoFrameData {
   timestamp: number; // in microseconds
   duration: number; // in microseconds
 }
+
+export type ExportQuality = 'medium' | 'good' | 'source';

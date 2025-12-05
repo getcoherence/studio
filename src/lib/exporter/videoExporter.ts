@@ -2,7 +2,7 @@ import type { ExportConfig, ExportProgress, ExportResult } from './types';
 import { VideoFileDecoder } from './videoDecoder';
 import { FrameRenderer } from './frameRenderer';
 import { VideoMuxer } from './muxer';
-import type { ZoomRegion, CropRegion, TrimRegion } from '@/components/video-editor/types';
+import type { ZoomRegion, CropRegion, TrimRegion, AnnotationRegion } from '@/components/video-editor/types';
 
 interface VideoExporterConfig extends ExportConfig {
   videoUrl: string;
@@ -17,6 +17,9 @@ interface VideoExporterConfig extends ExportConfig {
   padding?: number;
   videoPadding?: number;
   cropRegion: CropRegion;
+  annotationRegions?: AnnotationRegion[];
+  previewWidth?: number;
+  previewHeight?: number;
   onProgress?: (progress: ExportProgress) => void;
 }
 
@@ -53,20 +56,20 @@ export class VideoExporter {
     const trimRegions = this.config.trimRegions || [];
     // Sort trim regions by start time
     const sortedTrims = [...trimRegions].sort((a, b) => a.startMs - b.startMs);
-    
+
     let sourceTimeMs = effectiveTimeMs;
-    
+
     for (const trim of sortedTrims) {
       // If the source time hasn't reached this trim region yet, we're done
       if (sourceTimeMs < trim.startMs) {
         break;
       }
-      
+
       // Add the duration of this trim region to the source time
       const trimDuration = trim.endMs - trim.startMs;
       sourceTimeMs += trimDuration;
     }
-    
+
     return sourceTimeMs;
   }
 
@@ -94,6 +97,9 @@ export class VideoExporter {
         cropRegion: this.config.cropRegion,
         videoWidth: videoInfo.width,
         videoHeight: videoInfo.height,
+        annotationRegions: this.config.annotationRegions,
+        previewWidth: this.config.previewWidth,
+        previewHeight: this.config.previewHeight,
       });
       await this.renderer.initialize();
 
@@ -126,7 +132,7 @@ export class VideoExporter {
       while (frameIndex < totalFrames && !this.cancelled) {
         const i = frameIndex;
         const timestamp = i * frameDuration;
-        
+
         // Map effective time to source time (accounting for trim regions)
         const effectiveTimeMs = (i * timeStep) * 1000;
         const sourceTimeMs = this.mapEffectiveToSourceTime(effectiveTimeMs);
@@ -134,7 +140,7 @@ export class VideoExporter {
           
         // Seek if needed or wait for first frame to be ready
         const needsSeek = Math.abs(videoElement.currentTime - videoTime) > 0.001;
-        
+
         if (needsSeek) {
           // Attach listener BEFORE setting currentTime to avoid race condition
           const seekedPromise = new Promise<void>(resolve => {
@@ -187,10 +193,11 @@ export class VideoExporter {
         } else {
           console.warn(`[Frame ${i}] Encoder not ready! State: ${this.encoder?.state}`);
         }
+
         exportFrame.close();
 
         frameIndex++;
-        
+
         // Update progress
         if (this.config.onProgress) {
           this.config.onProgress({
@@ -247,11 +254,11 @@ export class VideoExporter {
         if (meta?.decoderConfig?.colorSpace && !this.videoColorSpace) {
           this.videoColorSpace = meta.decoderConfig.colorSpace;
         }
-        
+
         // Stream chunk to muxer immediately (parallel processing)
         const isFirstChunk = this.chunkCount === 0;
         this.chunkCount++;
-        
+
         const muxingPromise = (async () => {
           try {
             if (isFirstChunk && this.videoDescription) {
@@ -262,7 +269,7 @@ export class VideoExporter {
                 matrix: 'rgb',
                 fullRange: true,
               };
-              
+
               const metadata: EncodedVideoChunkMetadata = {
                 decoderConfig: {
                   codec: this.config.codec || 'avc1.640033',
@@ -272,7 +279,7 @@ export class VideoExporter {
                   colorSpace,
                 },
               };
-              
+
               await this.muxer!.addVideoChunk(chunk, metadata);
             } else {
               await this.muxer!.addVideoChunk(chunk, meta);
@@ -281,7 +288,7 @@ export class VideoExporter {
             console.error('Muxing error:', error);
           }
         })();
-        
+
         this.muxingPromises.push(muxingPromise);
         this.encodeQueue--;
       },
@@ -307,7 +314,7 @@ export class VideoExporter {
 
     // Check hardware support first
     const hardwareSupport = await VideoEncoder.isConfigSupported(encoderConfig);
-    
+
     if (hardwareSupport.supported) {
       // Use hardware encoding
       console.log('[VideoExporter] Using hardware acceleration');

@@ -16,13 +16,19 @@ import {
   DEFAULT_ZOOM_DEPTH,
   clampFocusToDepth,
   DEFAULT_CROP_REGION,
+  DEFAULT_ANNOTATION_POSITION,
+  DEFAULT_ANNOTATION_SIZE,
+  DEFAULT_ANNOTATION_STYLE,
+  DEFAULT_FIGURE_DATA,
   type ZoomDepth,
   type ZoomFocus,
   type ZoomRegion,
   type TrimRegion,
+  type AnnotationRegion,
   type CropRegion,
+  type FigureData,
 } from "./types";
-import { VideoExporter, type ExportProgress } from "@/lib/exporter";
+import { VideoExporter, type ExportProgress, type ExportQuality } from "@/lib/exporter";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
 
 const WALLPAPER_COUNT = 18;
@@ -46,15 +52,20 @@ export default function VideoEditor() {
   const [selectedZoomId, setSelectedZoomId] = useState<string | null>(null);
   const [trimRegions, setTrimRegions] = useState<TrimRegion[]>([]);
   const [selectedTrimId, setSelectedTrimId] = useState<string | null>(null);
+  const [annotationRegions, setAnnotationRegions] = useState<AnnotationRegion[]>([]);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
+  const [exportQuality, setExportQuality] = useState<ExportQuality>('good');
 
   const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
   const nextZoomIdRef = useRef(1);
   const nextTrimIdRef = useRef(1);
+  const nextAnnotationIdRef = useRef(1);
+  const nextAnnotationZIndexRef = useRef(1); // Track z-index for stacking order
   const exporterRef = useRef<VideoExporter | null>(null);
 
   // Helper to convert file path to proper file:// URL
@@ -118,7 +129,18 @@ export default function VideoEditor() {
 
   const handleSelectTrim = useCallback((id: string | null) => {
     setSelectedTrimId(id);
-    if (id) setSelectedZoomId(null);
+    if (id) {
+      setSelectedZoomId(null);
+      setSelectedAnnotationId(null);
+    }
+  }, []);
+
+  const handleSelectAnnotation = useCallback((id: string | null) => {
+    setSelectedAnnotationId(id);
+    if (id) {
+      setSelectedZoomId(null);
+      setSelectedTrimId(null);
+    }
   }, []);
 
   const handleZoomAdded = useCallback((span: Span) => {
@@ -130,10 +152,10 @@ export default function VideoEditor() {
       depth: DEFAULT_ZOOM_DEPTH,
       focus: { cx: 0.5, cy: 0.5 },
     };
-    console.log('Zoom region added:', newRegion);
     setZoomRegions((prev) => [...prev, newRegion]);
     setSelectedZoomId(id);
     setSelectedTrimId(null);
+    setSelectedAnnotationId(null);
   }, []);
 
   const handleTrimAdded = useCallback((span: Span) => {
@@ -143,14 +165,13 @@ export default function VideoEditor() {
       startMs: Math.round(span.start),
       endMs: Math.round(span.end),
     };
-    console.log('Trim region added:', newRegion);
     setTrimRegions((prev) => [...prev, newRegion]);
     setSelectedTrimId(id);
     setSelectedZoomId(null);
+    setSelectedAnnotationId(null);
   }, []);
 
   const handleZoomSpanChange = useCallback((id: string, span: Span) => {
-    console.log('Zoom span changed:', { id, start: Math.round(span.start), end: Math.round(span.end) });
     setZoomRegions((prev) =>
       prev.map((region) =>
         region.id === id
@@ -165,7 +186,6 @@ export default function VideoEditor() {
   }, []);
 
   const handleTrimSpanChange = useCallback((id: string, span: Span) => {
-    console.log('Trim span changed:', { id, start: Math.round(span.start), end: Math.round(span.end) });
     setTrimRegions((prev) =>
       prev.map((region) =>
         region.id === id
@@ -208,7 +228,6 @@ export default function VideoEditor() {
   }, [selectedZoomId]);
 
   const handleZoomDelete = useCallback((id: string) => {
-    console.log('Zoom region deleted:', id);
     setZoomRegions((prev) => prev.filter((region) => region.id !== id));
     if (selectedZoomId === id) {
       setSelectedZoomId(null);
@@ -216,12 +235,168 @@ export default function VideoEditor() {
   }, [selectedZoomId]);
 
   const handleTrimDelete = useCallback((id: string) => {
-    console.log('Trim region deleted:', id);
     setTrimRegions((prev) => prev.filter((region) => region.id !== id));
     if (selectedTrimId === id) {
       setSelectedTrimId(null);
     }
   }, [selectedTrimId]);
+
+  const handleAnnotationAdded = useCallback((span: Span) => {
+    const id = `annotation-${nextAnnotationIdRef.current++}`;
+    const zIndex = nextAnnotationZIndexRef.current++; // Assign z-index based on creation order
+    const newRegion: AnnotationRegion = {
+      id,
+      startMs: Math.round(span.start),
+      endMs: Math.round(span.end),
+      type: 'text',
+      content: 'Enter text...',
+      position: { ...DEFAULT_ANNOTATION_POSITION },
+      size: { ...DEFAULT_ANNOTATION_SIZE },
+      style: { ...DEFAULT_ANNOTATION_STYLE },
+      zIndex,
+    };
+    setAnnotationRegions((prev) => [...prev, newRegion]);
+    setSelectedAnnotationId(id);
+    setSelectedZoomId(null);
+    setSelectedTrimId(null);
+  }, []);
+
+  const handleAnnotationSpanChange = useCallback((id: string, span: Span) => {
+    setAnnotationRegions((prev) =>
+      prev.map((region) =>
+        region.id === id
+          ? {
+              ...region,
+              startMs: Math.round(span.start),
+              endMs: Math.round(span.end),
+            }
+          : region,
+      ),
+    );
+  }, []);
+
+  const handleAnnotationDelete = useCallback((id: string) => {
+    setAnnotationRegions((prev) => prev.filter((region) => region.id !== id));
+    if (selectedAnnotationId === id) {
+      setSelectedAnnotationId(null);
+    }
+  }, [selectedAnnotationId]);
+
+  const handleAnnotationContentChange = useCallback((id: string, content: string) => {
+    setAnnotationRegions((prev) => {
+      const updated = prev.map((region) => {
+        if (region.id !== id) return region;
+        
+        // Store content in type-specific fields
+        if (region.type === 'text') {
+          return { ...region, content, textContent: content };
+        } else if (region.type === 'image') {
+          return { ...region, content, imageContent: content };
+        } else {
+          return { ...region, content };
+        }
+      });
+      return updated;
+    });
+  }, []);;
+
+  const handleAnnotationTypeChange = useCallback((id: string, type: AnnotationRegion['type']) => {
+    setAnnotationRegions((prev) => {
+      const updated = prev.map((region) => {
+        if (region.id !== id) return region;
+        
+        const updatedRegion = { ...region, type };
+        
+        // Restore content from type-specific storage
+        if (type === 'text') {
+          updatedRegion.content = region.textContent || 'Enter text...';
+        } else if (type === 'image') {
+          updatedRegion.content = region.imageContent || '';
+        } else if (type === 'figure') {
+          updatedRegion.content = '';
+          if (!region.figureData) {
+            updatedRegion.figureData = { ...DEFAULT_FIGURE_DATA };
+          }
+        }
+        
+        return updatedRegion;
+      });
+      return updated;
+    });
+  }, []);
+
+  const handleAnnotationStyleChange = useCallback((id: string, style: Partial<AnnotationRegion['style']>) => {
+    setAnnotationRegions((prev) =>
+      prev.map((region) =>
+        region.id === id
+          ? { ...region, style: { ...region.style, ...style } }
+          : region,
+      ),
+    );
+  }, []);
+
+  const handleAnnotationFigureDataChange = useCallback((id: string, figureData: FigureData) => {
+    setAnnotationRegions((prev) =>
+      prev.map((region) =>
+        region.id === id
+          ? { ...region, figureData }
+          : region,
+      ),
+    );
+  }, []);
+
+  const handleAnnotationPositionChange = useCallback((id: string, position: { x: number; y: number }) => {
+    setAnnotationRegions((prev) =>
+      prev.map((region) =>
+        region.id === id
+          ? { ...region, position }
+          : region,
+      ),
+    );
+  }, []);
+
+  const handleAnnotationSizeChange = useCallback((id: string, size: { width: number; height: number }) => {
+    setAnnotationRegions((prev) =>
+      prev.map((region) =>
+        region.id === id
+          ? { ...region, size }
+          : region,
+      ),
+    );
+  }, []);
+  
+  // Global Tab prevention
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') {
+        // Allow tab only in inputs/textareas
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+          return;
+        }
+        e.preventDefault();
+      }
+
+      if (e.key === ' ' || e.code === 'Space') {
+        // Allow space only in inputs/textareas
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+          return;
+        }
+        e.preventDefault();
+        
+        const playback = videoPlaybackRef.current;
+        if (playback?.video) {
+          if (playback.video.paused) {
+            playback.play().catch(console.error);
+          } else {
+            playback.pause();
+          }
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, []);
 
   useEffect(() => {
     if (selectedZoomId && !zoomRegions.some((region) => region.id === selectedZoomId)) {
@@ -234,6 +409,12 @@ export default function VideoEditor() {
       setSelectedTrimId(null);
     }
   }, [selectedTrimId, trimRegions]);
+
+  useEffect(() => {
+    if (selectedAnnotationId && !annotationRegions.some((region) => region.id === selectedAnnotationId)) {
+      setSelectedAnnotationId(null);
+    }
+  }, [selectedAnnotationId, annotationRegions]);
 
   const handleExport = useCallback(async () => {
     if (!videoPath) {
@@ -269,58 +450,91 @@ export default function VideoEditor() {
       const sourceWidth = video.videoWidth || 1920;
       const sourceHeight = video.videoHeight || 1080;
       
-      let exportWidth: number = sourceWidth;
-      let exportHeight: number = sourceHeight;
+      let exportWidth: number;
+      let exportHeight: number;
+      let bitrate: number;
 
-      if (aspectRatioValue === 1) {
-        // Square (1:1): use smaller dimension to avoid codec limits
-        const baseDimension = Math.floor(Math.min(sourceWidth, sourceHeight) / 2) * 2;
-        exportWidth = baseDimension;
-        exportHeight = baseDimension;
-      } else if (aspectRatioValue > 1) {
-        // Landscape: find largest even dimensions that exactly match aspect ratio
-        const baseWidth = Math.floor(sourceWidth / 2) * 2;
-        // Iterate down from baseWidth to find exact match
-        let found = false;
-        for (let w = baseWidth; w >= 100 && !found; w -= 2) {
-          const h = Math.round(w / aspectRatioValue);
-          if (h % 2 === 0 && Math.abs((w / h) - aspectRatioValue) < 0.0001) {
-            exportWidth = w;
-            exportHeight = h;
-            found = true;
+      if (exportQuality === 'source') {
+        // Use source resolution
+        exportWidth = sourceWidth;
+        exportHeight = sourceHeight;
+
+        if (aspectRatioValue === 1) {
+          // Square (1:1): use smaller dimension to avoid codec limits
+          const baseDimension = Math.floor(Math.min(sourceWidth, sourceHeight) / 2) * 2;
+          exportWidth = baseDimension;
+          exportHeight = baseDimension;
+        } else if (aspectRatioValue > 1) {
+          // Landscape: find largest even dimensions that exactly match aspect ratio
+          const baseWidth = Math.floor(sourceWidth / 2) * 2;
+          // Iterate down from baseWidth to find exact match
+          let found = false;
+          for (let w = baseWidth; w >= 100 && !found; w -= 2) {
+            const h = Math.round(w / aspectRatioValue);
+            if (h % 2 === 0 && Math.abs((w / h) - aspectRatioValue) < 0.0001) {
+              exportWidth = w;
+              exportHeight = h;
+              found = true;
+            }
+          }
+          if (!found) {
+            exportWidth = baseWidth;
+            exportHeight = Math.floor((baseWidth / aspectRatioValue) / 2) * 2;
+          }
+        } else {
+          // Portrait: find largest even dimensions that exactly match aspect ratio
+          const baseHeight = Math.floor(sourceHeight / 2) * 2;
+          // Iterate down from baseHeight to find exact match
+          let found = false;
+          for (let h = baseHeight; h >= 100 && !found; h -= 2) {
+            const w = Math.round(h * aspectRatioValue);
+            if (w % 2 === 0 && Math.abs((w / h) - aspectRatioValue) < 0.0001) {
+              exportWidth = w;
+              exportHeight = h;
+              found = true;
+            }
+          }
+          if (!found) {
+            exportHeight = baseHeight;
+            exportWidth = Math.floor((baseHeight * aspectRatioValue) / 2) * 2;
           }
         }
-        if (!found) {
-          exportWidth = baseWidth;
-          exportHeight = Math.floor((baseWidth / aspectRatioValue) / 2) * 2;
+
+        // Calculate visually lossless bitrate matching screen recording optimization
+        const totalPixels = exportWidth * exportHeight;
+        bitrate = 30_000_000;
+        if (totalPixels > 1920 * 1080 && totalPixels <= 2560 * 1440) {
+          bitrate = 50_000_000;
+        } else if (totalPixels > 2560 * 1440) {
+          bitrate = 80_000_000;
         }
       } else {
-        // Portrait: find largest even dimensions that exactly match aspect ratio
-        const baseHeight = Math.floor(sourceHeight / 2) * 2;
-        // Iterate down from baseHeight to find exact match
-        let found = false;
-        for (let h = baseHeight; h >= 100 && !found; h -= 2) {
-          const w = Math.round(h * aspectRatioValue);
-          if (w % 2 === 0 && Math.abs((w / h) - aspectRatioValue) < 0.0001) {
-            exportWidth = w;
-            exportHeight = h;
-            found = true;
-          }
-        }
-        if (!found) {
-          exportHeight = baseHeight;
-          exportWidth = Math.floor((baseHeight * aspectRatioValue) / 2) * 2;
+        // Use quality-based target resolution
+        const targetHeight = exportQuality === 'medium' ? 720 : 1080;
+        
+        // Calculate dimensions maintaining aspect ratio
+        exportHeight = Math.floor(targetHeight / 2) * 2; // Ensure even
+        exportWidth = Math.floor((exportHeight * aspectRatioValue) / 2) * 2; // Ensure even
+        
+        // Adjust bitrate for lower resolutions
+        const totalPixels = exportWidth * exportHeight;
+        if (totalPixels <= 1280 * 720) {
+          bitrate = 10_000_000; // 10 Mbps for 720p
+        } else if (totalPixels <= 1920 * 1080) {
+          bitrate = 20_000_000; // 20 Mbps for 1080p
+        } else {
+          bitrate = 30_000_000;
         }
       }
 
-      // Calculate visually lossless bitrate matching screen recording optimization
-      const totalPixels = exportWidth * exportHeight;
-      let bitrate = 30_000_000;
-      if (totalPixels > 1920 * 1080 && totalPixels <= 2560 * 1440) {
-        bitrate = 50_000_000;
-      } else if (totalPixels > 2560 * 1440) {
-        bitrate = 80_000_000;
-      }
+      // Get preview CONTAINER dimensions for scaling
+      // Annotations render in HTML overlay matching container, not PixiJS canvas
+      const playbackRef = videoPlaybackRef.current;
+      const containerElement = playbackRef?.containerRef?.current;
+      const previewWidth = containerElement?.clientWidth || 1920;
+      const previewHeight = containerElement?.clientHeight || 1080;
+
+
 
       const exporter = new VideoExporter({
         videoUrl: videoPath,
@@ -339,6 +553,9 @@ export default function VideoEditor() {
         borderRadius,
         padding,
         cropRegion,
+        annotationRegions,
+        previewWidth,
+        previewHeight,
         onProgress: (progress: ExportProgress) => {
           setExportProgress(progress);
         },
@@ -379,7 +596,7 @@ export default function VideoEditor() {
       setIsExporting(false);
       exporterRef.current = null;
     }
-  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, borderRadius, padding, cropRegion, isPlaying, aspectRatio]);
+  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, borderRadius, padding, cropRegion, annotationRegions, isPlaying, aspectRatio, exportQuality]);
 
   const handleCancelExport = useCallback(() => {
     if (exporterRef.current) {
@@ -433,6 +650,7 @@ export default function VideoEditor() {
                       videoPath={videoPath || ''}
                       onDurationChange={setDuration}
                       onTimeUpdate={setCurrentTime}
+                      currentTime={currentTime}
                       onPlayStateChange={setIsPlaying}
                       onError={setError}
                       wallpaper={wallpaper}
@@ -449,6 +667,11 @@ export default function VideoEditor() {
                       padding={padding}
                       cropRegion={cropRegion}
                       trimRegions={trimRegions}
+                      annotationRegions={annotationRegions}
+                      selectedAnnotationId={selectedAnnotationId}
+                      onSelectAnnotation={handleSelectAnnotation}
+                      onAnnotationPositionChange={handleAnnotationPositionChange}
+                      onAnnotationSizeChange={handleAnnotationSizeChange}
                     />
                   </div>
                 </div>
@@ -490,6 +713,12 @@ export default function VideoEditor() {
               onTrimDelete={handleTrimDelete}
               selectedTrimId={selectedTrimId}
               onSelectTrim={handleSelectTrim}
+              annotationRegions={annotationRegions}
+              onAnnotationAdded={handleAnnotationAdded}
+              onAnnotationSpanChange={handleAnnotationSpanChange}
+              onAnnotationDelete={handleAnnotationDelete}
+              selectedAnnotationId={selectedAnnotationId}
+              onSelectAnnotation={handleSelectAnnotation}
               aspectRatio={aspectRatio}
               onAspectRatioChange={setAspectRatio}
             />
@@ -520,7 +749,16 @@ export default function VideoEditor() {
           onCropChange={setCropRegion}
           aspectRatio={aspectRatio}
           videoElement={videoPlaybackRef.current?.video || null}
+          exportQuality={exportQuality}
+          onExportQualityChange={setExportQuality}
           onExport={handleExport}
+          selectedAnnotationId={selectedAnnotationId}
+          annotationRegions={annotationRegions}
+          onAnnotationContentChange={handleAnnotationContentChange}
+          onAnnotationTypeChange={handleAnnotationTypeChange}
+          onAnnotationStyleChange={handleAnnotationStyleChange}
+          onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
+          onAnnotationDelete={handleAnnotationDelete}
         />
       </div>
 
