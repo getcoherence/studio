@@ -208,4 +208,8 @@ export function registerIpcHandlers(
     currentVideoPath = null;
     return { success: true };
   });
+
+  ipcMain.handle('get-platform', () => {
+    return process.platform;
+  });
 }

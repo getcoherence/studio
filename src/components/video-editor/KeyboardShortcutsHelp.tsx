@@ -1,6 +1,28 @@
 import { HelpCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { formatShortcut } from "@/utils/platformUtils";
 
 export function KeyboardShortcutsHelp() {
+  const [shortcuts, setShortcuts] = useState({
+    delete: 'Ctrl + D',
+    pan: 'Shift + Ctrl + Scroll',
+    zoom: 'Ctrl + Scroll'
+  });
+
+  useEffect(() => {
+    Promise.all([
+      formatShortcut(['mod', 'D']),
+      formatShortcut(['shift', 'mod', 'Scroll']),
+      formatShortcut(['mod', 'Scroll'])
+    ]).then(([deleteKey, panKey, zoomKey]) => {
+      setShortcuts({
+        delete: deleteKey,
+        pan: panKey,
+        zoom: zoomKey
+      });
+    });
+  }, []);
+
   return (
     <div className="relative group">
       <HelpCircle className="w-4 h-4 text-slate-500 hover:text-[#34B27B] transition-colors cursor-help" />
@@ -25,15 +47,15 @@ export function KeyboardShortcutsHelp() {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-slate-400">Delete Selected</span>
-            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">⌘ + D</kbd>
+            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{shortcuts.delete}</kbd>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-slate-400">Pan Timeline</span>
-            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">⇧ + ⌘ + Scroll</kbd>
+            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{shortcuts.pan}</kbd>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-slate-400">Zoom Timeline</span>
-            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">⌘ + Scroll</kbd>
+            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{shortcuts.zoom}</kbd>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-slate-400">Pause/Play</span>

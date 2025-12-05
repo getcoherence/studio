@@ -1,11 +1,16 @@
-import { ipcMain as i, screen as b, BrowserWindow as R, desktopCapturer as V, shell as O, app as d, dialog as S, nativeImage as W, Tray as k, Menu as L } from "electron";
-import { fileURLToPath as E } from "node:url";
-import o from "node:path";
-import P from "node:fs/promises";
-const _ = o.dirname(E(import.meta.url)), U = o.join(_, ".."), m = process.env.VITE_DEV_SERVER_URL, T = o.join(U, "dist");
-let f = null;
-i.on("hud-overlay-hide", () => {
-  f && !f.isDestroyed() && f.minimize();
+import { ipcMain, screen, BrowserWindow, desktopCapturer, shell, app, dialog, nativeImage, Tray, Menu } from "electron";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import fs from "node:fs/promises";
+const __dirname$2 = path.dirname(fileURLToPath(import.meta.url));
+const APP_ROOT = path.join(__dirname$2, "..");
+const VITE_DEV_SERVER_URL$1 = process.env["VITE_DEV_SERVER_URL"];
+const RENDERER_DIST$1 = path.join(APP_ROOT, "dist");
+let hudOverlayWindow = null;
+ipcMain.on("hud-overlay-hide", () => {
+  if (hudOverlayWindow && !hudOverlayWindow.isDestroyed()) {
+    hudOverlayWindow.minimize();
+  }
 });
 function C() {
   const r = b.getPrimaryDisplay(), { workArea: n } = r, c = 500, w = 100, y = Math.floor(n.x + (n.width - c) / 2), h = Math.floor(n.y + n.height - w - 5), e = new R({
@@ -24,10 +29,10 @@ function C() {
     skipTaskbar: !0,
     hasShadow: !1,
     webPreferences: {
-      preload: o.join(_, "preload.mjs"),
-      nodeIntegration: !1,
-      contextIsolation: !0,
-      backgroundThrottling: !1
+      preload: path.join(__dirname$2, "preload.mjs"),
+      nodeIntegration: false,
+      contextIsolation: true,
+      backgroundThrottling: false
     }
   });
   return e.webContents.on("did-finish-load", () => {
@@ -53,11 +58,11 @@ function M() {
     title: "OpenScreen",
     backgroundColor: "#000000",
     webPreferences: {
-      preload: o.join(_, "preload.mjs"),
-      nodeIntegration: !1,
-      contextIsolation: !0,
-      webSecurity: !1,
-      backgroundThrottling: !1
+      preload: path.join(__dirname$2, "preload.mjs"),
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: false,
+      backgroundThrottling: false
     }
   });
   return r.maximize(), r.webContents.on("did-finish-load", () => {
@@ -80,9 +85,9 @@ function A() {
     transparent: !0,
     backgroundColor: "#00000000",
     webPreferences: {
-      preload: o.join(_, "preload.mjs"),
-      nodeIntegration: !1,
-      contextIsolation: !0
+      preload: path.join(__dirname$2, "preload.mjs"),
+      nodeIntegration: false,
+      contextIsolation: true
     }
   });
   return m ? c.loadURL(m + "?windowType=source-selector") : c.loadFile(o.join(T, "index.html"), {
@@ -199,23 +204,42 @@ function H(r, n, c, w, y) {
       };
     }
   });
-  let h = null;
-  i.handle("set-current-video-path", (e, s) => (h = s, { success: !0 })), i.handle("get-current-video-path", () => h ? { success: !0, path: h } : { success: !1 }), i.handle("clear-current-video-path", () => (h = null, { success: !0 }));
+  let currentVideoPath = null;
+  ipcMain.handle("set-current-video-path", (_, path2) => {
+    currentVideoPath = path2;
+    return { success: true };
+  });
+  ipcMain.handle("get-current-video-path", () => {
+    return currentVideoPath ? { success: true, path: currentVideoPath } : { success: false };
+  });
+  ipcMain.handle("clear-current-video-path", () => {
+    currentVideoPath = null;
+    return { success: true };
+  });
+  ipcMain.handle("get-platform", () => {
+    return process.platform;
+  });
 }
-const z = o.dirname(E(import.meta.url)), p = o.join(d.getPath("userData"), "recordings");
-async function N() {
+const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
+const RECORDINGS_DIR = path.join(app.getPath("userData"), "recordings");
+async function ensureRecordingsDir() {
   try {
     await P.mkdir(p, { recursive: !0 }), console.log("RECORDINGS_DIR:", p), console.log("User Data Path:", d.getPath("userData"));
   } catch (r) {
     console.error("Failed to create recordings directory:", r);
   }
 }
-process.env.APP_ROOT = o.join(z, "..");
-const B = process.env.VITE_DEV_SERVER_URL, Y = o.join(process.env.APP_ROOT, "dist-electron"), D = o.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = B ? o.join(process.env.APP_ROOT, "public") : D;
-let l = null, g = null, u = null, x = "";
-function I() {
-  l = C();
+process.env.APP_ROOT = path.join(__dirname$1, "..");
+const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
+const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
+const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
+let mainWindow = null;
+let sourceSelectorWindow = null;
+let tray = null;
+let selectedSourceName = "";
+function createWindow() {
+  mainWindow = createHudOverlayWindow();
 }
 function q() {
   const r = o.join(process.env.VITE_PUBLIC || D, "rec-button.png");

@@ -60,4 +60,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearCurrentVideoPath: () => {
     return ipcRenderer.invoke('clear-current-video-path')
   },
+  getPlatform: () => {
+    return ipcRenderer.invoke('get-platform')
+  },
 })
