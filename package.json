@@ -1,7 +1,7 @@
 {
   "name": "openscreen",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -30,6 +30,7 @@
     "clsx": "^2.1.1",
     "dnd-timeline": "^2.2.0",
     "emoji-picker-react": "^4.16.1",
+    "fix-webm-duration": "^1.0.6",
     "gsap": "^3.13.0",
     "lucide-react": "^0.545.0",
     "mediabunny": "^1.25.1",

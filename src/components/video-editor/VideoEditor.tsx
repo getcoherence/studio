@@ -30,6 +30,7 @@ import {
 } from "./types";
 import { VideoExporter, type ExportProgress, type ExportQuality } from "@/lib/exporter";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
+import { getAssetPath } from "@/lib/assetPath";
 
 const WALLPAPER_COUNT = 18;
 const WALLPAPER_PATHS = Array.from({ length: WALLPAPER_COUNT }, (_, i) => `/wallpapers/wallpaper${i + 1}.jpg`);
@@ -102,6 +103,23 @@ export default function VideoEditor() {
       }
     }
     loadVideo();
+  }, []);
+
+  // Initialize default wallpaper with resolved asset path
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const resolvedPath = await getAssetPath('wallpapers/wallpaper1.jpg');
+        if (mounted) {
+          setWallpaper(resolvedPath);
+        }
+      } catch (err) {
+        // If resolution fails, keep the fallback
+        console.warn('Failed to resolve default wallpaper path:', err);
+      }
+    })();
+    return () => { mounted = false };
   }, []);
 
   function togglePlayPause() {
