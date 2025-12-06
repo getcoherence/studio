@@ -555,7 +555,7 @@ export function SettingsPanel({
                 : "text-slate-400 hover:text-slate-200"
             )}
           >
-            Medium
+            Low
           </button>
           <button
             onClick={() => onExportQualityChange?.('good')}
@@ -566,7 +566,7 @@ export function SettingsPanel({
                 : "text-slate-400 hover:text-slate-200"
             )}
           >
-            Good
+            Medium
           </button>
           <button
             onClick={() => onExportQualityChange?.('source')}
@@ -577,7 +577,7 @@ export function SettingsPanel({
                 : "text-slate-400 hover:text-slate-200"
             )}
           >
-            Source
+            High
           </button>
         </div>
         
