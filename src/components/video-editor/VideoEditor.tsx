@@ -753,6 +753,8 @@ export default function VideoEditor() {
           onZoomDepthChange={(depth) => selectedZoomId && handleZoomDepthChange(depth)}
           selectedZoomId={selectedZoomId}
           onZoomDelete={handleZoomDelete}
+          selectedTrimId={selectedTrimId}
+          onTrimDelete={handleTrimDelete}
           shadowIntensity={shadowIntensity}
           onShadowChange={setShadowIntensity}
           showBlur={showBlur}

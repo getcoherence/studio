@@ -54,6 +54,8 @@ interface SettingsPanelProps {
   onZoomDepthChange?: (depth: ZoomDepth) => void;
   selectedZoomId?: string | null;
   onZoomDelete?: (id: string) => void;
+  selectedTrimId?: string | null;
+  onTrimDelete?: (id: string) => void;
   shadowIntensity?: number;
   onShadowChange?: (intensity: number) => void;
   showBlur?: boolean;
@@ -98,6 +100,8 @@ export function SettingsPanel({
   onZoomDepthChange, 
   selectedZoomId, 
   onZoomDelete, 
+  selectedTrimId,
+  onTrimDelete,
   shadowIntensity = 0, 
   onShadowChange, 
   showBlur, 
@@ -144,10 +148,17 @@ export function SettingsPanel({
   const [showCropDropdown, setShowCropDropdown] = useState(false);
 
   const zoomEnabled = Boolean(selectedZoomDepth);
+  const trimEnabled = Boolean(selectedTrimId);
   
   const handleDeleteClick = () => {
     if (selectedZoomId && onZoomDelete) {
       onZoomDelete(selectedZoomId);
+    }
+  };
+
+  const handleTrimDeleteClick = () => {
+    if (selectedTrimId && onTrimDelete) {
+      onTrimDelete(selectedTrimId);
     }
   };
 
@@ -266,6 +277,21 @@ export function SettingsPanel({
           >
             <Trash2 className="w-4 h-4" />
             Delete Zoom Region
+          </Button>
+        )}
+      </div>
+
+      {/* Trim Delete Section */}
+      <div className="mb-6">
+        {trimEnabled && (
+          <Button
+            onClick={handleTrimDeleteClick}
+            variant="destructive"
+            size="sm"
+            className="w-full gap-2 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Trim Region
           </Button>
         )}
       </div>
