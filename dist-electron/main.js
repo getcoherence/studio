@@ -2,8 +2,8 @@ import { ipcMain, screen, BrowserWindow, desktopCapturer, shell, app, dialog, na
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs/promises";
-const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
-const APP_ROOT = path.join(__dirname$1, "..");
+const __dirname$2 = path.dirname(fileURLToPath(import.meta.url));
+const APP_ROOT = path.join(__dirname$2, "..");
 const VITE_DEV_SERVER_URL$1 = process.env["VITE_DEV_SERVER_URL"];
 const RENDERER_DIST$1 = path.join(APP_ROOT, "dist");
 let hudOverlayWindow = null;
@@ -35,7 +35,7 @@ function createHudOverlayWindow() {
     skipTaskbar: true,
     hasShadow: false,
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.mjs"),
+      preload: path.join(__dirname$2, "preload.mjs"),
       nodeIntegration: false,
       contextIsolation: true,
       backgroundThrottling: false
@@ -74,7 +74,7 @@ function createEditorWindow() {
     title: "OpenScreen",
     backgroundColor: "#000000",
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.mjs"),
+      preload: path.join(__dirname$2, "preload.mjs"),
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: false,
@@ -109,7 +109,7 @@ function createSourceSelectorWindow() {
     transparent: true,
     backgroundColor: "#00000000",
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.mjs"),
+      preload: path.join(__dirname$2, "preload.mjs"),
       nodeIntegration: false,
       contextIsolation: true
     }
@@ -296,7 +296,7 @@ function registerIpcHandlers(createEditorWindow2, createSourceSelectorWindow2, g
     return process.platform;
   });
 }
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
 const RECORDINGS_DIR = path.join(app.getPath("userData"), "recordings");
 async function ensureRecordingsDir() {
   try {
@@ -307,7 +307,7 @@ async function ensureRecordingsDir() {
     console.error("Failed to create recordings directory:", error);
   }
 }
-process.env.APP_ROOT = path.join(__dirname, "..");
+process.env.APP_ROOT = path.join(__dirname$1, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
 const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");

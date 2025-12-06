@@ -3,8 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Trash2, Type, Image as ImageIcon, Upload, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, ChevronDown, Info } from "lucide-react";
 import { toast } from "sonner";
-import Colorful from '@uiw/react-color-colorful';
-import { hsvaToHex, hexToHsva } from '@uiw/color-convert';
+import Block from '@uiw/react-color-block';
 import type { AnnotationRegion, AnnotationType, ArrowDirection, FigureData } from "./types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -44,11 +43,24 @@ export function AnnotationSettingsPanel({
   onDelete,
 }: AnnotationSettingsPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [textColorHsva, setTextColorHsva] = useState(hexToHsva(annotation.style.color));
-  const [bgColorHsva, setBgColorHsva] = useState(hexToHsva(annotation.style.backgroundColor || '#00000000'));
-  const [figureColorHsva, setFigureColorHsva] = useState(
-    hexToHsva(annotation.figureData?.color || '#34B27B')
-  );
+  const colorPalette = [
+    '#FF0000', // Red
+    '#FFD700', // Yellow/Gold
+    '#00FF00', // Green
+    '#FFFFFF', // White
+    '#0000FF', // Blue
+    '#FF6B00', // Orange
+    '#9B59B6', // Purple
+    '#E91E63', // Pink
+    '#00BCD4', // Cyan
+    '#FF5722', // Deep Orange
+    '#8BC34A', // Light Green
+    '#FFC107', // Amber
+    '#34B27B', // Brand Green
+    '#000000', // Black
+    '#607D8B', // Blue Grey
+    '#795548', // Brown
+  ];
 
 
 
@@ -252,18 +264,17 @@ export function AnnotationSettingsPanel({
                         <ChevronDown className="h-3 w-3 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 border-none bg-transparent shadow-xl">
-                      <div className="p-2 bg-[#1a1a1c] border border-white/10 rounded-xl">
-                        <Colorful
-                          color={textColorHsva}
-                          disableAlpha={true}
-                          onChange={(color) => {
-                            setTextColorHsva(color.hsva);
-                            onStyleChange({ color: hsvaToHex(color.hsva) });
-                          }}
-                          style={{ width: '100%', borderRadius: '8px' }}
-                        />
-                      </div>
+                    <PopoverContent className="w-[260px] p-3 bg-[#1a1a1c] border border-white/10 rounded-xl shadow-xl">
+                      <Block
+                        color={annotation.style.color}
+                        colors={colorPalette}
+                        onChange={(color) => {
+                          onStyleChange({ color: color.hex });
+                        }}
+                        style={{
+                          borderRadius: '8px',
+                        }}
+                      />
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -290,28 +301,27 @@ export function AnnotationSettingsPanel({
                         <ChevronDown className="h-3 w-3 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 border-none bg-transparent shadow-xl">
-                      <div className="p-2 bg-[#1a1a1c] border border-white/10 rounded-xl">
-                        <Colorful
-                          color={bgColorHsva}
-                          onChange={(color) => {
-                            setBgColorHsva(color.hsva);
-                            onStyleChange({ backgroundColor: hsvaToHex(color.hsva) });
-                          }}
-                          style={{ width: '100%', borderRadius: '8px' }}
-                        />
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="w-full mt-2 text-xs h-7 hover:bg-white/5 text-slate-400"
-                          onClick={() => {
-                            onStyleChange({ backgroundColor: 'transparent' });
-                            setBgColorHsva({ h: 0, s: 0, v: 0, a: 0 });
-                          }}
-                        >
-                          Clear Background
-                        </Button>
-                      </div>
+                    <PopoverContent className="w-[260px] p-3 bg-[#1a1a1c] border border-white/10 rounded-xl shadow-xl">
+                      <Block
+                        color={annotation.style.backgroundColor === 'transparent' ? '#000000' : annotation.style.backgroundColor}
+                        colors={colorPalette}
+                        onChange={(color) => {
+                          onStyleChange({ backgroundColor: color.hex });
+                        }}
+                        style={{
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full mt-2 text-xs h-7 hover:bg-white/5 text-slate-400"
+                        onClick={() => {
+                          onStyleChange({ backgroundColor: 'transparent' });
+                        }}
+                      >
+                        Clear Background
+                      </Button>
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -428,22 +438,21 @@ export function AnnotationSettingsPanel({
                     <ChevronDown className="h-3 w-3 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 border-none bg-transparent shadow-xl">
-                  <div className="p-2 bg-[#1a1a1c] border border-white/10 rounded-xl">
-                    <Colorful
-                      color={figureColorHsva}
-                      disableAlpha={true}
-                      onChange={(color) => {
-                        setFigureColorHsva(color.hsva);
-                        const newFigureData: FigureData = {
-                          ...annotation.figureData!,
-                          color: hsvaToHex(color.hsva),
-                        };
-                        onFigureDataChange?.(newFigureData);
-                      }}
-                      style={{ width: '100%', borderRadius: '8px' }}
-                    />
-                  </div>
+                <PopoverContent className="w-[260px] p-3 bg-[#1a1a1c] border border-white/10 rounded-xl shadow-xl">
+                  <Block
+                    color={annotation.figureData?.color || '#34B27B'}
+                    colors={colorPalette}
+                    onChange={(color) => {
+                      const newFigureData: FigureData = {
+                        ...annotation.figureData!,
+                        color: color.hex,
+                      };
+                      onFigureDataChange?.(newFigureData);
+                    }}
+                    style={{
+                      borderRadius: '8px',
+                    }}
+                  />
                 </PopoverContent>
               </Popover>
             </div>

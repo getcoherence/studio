@@ -6,8 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import Colorful from '@uiw/react-color-colorful';
-import { hsvaToHex } from '@uiw/color-convert';
+import Block from '@uiw/react-color-block';
 import { Trash2, Download, Crop, X, Bug, Upload } from "lucide-react";
 import { GiHearts } from "react-icons/gi";
 import { toast } from "sonner";
@@ -143,7 +142,13 @@ export function SettingsPanel({
     })()
     return () => { mounted = false }
   }, [])
-  const [hsva, setHsva] = useState({ h: 0, s: 0, v: 68, a: 1 });
+  const colorPalette = [
+    '#FF0000', '#FFD700', '#00FF00', '#FFFFFF', '#0000FF', '#FF6B00',
+    '#9B59B6', '#E91E63', '#00BCD4', '#FF5722', '#8BC34A', '#FFC107',
+    '#34B27B', '#000000', '#607D8B', '#795548',
+  ];
+  
+  const [selectedColor, setSelectedColor] = useState('#ADADAD');
   const [gradient, setGradient] = useState<string>(GRADIENTS[0]);
   const [showCropDropdown, setShowCropDropdown] = useState(false);
 
@@ -508,14 +513,17 @@ export function SettingsPanel({
           
           <TabsContent value="color" className="mt-0 px-2">
             <div className="p-1">
-              <Colorful
-                color={hsva}
-                disableAlpha={true}
+              <Block
+                color={selectedColor}
+                colors={colorPalette}
                 onChange={(color) => {
-                  setHsva(color.hsva);
-                  onWallpaperChange(hsvaToHex(color.hsva));
+                  setSelectedColor(color.hex);
+                  onWallpaperChange(color.hex);
                 }}
-                style={{ width: '100%', borderRadius: '12px' }}
+                style={{
+                  width: '100%',
+                  borderRadius: '12px',
+                }}
               />
             </div>
           </TabsContent>
