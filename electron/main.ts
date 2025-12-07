@@ -111,9 +111,7 @@ app.whenReady().then(async () => {
     // Listen for HUD overlay quit event (macOS only)
     const { ipcMain } = await import('electron');
     ipcMain.on('hud-overlay-close', () => {
-      if (process.platform === 'darwin') {
-        app.quit();
-      }
+      app.quit();
     });
   // Ensure recordings directory exists
   await ensureRecordingsDir()
