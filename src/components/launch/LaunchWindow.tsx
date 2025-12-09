@@ -8,6 +8,7 @@ import { MdMonitor } from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { FaFolderMinus } from "react-icons/fa6";
 import { FiMinus, FiX } from "react-icons/fi";
+import { ContentClamp } from "../ui/content-clamp";
 
 export function LaunchWindow() {
   const { recording, toggleRecording } = useScreenRecorder();
@@ -60,11 +61,6 @@ export function LaunchWindow() {
     const interval = setInterval(checkSelectedSource, 500);
     return () => clearInterval(interval);
   }, []);
-
-  const truncateText = (text: string, maxLength: number = 6) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + "...";
-  };
 
   const openSourceSelector = () => {
     if (window.electronAPI) {
@@ -121,7 +117,7 @@ export function LaunchWindow() {
           disabled={recording}
         >
           <MdMonitor size={14} className="text-white" />
-          {truncateText(selectedSource, 6)}
+          <ContentClamp truncateLength={6}>{selectedSource}</ContentClamp>
         </Button>
 
         <div className="w-px h-6 bg-white/30" />
@@ -131,7 +127,7 @@ export function LaunchWindow() {
           size="sm"
           onClick={hasSelectedSource ? toggleRecording : openSourceSelector}
           disabled={!hasSelectedSource && !recording}
-          className={`gap-1 bg-transparent hover:bg-transparent px-0 flex-1 text-center text-xs ${styles.electronNoDrag}`}
+          className={`gap-1 text-white bg-transparent hover:bg-transparent px-0 flex-1 text-center text-xs ${styles.electronNoDrag}`}
         >
           {recording ? (
             <>
