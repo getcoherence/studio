@@ -68,7 +68,7 @@ function ContentClamp({
         </span>
       </PopoverTrigger>
       <PopoverContent
-        className="w-auto max-w-sm rounded-lg border border-white bg-popover p-3 text-sm text-popover-foreground shadow-lg"
+        className="w-auto max-w-sm rounded-lg border border-white bg-popover p-3 text-sm text-popover-foreground"
         sideOffset={8}
         animated={false}
         onMouseEnter={handleMouseEnter}
