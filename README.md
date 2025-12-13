@@ -39,9 +39,11 @@ OpenScreen is 100% free for personal and commercial use. Use it, modify it, dist
 - Trim sections of the clip
 - Export in different aspect ratios and resolutions
 
-## macOS Installation instructions
+## Installation
 
 Download the latest installer for your platform from the [GitHub Releases](https://github.com/siddharthvaddem/openscreen/releases) page.
+
+### macOS
 
 If you encounter issues with macOS Gatekeeper blocking the app (since it does not come with a developer certificate), you can bypass this by running the following command in your terminal after installation:
 
@@ -50,6 +52,17 @@ xattr -rd com.apple.quarantine /Applications/Openscreen.app
 ```
 
 After running this command, proceed to **System Preferences > Security & Privacy** to grant the necessary permissions for "screen recording" and "accessibility". Once permissions are granted, you can launch the app.
+
+### Linux
+
+Download the `.AppImage` file from the releases page. Make it executable and run:
+
+```bash
+chmod +x Openscreen-Linux-*.AppImage
+./Openscreen-Linux-*.AppImage
+```
+
+You may need to grant screen recording permissions depending on your desktop environment.
 
 ## Built with
 - Electron

@@ -1,0 +1,5 @@
+onlyBuiltDependencies:
+  - electron
+  - esbuild
+  - lzma-native
+  - phantomjs-prebuilt
