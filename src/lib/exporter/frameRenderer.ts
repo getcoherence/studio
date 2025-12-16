@@ -365,9 +365,14 @@ export class FrameRenderer {
     this.videoContainer.x = centerOffsetX;
     this.videoContainer.y = centerOffsetY;
 
-    // Update mask
+    // scale border radius by export/preview canvas ratio
+    const previewWidth = this.config.previewWidth || 1920;
+    const previewHeight = this.config.previewHeight || 1080;
+    const canvasScaleFactor = Math.min(width / previewWidth, height / previewHeight);
+    const scaledBorderRadius = borderRadius * canvasScaleFactor;
+    
     this.maskGraphics.clear();
-    this.maskGraphics.roundRect(0, 0, croppedDisplayWidth, croppedDisplayHeight, borderRadius);
+    this.maskGraphics.roundRect(0, 0, croppedDisplayWidth, croppedDisplayHeight, scaledBorderRadius);
     this.maskGraphics.fill({ color: 0xffffff });
 
     // Cache layout info
