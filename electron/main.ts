@@ -45,33 +45,63 @@ let sourceSelectorWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let selectedSourceName = ''
 
+// Tray Icons
+const defaultTrayIcon = getTrayIcon('openscreen.png');
+const recordingTrayIcon = getTrayIcon('rec-button.png');
+
 function createWindow() {
   mainWindow = createHudOverlayWindow()
 }
 
 function createTray() {
-  const iconPath = path.join(process.env.VITE_PUBLIC || RENDERER_DIST, 'rec-button.png');
-  let icon = nativeImage.createFromPath(iconPath);
-  icon = icon.resize({ width: 24, height: 24, quality: 'best' });
-  tray = new Tray(icon);
-  updateTrayMenu();
+  tray = new Tray(defaultTrayIcon);
 }
 
-function updateTrayMenu() {
+function getTrayIcon(filename: string) {
+  return nativeImage.createFromPath(path.join(process.env.VITE_PUBLIC || RENDERER_DIST, filename)).resize({
+    width: 24,
+    height: 24,
+    quality: 'best'
+  });
+}
+
+
+function updateTrayMenu(recording: boolean = false) {
   if (!tray) return;
-  const menuTemplate = [
-    {
-      label: 'Stop Recording',
-      click: () => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('stop-recording-from-tray');
-        }
-      }
-    }
-  ];
-  const contextMenu = Menu.buildFromTemplate(menuTemplate);
-  tray.setContextMenu(contextMenu);
-  tray.setToolTip(`Recording: ${selectedSourceName}`);
+  const trayIcon = recording ? recordingTrayIcon : defaultTrayIcon;
+  const trayToolTip = recording ? `Recording: ${selectedSourceName}` : "OpenScreen";
+  const menuTemplate = recording
+    ? [
+        {
+          label: "Stop Recording",
+          click: () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send("stop-recording-from-tray");
+            }
+          },
+        },
+      ]
+    : [
+        {
+          label: "Open",
+          click: () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.isMinimized() && mainWindow.restore();
+            } else {
+              createWindow();
+            }
+          },
+        },
+        {
+          label: "Quit",
+          click: () => {
+            app.quit();
+          },
+        },
+      ];
+  tray.setImage(trayIcon);
+  tray.setToolTip(trayToolTip);
+  tray.setContextMenu(Menu.buildFromTemplate(menuTemplate));
 }
 
 function createEditorWindowWrapper() {
@@ -113,6 +143,8 @@ app.whenReady().then(async () => {
     ipcMain.on('hud-overlay-close', () => {
       app.quit();
     });
+    createTray()
+    updateTrayMenu()
   // Ensure recordings directory exists
   await ensureRecordingsDir()
 
@@ -123,14 +155,9 @@ app.whenReady().then(async () => {
     () => sourceSelectorWindow,
     (recording: boolean, sourceName: string) => {
       selectedSourceName = sourceName
-      if (recording) {
-        if (!tray) createTray();
-        updateTrayMenu();
-      } else {
-        if (tray) {
-          tray.destroy();
-          tray = null;
-        }
+      if (!tray) createTray();
+      updateTrayMenu(recording);
+      if (!recording) {
         if (mainWindow) mainWindow.restore();
       }
     }
