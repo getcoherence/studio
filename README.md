@@ -1,11 +1,16 @@
 <p align="center">
-	<img src="openscreen.png" alt="OpenScreen Logo" width="64" />
+  <img src="openscreen.png" alt="OpenScreen Logo" width="64" />
+  <br />
+	  <br />
+  <a href="https://deepwiki.com/siddharthvaddem/openscreen">
+    <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki" />
+  </a>
 </p>
-
 
 # <p align="center">OpenScreen</p>
 
 <p align="center"><strong>OpenScreen is your free, open-source alternative to Screen Studio (sort of).</strong></p>
+
 
 
 If you don't want to pay $29/month for Screen Studio but want a much simpler version that does what most people seem to need, making beautiful product demos and walkthroughs, here's a free-to-use app for you. OpenScreen does not offer all Screen Studio features, but covers the basics well!
@@ -77,7 +82,13 @@ You may need to grant screen recording permissions depending on your desktop env
 
 _I'm new to open source, idk what I'm doing lol. If something is wrong please raise an issue 🙏_
 
+## Contributing
+
+Contributions are welcome! If you’d like to help out or see what’s currently being worked on, take a look at the open issues and the [project roadmap](https://github.com/users/siddharthvaddem/projects/3) to understand the current direction of the project and find ways to contribute.
+
+
 ## License
 
 
 This project is licensed under the [MIT License](./LICENSE). By using this software, you agree that the authors are not liable for any issues, damages, or claims arising from its use.
+
