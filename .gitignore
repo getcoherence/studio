@@ -182,13 +182,12 @@ local.settings.json
 # ============================================================================
 # KIRO AI ASSISTANT
 # ============================================================================
-# Settings contain personal API tokens - NEVER commit
-.kiro/settings/
 .kiro/
-# Keep specs, steering, and hooks (shared with team)
-# .kiro/specs/ - COMMIT
-# .kiro/steering/ - COMMIT
-# .kiro/hooks/ - COMMIT
+
+# ============================================================================
+# GITHUB
+# ============================================================================
+.github/
 
 # ============================================================================
 # TEMPORARY & BACKUP FILES
@@ -207,11 +206,7 @@ temp/
 # EDITOR & IDE
 # ============================================================================
 # VS Code
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
+.vscode/
 .history/
 *.vsix
 
