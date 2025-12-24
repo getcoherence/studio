@@ -7,14 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import Block from '@uiw/react-color-block';
-import { Trash2, Download, Crop, X, Bug, Upload, Star } from "lucide-react";
+import { Trash2, Download, Crop, X, Bug, Upload, Star, Film, Image } from "lucide-react";
 import { toast } from "sonner";
 import type { ZoomDepth, CropRegion, AnnotationRegion, AnnotationType } from "./types";
 import { CropControl } from "./CropControl";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import { type AspectRatio } from "@/utils/aspectRatioUtils";
-import type { ExportQuality } from "@/lib/exporter";
+import type { ExportQuality, ExportFormat, GifFrameRate, GifSizePreset } from "@/lib/exporter";
+import { GIF_FRAME_RATES, GIF_SIZE_PRESETS } from "@/lib/exporter";
 
 const WALLPAPER_COUNT = 18;
 const WALLPAPER_RELATIVE = Array.from({ length: WALLPAPER_COUNT }, (_, i) => `wallpapers/wallpaper${i + 1}.jpg`);
@@ -70,6 +71,16 @@ interface SettingsPanelProps {
   videoElement?: HTMLVideoElement | null;
   exportQuality?: ExportQuality;
   onExportQualityChange?: (quality: ExportQuality) => void;
+  // Export format settings
+  exportFormat?: ExportFormat;
+  onExportFormatChange?: (format: ExportFormat) => void;
+  gifFrameRate?: GifFrameRate;
+  onGifFrameRateChange?: (rate: GifFrameRate) => void;
+  gifLoop?: boolean;
+  onGifLoopChange?: (loop: boolean) => void;
+  gifSizePreset?: GifSizePreset;
+  onGifSizePresetChange?: (preset: GifSizePreset) => void;
+  gifOutputDimensions?: { width: number; height: number };
   onExport?: () => void;
   selectedAnnotationId?: string | null;
   annotationRegions?: AnnotationRegion[];
@@ -116,6 +127,15 @@ export function SettingsPanel({
   videoElement, 
   exportQuality = 'good',
   onExportQualityChange,
+  exportFormat = 'mp4',
+  onExportFormatChange,
+  gifFrameRate = 15,
+  onGifFrameRateChange,
+  gifLoop = true,
+  onGifLoopChange,
+  gifSizePreset = 'medium',
+  onGifSizePresetChange,
+  gifOutputDimensions = { width: 1280, height: 720 },
   onExport,
   selectedAnnotationId,
   annotationRegions = [],
@@ -550,43 +570,138 @@ export function SettingsPanel({
       </Tabs>
 
       <div className="mt-4 pt-4 border-t border-white/5">
-        <div className="mb-2 text-xs font-medium text-slate-400">Export Quality</div>
-        {/* Export Quality Button Group */}
-        <div className="mb-2.5 bg-white/5 border border-white/5 p-1 w-full grid grid-cols-3 h-auto rounded-xl">
-          <button
-            onClick={() => onExportQualityChange?.('medium')}
-            className={cn(
-              "py-2 rounded-lg transition-all text-xs font-medium",
-              exportQuality === 'medium'
-                ? "bg-white text-black"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            Low
-          </button>
-          <button
-            onClick={() => onExportQualityChange?.('good')}
-            className={cn(
-              "py-2 rounded-lg transition-all text-xs font-medium",
-              exportQuality === 'good'
-                ? "bg-white text-black"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            Medium
-          </button>
-          <button
-            onClick={() => onExportQualityChange?.('source')}
-            className={cn(
-              "py-2 rounded-lg transition-all text-xs font-medium",
-              exportQuality === 'source'
-                ? "bg-white text-black"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            High
-          </button>
+        {/* Format Selection */}
+        <div className="mb-4">
+          <div className="mb-2 text-xs font-medium text-slate-400 uppercase tracking-wider">Export Format</div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => onExportFormatChange?.('mp4')}
+              className={cn(
+                "flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all",
+                exportFormat === 'mp4'
+                  ? "bg-[#34B27B]/10 border-[#34B27B]/50 text-white"
+                  : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-slate-200"
+              )}
+            >
+              <Film className="w-5 h-5" />
+              <span className="text-xs font-medium">MP4</span>
+            </button>
+            <button
+              onClick={() => onExportFormatChange?.('gif')}
+              className={cn(
+                "flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all",
+                exportFormat === 'gif'
+                  ? "bg-[#34B27B]/10 border-[#34B27B]/50 text-white"
+                  : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-slate-200"
+              )}
+            >
+              <Image className="w-5 h-5" />
+              <span className="text-xs font-medium">GIF</span>
+            </button>
+          </div>
         </div>
+
+        {/* MP4 Quality Options */}
+        {exportFormat === 'mp4' && (
+          <>
+            <div className="mb-2 text-xs font-medium text-slate-400">Export Quality</div>
+            <div className="mb-4 bg-white/5 border border-white/5 p-1 w-full grid grid-cols-3 h-auto rounded-xl">
+              <button
+                onClick={() => onExportQualityChange?.('medium')}
+                className={cn(
+                  "py-2 rounded-lg transition-all text-xs font-medium",
+                  exportQuality === 'medium'
+                    ? "bg-white text-black"
+                    : "text-slate-400 hover:text-slate-200"
+                )}
+              >
+                Low
+              </button>
+              <button
+                onClick={() => onExportQualityChange?.('good')}
+                className={cn(
+                  "py-2 rounded-lg transition-all text-xs font-medium",
+                  exportQuality === 'good'
+                    ? "bg-white text-black"
+                    : "text-slate-400 hover:text-slate-200"
+                )}
+              >
+                Medium
+              </button>
+              <button
+                onClick={() => onExportQualityChange?.('source')}
+                className={cn(
+                  "py-2 rounded-lg transition-all text-xs font-medium",
+                  exportQuality === 'source'
+                    ? "bg-white text-black"
+                    : "text-slate-400 hover:text-slate-200"
+                )}
+              >
+                High
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* GIF Options */}
+        {exportFormat === 'gif' && (
+          <div className="mb-4 space-y-3">
+            {/* Frame Rate */}
+            <div>
+              <div className="mb-1.5 text-xs font-medium text-slate-400">Frame Rate</div>
+              <div className="bg-white/5 border border-white/5 p-1 w-full grid grid-cols-5 h-auto rounded-xl">
+                {GIF_FRAME_RATES.map((rate) => (
+                  <button
+                    key={rate.value}
+                    onClick={() => onGifFrameRateChange?.(rate.value)}
+                    className={cn(
+                      "py-1.5 rounded-lg transition-all text-xs font-medium",
+                      gifFrameRate === rate.value
+                        ? "bg-white text-black"
+                        : "text-slate-400 hover:text-slate-200"
+                    )}
+                  >
+                    {rate.value}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Size Preset */}
+            <div>
+              <div className="mb-1.5 text-xs font-medium text-slate-400">Output Size</div>
+              <div className="bg-white/5 border border-white/5 p-1 w-full grid grid-cols-4 h-auto rounded-xl">
+                {Object.entries(GIF_SIZE_PRESETS).map(([key, preset]) => (
+                  <button
+                    key={key}
+                    onClick={() => onGifSizePresetChange?.(key as GifSizePreset)}
+                    className={cn(
+                      "py-1.5 rounded-lg transition-all text-xs font-medium",
+                      gifSizePreset === key
+                        ? "bg-white text-black"
+                        : "text-slate-400 hover:text-slate-200"
+                    )}
+                  >
+                    {key === 'original' ? 'Orig' : key.charAt(0).toUpperCase() + key.slice(1, 3)}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-1 text-[10px] text-slate-500">
+                {gifOutputDimensions.width} × {gifOutputDimensions.height}px
+              </div>
+            </div>
+
+            {/* Loop Toggle */}
+            <div className="flex items-center justify-between py-1">
+              <span className="text-xs font-medium text-slate-200">Loop Animation</span>
+              <Switch
+                checked={gifLoop}
+                onCheckedChange={onGifLoopChange}
+                className="data-[state=checked]:bg-[#34B27B]"
+              />
+            </div>
+          </div>
+        )}
         
         <Button
           type="button"
@@ -595,7 +710,7 @@ export function SettingsPanel({
           className="w-full py-6 text-lg font-semibold flex items-center justify-center gap-3 bg-[#34B27B] text-white rounded-xl shadow-lg shadow-[#34B27B]/20 hover:bg-[#34B27B]/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
         >
           <Download className="w-5 h-5" />
-          <span>Export Video</span>
+          <span>Export {exportFormat === 'gif' ? 'GIF' : 'Video'}</span>
         </Button>
         <div className="flex gap-2 mt-4">
           <button

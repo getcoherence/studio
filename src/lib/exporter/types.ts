@@ -11,6 +11,8 @@ export interface ExportProgress {
   totalFrames: number;
   percentage: number;
   estimatedTimeRemaining: number; // in seconds
+  phase?: 'extracting' | 'finalizing'; // Phase of export
+  renderProgress?: number; // 0-100, progress of GIF rendering phase
 }
 
 export interface ExportResult {
@@ -26,3 +28,48 @@ export interface VideoFrameData {
 }
 
 export type ExportQuality = 'medium' | 'good' | 'source';
+
+// GIF Export Types
+export type ExportFormat = 'mp4' | 'gif';
+
+export type GifFrameRate = 10 | 15 | 20 | 25 | 30;
+
+export type GifSizePreset = 'small' | 'medium' | 'large' | 'original';
+
+export interface GifExportConfig {
+  frameRate: GifFrameRate;
+  loop: boolean;
+  sizePreset: GifSizePreset;
+  width: number;
+  height: number;
+}
+
+export interface ExportSettings {
+  format: ExportFormat;
+  // MP4 settings
+  quality?: ExportQuality;
+  // GIF settings
+  gifConfig?: GifExportConfig;
+}
+
+export const GIF_SIZE_PRESETS: Record<GifSizePreset, { maxHeight: number; label: string }> = {
+  small: { maxHeight: 480, label: 'Small (480p)' },
+  medium: { maxHeight: 720, label: 'Medium (720p)' },
+  large: { maxHeight: 1080, label: 'Large (1080p)' },
+  original: { maxHeight: Infinity, label: 'Original' },
+};
+
+export const GIF_FRAME_RATES: { value: GifFrameRate; label: string }[] = [
+  { value: 10, label: '10 FPS - Smaller file' },
+  { value: 15, label: '15 FPS - Balanced' },
+  { value: 20, label: '20 FPS - Smooth' },
+  { value: 25, label: '25 FPS - Very smooth' },
+  { value: 30, label: '30 FPS - Maximum' },
+];
+
+// Valid frame rates for validation
+export const VALID_GIF_FRAME_RATES: readonly GifFrameRate[] = [10, 15, 20, 25, 30] as const;
+
+export function isValidGifFrameRate(rate: number): rate is GifFrameRate {
+  return VALID_GIF_FRAME_RATES.includes(rate as GifFrameRate);
+}

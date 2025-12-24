@@ -130,12 +130,18 @@ export function registerIpcHandlers(
 
   ipcMain.handle('save-exported-video', async (_, videoData: ArrayBuffer, fileName: string) => {
     try {
-      const result = await dialog.showSaveDialog({
-        title: 'Save Exported Video',
+      const mainWindow = getMainWindow();
+      
+      // Determine file type from extension
+      const isGif = fileName.toLowerCase().endsWith('.gif');
+      const filters = isGif 
+        ? [{ name: 'GIF Image', extensions: ['gif'] }]
+        : [{ name: 'MP4 Video', extensions: ['mp4'] }];
+
+      const result = await dialog.showSaveDialog(mainWindow || undefined, {
+        title: isGif ? 'Save Exported GIF' : 'Save Exported Video',
         defaultPath: path.join(app.getPath('downloads'), fileName),
-        filters: [
-          { name: 'MP4 Video', extensions: ['mp4'] }
-        ],
+        filters,
         properties: ['createDirectory', 'showOverwriteConfirmation']
       });
 
@@ -146,8 +152,9 @@ export function registerIpcHandlers(
           message: 'Export cancelled'
         };
       }
+
       await fs.writeFile(result.filePath, Buffer.from(videoData));
-      
+
       return {
         success: true,
         path: result.filePath,
