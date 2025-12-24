@@ -1,27 +1,368 @@
-# Logs
-logs
+# ============================================================================
+# OpenScreen - Comprehensive .gitignore
+# Electron + Vite + React + TypeScript + Tailwind + Vitest
+# ============================================================================
+
+# ============================================================================
+# DEPENDENCIES
+# ============================================================================
+node_modules/
+bower_components/
+jspm_packages/
+
+# ============================================================================
+# LOGS
+# ============================================================================
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+debug.log
+error.log
+combined.log
 
-node_modules
-dist
-dist-ssr
+# ============================================================================
+# BUILD OUTPUTS
+# ============================================================================
+# Vite build output
+dist/
+dist-ssr/
+
+# Electron compiled files
+dist-electron/
+
+# Generic build directories
+build/
+out/
+.output/
+
+# ============================================================================
+# ELECTRON BUILDER
+# ============================================================================
+# Release/installer output
+release/
+
+# Platform-specific installers
+*.exe
+*.msi
+*.dmg
+*.pkg
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.flatpak
+
+# Electron builder metadata
+*.blockmap
+builder-effective-config.yaml
+builder-debug.yml
+
+# Auto-update manifests
+latest.yml
+latest-mac.yml
+latest-linux.yml
+
+# ============================================================================
+# CACHE DIRECTORIES
+# ============================================================================
+# Vite cache
+.vite/
+node_modules/.vite/
+vite.config.ts.timestamp-*
+vite.config.*.timestamp-*
+
+# General cache
+.cache/
+.parcel-cache/
+.turbo/
+
+# Build tool caches
+.webpack/
+.esbuild/
+.swc/
+
+# Electron cache
+.electron/
+.cache/electron/
+.cache/electron-builder/
+
+# ============================================================================
+# TYPESCRIPT
+# ============================================================================
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# ============================================================================
+# TESTING (Vitest + Fast-Check)
+# ============================================================================
+# Coverage reports
+coverage/
+.coverage/
+.nyc_output/
+*.lcov
+
+# Vitest cache
+.vitest/
+node_modules/.vitest/
+
+# Test results
+test-results/
+junit.xml
+test-report.xml
+*.junit.xml
+vitest-results.json
+
+# Fast-check
+.fast-check-*
+fast-check-report.json
+
+# ============================================================================
+# LINTING
+# ============================================================================
+.eslintcache
+.stylelintcache
+
+# ============================================================================
+# SOURCE MAPS
+# ============================================================================
+*.map
+*.js.map
+*.css.map
+
+# ============================================================================
+# ENVIRONMENT & SECRETS (CRITICAL!)
+# ============================================================================
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env.staging
+
+# API Keys & Credentials
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+credentials.json
+secrets.json
+*-credentials.json
+*-secrets.json
+service-account*.json
+firebase-adminsdk*.json
+google-credentials.json
+
+# SSL Certificates
+certs/
+certificates/
+ssl/
+
+# ============================================================================
+# LOCAL CONFIGURATION
+# ============================================================================
 *.local
+*.local.json
+*.local.yaml
+*.local.yml
+config.local.*
+local.settings.json
 
-# Editor directories and files
+# ============================================================================
+# KIRO AI ASSISTANT
+# ============================================================================
+# Settings contain personal API tokens - NEVER commit
+.kiro
+
+# Keep specs, steering, and hooks (shared with team)
+# .kiro/specs/ - COMMIT
+# .kiro/steering/ - COMMIT
+# .kiro/hooks/ - COMMIT
+
+# ============================================================================
+# TEMPORARY & BACKUP FILES
+# ============================================================================
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.old
+*~
+.tmp/
+temp/
+
+# ============================================================================
+# EDITOR & IDE
+# ============================================================================
+# VS Code
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-release/**
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.history/
+*.vsix
 
-# npx electron-builder --mac --win
+# JetBrains IDEs (IntelliJ, WebStorm, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+cmake-build-*/
+
+# Vim/Neovim
+*.swp
+*.swo
+*.swn
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+Session.vim
+Sessionx.vim
+.netrwhist
+.nvimlog
+tags
+GTAGS
+GRTAGS
+GPATH
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Emacs
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ============================================================================
+# OPERATING SYSTEM FILES
+# ============================================================================
+# macOS
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+Icon?
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============================================================================
+# NATIVE MODULES
+# ============================================================================
+*.node
+build/Release/
+
+# ============================================================================
+# CRASH REPORTS
+# ============================================================================
+*.dmp
+crash-reports/
+
+# ============================================================================
+# DATABASE FILES
+# ============================================================================
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+dump.sql
+*.dump
+
+# ============================================================================
+# PACKAGE MANAGER SPECIFIC
+# ============================================================================
+# npm
+.npm
+
+# Yarn v1
+.yarn-integrity
+
+# Yarn v2+ (Berry)
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnp
+.pnp.js
+.pnp.cjs
+.pnp.loader.mjs
+
+# pnpm
+.pnpm-store/
+.pnpm-debug.log
+
+# ============================================================================
+# MISCELLANEOUS
+# ============================================================================
+# Node REPL history
+.node_repl_history
+
+# Nx cache
+.nx/cache
+
+# Storybook
+storybook-static/
+
+# Serverless
+.serverless/
+
+# FuseBox
+.fusebox/
+
+# DynamoDB Local
+.dynamodb/
+
+# TernJS
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
