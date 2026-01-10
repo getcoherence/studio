@@ -424,7 +424,7 @@ export function SettingsPanel({
         </>
       )}
 
-      <Tabs defaultValue="image" className="flex-1 flex flex-col min-h-0">
+      <Tabs defaultValue="image" className="flex-1 flex flex-col min-h-[200px]">
         <TabsList className="mb-4 bg-white/5 border border-white/5 p-1 w-full grid grid-cols-3 h-auto rounded-xl">
           <TabsTrigger value="image" className="data-[state=active]:bg-[#34B27B] data-[state=active]:text-white text-slate-400 py-2 rounded-lg transition-all">Image</TabsTrigger>
           <TabsTrigger value="color" className="data-[state=active]:bg-[#34B27B] data-[state=active]:text-white text-slate-400 py-2 rounded-lg transition-all">Color</TabsTrigger>
