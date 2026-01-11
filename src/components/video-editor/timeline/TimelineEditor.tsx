@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { type AspectRatio, getAspectRatioLabel } from "@/utils/aspectRatioUtils";
 import { formatShortcut } from "@/utils/platformUtils";
+import { TutorialHelp } from "../TutorialHelp";
 
 const ZOOM_ROW_ID = "row-zoom";
 const TRIM_ROW_ID = "row-trim";
@@ -907,6 +908,8 @@ export default function TimelineEditor({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          <div className="w-[1px] h-4 bg-white/10" />
+          <TutorialHelp />
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-4 text-[10px] text-slate-500 font-medium">
