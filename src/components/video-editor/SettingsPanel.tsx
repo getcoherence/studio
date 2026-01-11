@@ -649,7 +649,7 @@ export function SettingsPanel({
             {/* Frame Rate */}
             <div>
               <div className="mb-1.5 text-xs font-medium text-slate-400">Frame Rate</div>
-              <div className="bg-white/5 border border-white/5 p-1 w-full grid grid-cols-5 h-auto rounded-xl">
+              <div className="bg-white/5 border border-white/5 p-1 w-full grid grid-cols-4 h-auto rounded-xl">
                 {GIF_FRAME_RATES.map((rate) => (
                   <button
                     key={rate.value}
@@ -670,7 +670,7 @@ export function SettingsPanel({
             {/* Size Preset */}
             <div>
               <div className="mb-1.5 text-xs font-medium text-slate-400">Output Size</div>
-              <div className="bg-white/5 border border-white/5 p-1 w-full grid grid-cols-4 h-auto rounded-xl">
+              <div className="bg-white/5 border border-white/5 p-1 w-full grid grid-cols-3 h-auto rounded-xl">
                 {Object.entries(GIF_SIZE_PRESETS).map(([key, preset]) => (
                   <button
                     key={key}

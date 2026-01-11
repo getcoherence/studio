@@ -10,7 +10,7 @@ import {
  * Property 1: Valid Frame Rate Acceptance
  * 
  * *For any* frame rate value, the GIF_Exporter SHALL accept it if and only if 
- * it is one of the valid presets (10, 15, 20, 25, 30 FPS). Invalid frame rates 
+ * it is one of the valid presets (15, 20, 25, 30 FPS). Invalid frame rates 
  * should be rejected with an error.
  * 
  * **Validates: Requirements 2.2**
@@ -20,7 +20,7 @@ import {
 describe('GIF Export Types', () => {
   describe('Property 1: Valid Frame Rate Acceptance', () => {
     // Property test: Valid frame rates should be accepted
-    it('should accept all valid frame rates (10, 15, 20, 25, 30)', () => {
+    it('should accept all valid frame rates (15, 20, 25, 30)', () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...VALID_GIF_FRAME_RATES),
