@@ -23,5 +23,5 @@ dist-ssr
 *.sln
 *.sw?
 release/**
-
+*.kiro/
 # npx electron-builder --mac --win

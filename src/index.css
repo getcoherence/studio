@@ -77,6 +77,16 @@
     transition: left 33ms linear, right 33ms linear;
   }
   
+  /* Hidden scrollbar - still scrollable but invisible */
+  .custom-scrollbar {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+  
   /* Smooth playback scrubber */
   input[type="range"] {
     -webkit-appearance: none;

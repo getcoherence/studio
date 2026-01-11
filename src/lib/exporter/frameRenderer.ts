@@ -311,8 +311,6 @@ export class FrameRenderer {
       const scaleY = this.config.height / previewHeight;
       const scaleFactor = (scaleX + scaleY) / 2;
 
-
-
       await renderAnnotations(
         this.compositeCtx,
         this.config.annotationRegions,
