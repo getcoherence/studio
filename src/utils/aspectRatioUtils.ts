@@ -1,4 +1,4 @@
-export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3' | '4:5';
+export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3' | '4:5' | '16:10' | '10:16';
 
 export function getAspectRatioValue(aspectRatio: AspectRatio): number {
   switch (aspectRatio) {
@@ -7,6 +7,9 @@ export function getAspectRatioValue(aspectRatio: AspectRatio): number {
     case '1:1':  return 1;
     case '4:3':  return 4 / 3;
     case '4:5':  return 4 / 5;
+    case '16:10': return 16 / 10;
+    case '10:16': return 10 / 16;
+    default: return 1;
   }
 }
 
