@@ -293,7 +293,7 @@ export class FrameRenderer {
       focusY: this.animationState.focusY,
       motionIntensity: maxMotionIntensity,
       isPlaying: true,
-      motionBlurEnabled: this.config.motionBlurEnabled ?? true,
+      motionBlurEnabled: this.config.motionBlurEnabled ?? false,
     });
 
     // Render the PixiJS stage to its canvas (video only, transparent background)
