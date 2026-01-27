@@ -45,7 +45,7 @@ export default function VideoEditor() {
   const [wallpaper, setWallpaper] = useState<string>(WALLPAPER_PATHS[0]);
   const [shadowIntensity, setShadowIntensity] = useState(0);
   const [showBlur, setShowBlur] = useState(false);
-  const [motionBlurEnabled, setMotionBlurEnabled] = useState(true);
+  const [motionBlurEnabled, setMotionBlurEnabled] = useState(false);
   const [borderRadius, setBorderRadius] = useState(0);
   const [padding, setPadding] = useState(50);
   const [cropRegion, setCropRegion] = useState<CropRegion>(DEFAULT_CROP_REGION);
@@ -320,7 +320,7 @@ export default function VideoEditor() {
       });
       return updated;
     });
-  }, []);;
+  }, []);
 
   const handleAnnotationTypeChange = useCallback((id: string, type: AnnotationRegion['type']) => {
     setAnnotationRegions((prev) => {

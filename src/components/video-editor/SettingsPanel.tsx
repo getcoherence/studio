@@ -116,7 +116,7 @@ export function SettingsPanel({
   onShadowChange, 
   showBlur, 
   onBlurChange, 
-  motionBlurEnabled = true, 
+  motionBlurEnabled = false,
   onMotionBlurChange, 
   borderRadius = 0, 
   onBorderRadiusChange, 
