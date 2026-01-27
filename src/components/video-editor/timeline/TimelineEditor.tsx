@@ -17,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { type AspectRatio, getAspectRatioLabel } from "@/utils/aspectRatioUtils";
+import { type AspectRatio, getAspectRatioLabel, ASPECT_RATIOS } from "@/utils/aspectRatioUtils";
 import { formatShortcut } from "@/utils/platformUtils";
 import { TutorialHelp } from "../TutorialHelp";
 
@@ -896,7 +896,7 @@ export default function TimelineEditor({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-white/10">
-              {(['16:9', '9:16', '1:1', '4:3', '4:5', '16:10', "10:16"] as AspectRatio[]).map((ratio) => (
+              {ASPECT_RATIOS.map((ratio) => (
                 <DropdownMenuItem
                   key={ratio}
                   onClick={() => onAspectRatioChange(ratio)}
