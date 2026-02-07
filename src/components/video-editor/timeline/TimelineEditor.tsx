@@ -160,11 +160,13 @@ function PlaybackCursor({
   videoDurationMs,
   onSeek,
   timelineRef,
+  keyframes = [],
 }: {
   currentTimeMs: number;
   videoDurationMs: number;
   onSeek?: (time: number) => void;
   timelineRef: React.RefObject<HTMLDivElement>;
+  keyframes?: { id: string; time: number }[];
 }) {
   const { sidebarWidth, direction, range, valueToPixels, pixelsToValue } = useTimelineContext();
   const sideProperty = direction === "rtl" ? "right" : "left";
@@ -181,7 +183,19 @@ function PlaybackCursor({
 
       // Allow dragging outside to 0 or max, but clamp the value
       const relativeMs = pixelsToValue(clickX);
-      const absoluteMs = Math.max(0, Math.min(range.start + relativeMs, videoDurationMs));
+      let absoluteMs = Math.max(0, Math.min(range.start + relativeMs, videoDurationMs));
+
+      // Snap to nearby keyframe if within threshold (150ms)
+      const snapThresholdMs = 150;
+      const nearbyKeyframe = keyframes.find(kf =>
+        Math.abs(kf.time - absoluteMs) <= snapThresholdMs &&
+        kf.time >= range.start &&
+        kf.time <= range.end
+      );
+
+      if (nearbyKeyframe) {
+        absoluteMs = nearbyKeyframe.time;
+      }
 
       onSeek(absoluteMs / 1000);
     };
@@ -200,7 +214,7 @@ function PlaybackCursor({
       window.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = '';
     };
-  }, [isDragging, onSeek, timelineRef, sidebarWidth, range.start, videoDurationMs, pixelsToValue]);
+  }, [isDragging, onSeek, timelineRef, sidebarWidth, range.start, range.end, videoDurationMs, pixelsToValue, keyframes]);
 
   if (videoDurationMs <= 0 || currentTimeMs < 0) {
     return null;
@@ -372,6 +386,7 @@ function Timeline({
   selectedZoomId,
   selectedTrimId,
   selectedAnnotationId,
+  keyframes = [],
 }: {
   items: TimelineRenderItem[];
   videoDurationMs: number;
@@ -384,6 +399,7 @@ function Timeline({
   selectedZoomId: string | null;
   selectedTrimId?: string | null;
   selectedAnnotationId?: string | null;
+  keyframes?: { id: string; time: number }[];
 }) {
   const { setTimelineRef, style, sidebarWidth, range, pixelsToValue } = useTimelineContext();
   const localTimelineRef = useRef<HTMLDivElement | null>(null);
@@ -432,6 +448,7 @@ function Timeline({
         videoDurationMs={videoDurationMs}
         onSeek={onSeek}
         timelineRef={localTimelineRef}
+        keyframes={keyframes}
       />
 
       <Row id={ZOOM_ROW_ID}>
@@ -526,6 +543,7 @@ export default function TimelineEditor({
     pan: 'Shift + Ctrl + Scroll',
     zoom: 'Ctrl + Scroll'
   });
+  const timelineContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     formatShortcut(['shift', 'mod', 'Scroll']).then(pan => {
@@ -549,6 +567,11 @@ export default function TimelineEditor({
     setKeyframes(prev => prev.filter(kf => kf.id !== selectedKeyframeId));
     setSelectedKeyframeId(null);
   }, [selectedKeyframeId]);
+
+  // Move keyframe to new time position
+  const handleKeyframeMove = useCallback((id: string, newTime: number) => {
+    setKeyframes(prev => prev.map(kf => kf.id === id ? { ...kf, time: Math.max(0, Math.min(newTime, totalMs)) } : kf));
+  }, [totalMs]);
 
   // Delete selected zoom item
   const deleteSelectedZoom = useCallback(() => {
@@ -756,7 +779,8 @@ export default function TimelineEditor({
           }
         }
       }
-      if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
+      // Delete key or Ctrl+D / Cmd+D
+      if (e.key === 'Delete' || e.key === 'Backspace' || ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey))) {
         if (selectedKeyframeId) {
           deleteSelectedKeyframe();
         } else if (selectedZoomId) {
@@ -923,7 +947,9 @@ export default function TimelineEditor({
           </span>
         </div>
       </div>
-      <div className="flex-1 overflow-hidden bg-[#09090b] relative"
+      <div
+        ref={timelineContainerRef}
+        className="flex-1 overflow-hidden bg-[#09090b] relative"
         onClick={() => setSelectedKeyframeId(null)}
       >
         <TimelineWrapper
@@ -940,6 +966,9 @@ export default function TimelineEditor({
             keyframes={keyframes}
             selectedKeyframeId={selectedKeyframeId}
             setSelectedKeyframeId={setSelectedKeyframeId}
+            onKeyframeMove={handleKeyframeMove}
+            videoDurationMs={totalMs}
+            timelineRef={timelineContainerRef}
           />
           <Timeline
             items={timelineItems}
@@ -953,6 +982,7 @@ export default function TimelineEditor({
             selectedZoomId={selectedZoomId}
             selectedTrimId={selectedTrimId}
             selectedAnnotationId={selectedAnnotationId}
+            keyframes={keyframes}
           />
         </TimelineWrapper>
       </div>
