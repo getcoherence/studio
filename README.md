@@ -50,6 +50,8 @@ If you encounter issues with macOS Gatekeeper blocking the app (since it does no
 xattr -rd com.apple.quarantine /Applications/Openscreen.app
 ```
 
+Note: Give your terminal Full Disk Access in **System Settings > Privacy & Security** to grant you access and then run the above command.
+
 After running this command, proceed to **System Preferences > Security & Privacy** to grant the necessary permissions for "screen recording" and "accessibility". Once permissions are granted, you can launch the app.
 
 ### Linux
