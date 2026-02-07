@@ -84,7 +84,7 @@ export class FrameRenderer {
       width: this.config.width,
       height: this.config.height,
       backgroundAlpha: 0,
-      antialias: false,
+      antialias: true,
       resolution: 1,
       autoDensity: true,
     });
@@ -100,7 +100,7 @@ export class FrameRenderer {
 
     // Setup blur filter for video container
     this.blurFilter = new BlurFilter();
-    this.blurFilter.quality = 3;
+    this.blurFilter.quality = 5;
     this.blurFilter.resolution = this.app.renderer.resolution;
     this.blurFilter.blur = 0;
     this.videoContainer.filters = [this.blurFilter];
