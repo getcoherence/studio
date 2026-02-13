@@ -597,12 +597,20 @@ export default function TimelineEditor({
     setRange(createInitialRange(totalMs));
   }, [totalMs]);
 
+  // Normalize regions only when timeline bounds change (not on every region edit).
+  // Using refs to read current regions avoids a dependency-loop that re-fires
+  // this effect on every drag/resize and races with dnd-timeline's internal state.
+  const zoomRegionsRef = useRef(zoomRegions);
+  const trimRegionsRef = useRef(trimRegions);
+  zoomRegionsRef.current = zoomRegions;
+  trimRegionsRef.current = trimRegions;
+
   useEffect(() => {
     if (totalMs === 0 || safeMinDurationMs <= 0) {
       return;
     }
 
-    zoomRegions.forEach((region) => {
+    zoomRegionsRef.current.forEach((region) => {
       const clampedStart = Math.max(0, Math.min(region.startMs, totalMs));
       const minEnd = clampedStart + safeMinDurationMs;
       const clampedEnd = Math.min(totalMs, Math.max(minEnd, region.endMs));
@@ -614,7 +622,7 @@ export default function TimelineEditor({
       }
     });
 
-    trimRegions.forEach((region) => {
+    trimRegionsRef.current.forEach((region) => {
       const clampedStart = Math.max(0, Math.min(region.startMs, totalMs));
       const minEnd = clampedStart + safeMinDurationMs;
       const clampedEnd = Math.min(totalMs, Math.max(minEnd, region.endMs));
@@ -625,7 +633,8 @@ export default function TimelineEditor({
         onTrimSpanChange?.(region.id, { start: normalizedStart, end: normalizedEnd });
       }
     });
-  }, [zoomRegions, trimRegions, annotationRegions, totalMs, safeMinDurationMs, onZoomSpanChange, onTrimSpanChange, onAnnotationSpanChange]);
+    // Only re-run when the timeline scale changes, not on every region edit
+  }, [totalMs, safeMinDurationMs, onZoomSpanChange, onTrimSpanChange]);
 
   const hasOverlap = useCallback((newSpan: Span, excludeId?: string): boolean => {
     // Determine which row the item belongs to
@@ -641,12 +650,8 @@ export default function TimelineEditor({
     const checkOverlap = (regions: (ZoomRegion | TrimRegion)[]) => {
       return regions.some((region) => {
         if (region.id === excludeId) return false;
-        const gapBefore = newSpan.start - region.endMs;
-        const gapAfter = region.startMs - newSpan.end;
-        // Snap if gap is 2ms or less
-        if (gapBefore > 0 && gapBefore <= 2) return true;
-        if (gapAfter > 0 && gapAfter <= 2) return true;
-        return !(newSpan.end <= region.startMs || newSpan.start >= region.endMs);
+        // True overlap: regions actually intersect (not just adjacent)
+        return newSpan.end > region.startMs && newSpan.start < region.endMs;
       });
     };
 
@@ -661,12 +666,19 @@ export default function TimelineEditor({
     return false;
   }, [zoomRegions, trimRegions, annotationRegions]);
 
+  // At least 5% of the timeline or 1000ms, whichever is larger, so the region
+  // is always wide enough to grab and resize comfortably.
+  const defaultRegionDurationMs = useMemo(
+    () => Math.max(1000, Math.round(totalMs * 0.05)),
+    [totalMs],
+  );
+
   const handleAddZoom = useCallback(() => {
     if (!videoDuration || videoDuration === 0 || totalMs === 0) {
       return;
     }
 
-    const defaultDuration = Math.min(1000, totalMs);
+    const defaultDuration = Math.min(defaultRegionDurationMs, totalMs);
     if (defaultDuration <= 0) {
       return;
     }
@@ -687,16 +699,16 @@ export default function TimelineEditor({
       return;
     }
 
-    const actualDuration = Math.min(1000, gapToNext);
+    const actualDuration = Math.min(defaultRegionDurationMs, gapToNext);
     onZoomAdded({ start: startPos, end: startPos + actualDuration });
-  }, [videoDuration, totalMs, currentTimeMs, zoomRegions, onZoomAdded]);
+  }, [videoDuration, totalMs, currentTimeMs, zoomRegions, onZoomAdded, defaultRegionDurationMs]);
 
   const handleAddTrim = useCallback(() => {
     if (!videoDuration || videoDuration === 0 || totalMs === 0 || !onTrimAdded) {
       return;
     }
 
-    const defaultDuration = Math.min(1000, totalMs);
+    const defaultDuration = Math.min(defaultRegionDurationMs, totalMs);
     if (defaultDuration <= 0) {
       return;
     }
@@ -717,16 +729,16 @@ export default function TimelineEditor({
       return;
     }
 
-    const actualDuration = Math.min(1000, gapToNext);
+    const actualDuration = Math.min(defaultRegionDurationMs, gapToNext);
     onTrimAdded({ start: startPos, end: startPos + actualDuration });
-  }, [videoDuration, totalMs, currentTimeMs, trimRegions, onTrimAdded]);
+  }, [videoDuration, totalMs, currentTimeMs, trimRegions, onTrimAdded, defaultRegionDurationMs]);
 
   const handleAddAnnotation = useCallback(() => {
     if (!videoDuration || videoDuration === 0 || totalMs === 0 || !onAnnotationAdded) {
       return;
     }
 
-    const defaultDuration = Math.min(1000, totalMs);
+    const defaultDuration = Math.min(defaultRegionDurationMs, totalMs);
     if (defaultDuration <= 0) {
       return;
     }
@@ -736,7 +748,7 @@ export default function TimelineEditor({
     const endPos = Math.min(startPos + defaultDuration, totalMs);
 
     onAnnotationAdded({ start: startPos, end: endPos });
-  }, [videoDuration, totalMs, currentTimeMs, onAnnotationAdded]);
+  }, [videoDuration, totalMs, currentTimeMs, onAnnotationAdded, defaultRegionDurationMs]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -850,6 +862,13 @@ export default function TimelineEditor({
     return [...zooms, ...trims, ...annotations];
   }, [zoomRegions, trimRegions, annotationRegions]);
 
+  // Flat list of all non-annotation region spans for neighbour-clamping during drag/resize
+  const allRegionSpans = useMemo(() => {
+    const zooms = zoomRegions.map((r) => ({ id: r.id, start: r.startMs, end: r.endMs }));
+    const trims = trimRegions.map((r) => ({ id: r.id, start: r.startMs, end: r.endMs }));
+    return [...zooms, ...trims];
+  }, [zoomRegions, trimRegions]);
+
   const handleItemSpanChange = useCallback((id: string, span: Span) => {
     // Check if it's a zoom or trim item
     if (zoomRegions.some(r => r.id === id)) {
@@ -961,6 +980,7 @@ export default function TimelineEditor({
           minVisibleRangeMs={timelineScale.minVisibleRangeMs}
           gridSizeMs={timelineScale.gridMs}
           onItemSpanChange={handleItemSpanChange}
+          allRegionSpans={allRegionSpans}
         >
           <KeyframeMarkers
             keyframes={keyframes}

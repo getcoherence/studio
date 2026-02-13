@@ -65,14 +65,14 @@ export default function Item({
       onPointerDownCapture={() => onSelect?.()}
       className="group"
     >
-      <div style={itemContentStyle}>
+      <div style={{ ...itemContentStyle, minWidth: 24 }}>
         <div
           className={cn(
             glassClass,
             "w-full h-full overflow-hidden flex items-center justify-center gap-1.5 cursor-grab active:cursor-grabbing relative",
             isSelected && glassStyles.selected
           )}
-          style={{ height: 40, color: '#fff' }}
+          style={{ height: 40, color: '#fff', minWidth: 24 }}
           onClick={(event) => {
             event.stopPropagation();
             onSelect?.();

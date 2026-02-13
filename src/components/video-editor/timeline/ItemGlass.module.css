@@ -83,7 +83,7 @@
   width: 4px;
   pointer-events: none;
   z-index: 2;
-  opacity: 0;
+  opacity: 0.45;
   transition: opacity 0.2s, width 0.2s;
 }
 
