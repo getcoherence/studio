@@ -35,8 +35,8 @@ export class StreamingVideoDecoder {
     const filename = videoUrl.split('/').pop() || 'video';
     const file = new File([blob], filename, { type: blob.type });
 
-    // Absolute URL required — web-demuxer loads WASM in a Worker
-    const wasmUrl = new URL('/wasm/web-demuxer.wasm', window.location.href).href;
+    // Relative URL so it resolves correctly in both dev (http) and packaged (file://) builds
+    const wasmUrl = new URL('./wasm/web-demuxer.wasm', window.location.href).href;
     this.demuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
     await this.demuxer.load(file);
 
