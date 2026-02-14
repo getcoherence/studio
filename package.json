@@ -64,7 +64,7 @@
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.21",
     "electron": "^39.2.7",
-    "electron-builder": "^24.13.3",
+    "electron-builder": "^26.7.0",
     "electron-icon-builder": "^2.0.1",
     "electron-rebuild": "^3.2.9",
     "eslint": "^8.57.0",
