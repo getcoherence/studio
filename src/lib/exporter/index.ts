@@ -1,5 +1,6 @@
 export { VideoExporter } from './videoExporter';
 export { VideoFileDecoder } from './videoDecoder';
+export { StreamingVideoDecoder } from './streamingDecoder';
 export { FrameRenderer } from './frameRenderer';
 export { VideoMuxer } from './muxer';
 export { GifExporter, calculateOutputDimensions } from './gifExporter';
