@@ -39,3 +39,32 @@
   color: #a1a1aa;
   font-size: 0.75rem;
 }
+
+/* scrollbar */
+.sourceGridScroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(52, 178, 123, 0.5) rgba(40, 40, 50, 0.6);
+}
+
+.sourceGridScroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sourceGridScroll::-webkit-scrollbar-track {
+  background: rgba(30, 30, 38, 0.5);
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+.sourceGridScroll::-webkit-scrollbar-thumb {
+  background: rgba(80, 80, 100, 0.6);
+  border-radius: 4px;
+}
+
+.sourceGridScroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(52, 178, 123, 0.6);
+}
+
+.sourceGridScroll::-webkit-scrollbar-thumb:active {
+  background: rgba(52, 178, 123, 0.8);
+}

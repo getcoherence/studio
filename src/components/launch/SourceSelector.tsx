@@ -77,7 +77,7 @@ export function SourceSelector() {
           </TabsList>
             <div className="h-72 flex flex-col justify-stretch">
             <TabsContent value="screens" className="h-full">
-              <div className="grid grid-cols-2 gap-2 h-full overflow-y-auto pr-1 relative">
+              <div className={`grid grid-cols-2 gap-2 h-full overflow-y-auto pr-1 relative ${styles.sourceGridScroll}`}>
                 {screenSources.map(source => (
                   <Card
                     key={source.id}
@@ -107,7 +107,7 @@ export function SourceSelector() {
               </div>
             </TabsContent>
             <TabsContent value="windows" className="h-full">
-              <div className="grid grid-cols-2 gap-2 h-full overflow-y-auto pr-1 relative">
+              <div className={`grid grid-cols-2 gap-2 h-full overflow-y-auto pr-1 relative ${styles.sourceGridScroll}`}>
                 {windowSources.map(source => (
                   <Card
                     key={source.id}
