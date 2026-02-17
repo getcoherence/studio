@@ -65,6 +65,11 @@ chmod +x Openscreen-Linux-*.AppImage
 
 You may need to grant screen recording permissions depending on your desktop environment.
 
+**Note:** If the app fails to launch due to a "sandbox" error, run it with --no-sandbox:
+```bash
+./Openscreen-Linux-*.AppImage --no-sandbox
+```
+
 ## Built with
 - Electron
 - React
