@@ -39,6 +39,10 @@ interface Window {
     setCurrentVideoPath: (path: string) => Promise<{ success: boolean }>
     getCurrentVideoPath: () => Promise<{ success: boolean; path?: string }>
     clearCurrentVideoPath: () => Promise<{ success: boolean }>
+    saveProjectFile: (projectData: unknown, suggestedName?: string, existingProjectPath?: string) => Promise<{ success: boolean; path?: string; message?: string; cancelled?: boolean; error?: string }>
+    loadProjectFile: () => Promise<{ success: boolean; path?: string; project?: unknown; message?: string; cancelled?: boolean; error?: string }>
+    onMenuLoadProject: (callback: () => void) => () => void
+    onMenuSaveProject: (callback: () => void) => () => void
     getPlatform: () => Promise<string>
     hudOverlayHide: () => void;
     hudOverlayClose: () => void;

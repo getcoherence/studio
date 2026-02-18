@@ -60,6 +60,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearCurrentVideoPath: () => {
     return ipcRenderer.invoke('clear-current-video-path')
   },
+  saveProjectFile: (projectData: unknown, suggestedName?: string, existingProjectPath?: string) => {
+    return ipcRenderer.invoke('save-project-file', projectData, suggestedName, existingProjectPath)
+  },
+  loadProjectFile: () => {
+    return ipcRenderer.invoke('load-project-file')
+  },
+  onMenuLoadProject: (callback: () => void) => {
+    const listener = () => callback()
+    ipcRenderer.on('menu-load-project', listener)
+    return () => ipcRenderer.removeListener('menu-load-project', listener)
+  },
+  onMenuSaveProject: (callback: () => void) => {
+    const listener = () => callback()
+    ipcRenderer.on('menu-save-project', listener)
+    return () => ipcRenderer.removeListener('menu-save-project', listener)
+  },
   getPlatform: () => {
     return ipcRenderer.invoke('get-platform')
   },

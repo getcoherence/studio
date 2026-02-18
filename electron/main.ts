@@ -53,6 +53,96 @@ function createWindow() {
   mainWindow = createHudOverlayWindow()
 }
 
+function isEditorWindow(window: BrowserWindow) {
+  return window.webContents.getURL().includes('windowType=editor')
+}
+
+function sendEditorMenuAction(channel: 'menu-load-project' | 'menu-save-project') {
+  let targetWindow = BrowserWindow.getFocusedWindow() ?? mainWindow
+
+  if (!targetWindow || targetWindow.isDestroyed() || !isEditorWindow(targetWindow)) {
+    createEditorWindowWrapper()
+    targetWindow = mainWindow
+    if (!targetWindow || targetWindow.isDestroyed()) return
+
+    targetWindow.webContents.once('did-finish-load', () => {
+      if (!targetWindow || targetWindow.isDestroyed()) return
+      targetWindow.webContents.send(channel)
+    })
+    return
+  }
+
+  targetWindow.webContents.send(channel)
+}
+
+function setupApplicationMenu() {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    },
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Load Project…',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => sendEditorMenuAction('menu-load-project'),
+        },
+        {
+          label: 'Save Project…',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => sendEditorMenuAction('menu-save-project'),
+        },
+      ],
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'close' },
+      ],
+    },
+  ]
+
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+}
+
 function createTray() {
   tray = new Tray(defaultTrayIcon);
 }
@@ -145,6 +235,7 @@ app.whenReady().then(async () => {
     });
     createTray()
     updateTrayMenu()
+    setupApplicationMenu()
   // Ensure recordings directory exists
   await ensureRecordingsDir()
 
