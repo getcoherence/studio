@@ -76,6 +76,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('menu-save-project', listener)
     return () => ipcRenderer.removeListener('menu-save-project', listener)
   },
+  onMenuSaveProjectAs: (callback: () => void) => {
+    const listener = () => callback()
+    ipcRenderer.on('menu-save-project-as', listener)
+    return () => ipcRenderer.removeListener('menu-save-project-as', listener)
+  },
   getPlatform: () => {
     return ipcRenderer.invoke('get-platform')
   },

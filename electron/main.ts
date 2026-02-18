@@ -57,7 +57,7 @@ function isEditorWindow(window: BrowserWindow) {
   return window.webContents.getURL().includes('windowType=editor')
 }
 
-function sendEditorMenuAction(channel: 'menu-load-project' | 'menu-save-project') {
+function sendEditorMenuAction(channel: 'menu-load-project' | 'menu-save-project' | 'menu-save-project-as') {
   let targetWindow = BrowserWindow.getFocusedWindow() ?? mainWindow
 
   if (!targetWindow || targetWindow.isDestroyed() || !isEditorWindow(targetWindow)) {
@@ -101,6 +101,11 @@ function setupApplicationMenu() {
           label: 'Save Project…',
           accelerator: 'CmdOrCtrl+S',
           click: () => sendEditorMenuAction('menu-save-project'),
+        },
+        {
+          label: 'Save Project As…',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: () => sendEditorMenuAction('menu-save-project-as'),
         },
       ],
     },

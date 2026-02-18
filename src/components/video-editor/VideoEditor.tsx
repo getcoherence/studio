@@ -303,7 +303,7 @@ export default function VideoEditor() {
     loadVideo();
   }, []);
 
-  const handleSaveProject = useCallback(async () => {
+  const saveProject = useCallback(async (forceSaveAs: boolean) => {
     if (!videoPath) {
       toast.error('No video loaded');
       return;
@@ -339,7 +339,11 @@ export default function VideoEditor() {
     };
 
     const fileNameBase = sourcePath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') || `project-${Date.now()}`;
-    const result = await window.electronAPI.saveProjectFile(projectData, fileNameBase, currentProjectPath ?? undefined);
+    const result = await window.electronAPI.saveProjectFile(
+      projectData,
+      fileNameBase,
+      forceSaveAs ? undefined : currentProjectPath ?? undefined,
+    );
 
     if (result.cancelled) {
       toast.info('Project save cancelled');
@@ -377,6 +381,14 @@ export default function VideoEditor() {
     gifLoop,
     gifSizePreset,
   ]);
+
+  const handleSaveProject = useCallback(async () => {
+    await saveProject(false);
+  }, [saveProject]);
+
+  const handleSaveProjectAs = useCallback(async () => {
+    await saveProject(true);
+  }, [saveProject]);
 
   const handleLoadProject = useCallback(async () => {
     const result = await window.electronAPI.loadProjectFile();
@@ -455,12 +467,14 @@ export default function VideoEditor() {
   useEffect(() => {
     const removeLoadListener = window.electronAPI.onMenuLoadProject(handleLoadProject);
     const removeSaveListener = window.electronAPI.onMenuSaveProject(handleSaveProject);
+    const removeSaveAsListener = window.electronAPI.onMenuSaveProjectAs(handleSaveProjectAs);
 
     return () => {
       removeLoadListener?.();
       removeSaveListener?.();
+      removeSaveAsListener?.();
     };
-  }, [handleLoadProject, handleSaveProject]);
+  }, [handleLoadProject, handleSaveProject, handleSaveProjectAs]);
 
   // Initialize default wallpaper with resolved asset path
   useEffect(() => {

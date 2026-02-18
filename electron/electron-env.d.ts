@@ -43,6 +43,7 @@ interface Window {
     loadProjectFile: () => Promise<{ success: boolean; path?: string; project?: unknown; message?: string; cancelled?: boolean; error?: string }>
     onMenuLoadProject: (callback: () => void) => () => void
     onMenuSaveProject: (callback: () => void) => () => void
+    onMenuSaveProjectAs: (callback: () => void) => () => void
     getPlatform: () => Promise<string>
     hudOverlayHide: () => void;
     hudOverlayClose: () => void;
