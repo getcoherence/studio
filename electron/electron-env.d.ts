@@ -39,7 +39,7 @@ interface Window {
     setCurrentVideoPath: (path: string) => Promise<{ success: boolean }>
     getCurrentVideoPath: () => Promise<{ success: boolean; path?: string }>
     clearCurrentVideoPath: () => Promise<{ success: boolean }>
-    getPlatform: () => Promise<string>,
+    getPlatform: () => Promise<string>
     revealInFolder: (filePath: string) => Promise<{ success: boolean; error?: string; message?: string }>,
     hudOverlayHide: () => void;
     hudOverlayClose: () => void;
