@@ -2,6 +2,11 @@
   -webkit-app-region: drag;
 }
 
+.hudBar {
+  isolation: isolate;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+}
+
 .electronNoDrag {
   -webkit-app-region: no-drag;
 }

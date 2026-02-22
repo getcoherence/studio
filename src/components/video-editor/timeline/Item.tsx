@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useItem } from "dnd-timeline";
 import type { Span } from "dnd-timeline";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,16 @@ const ZOOM_LABELS: Record<number, string> = {
   6: "5×",
 };
 
+function formatMs(ms: number): string {
+  const totalSeconds = ms / 1000;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes > 0) {
+    return `${minutes}:${seconds.toFixed(1).padStart(4, '0')}`;
+  }
+  return `${seconds.toFixed(1)}s`;
+}
+
 export default function Item({ 
   id, 
   span, 
@@ -43,18 +54,23 @@ export default function Item({
 
   const isZoom = variant === 'zoom';
   const isTrim = variant === 'trim';
-  
-  const glassClass = isZoom 
-    ? glassStyles.glassGreen 
-    : isTrim 
-    ? glassStyles.glassRed 
+
+  const glassClass = isZoom
+    ? glassStyles.glassGreen
+    : isTrim
+    ? glassStyles.glassRed
     : glassStyles.glassYellow;
-    
-  const endCapColor = isZoom 
-    ? '#21916A' 
-    : isTrim 
-    ? '#ef4444' 
+
+  const endCapColor = isZoom
+    ? '#21916A'
+    : isTrim
+    ? '#ef4444'
     : '#B4A046';
+
+  const timeLabel = useMemo(
+    () => `${formatMs(span.start)} – ${formatMs(span.end)}`,
+    [span.start, span.end],
+  );
 
   return (
     <div
@@ -65,14 +81,14 @@ export default function Item({
       onPointerDownCapture={() => onSelect?.()}
       className="group"
     >
-      <div style={itemContentStyle}>
+      <div style={{ ...itemContentStyle, minWidth: 24 }}>
         <div
           className={cn(
             glassClass,
             "w-full h-full overflow-hidden flex items-center justify-center gap-1.5 cursor-grab active:cursor-grabbing relative",
             isSelected && glassStyles.selected
           )}
-          style={{ height: 40, color: '#fff' }}
+          style={{ height: 40, color: '#fff', minWidth: 24 }}
           onClick={(event) => {
             event.stopPropagation();
             onSelect?.();
@@ -89,29 +105,38 @@ export default function Item({
             title="Resize right"
           />
           {/* Content */}
-          <div className="relative z-10 flex items-center gap-1.5 text-white/90 opacity-80 group-hover:opacity-100 transition-opacity select-none">
-            {isZoom ? (
-              <>
-                <ZoomIn className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-semibold tracking-tight">
-                  {ZOOM_LABELS[zoomDepth] || `${zoomDepth}×`}
-                </span>
-              </>
-            ) : isTrim ? (
-              <>
-                <Scissors className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-semibold tracking-tight">
-                  Trim
-                </span>
-              </>
-            ) : (
-              <>
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-semibold tracking-tight">
-                  {children}
-                </span>
-              </>
-            )}
+          <div className="relative z-10 flex flex-col items-center justify-center text-white/90 opacity-80 group-hover:opacity-100 transition-opacity select-none overflow-hidden">
+            <div className="flex items-center gap-1.5">
+              {isZoom ? (
+                <>
+                  <ZoomIn className="w-3.5 h-3.5 shrink-0" />
+                  <span className="text-[11px] font-semibold tracking-tight whitespace-nowrap">
+                    {ZOOM_LABELS[zoomDepth] || `${zoomDepth}×`}
+                  </span>
+                </>
+              ) : isTrim ? (
+                <>
+                  <Scissors className="w-3.5 h-3.5 shrink-0" />
+                  <span className="text-[11px] font-semibold tracking-tight whitespace-nowrap">
+                    Trim
+                  </span>
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                  <span className="text-[11px] font-semibold tracking-tight whitespace-nowrap">
+                    {children}
+                  </span>
+                </>
+              )}
+            </div>
+            <span
+              className={`text-[9px] tabular-nums tracking-tight whitespace-nowrap transition-opacity ${
+                isSelected ? 'opacity-60' : 'opacity-0 group-hover:opacity-40'
+              }`}
+            >
+              {timeLabel}
+            </span>
           </div>
         </div>
       </div>
