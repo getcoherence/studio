@@ -63,4 +63,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPlatform: () => {
     return ipcRenderer.invoke('get-platform')
   },
+  getShortcuts: () => {
+    return ipcRenderer.invoke('get-shortcuts')
+  },
+  saveShortcuts: (shortcuts: unknown) => {
+    return ipcRenderer.invoke('save-shortcuts', shortcuts)
+  },
 })
