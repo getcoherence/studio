@@ -6,19 +6,28 @@ export function KeyboardShortcutsHelp() {
   const [shortcuts, setShortcuts] = useState({
     delete: 'Ctrl + D',
     pan: 'Shift + Ctrl + Scroll',
-    zoom: 'Ctrl + Scroll'
+    zoom: 'Ctrl + Scroll',
+    undo: 'Ctrl + Z',
+    redo: 'Ctrl + Shift + Z',
+    redoAlt: 'Ctrl + Y',
   });
 
   useEffect(() => {
     Promise.all([
       formatShortcut(['mod', 'D']),
       formatShortcut(['shift', 'mod', 'Scroll']),
-      formatShortcut(['mod', 'Scroll'])
-    ]).then(([deleteKey, panKey, zoomKey]) => {
+      formatShortcut(['mod', 'Scroll']),
+      formatShortcut(['mod', 'Z']),
+      formatShortcut(['shift', 'mod', 'Z']),
+      formatShortcut(['mod', 'Y']),
+    ]).then(([deleteKey, panKey, zoomKey, undoKey, redoKey, redoAltKey]) => {
       setShortcuts({
         delete: deleteKey,
         pan: panKey,
-        zoom: zoomKey
+        zoom: zoomKey,
+        undo: undoKey,
+        redo: redoKey,
+        redoAlt: redoAltKey,
       });
     });
   }, []);
@@ -60,6 +69,18 @@ export function KeyboardShortcutsHelp() {
           <div className="flex items-center justify-between">
             <span className="text-slate-400">Pause/Play</span>
             <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">Space</kbd>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-400">Undo</span>
+            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{shortcuts.undo}</kbd>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-400">Redo</span>
+            <div className="flex items-center gap-1">
+              <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{shortcuts.redo}</kbd>
+              <span className="text-slate-600 text-[9px]">or</span>
+              <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{shortcuts.redoAlt}</kbd>
+            </div>
           </div>
         </div>
       </div>

@@ -860,17 +860,20 @@ export default function TimelineEditor({
         return;
       }
 
-      if (e.key === 'f' || e.key === 'F') {
-        addKeyframe();
-      }
-      if (e.key === 'z' || e.key === 'Z') {
-        handleAddZoom();
-      }
-      if (e.key === 't' || e.key === 'T') {
-        handleAddTrim();
-      }
-      if (e.key === 'a' || e.key === 'A') {
-        handleAddAnnotation();
+      // Single-letter shortcuts only when no modifier key is held
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key === 'f' || e.key === 'F') {
+          addKeyframe();
+        }
+        if (e.key === 'z' || e.key === 'Z') {
+          handleAddZoom();
+        }
+        if (e.key === 't' || e.key === 'T') {
+          handleAddTrim();
+        }
+        if (e.key === 'a' || e.key === 'A') {
+          handleAddAnnotation();
+        }
       }
 
       // Tab: Cycle through overlapping annotations at current time

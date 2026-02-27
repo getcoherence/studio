@@ -58,14 +58,17 @@ interface SettingsPanelProps {
   onTrimDelete?: (id: string) => void;
   shadowIntensity?: number;
   onShadowChange?: (intensity: number) => void;
+  onShadowCommit?: () => void;
   showBlur?: boolean;
   onBlurChange?: (showBlur: boolean) => void;
   motionBlurEnabled?: boolean;
   onMotionBlurChange?: (enabled: boolean) => void;
   borderRadius?: number;
   onBorderRadiusChange?: (radius: number) => void;
+  onBorderRadiusCommit?: () => void;
   padding?: number;
   onPaddingChange?: (padding: number) => void;
+  onPaddingCommit?: () => void;
   cropRegion?: CropRegion;
   onCropChange?: (region: CropRegion) => void;
   aspectRatio: AspectRatio;
@@ -114,14 +117,17 @@ export function SettingsPanel({
   onTrimDelete,
   shadowIntensity = 0, 
   onShadowChange, 
+  onShadowCommit,
   showBlur, 
   onBlurChange, 
   motionBlurEnabled = false,
   onMotionBlurChange, 
   borderRadius = 0, 
   onBorderRadiusChange, 
+  onBorderRadiusCommit,
   padding = 50, 
   onPaddingChange, 
+  onPaddingCommit,
   cropRegion, 
   onCropChange, 
   aspectRatio, 
@@ -358,6 +364,7 @@ export function SettingsPanel({
                   <Slider
                     value={[shadowIntensity]}
                     onValueChange={(values) => onShadowChange?.(values[0])}
+                    onValueCommit={() => onShadowCommit?.()}
                     min={0}
                     max={1}
                     step={0.01}
@@ -372,6 +379,7 @@ export function SettingsPanel({
                   <Slider
                     value={[borderRadius]}
                     onValueChange={(values) => onBorderRadiusChange?.(values[0])}
+                    onValueCommit={() => onBorderRadiusCommit?.()}
                     min={0}
                     max={16}
                     step={0.5}
@@ -386,6 +394,7 @@ export function SettingsPanel({
                   <Slider
                     value={[padding]}
                     onValueChange={(values) => onPaddingChange?.(values[0])}
+                    onValueCommit={() => onPaddingCommit?.()}
                     min={0}
                     max={100}
                     step={1}

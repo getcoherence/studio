@@ -26,6 +26,7 @@ interface VideoPlaybackProps {
   selectedZoomId: string | null;
   onSelectZoom: (id: string | null) => void;
   onZoomFocusChange: (id: string, focus: ZoomFocus) => void;
+  onZoomFocusDragEnd?: () => void;
   isPlaying: boolean;
   showShadow?: boolean;
   shadowIntensity?: number;
@@ -65,6 +66,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   selectedZoomId,
   onSelectZoom,
   onZoomFocusChange,
+  onZoomFocusDragEnd,
   isPlaying,
   showShadow,
   shadowIntensity = 0,
@@ -293,6 +295,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
     } catch {
       
     }
+    onZoomFocusDragEnd?.();
   };
 
   const handleOverlayPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
