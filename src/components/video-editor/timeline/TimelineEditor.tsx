@@ -116,16 +116,21 @@ function calculateTimelineScale(durationSeconds: number): TimelineScaleConfig {
   const intervalMs = Math.round(selectedCandidate.intervalSeconds * 1000);
   const gridMs = Math.round(selectedCandidate.gridSeconds * 1000);
 
-  // Set minItemDurationMs to 1ms for maximum granularity
-  const minItemDurationMs = 1;
+  // Minimum item duration: at least 500ms or 0.3% of the video, capped at 3s.
+  // Prevents items from being shrunk to invisible sizes.
+  const minItemDurationMs = totalMs > 0
+    ? Math.min(Math.max(500, Math.round(totalMs * 0.003)), 3000)
+    : 500;
   const defaultItemDurationMs = Math.min(
     Math.max(minItemDurationMs, intervalMs * 2),
     totalMs > 0 ? totalMs : intervalMs * 2,
   );
 
+  // Minimum visible range: at least 2s or 0.5% of the video, capped at 15s.
+  // Decoupled from intervalMs so long videos can still zoom in deeply.
   const minVisibleRangeMs = totalMs > 0
-    ? Math.min(Math.max(intervalMs * 3, minItemDurationMs * 6, 1000), totalMs)
-    : Math.max(intervalMs * 3, minItemDurationMs * 6, 1000);
+    ? Math.max(2000, Math.min(Math.round(totalMs * 0.005), 15000))
+    : 2000;
 
   return {
     intervalMs,

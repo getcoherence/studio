@@ -79,10 +79,15 @@ export default function Item({
     [span.start, span.end],
   );
 
+  // Guarantee a minimum clickable width on the outer wrapper so that
+  // very short items (< 1px) remain visible and interactive.
+  const MIN_ITEM_PX = 16;
+  const safeItemStyle = { ...itemStyle, minWidth: MIN_ITEM_PX };
+
   return (
     <div
       ref={setNodeRef}
-      style={itemStyle}
+      style={safeItemStyle}
       {...listeners}
       {...attributes}
       onPointerDownCapture={() => onSelect?.()}

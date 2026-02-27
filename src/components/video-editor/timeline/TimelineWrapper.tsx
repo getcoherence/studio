@@ -135,7 +135,10 @@ export default function TimelineWrapper({
       const activeItemId = event.active.id as string;
       let clampedSpan = clampSpanToBounds(updatedSpan);
 
-      if (clampedSpan.end - clampedSpan.start < Math.min(minItemDurationMs, totalMs || minItemDurationMs)) {
+      const effectiveMinDuration = totalMs > 0
+        ? Math.min(minItemDurationMs, totalMs)
+        : minItemDurationMs;
+      if (clampedSpan.end - clampedSpan.start < effectiveMinDuration) {
         return;
       }
 
