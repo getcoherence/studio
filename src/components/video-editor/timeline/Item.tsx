@@ -79,9 +79,10 @@ export default function Item({
     [span.start, span.end],
   );
 
-  // Guarantee a minimum clickable width on the outer wrapper so that
-  // very short items (< 1px) remain visible and interactive.
-  const MIN_ITEM_PX = 16;
+  // Minimum clickable width on the outer wrapper.
+  // Kept small (6px) so items visually distinguish their real positions;
+  // users should zoom in to interact with sub-second items precisely.
+  const MIN_ITEM_PX = 6;
   const safeItemStyle = { ...itemStyle, minWidth: MIN_ITEM_PX };
 
   return (

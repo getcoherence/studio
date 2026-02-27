@@ -67,8 +67,6 @@ interface TimelineEditorProps {
 }
 
 interface TimelineScaleConfig {
-  intervalMs: number;
-  gridMs: number;
   minItemDurationMs: number;
   defaultItemDurationMs: number;
   minVisibleRangeMs: number;
@@ -85,6 +83,8 @@ interface TimelineRenderItem {
 }
 
 const SCALE_CANDIDATES = [
+  { intervalSeconds: 0.05, gridSeconds: 0.01 },
+  { intervalSeconds: 0.1,  gridSeconds: 0.02 },
   { intervalSeconds: 0.25, gridSeconds: 0.05 },
   { intervalSeconds: 0.5, gridSeconds: 0.1 },
   { intervalSeconds: 1, gridSeconds: 0.25 },
@@ -102,39 +102,42 @@ const SCALE_CANDIDATES = [
   { intervalSeconds: 3600, gridSeconds: 300 },
 ];
 
+/**
+ * Picks the best axis interval for the currently visible time range.
+ * Called dynamically — re-runs on every zoom change so the axis always
+ * shows a meaningful density of markers regardless of video length.
+ */
+function calculateAxisScale(visibleRangeMs: number): { intervalMs: number; gridMs: number } {
+  const visibleSeconds = visibleRangeMs / 1000;
+  const candidate =
+    SCALE_CANDIDATES.find((c) => {
+      if (visibleSeconds <= 0) return true;
+      return visibleSeconds / c.intervalSeconds <= TARGET_MARKER_COUNT;
+    }) ?? SCALE_CANDIDATES[SCALE_CANDIDATES.length - 1];
+  return {
+    intervalMs: Math.round(candidate.intervalSeconds * 1000),
+    gridMs: Math.round(candidate.gridSeconds * 1000),
+  };
+}
+
 function calculateTimelineScale(durationSeconds: number): TimelineScaleConfig {
   const totalMs = Math.max(0, Math.round(durationSeconds * 1000));
 
-  const selectedCandidate = SCALE_CANDIDATES.find((candidate) => {
-    if (durationSeconds <= 0) {
-      return true;
-    }
-    const markers = durationSeconds / candidate.intervalSeconds;
-    return markers <= TARGET_MARKER_COUNT;
-  }) ?? SCALE_CANDIDATES[SCALE_CANDIDATES.length - 1];
+  // Minimum item duration: fixed at 100ms (0.1s).
+  // Allows precise cuts while remaining interactive.
+  const minItemDurationMs = 100;
 
-  const intervalMs = Math.round(selectedCandidate.intervalSeconds * 1000);
-  const gridMs = Math.round(selectedCandidate.gridSeconds * 1000);
+  // Default placement size: 5% of video duration, clamped between 1s and 30s.
+  const defaultItemDurationMs = totalMs > 0
+    ? Math.max(minItemDurationMs, Math.min(Math.round(totalMs * 0.05), 30000))
+    : Math.max(minItemDurationMs, 1000);
 
-  // Minimum item duration: at least 500ms or 0.3% of the video, capped at 3s.
-  // Prevents items from being shrunk to invisible sizes.
-  const minItemDurationMs = totalMs > 0
-    ? Math.min(Math.max(500, Math.round(totalMs * 0.003)), 3000)
-    : 500;
-  const defaultItemDurationMs = Math.min(
-    Math.max(minItemDurationMs, intervalMs * 2),
-    totalMs > 0 ? totalMs : intervalMs * 2,
-  );
-
-  // Minimum visible range: at least 2s or 0.5% of the video, capped at 15s.
-  // Decoupled from intervalMs so long videos can still zoom in deeply.
-  const minVisibleRangeMs = totalMs > 0
-    ? Math.max(2000, Math.min(Math.round(totalMs * 0.005), 15000))
-    : 2000;
+  // Minimum visible range: 300ms — allows comfortably viewing 0.1s items.
+  // Axis markers adapt dynamically via calculateAxisScale, so there is no
+  // upper constraint on how far the user can zoom in.
+  const minVisibleRangeMs = 300;
 
   return {
-    intervalMs,
-    gridMs,
     minItemDurationMs,
     defaultItemDurationMs,
     minVisibleRangeMs,
@@ -290,16 +293,20 @@ function PlaybackCursor({
 }
 
 function TimelineAxis({
-  intervalMs,
   videoDurationMs,
   currentTimeMs,
 }: {
-  intervalMs: number;
   videoDurationMs: number;
   currentTimeMs: number;
 }) {
   const { sidebarWidth, direction, range, valueToPixels } = useTimelineContext();
   const sideProperty = direction === "rtl" ? "right" : "left";
+
+  // Recompute axis scale dynamically on every zoom change.
+  const { intervalMs } = useMemo(
+    () => calculateAxisScale(range.end - range.start),
+    [range.end, range.start],
+  );
 
   const markers = useMemo(() => {
     if (intervalMs <= 0) {
@@ -409,7 +416,6 @@ function TimelineAxis({
 function Timeline({
   items,
   videoDurationMs,
-  intervalMs,
   currentTimeMs,
   onSeek,
   onSelectZoom,
@@ -424,7 +430,6 @@ function Timeline({
 }: {
   items: TimelineRenderItem[];
   videoDurationMs: number;
-  intervalMs: number;
   currentTimeMs: number;
   onSeek?: (time: number) => void;
   onSelectZoom?: (id: string | null) => void;
@@ -480,7 +485,7 @@ function Timeline({
       onClick={handleTimelineClick}
     >
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px)] bg-[length:20px_100%] pointer-events-none" />
-      <TimelineAxis intervalMs={intervalMs} videoDurationMs={videoDurationMs} currentTimeMs={currentTimeMs} />
+      <TimelineAxis videoDurationMs={videoDurationMs} currentTimeMs={currentTimeMs} />
       <PlaybackCursor
         currentTimeMs={currentTimeMs}
         videoDurationMs={videoDurationMs}
@@ -1217,7 +1222,6 @@ export default function TimelineEditor({
           onRangeChange={setRange}
           minItemDurationMs={timelineScale.minItemDurationMs}
           minVisibleRangeMs={timelineScale.minVisibleRangeMs}
-          gridSizeMs={timelineScale.gridMs}
           onItemSpanChange={handleItemSpanChange}
           allRegionSpans={allRegionSpans}
         >
@@ -1232,7 +1236,6 @@ export default function TimelineEditor({
           <Timeline
             items={timelineItems}
             videoDurationMs={totalMs}
-            intervalMs={timelineScale.intervalMs}
             currentTimeMs={currentTimeMs}
             onSeek={onSeek}
             onSelectZoom={onSelectZoom}
