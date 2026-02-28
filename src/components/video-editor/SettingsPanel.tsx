@@ -9,7 +9,8 @@ import { useState } from "react";
 import Block from '@uiw/react-color-block';
 import { Trash2, Download, Crop, X, Bug, Upload, Star, Film, Image, Sparkles, Palette } from "lucide-react";
 import { toast } from "sonner";
-import type { ZoomDepth, CropRegion, AnnotationRegion, AnnotationType } from "./types";
+import type { ZoomDepth, CropRegion, AnnotationRegion, AnnotationType, PlaybackSpeed } from "./types";
+import { SPEED_OPTIONS } from "./types";
 import { CropControl } from "./CropControl";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
@@ -90,6 +91,10 @@ interface SettingsPanelProps {
   onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion['style']>) => void;
   onAnnotationFigureDataChange?: (id: string, figureData: any) => void;
   onAnnotationDelete?: (id: string) => void;
+  selectedSpeedId?: string | null;
+  selectedSpeedValue?: PlaybackSpeed | null;
+  onSpeedChange?: (speed: PlaybackSpeed) => void;
+  onSpeedDelete?: (id: string) => void;
 }
 
 export default SettingsPanel;
@@ -145,6 +150,10 @@ export function SettingsPanel({
   onAnnotationStyleChange,
   onAnnotationFigureDataChange,
   onAnnotationDelete,
+  selectedSpeedId,
+  selectedSpeedValue,
+  onSpeedChange,
+  onSpeedDelete,
 }: SettingsPanelProps) {
   const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
   const [customImages, setCustomImages] = useState<string[]>([]);
@@ -320,6 +329,54 @@ export function SettingsPanel({
             </Button>
           </div>
         )}
+
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-slate-200">Playback Speed</span>
+            {selectedSpeedId && selectedSpeedValue && (
+              <span className="text-[10px] uppercase tracking-wider font-medium text-[#d97706] bg-[#d97706]/10 px-2 py-0.5 rounded-full">
+                {SPEED_OPTIONS.find(o => o.speed === selectedSpeedValue)?.label ?? `${selectedSpeedValue}×`}
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-7 gap-1.5">
+            {SPEED_OPTIONS.map((option) => {
+              const isActive = selectedSpeedValue === option.speed;
+              return (
+                <Button
+                  key={option.speed}
+                  type="button"
+                  disabled={!selectedSpeedId}
+                  onClick={() => onSpeedChange?.(option.speed)}
+                  className={cn(
+                    "h-auto w-full rounded-lg border px-1 py-2 text-center shadow-sm transition-all",
+                    "duration-200 ease-out",
+                    selectedSpeedId ? "opacity-100 cursor-pointer" : "opacity-40 cursor-not-allowed",
+                    isActive
+                      ? "border-[#d97706] bg-[#d97706] text-white shadow-[#d97706]/20"
+                      : "border-white/5 bg-white/5 text-slate-400 hover:bg-white/10 hover:border-white/10 hover:text-slate-200"
+                  )}
+                >
+                  <span className="text-xs font-semibold">{option.label}</span>
+                </Button>
+              );
+            })}
+          </div>
+          {!selectedSpeedId && (
+            <p className="text-[10px] text-slate-500 mt-2 text-center">Select a speed region to adjust</p>
+          )}
+          {selectedSpeedId && (
+            <Button
+              onClick={() => selectedSpeedId && onSpeedDelete?.(selectedSpeedId)}
+              variant="destructive"
+              size="sm"
+              className="mt-2 w-full gap-2 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all h-8 text-xs"
+            >
+              <Trash2 className="w-3 h-3" />
+              Delete Speed Region
+            </Button>
+          )}
+        </div>
 
         <Accordion type="multiple" defaultValue={["effects", "background"]} className="space-y-1">
           <AccordionItem value="effects" className="border-white/5 rounded-xl bg-white/[0.02] px-3">

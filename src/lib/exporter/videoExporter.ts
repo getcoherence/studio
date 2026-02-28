@@ -2,13 +2,14 @@ import type { ExportConfig, ExportProgress, ExportResult } from './types';
 import { StreamingVideoDecoder } from './streamingDecoder';
 import { FrameRenderer } from './frameRenderer';
 import { VideoMuxer } from './muxer';
-import type { ZoomRegion, CropRegion, TrimRegion, AnnotationRegion } from '@/components/video-editor/types';
+import type { ZoomRegion, CropRegion, TrimRegion, AnnotationRegion, SpeedRegion } from '@/components/video-editor/types';
 
 interface VideoExporterConfig extends ExportConfig {
   videoUrl: string;
   wallpaper: string;
   zoomRegions: ZoomRegion[];
   trimRegions?: TrimRegion[];
+  speedRegions?: SpeedRegion[];
   showShadow: boolean;
   shadowIntensity: number;
   showBlur: boolean;
@@ -68,6 +69,7 @@ export class VideoExporter {
         videoWidth: videoInfo.width,
         videoHeight: videoInfo.height,
         annotationRegions: this.config.annotationRegions,
+        speedRegions: this.config.speedRegions,
         previewWidth: this.config.previewWidth,
         previewHeight: this.config.previewHeight,
       });

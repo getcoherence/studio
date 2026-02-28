@@ -20,6 +20,7 @@ import {
   DEFAULT_ANNOTATION_SIZE,
   DEFAULT_ANNOTATION_STYLE,
   DEFAULT_FIGURE_DATA,
+  DEFAULT_PLAYBACK_SPEED,
   type ZoomDepth,
   type ZoomFocus,
   type ZoomRegion,
@@ -27,6 +28,8 @@ import {
   type AnnotationRegion,
   type CropRegion,
   type FigureData,
+  type SpeedRegion,
+  type PlaybackSpeed,
 } from "./types";
 import { VideoExporter, GifExporter, type ExportProgress, type ExportQuality, type ExportSettings, type ExportFormat, type GifFrameRate, type GifSizePreset, GIF_SIZE_PRESETS, calculateOutputDimensions } from "@/lib/exporter";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
@@ -53,6 +56,8 @@ export default function VideoEditor() {
   const [selectedZoomId, setSelectedZoomId] = useState<string | null>(null);
   const [trimRegions, setTrimRegions] = useState<TrimRegion[]>([]);
   const [selectedTrimId, setSelectedTrimId] = useState<string | null>(null);
+  const [speedRegions, setSpeedRegions] = useState<SpeedRegion[]>([]);
+  const [selectedSpeedId, setSelectedSpeedId] = useState<string | null>(null);
   const [annotationRegions, setAnnotationRegions] = useState<AnnotationRegion[]>([]);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -69,6 +74,7 @@ export default function VideoEditor() {
   const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
   const nextZoomIdRef = useRef(1);
   const nextTrimIdRef = useRef(1);
+  const nextSpeedIdRef = useRef(1);
   const nextAnnotationIdRef = useRef(1);
   const nextAnnotationZIndexRef = useRef(1); // Track z-index for stacking order
   const exporterRef = useRef<VideoExporter | null>(null);
@@ -263,6 +269,60 @@ export default function VideoEditor() {
     }
   }, [selectedTrimId]);
 
+  const handleSelectSpeed = useCallback((id: string | null) => {
+    setSelectedSpeedId(id);
+    if (id) {
+      setSelectedZoomId(null);
+      setSelectedTrimId(null);
+      setSelectedAnnotationId(null);
+    }
+  }, []);
+
+  const handleSpeedAdded = useCallback((span: Span) => {
+    const id = `speed-${nextSpeedIdRef.current++}`;
+    const newRegion: SpeedRegion = {
+      id,
+      startMs: Math.round(span.start),
+      endMs: Math.round(span.end),
+      speed: DEFAULT_PLAYBACK_SPEED,
+    };
+    setSpeedRegions((prev) => [...prev, newRegion]);
+    setSelectedSpeedId(id);
+    setSelectedZoomId(null);
+    setSelectedTrimId(null);
+    setSelectedAnnotationId(null);
+  }, []);
+
+  const handleSpeedSpanChange = useCallback((id: string, span: Span) => {
+    setSpeedRegions((prev) =>
+      prev.map((region) =>
+        region.id === id
+          ? {
+              ...region,
+              startMs: Math.round(span.start),
+              endMs: Math.round(span.end),
+            }
+          : region,
+      ),
+    );
+  }, []);
+
+  const handleSpeedDelete = useCallback((id: string) => {
+    setSpeedRegions((prev) => prev.filter((region) => region.id !== id));
+    if (selectedSpeedId === id) {
+      setSelectedSpeedId(null);
+    }
+  }, [selectedSpeedId]);
+
+  const handleSpeedChange = useCallback((speed: PlaybackSpeed) => {
+    if (!selectedSpeedId) return;
+    setSpeedRegions((prev) =>
+      prev.map((region) =>
+        region.id === selectedSpeedId ? { ...region, speed } : region,
+      ),
+    );
+  }, [selectedSpeedId]);
+
   const handleAnnotationAdded = useCallback((span: Span) => {
     const id = `annotation-${nextAnnotationIdRef.current++}`;
     const zIndex = nextAnnotationZIndexRef.current++; // Assign z-index based on creation order
@@ -438,6 +498,12 @@ export default function VideoEditor() {
     }
   }, [selectedAnnotationId, annotationRegions]);
 
+  useEffect(() => {
+    if (selectedSpeedId && !speedRegions.some((region) => region.id === selectedSpeedId)) {
+      setSelectedSpeedId(null);
+    }
+  }, [selectedSpeedId, speedRegions]);
+
   const handleExport = useCallback(async (settings: ExportSettings) => {
     if (!videoPath) {
       toast.error('No video loaded');
@@ -482,6 +548,7 @@ export default function VideoEditor() {
           wallpaper,
           zoomRegions,
           trimRegions,
+          speedRegions,
           showShadow: shadowIntensity > 0,
           shadowIntensity,
           showBlur,
@@ -608,6 +675,7 @@ export default function VideoEditor() {
           wallpaper,
           zoomRegions,
           trimRegions,
+          speedRegions,
           showShadow: shadowIntensity > 0,
           shadowIntensity,
           showBlur,
@@ -663,7 +731,7 @@ export default function VideoEditor() {
       setShowExportDialog(false);
       setExportProgress(null);
     }
-  }, [videoPath, wallpaper, zoomRegions, trimRegions, shadowIntensity, showBlur, motionBlurEnabled, borderRadius, padding, cropRegion, annotationRegions, isPlaying, aspectRatio, exportQuality]);
+  }, [videoPath, wallpaper, zoomRegions, trimRegions, speedRegions, shadowIntensity, showBlur, motionBlurEnabled, borderRadius, padding, cropRegion, annotationRegions, isPlaying, aspectRatio, exportQuality]);
 
   const handleOpenExportDialog = useCallback(() => {
     if (!videoPath) {
@@ -770,6 +838,7 @@ export default function VideoEditor() {
                       padding={padding}
                       cropRegion={cropRegion}
                       trimRegions={trimRegions}
+                      speedRegions={speedRegions}
                       annotationRegions={annotationRegions}
                       selectedAnnotationId={selectedAnnotationId}
                       onSelectAnnotation={handleSelectAnnotation}
@@ -816,6 +885,12 @@ export default function VideoEditor() {
               onTrimDelete={handleTrimDelete}
               selectedTrimId={selectedTrimId}
               onSelectTrim={handleSelectTrim}
+              speedRegions={speedRegions}
+              onSpeedAdded={handleSpeedAdded}
+              onSpeedSpanChange={handleSpeedSpanChange}
+              onSpeedDelete={handleSpeedDelete}
+              selectedSpeedId={selectedSpeedId}
+              onSelectSpeed={handleSelectSpeed}
               annotationRegions={annotationRegions}
               onAnnotationAdded={handleAnnotationAdded}
               onAnnotationSpanChange={handleAnnotationSpanChange}
@@ -878,6 +953,10 @@ export default function VideoEditor() {
           onAnnotationStyleChange={handleAnnotationStyleChange}
           onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
           onAnnotationDelete={handleAnnotationDelete}
+          selectedSpeedId={selectedSpeedId}
+          selectedSpeedValue={selectedSpeedId ? speedRegions.find(r => r.id === selectedSpeedId)?.speed ?? null : null}
+          onSpeedChange={handleSpeedChange}
+          onSpeedDelete={handleSpeedDelete}
         />
       </div>
 
