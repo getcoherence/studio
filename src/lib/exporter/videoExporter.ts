@@ -83,7 +83,7 @@ export class VideoExporter {
       await this.muxer.initialize();
 
       // Calculate effective duration and frame count (excluding trim regions)
-      const effectiveDuration = this.streamingDecoder.getEffectiveDuration(this.config.trimRegions);
+      const effectiveDuration = this.streamingDecoder.getEffectiveDuration(this.config.trimRegions, this.config.speedRegions);
       const totalFrames = Math.ceil(effectiveDuration * this.config.frameRate);
 
       console.log('[VideoExporter] Original duration:', videoInfo.duration, 's');
@@ -98,6 +98,7 @@ export class VideoExporter {
       await this.streamingDecoder.decodeAll(
         this.config.frameRate,
         this.config.trimRegions,
+        this.config.speedRegions,
         async (videoFrame, _exportTimestampUs, sourceTimestampMs) => {
           if (this.cancelled) {
             videoFrame.close();
