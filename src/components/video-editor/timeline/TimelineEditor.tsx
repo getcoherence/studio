@@ -20,15 +20,13 @@ import {
 import { type AspectRatio, getAspectRatioLabel, ASPECT_RATIOS } from "@/utils/aspectRatioUtils";
 import { formatShortcut } from "@/utils/platformUtils";
 import { TutorialHelp } from "../TutorialHelp";
+import { detectZoomDwellCandidates, normalizeCursorTelemetry } from "./zoomSuggestionUtils";
 
 const ZOOM_ROW_ID = "row-zoom";
 const TRIM_ROW_ID = "row-trim";
 const ANNOTATION_ROW_ID = "row-annotation";
 const FALLBACK_RANGE_MS = 1000;
 const TARGET_MARKER_COUNT = 12;
-const MIN_DWELL_DURATION_MS = 450;
-const MAX_DWELL_DURATION_MS = 2600;
-const DWELL_MOVE_THRESHOLD = 0.02;
 const SUGGESTION_SPACING_MS = 1800;
 
 interface TimelineEditorProps {
@@ -750,14 +748,7 @@ export default function TimelineEditor({
       .map((region) => ({ start: region.startMs, end: region.endMs }))
       .sort((a, b) => a.start - b.start);
 
-    const normalizedSamples = [...cursorTelemetry]
-      .filter((sample) => Number.isFinite(sample.timeMs) && Number.isFinite(sample.cx) && Number.isFinite(sample.cy))
-      .sort((a, b) => a.timeMs - b.timeMs)
-      .map((sample) => ({
-        timeMs: Math.max(0, Math.min(sample.timeMs, totalMs)),
-        cx: Math.max(0, Math.min(sample.cx, 1)),
-        cy: Math.max(0, Math.min(sample.cy, 1)),
-      }));
+    const normalizedSamples = normalizeCursorTelemetry(cursorTelemetry, totalMs);
 
     if (normalizedSamples.length < 2) {
       toast.info("No usable cursor telemetry", {
@@ -766,45 +757,7 @@ export default function TimelineEditor({
       return;
     }
 
-    const dwellCandidates: Array<{ centerTimeMs: number; focus: ZoomFocus; strength: number }> = [];
-    let runStart = 0;
-
-    const pushRunIfDwell = (startIndex: number, endIndexExclusive: number) => {
-      if (endIndexExclusive - startIndex < 2) {
-        return;
-      }
-
-      const start = normalizedSamples[startIndex];
-      const end = normalizedSamples[endIndexExclusive - 1];
-      const runDuration = end.timeMs - start.timeMs;
-      if (runDuration < MIN_DWELL_DURATION_MS || runDuration > MAX_DWELL_DURATION_MS) {
-        return;
-      }
-
-      const runSamples = normalizedSamples.slice(startIndex, endIndexExclusive);
-      const avgCx = runSamples.reduce((sum, sample) => sum + sample.cx, 0) / runSamples.length;
-      const avgCy = runSamples.reduce((sum, sample) => sum + sample.cy, 0) / runSamples.length;
-
-      dwellCandidates.push({
-        centerTimeMs: Math.round((start.timeMs + end.timeMs) / 2),
-        focus: { cx: avgCx, cy: avgCy },
-        strength: runDuration,
-      });
-    };
-
-    for (let index = 1; index < normalizedSamples.length; index += 1) {
-      const prev = normalizedSamples[index - 1];
-      const curr = normalizedSamples[index];
-      const dx = curr.cx - prev.cx;
-      const dy = curr.cy - prev.cy;
-      const distance = Math.hypot(dx, dy);
-
-      if (distance > DWELL_MOVE_THRESHOLD) {
-        pushRunIfDwell(runStart, index);
-        runStart = index;
-      }
-    }
-    pushRunIfDwell(runStart, normalizedSamples.length);
+    const dwellCandidates = detectZoomDwellCandidates(normalizedSamples);
 
     if (dwellCandidates.length === 0) {
       toast.info("No clear cursor dwell moments found", {
