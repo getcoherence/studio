@@ -36,9 +36,9 @@ interface Window {
       success: boolean
       path?: string
       message?: string
-      cancelled?: boolean
+      canceled?: boolean
     }>
-    openVideoFilePicker: () => Promise<{ success: boolean; path?: string; cancelled?: boolean }>
+    openVideoFilePicker: () => Promise<{ success: boolean; path?: string; canceled?: boolean }>
     setCurrentVideoPath: (path: string) => Promise<{ success: boolean }>
     getCurrentVideoPath: () => Promise<{ success: boolean; path?: string }>
     clearCurrentVideoPath: () => Promise<{ success: boolean }>
@@ -46,7 +46,7 @@ interface Window {
       success: boolean
       path?: string
       message?: string
-      cancelled?: boolean
+      canceled?: boolean
       error?: string
     }>
     loadProjectFile: () => Promise<{
@@ -54,7 +54,15 @@ interface Window {
       path?: string
       project?: unknown
       message?: string
-      cancelled?: boolean
+      canceled?: boolean
+      error?: string
+    }>
+    loadCurrentProjectFile: () => Promise<{
+      success: boolean
+      path?: string
+      project?: unknown
+      message?: string
+      canceled?: boolean
       error?: string
     }>
     onMenuLoadProject: (callback: () => void) => () => void

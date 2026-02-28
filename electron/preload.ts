@@ -66,6 +66,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadProjectFile: () => {
     return ipcRenderer.invoke('load-project-file')
   },
+  loadCurrentProjectFile: () => {
+    return ipcRenderer.invoke('load-current-project-file')
+  },
   onMenuLoadProject: (callback: () => void) => {
     const listener = () => callback()
     ipcRenderer.on('menu-load-project', listener)

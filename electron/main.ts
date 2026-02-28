@@ -76,11 +76,16 @@ function sendEditorMenuAction(channel: 'menu-load-project' | 'menu-save-project'
 }
 
 function setupApplicationMenu() {
-  const template: Electron.MenuItemConstructorOptions[] = [
-    {
+  const isMac = process.platform === 'darwin'
+  const template: Electron.MenuItemConstructorOptions[] = []
+
+  if (isMac) {
+    template.push({
       label: app.name,
       submenu: [
         { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
         { type: 'separator' },
         { role: 'hide' },
         { role: 'hideOthers' },
@@ -88,7 +93,10 @@ function setupApplicationMenu() {
         { type: 'separator' },
         { role: 'quit' },
       ],
-    },
+    })
+  }
+
+  template.push(
     {
       label: 'File',
       submenu: [
@@ -107,6 +115,7 @@ function setupApplicationMenu() {
           accelerator: 'CmdOrCtrl+Shift+S',
           click: () => sendEditorMenuAction('menu-save-project-as'),
         },
+        ...(isMac ? [] : [{ type: 'separator' as const }, { role: 'quit' as const }]),
       ],
     },
     {
@@ -137,12 +146,19 @@ function setupApplicationMenu() {
     },
     {
       label: 'Window',
-      submenu: [
-        { role: 'minimize' },
-        { role: 'close' },
-      ],
+      submenu: isMac
+        ? [
+            { role: 'minimize' },
+            { role: 'zoom' },
+            { type: 'separator' },
+            { role: 'front' },
+          ]
+        : [
+            { role: 'minimize' },
+            { role: 'close' },
+          ],
     },
-  ]
+  )
 
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)

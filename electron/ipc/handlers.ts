@@ -6,7 +6,25 @@ import { RECORDINGS_DIR } from '../main'
 
 const PROJECT_FILE_EXTENSION = 'openscreen'
 
-let selectedSource: any = null
+type SelectedSource = {
+  name: string
+  [key: string]: unknown
+}
+
+let selectedSource: SelectedSource | null = null
+let currentVideoPath: string | null = null
+let currentProjectPath: string | null = null
+
+function normalizePath(filePath: string) {
+  return path.resolve(filePath)
+}
+
+function isTrustedProjectPath(filePath?: string | null) {
+  if (!filePath || !currentProjectPath) {
+    return false
+  }
+  return normalizePath(filePath) === normalizePath(currentProjectPath)
+}
 
 export function registerIpcHandlers(
   createEditorWindow: () => void,
@@ -26,7 +44,7 @@ export function registerIpcHandlers(
     }))
   })
 
-  ipcMain.handle('select-source', (_, source) => {
+  ipcMain.handle('select-source', (_, source: SelectedSource) => {
     selectedSource = source
     const sourceSelectorWin = getSourceSelectorWindow()
     if (sourceSelectorWin) {
@@ -63,6 +81,7 @@ export function registerIpcHandlers(
       const videoPath = path.join(RECORDINGS_DIR, fileName)
       await fs.writeFile(videoPath, Buffer.from(videoData))
       currentVideoPath = videoPath;
+      currentProjectPath = null
       return {
         success: true,
         path: videoPath,
@@ -148,8 +167,8 @@ export function registerIpcHandlers(
       if (result.canceled || !result.filePath) {
         return {
           success: false,
-          cancelled: true,
-          message: 'Export cancelled'
+          canceled: true,
+          message: 'Export canceled'
         };
       }
 
@@ -183,9 +202,10 @@ export function registerIpcHandlers(
       });
 
       if (result.canceled || result.filePaths.length === 0) {
-        return { success: false, cancelled: true };
+        return { success: false, canceled: true };
       }
 
+      currentProjectPath = null
       return {
         success: true,
         path: result.filePaths[0]
@@ -202,11 +222,16 @@ export function registerIpcHandlers(
 
   ipcMain.handle('save-project-file', async (_, projectData: unknown, suggestedName?: string, existingProjectPath?: string) => {
     try {
-      if (existingProjectPath) {
-        await fs.writeFile(existingProjectPath, JSON.stringify(projectData, null, 2), 'utf-8')
+      const trustedExistingProjectPath = isTrustedProjectPath(existingProjectPath)
+        ? existingProjectPath
+        : null
+
+      if (trustedExistingProjectPath) {
+        await fs.writeFile(trustedExistingProjectPath, JSON.stringify(projectData, null, 2), 'utf-8')
+        currentProjectPath = trustedExistingProjectPath
         return {
           success: true,
-          path: existingProjectPath,
+          path: trustedExistingProjectPath,
           message: 'Project saved successfully'
         }
       }
@@ -229,12 +254,13 @@ export function registerIpcHandlers(
       if (result.canceled || !result.filePath) {
         return {
           success: false,
-          cancelled: true,
-          message: 'Save project cancelled'
+          canceled: true,
+          message: 'Save project canceled'
         }
       }
 
       await fs.writeFile(result.filePath, JSON.stringify(projectData, null, 2), 'utf-8')
+      currentProjectPath = result.filePath
 
       return {
         success: true,
@@ -265,12 +291,16 @@ export function registerIpcHandlers(
       })
 
       if (result.canceled || result.filePaths.length === 0) {
-        return { success: false, cancelled: true, message: 'Open project cancelled' }
+        return { success: false, canceled: true, message: 'Open project canceled' }
       }
 
       const filePath = result.filePaths[0]
       const content = await fs.readFile(filePath, 'utf-8')
       const project = JSON.parse(content)
+      currentProjectPath = filePath
+      if (project && typeof project === 'object' && typeof project.videoPath === 'string') {
+        currentVideoPath = project.videoPath
+      }
 
       return {
         success: true,
@@ -287,10 +317,35 @@ export function registerIpcHandlers(
     }
   })
 
-  let currentVideoPath: string | null = null;
+  ipcMain.handle('load-current-project-file', async () => {
+    try {
+      if (!currentProjectPath) {
+        return { success: false, message: 'No active project' }
+      }
+
+      const content = await fs.readFile(currentProjectPath, 'utf-8')
+      const project = JSON.parse(content)
+      if (project && typeof project === 'object' && typeof project.videoPath === 'string') {
+        currentVideoPath = project.videoPath
+      }
+      return {
+        success: true,
+        path: currentProjectPath,
+        project,
+      }
+    } catch (error) {
+      console.error('Failed to load current project file:', error)
+      return {
+        success: false,
+        message: 'Failed to load current project file',
+        error: String(error),
+      }
+    }
+  })
 
   ipcMain.handle('set-current-video-path', (_, path: string) => {
     currentVideoPath = path;
+    currentProjectPath = null
     return { success: true };
   });
 
