@@ -19,6 +19,51 @@ export interface ShortcutBinding {
 
 export type ShortcutsConfig = Record<ShortcutAction, ShortcutBinding>;
 
+export interface FixedShortcut {
+  label: string;
+  display: string;
+  bindings: ShortcutBinding[];
+}
+
+export const FIXED_SHORTCUTS: FixedShortcut[] = [
+  { label: 'Cycle Annotations Forward',  display: 'Tab',                    bindings: [{ key: 'tab' }] },
+  { label: 'Cycle Annotations Backward', display: 'Shift + Tab',            bindings: [{ key: 'tab', shift: true }] },
+  { label: 'Delete Selected (alt)',      display: 'Del / ⌫',               bindings: [{ key: 'delete' }, { key: 'backspace' }] },
+  { label: 'Pan Timeline',               display: 'Shift + Ctrl + Scroll',  bindings: [] },
+  { label: 'Zoom Timeline',              display: 'Ctrl + Scroll',          bindings: [] },
+];
+
+export type ShortcutConflict =
+  | { type: 'configurable'; action: ShortcutAction }
+  | { type: 'fixed'; label: string };
+
+export function bindingsEqual(a: ShortcutBinding, b: ShortcutBinding): boolean {
+  return (
+    a.key.toLowerCase() === b.key.toLowerCase() &&
+    !!a.ctrl === !!b.ctrl &&
+    !!a.shift === !!b.shift &&
+    !!a.alt === !!b.alt
+  );
+}
+
+export function findConflict(
+  binding: ShortcutBinding,
+  forAction: ShortcutAction,
+  config: ShortcutsConfig,
+): ShortcutConflict | null {
+  for (const fixed of FIXED_SHORTCUTS) {
+    if (fixed.bindings.some((b) => bindingsEqual(b, binding))) {
+      return { type: 'fixed', label: fixed.label };
+    }
+  }
+  for (const action of SHORTCUT_ACTIONS) {
+    if (action !== forAction && bindingsEqual(config[action], binding)) {
+      return { type: 'configurable', action };
+    }
+  }
+  return null;
+}
+
 export const DEFAULT_SHORTCUTS: ShortcutsConfig = {
   addZoom:        { key: 'z' },
   addTrim:        { key: 't' },

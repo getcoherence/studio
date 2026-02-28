@@ -6,24 +6,19 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Button } from '@/components/ui/button';
 import {
   DEFAULT_SHORTCUTS,
+  FIXED_SHORTCUTS,
   SHORTCUT_ACTIONS,
   SHORTCUT_LABELS,
+  findConflict,
   formatBinding,
   type ShortcutAction,
   type ShortcutBinding,
+  type ShortcutConflict,
   type ShortcutsConfig,
 } from '@/lib/shortcuts';
 import { useShortcuts } from '@/contexts/ShortcutsContext';
 
 const MODIFIER_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta']);
-
-const FIXED_SHORTCUTS = [
-  { label: 'Cycle Annotations Forward',  display: 'Tab' },
-  { label: 'Cycle Annotations Backward', display: 'Shift + Tab' },
-  { label: 'Delete Selected (alt)',       display: 'Del / ⌫' },
-  { label: 'Pan Timeline',               display: 'Shift + Ctrl + Scroll' },
-  { label: 'Zoom Timeline',              display: 'Ctrl + Scroll' },
-] as const;
 
 export function ShortcutsConfigDialog() {
   const { shortcuts, isMac, isConfigOpen, closeConfig, setShortcuts, persistShortcuts } =
@@ -31,11 +26,13 @@ export function ShortcutsConfigDialog() {
 
   const [draft, setDraft] = useState<ShortcutsConfig>(shortcuts);
   const [captureFor, setCaptureFor] = useState<ShortcutAction | null>(null);
+  const [conflict, setConflict] = useState<{ forAction: ShortcutAction; pending: ShortcutBinding; conflictWith: ShortcutConflict } | null>(null);
 
   useEffect(() => {
     if (isConfigOpen) {
       setDraft(shortcuts);
       setCaptureFor(null);
+      setConflict(null);
     }
   }, [isConfigOpen, shortcuts]);
 
@@ -60,13 +57,38 @@ export function ShortcutsConfigDialog() {
         ...(e.altKey ? { alt: true } : {}),
       };
 
-      setDraft((prev: ShortcutsConfig) => ({ ...prev, [captureFor]: binding }));
+      const found = findConflict(binding, captureFor, draft);
       setCaptureFor(null);
+
+      if (found?.type === 'fixed') {
+        toast.error(`This shortcut is reserved for "${found.label}" and cannot be reassigned.`);
+        return;
+      }
+
+      if (found?.type === 'configurable') {
+        setConflict({ forAction: captureFor, pending: binding, conflictWith: found });
+        return;
+      }
+
+      setDraft((prev: ShortcutsConfig) => ({ ...prev, [captureFor]: binding }));
     };
 
     window.addEventListener('keydown', handleCapture, { capture: true });
     return () => window.removeEventListener('keydown', handleCapture, { capture: true });
   }, [captureFor]);
+
+  const handleSwap = useCallback(() => {
+    if (!conflict || conflict.conflictWith.type !== 'configurable') return;
+    const { forAction, pending, conflictWith } = conflict;
+    setDraft((prev: ShortcutsConfig) => ({
+      ...prev,
+      [forAction]: pending,
+      [conflictWith.action]: prev[forAction],
+    }));
+    setConflict(null);
+  }, [conflict]);
+
+  const handleCancelConflict = useCallback(() => setConflict(null), []);
 
   const handleSave = useCallback(async () => {
     setShortcuts(draft);
@@ -82,6 +104,7 @@ export function ShortcutsConfigDialog() {
 
   const handleClose = useCallback(() => {
     setCaptureFor(null);
+    setConflict(null);
     closeConfig();
   }, [closeConfig]);
 
@@ -99,25 +122,53 @@ export function ShortcutsConfigDialog() {
           <p className="text-[10px] text-slate-500 mb-2 uppercase tracking-wide font-semibold">Configurable</p>
           {SHORTCUT_ACTIONS.map((action) => {
             const isCapturing = captureFor === action;
+            const hasConflict = conflict?.forAction === action;
             return (
-              <div
-                key={action}
-                className="flex items-center justify-between py-1.5 px-1 border-b border-white/5 last:border-0"
-              >
-                <span className="text-sm text-slate-300">{SHORTCUT_LABELS[action]}</span>
-                <button
-                  type="button"
-                  onClick={() => setCaptureFor(isCapturing ? null : action)}
-                  title={isCapturing ? 'Press Esc to cancel' : 'Click to change'}
-                  className={[
-                    'px-2 py-1 rounded text-xs font-mono border transition-all min-w-[90px] text-center select-none',
-                    isCapturing
-                      ? 'bg-[#34B27B]/20 border-[#34B27B] text-[#34B27B] animate-pulse'
-                      : 'bg-white/5 border-white/10 text-slate-200 hover:border-[#34B27B]/50 hover:text-[#34B27B] cursor-pointer',
-                  ].join(' ')}
-                >
-                  {isCapturing ? 'Press a key…' : formatBinding(draft[action], isMac)}
-                </button>
+              <div key={action}>
+                <div className="flex items-center justify-between py-1.5 px-1 border-b border-white/5">
+                  <span className="text-sm text-slate-300">{SHORTCUT_LABELS[action]}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConflict(null);
+                      setCaptureFor(isCapturing ? null : action);
+                    }}
+                    title={isCapturing ? 'Press Esc to cancel' : 'Click to change'}
+                    className={[
+                      'px-2 py-1 rounded text-xs font-mono border transition-all min-w-[90px] text-center select-none',
+                      isCapturing
+                        ? 'bg-[#34B27B]/20 border-[#34B27B] text-[#34B27B] animate-pulse'
+                        : hasConflict
+                          ? 'bg-amber-500/10 border-amber-500/50 text-amber-400'
+                          : 'bg-white/5 border-white/10 text-slate-200 hover:border-[#34B27B]/50 hover:text-[#34B27B] cursor-pointer',
+                    ].join(' ')}
+                  >
+                    {isCapturing ? 'Press a key…' : formatBinding(draft[action], isMac)}
+                  </button>
+                </div>
+                {hasConflict && conflict?.conflictWith.type === 'configurable' && (
+                  <div className="flex items-center justify-between px-1 py-1.5 mb-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-xs">
+                    <span className="text-amber-400">
+                      ⚠ Already used by <strong>{SHORTCUT_LABELS[conflict.conflictWith.action]}</strong>
+                    </span>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleSwap}
+                        className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded text-amber-300 font-medium transition-colors"
+                      >
+                        Swap
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelConflict}
+                        className="px-2 py-0.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-slate-400 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
