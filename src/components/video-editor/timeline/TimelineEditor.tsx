@@ -967,7 +967,7 @@ export default function TimelineEditor({
       if (matchesShortcut(e, keyShortcuts.addAnnotation, isMac)) {
         handleAddAnnotation();
       }
-      if (e.key === 's' || e.key === 'S') {
+      if (matchesShortcut(e, keyShortcuts.addSpeed, isMac)) {
         handleAddSpeed();
       }
 
