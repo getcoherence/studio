@@ -32,6 +32,8 @@ import {
 import { VideoExporter, GifExporter, type ExportProgress, type ExportQuality, type ExportSettings, type ExportFormat, type GifFrameRate, type GifSizePreset, GIF_SIZE_PRESETS, calculateOutputDimensions } from "@/lib/exporter";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
 import { getAssetPath } from "@/lib/assetPath";
+import { useShortcuts } from "@/contexts/ShortcutsContext";
+import { matchesShortcut } from "@/lib/shortcuts";
 
 const WALLPAPER_COUNT = 18;
 const WALLPAPER_PATHS = Array.from({ length: WALLPAPER_COUNT }, (_, i) => `/wallpapers/wallpaper${i + 1}.jpg`);
@@ -71,6 +73,8 @@ export default function VideoEditor() {
   const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
   const nextZoomIdRef = useRef(1);
   const nextTrimIdRef = useRef(1);
+
+  const { shortcuts, isMac } = useShortcuts();
   const nextAnnotationIdRef = useRef(1);
   const nextAnnotationZIndexRef = useRef(1); // Track z-index for stacking order
   const exporterRef = useRef<VideoExporter | null>(null);
@@ -459,7 +463,7 @@ export default function VideoEditor() {
         e.preventDefault();
       }
 
-      if (e.key === ' ' || e.code === 'Space') {
+      if (matchesShortcut(e, shortcuts.playPause, isMac)) {
         // Allow space only in inputs/textareas
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
           return;
@@ -479,7 +483,7 @@ export default function VideoEditor() {
     
     window.addEventListener('keydown', handleKeyDown, { capture: true });
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-  }, []);
+  }, [shortcuts, isMac]);
 
   useEffect(() => {
     if (selectedZoomId && !zoomRegions.some((region) => region.id === selectedZoomId)) {

@@ -20,6 +20,8 @@ import {
 import { type AspectRatio, getAspectRatioLabel, ASPECT_RATIOS } from "@/utils/aspectRatioUtils";
 import { formatShortcut } from "@/utils/platformUtils";
 import { TutorialHelp } from "../TutorialHelp";
+import { useShortcuts } from "@/contexts/ShortcutsContext";
+import { matchesShortcut } from "@/lib/shortcuts";
 import { detectZoomDwellCandidates, normalizeCursorTelemetry } from "./zoomSuggestionUtils";
 
 const ZOOM_ROW_ID = "row-zoom";
@@ -558,16 +560,17 @@ export default function TimelineEditor({
   const [range, setRange] = useState<Range>(() => createInitialRange(totalMs));
   const [keyframes, setKeyframes] = useState<{ id: string; time: number }[]>([]);
   const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
-  const [shortcuts, setShortcuts] = useState({
+  const [scrollLabels, setScrollLabels] = useState({
     pan: 'Shift + Ctrl + Scroll',
     zoom: 'Ctrl + Scroll'
   });
   const timelineContainerRef = useRef<HTMLDivElement>(null);
+  const { shortcuts: keyShortcuts, isMac } = useShortcuts();
 
   useEffect(() => {
     formatShortcut(['shift', 'mod', 'Scroll']).then(pan => {
       formatShortcut(['mod', 'Scroll']).then(zoom => {
-        setShortcuts({ pan, zoom });
+        setScrollLabels({ pan, zoom });
       });
     });
   }, []);
@@ -860,16 +863,16 @@ export default function TimelineEditor({
         return;
       }
 
-      if (e.key === 'f' || e.key === 'F') {
+      if (matchesShortcut(e, keyShortcuts.addKeyframe, isMac)) {
         addKeyframe();
       }
-      if (e.key === 'z' || e.key === 'Z') {
+      if (matchesShortcut(e, keyShortcuts.addZoom, isMac)) {
         handleAddZoom();
       }
-      if (e.key === 't' || e.key === 'T') {
+      if (matchesShortcut(e, keyShortcuts.addTrim, isMac)) {
         handleAddTrim();
       }
-      if (e.key === 'a' || e.key === 'A') {
+      if (matchesShortcut(e, keyShortcuts.addAnnotation, isMac)) {
         handleAddAnnotation();
       }
 
@@ -896,7 +899,7 @@ export default function TimelineEditor({
         }
       }
       // Delete key or Ctrl+D / Cmd+D
-      if (e.key === 'Delete' || e.key === 'Backspace' || ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey))) {
+      if (e.key === 'Delete' || e.key === 'Backspace' || matchesShortcut(e, keyShortcuts.deleteSelected, isMac)) {
         if (selectedKeyframeId) {
           deleteSelectedKeyframe();
         } else if (selectedZoomId) {
@@ -910,7 +913,7 @@ export default function TimelineEditor({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [addKeyframe, handleAddZoom, handleAddTrim, handleAddAnnotation, deleteSelectedKeyframe, deleteSelectedZoom, deleteSelectedTrim, deleteSelectedAnnotation, selectedKeyframeId, selectedZoomId, selectedTrimId, selectedAnnotationId, annotationRegions, currentTime, onSelectAnnotation]);
+  }, [addKeyframe, handleAddZoom, handleAddTrim, handleAddAnnotation, deleteSelectedKeyframe, deleteSelectedZoom, deleteSelectedTrim, deleteSelectedAnnotation, selectedKeyframeId, selectedZoomId, selectedTrimId, selectedAnnotationId, annotationRegions, currentTime, onSelectAnnotation, keyShortcuts, isMac]);
 
   const clampedRange = useMemo<Range>(() => {
     if (totalMs === 0) {
@@ -1070,11 +1073,11 @@ export default function TimelineEditor({
         <div className="flex-1" />
         <div className="flex items-center gap-4 text-[10px] text-slate-500 font-medium">
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">{shortcuts.pan}</kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">{scrollLabels.pan}</kbd>
             <span>Pan</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">{shortcuts.zoom}</kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">{scrollLabels.zoom}</kbd>
             <span>Zoom</span>
           </span>
         </div>

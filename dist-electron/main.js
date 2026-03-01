@@ -1,4 +1,4 @@
-import { ipcMain, screen, BrowserWindow, desktopCapturer, shell, app, dialog, nativeImage, Tray, Menu } from "electron";
+import { ipcMain, screen, BrowserWindow, app, desktopCapturer, shell, dialog, nativeImage, Tray, Menu } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -126,6 +126,7 @@ function createSourceSelectorWindow() {
   }
   return win;
 }
+const SHORTCUTS_FILE = path.join(app.getPath("userData"), "shortcuts.json");
 let selectedSource = null;
 function registerIpcHandlers(createEditorWindow2, createSourceSelectorWindow2, getMainWindow, getSourceSelectorWindow, onRecordingStateChange) {
   ipcMain.handle("get-sources", async (_, opts) => {
@@ -297,6 +298,23 @@ function registerIpcHandlers(createEditorWindow2, createSourceSelectorWindow2, g
   });
   ipcMain.handle("get-platform", () => {
     return process.platform;
+  });
+  ipcMain.handle("get-shortcuts", async () => {
+    try {
+      const data = await fs.readFile(SHORTCUTS_FILE, "utf-8");
+      return JSON.parse(data);
+    } catch {
+      return null;
+    }
+  });
+  ipcMain.handle("save-shortcuts", async (_, shortcuts) => {
+    try {
+      await fs.writeFile(SHORTCUTS_FILE, JSON.stringify(shortcuts, null, 2), "utf-8");
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to save shortcuts:", error);
+      return { success: false, error: String(error) };
+    }
   });
 }
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
