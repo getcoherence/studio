@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTimelineContext } from "dnd-timeline";
 import { Button } from "@/components/ui/button";
-import { Plus, Scissors, ZoomIn, MessageSquare, ChevronDown, Check, WandSparkles } from "lucide-react";
+import { Plus, Scissors, ZoomIn, MessageSquare, ChevronDown, Check, Gauge, WandSparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import TimelineWrapper from "./TimelineWrapper";
@@ -9,7 +9,7 @@ import Row from "./Row";
 import Item from "./Item";
 import KeyframeMarkers from "./KeyframeMarkers";
 import type { Range, Span } from "dnd-timeline";
-import type { ZoomRegion, TrimRegion, AnnotationRegion, CursorTelemetryPoint, ZoomFocus } from "../types";
+import type { ZoomRegion, TrimRegion, AnnotationRegion, SpeedRegion, CursorTelemetryPoint, ZoomFocus } from "../types";
 import { v4 as uuidv4 } from 'uuid';
 import {
   DropdownMenu,
@@ -27,6 +27,7 @@ import { detectZoomDwellCandidates, normalizeCursorTelemetry } from "./zoomSugge
 const ZOOM_ROW_ID = "row-zoom";
 const TRIM_ROW_ID = "row-trim";
 const ANNOTATION_ROW_ID = "row-annotation";
+const SPEED_ROW_ID = "row-speed";
 const FALLBACK_RANGE_MS = 1000;
 const TARGET_MARKER_COUNT = 12;
 const SUGGESTION_SPACING_MS = 1800;
@@ -55,6 +56,12 @@ interface TimelineEditorProps {
   onAnnotationDelete?: (id: string) => void;
   selectedAnnotationId?: string | null;
   onSelectAnnotation?: (id: string | null) => void;
+  speedRegions?: SpeedRegion[];
+  onSpeedAdded?: (span: Span) => void;
+  onSpeedSpanChange?: (id: string, span: Span) => void;
+  onSpeedDelete?: (id: string) => void;
+  selectedSpeedId?: string | null;
+  onSelectSpeed?: (id: string | null) => void;
   aspectRatio: AspectRatio;
   onAspectRatioChange: (aspectRatio: AspectRatio) => void;
 }
@@ -73,7 +80,8 @@ interface TimelineRenderItem {
   span: Span;
   label: string;
   zoomDepth?: number;
-  variant: 'zoom' | 'trim' | 'annotation';
+  speedValue?: number;
+  variant: 'zoom' | 'trim' | 'annotation' | 'speed';
 }
 
 const SCALE_CANDIDATES = [
@@ -402,9 +410,11 @@ function Timeline({
   onSelectZoom,
   onSelectTrim,
   onSelectAnnotation,
+  onSelectSpeed,
   selectedZoomId,
   selectedTrimId,
   selectedAnnotationId,
+  selectedSpeedId,
   keyframes = [],
 }: {
   items: TimelineRenderItem[];
@@ -415,9 +425,11 @@ function Timeline({
   onSelectZoom?: (id: string | null) => void;
   onSelectTrim?: (id: string | null) => void;
   onSelectAnnotation?: (id: string | null) => void;
+  onSelectSpeed?: (id: string | null) => void;
   selectedZoomId: string | null;
   selectedTrimId?: string | null;
   selectedAnnotationId?: string | null;
+  selectedSpeedId?: string | null;
   keyframes?: { id: string; time: number }[];
 }) {
   const { setTimelineRef, style, sidebarWidth, range, pixelsToValue } = useTimelineContext();
@@ -436,6 +448,7 @@ function Timeline({
     onSelectZoom?.(null);
     onSelectTrim?.(null);
     onSelectAnnotation?.(null);
+    onSelectSpeed?.(null);
 
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left - sidebarWidth;
@@ -447,11 +460,12 @@ function Timeline({
     const timeInSeconds = absoluteMs / 1000;
 
     onSeek(timeInSeconds);
-  }, [onSeek, onSelectZoom, onSelectTrim, onSelectAnnotation, videoDurationMs, sidebarWidth, range.start, pixelsToValue]);
+  }, [onSeek, onSelectZoom, onSelectTrim, onSelectAnnotation, onSelectSpeed, videoDurationMs, sidebarWidth, range.start, pixelsToValue]);
 
   const zoomItems = items.filter(item => item.rowId === ZOOM_ROW_ID);
   const trimItems = items.filter(item => item.rowId === TRIM_ROW_ID);
   const annotationItems = items.filter(item => item.rowId === ANNOTATION_ROW_ID);
+  const speedItems = items.filter(item => item.rowId === SPEED_ROW_ID);
 
   return (
     <div
@@ -518,6 +532,23 @@ function Timeline({
           </Item>
         ))}
       </Row>
+
+      <Row id={SPEED_ROW_ID} isEmpty={speedItems.length === 0} hint="Press S to add speed">
+        {speedItems.map((item) => (
+          <Item
+            id={item.id}
+            key={item.id}
+            rowId={item.rowId}
+            span={item.span}
+            isSelected={item.id === selectedSpeedId}
+            onSelect={() => onSelectSpeed?.(item.id)}
+            variant="speed"
+            speedValue={item.speedValue}
+          >
+            {item.label}
+          </Item>
+        ))}
+      </Row>
     </div>
   );
 }
@@ -546,6 +577,12 @@ export default function TimelineEditor({
   onAnnotationDelete,
   selectedAnnotationId,
   onSelectAnnotation,
+  speedRegions = [],
+  onSpeedAdded,
+  onSpeedSpanChange,
+  onSpeedDelete,
+  selectedSpeedId,
+  onSelectSpeed,
   aspectRatio,
   onAspectRatioChange,
 }: TimelineEditorProps) {
@@ -615,6 +652,12 @@ export default function TimelineEditor({
     onSelectAnnotation(null);
   }, [selectedAnnotationId, onAnnotationDelete, onSelectAnnotation]);
 
+  const deleteSelectedSpeed = useCallback(() => {
+    if (!selectedSpeedId || !onSpeedDelete || !onSelectSpeed) return;
+    onSpeedDelete(selectedSpeedId);
+    onSelectSpeed(null);
+  }, [selectedSpeedId, onSpeedDelete, onSelectSpeed]);
+
   useEffect(() => {
     setRange(createInitialRange(totalMs));
   }, [totalMs]);
@@ -624,8 +667,10 @@ export default function TimelineEditor({
   // this effect on every drag/resize and races with dnd-timeline's internal state.
   const zoomRegionsRef = useRef(zoomRegions);
   const trimRegionsRef = useRef(trimRegions);
+  const speedRegionsRef = useRef(speedRegions);
   zoomRegionsRef.current = zoomRegions;
   trimRegionsRef.current = trimRegions;
+  speedRegionsRef.current = speedRegions;
 
   useEffect(() => {
     if (totalMs === 0 || safeMinDurationMs <= 0) {
@@ -655,21 +700,34 @@ export default function TimelineEditor({
         onTrimSpanChange?.(region.id, { start: normalizedStart, end: normalizedEnd });
       }
     });
+
+    speedRegionsRef.current.forEach((region) => {
+      const clampedStart = Math.max(0, Math.min(region.startMs, totalMs));
+      const minEnd = clampedStart + safeMinDurationMs;
+      const clampedEnd = Math.min(totalMs, Math.max(minEnd, region.endMs));
+      const normalizedStart = Math.max(0, Math.min(clampedStart, totalMs - safeMinDurationMs));
+      const normalizedEnd = Math.max(minEnd, Math.min(clampedEnd, totalMs));
+
+      if (normalizedStart !== region.startMs || normalizedEnd !== region.endMs) {
+        onSpeedSpanChange?.(region.id, { start: normalizedStart, end: normalizedEnd });
+      }
+    });
     // Only re-run when the timeline scale changes, not on every region edit
-  }, [totalMs, safeMinDurationMs, onZoomSpanChange, onTrimSpanChange]);
+  }, [totalMs, safeMinDurationMs, onZoomSpanChange, onTrimSpanChange, onSpeedSpanChange]);
 
   const hasOverlap = useCallback((newSpan: Span, excludeId?: string): boolean => {
     // Determine which row the item belongs to
     const isZoomItem = zoomRegions.some(r => r.id === excludeId);
     const isTrimItem = trimRegions.some(r => r.id === excludeId);
     const isAnnotationItem = annotationRegions.some(r => r.id === excludeId);
+    const isSpeedItem = speedRegions.some(r => r.id === excludeId);
 
     if (isAnnotationItem) {
       return false;
     }
 
     // Helper to check overlap against a specific set of regions
-    const checkOverlap = (regions: (ZoomRegion | TrimRegion)[]) => {
+    const checkOverlap = (regions: (ZoomRegion | TrimRegion | SpeedRegion)[]) => {
       return regions.some((region) => {
         if (region.id === excludeId) return false;
         // True overlap: regions actually intersect (not just adjacent)
@@ -685,8 +743,12 @@ export default function TimelineEditor({
       return checkOverlap(trimRegions);
     }
 
+    if (isSpeedItem) {
+      return checkOverlap(speedRegions);
+    }
+
     return false;
-  }, [zoomRegions, trimRegions, annotationRegions]);
+  }, [zoomRegions, trimRegions, annotationRegions, speedRegions]);
 
   // At least 5% of the timeline or 1000ms, whichever is larger, so the region
   // is always wide enough to grab and resize comfortably.
@@ -840,6 +902,36 @@ export default function TimelineEditor({
     onTrimAdded({ start: startPos, end: startPos + actualDuration });
   }, [videoDuration, totalMs, currentTimeMs, trimRegions, onTrimAdded, defaultRegionDurationMs]);
 
+  const handleAddSpeed = useCallback(() => {
+    if (!videoDuration || videoDuration === 0 || totalMs === 0 || !onSpeedAdded) {
+      return;
+    }
+
+    const defaultDuration = Math.min(defaultRegionDurationMs, totalMs);
+    if (defaultDuration <= 0) {
+      return;
+    }
+
+    // Always place speed region at playhead
+    const startPos = Math.max(0, Math.min(currentTimeMs, totalMs));
+    // Find the next speed region after the playhead
+    const sorted = [...speedRegions].sort((a, b) => a.startMs - b.startMs);
+    const nextRegion = sorted.find(region => region.startMs > startPos);
+    const gapToNext = nextRegion ? nextRegion.startMs - startPos : totalMs - startPos;
+
+    // Check if playhead is inside any speed region
+    const isOverlapping = sorted.some(region => startPos >= region.startMs && startPos < region.endMs);
+    if (isOverlapping || gapToNext <= 0) {
+      toast.error("Cannot place speed here", {
+        description: "Speed region already exists at this location or not enough space available.",
+      });
+      return;
+    }
+
+    const actualDuration = Math.min(defaultRegionDurationMs, gapToNext);
+    onSpeedAdded({ start: startPos, end: startPos + actualDuration });
+  }, [videoDuration, totalMs, currentTimeMs, speedRegions, onSpeedAdded, defaultRegionDurationMs]);
+
   const handleAddAnnotation = useCallback(() => {
     if (!videoDuration || videoDuration === 0 || totalMs === 0 || !onAnnotationAdded) {
       return;
@@ -875,6 +967,9 @@ export default function TimelineEditor({
       if (matchesShortcut(e, keyShortcuts.addAnnotation, isMac)) {
         handleAddAnnotation();
       }
+      if (e.key === 's' || e.key === 'S') {
+        handleAddSpeed();
+      }
 
       // Tab: Cycle through overlapping annotations at current time
       if (e.key === 'Tab' && annotationRegions.length > 0) {
@@ -908,12 +1003,14 @@ export default function TimelineEditor({
           deleteSelectedTrim();
         } else if (selectedAnnotationId) {
           deleteSelectedAnnotation();
+        } else if (selectedSpeedId) {
+          deleteSelectedSpeed();
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [addKeyframe, handleAddZoom, handleAddTrim, handleAddAnnotation, deleteSelectedKeyframe, deleteSelectedZoom, deleteSelectedTrim, deleteSelectedAnnotation, selectedKeyframeId, selectedZoomId, selectedTrimId, selectedAnnotationId, annotationRegions, currentTime, onSelectAnnotation, keyShortcuts, isMac]);
+  }, [addKeyframe, handleAddZoom, handleAddTrim, handleAddAnnotation, handleAddSpeed, deleteSelectedKeyframe, deleteSelectedZoom, deleteSelectedTrim, deleteSelectedAnnotation, deleteSelectedSpeed, selectedKeyframeId, selectedZoomId, selectedTrimId, selectedAnnotationId, selectedSpeedId, annotationRegions, currentTime, onSelectAnnotation, keyShortcuts, isMac]);
 
   const clampedRange = useMemo<Range>(() => {
     if (totalMs === 0) {
@@ -966,26 +1063,38 @@ export default function TimelineEditor({
       };
     });
 
-    return [...zooms, ...trims, ...annotations];
-  }, [zoomRegions, trimRegions, annotationRegions]);
+    const speeds: TimelineRenderItem[] = speedRegions.map((region, index) => ({
+      id: region.id,
+      rowId: SPEED_ROW_ID,
+      span: { start: region.startMs, end: region.endMs },
+      label: `Speed ${index + 1}`,
+      speedValue: region.speed,
+      variant: 'speed',
+    }));
+
+    return [...zooms, ...trims, ...annotations, ...speeds];
+  }, [zoomRegions, trimRegions, annotationRegions, speedRegions]);
 
   // Flat list of all non-annotation region spans for neighbour-clamping during drag/resize
   const allRegionSpans = useMemo(() => {
     const zooms = zoomRegions.map((r) => ({ id: r.id, start: r.startMs, end: r.endMs }));
     const trims = trimRegions.map((r) => ({ id: r.id, start: r.startMs, end: r.endMs }));
-    return [...zooms, ...trims];
-  }, [zoomRegions, trimRegions]);
+    const speeds = speedRegions.map((r) => ({ id: r.id, start: r.startMs, end: r.endMs }));
+    return [...zooms, ...trims, ...speeds];
+  }, [zoomRegions, trimRegions, speedRegions]);
 
   const handleItemSpanChange = useCallback((id: string, span: Span) => {
-    // Check if it's a zoom or trim item
+    // Check if it's a zoom, trim, speed, or annotation item
     if (zoomRegions.some(r => r.id === id)) {
       onZoomSpanChange(id, span);
     } else if (trimRegions.some(r => r.id === id)) {
       onTrimSpanChange?.(id, span);
+    } else if (speedRegions.some(r => r.id === id)) {
+      onSpeedSpanChange?.(id, span);
     } else if (annotationRegions.some(r => r.id === id)) {
       onAnnotationSpanChange?.(id, span);
     }
-  }, [zoomRegions, trimRegions, annotationRegions, onZoomSpanChange, onTrimSpanChange, onAnnotationSpanChange]);
+  }, [zoomRegions, trimRegions, speedRegions, annotationRegions, onZoomSpanChange, onTrimSpanChange, onSpeedSpanChange, onAnnotationSpanChange]);
 
   if (!videoDuration || videoDuration === 0) {
     return (
@@ -1040,6 +1149,15 @@ export default function TimelineEditor({
             title="Add Annotation (A)"
           >
             <MessageSquare className="w-4 h-4" />
+          </Button>
+          <Button
+            onClick={handleAddSpeed}
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-slate-400 hover:text-[#d97706] hover:bg-[#d97706]/10 transition-all"
+            title="Add Speed (S)"
+          >
+            <Gauge className="w-4 h-4" />
           </Button>
         </div>
         <div className="flex items-center gap-2">
@@ -1115,11 +1233,12 @@ export default function TimelineEditor({
             onSelectZoom={onSelectZoom}
             onSelectTrim={onSelectTrim}
             onSelectAnnotation={onSelectAnnotation}
+            onSelectSpeed={onSelectSpeed}
             selectedZoomId={selectedZoomId}
             selectedTrimId={selectedTrimId}
             selectedAnnotationId={selectedAnnotationId}
+            selectedSpeedId={selectedSpeedId}
             keyframes={keyframes}
-
           />
         </TimelineWrapper>
       </div>
