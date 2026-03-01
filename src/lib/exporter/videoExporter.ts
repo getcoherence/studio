@@ -125,8 +125,8 @@ export class VideoExporter {
           });
 
           // Check encoder queue before encoding to keep it full
-          while (this.encodeQueue >= this.MAX_ENCODE_QUEUE && !this.cancelled) {
-            await new Promise(resolve => setTimeout(resolve, 0));
+          while (this.encoder && this.encoder.encodeQueueSize >= this.MAX_ENCODE_QUEUE && !this.cancelled) {
+            await new Promise(resolve => setTimeout(resolve, 5));
           }
 
           if (this.encoder && this.encoder.state === 'configured') {
@@ -250,7 +250,7 @@ export class VideoExporter {
       height: this.config.height,
       bitrate: this.config.bitrate,
       framerate: this.config.frameRate,
-      latencyMode: 'realtime',
+      latencyMode: 'quality', // Changed from 'realtime' to 'quality' for better throughput
       bitrateMode: 'variable',
       hardwareAcceleration: 'prefer-hardware',
     };
