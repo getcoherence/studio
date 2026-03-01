@@ -24,6 +24,7 @@ import {
   type ZoomDepth,
   type ZoomFocus,
   type ZoomRegion,
+  type CursorTelemetryPoint,
   type TrimRegion,
   type AnnotationRegion,
   type CropRegion,
@@ -34,6 +35,8 @@ import {
 import { VideoExporter, GifExporter, type ExportProgress, type ExportQuality, type ExportSettings, type ExportFormat, type GifFrameRate, type GifSizePreset, GIF_SIZE_PRESETS, calculateOutputDimensions } from "@/lib/exporter";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
 import { getAssetPath } from "@/lib/assetPath";
+import { useShortcuts } from "@/contexts/ShortcutsContext";
+import { matchesShortcut } from "@/lib/shortcuts";
 
 const WALLPAPER_COUNT = 18;
 const WALLPAPER_PATHS = Array.from({ length: WALLPAPER_COUNT }, (_, i) => `/wallpapers/wallpaper${i + 1}.jpg`);
@@ -53,6 +56,7 @@ export default function VideoEditor() {
   const [padding, setPadding] = useState(50);
   const [cropRegion, setCropRegion] = useState<CropRegion>(DEFAULT_CROP_REGION);
   const [zoomRegions, setZoomRegions] = useState<ZoomRegion[]>([]);
+  const [cursorTelemetry, setCursorTelemetry] = useState<CursorTelemetryPoint[]>([]);
   const [selectedZoomId, setSelectedZoomId] = useState<string | null>(null);
   const [trimRegions, setTrimRegions] = useState<TrimRegion[]>([]);
   const [selectedTrimId, setSelectedTrimId] = useState<string | null>(null);
@@ -75,6 +79,8 @@ export default function VideoEditor() {
   const nextZoomIdRef = useRef(1);
   const nextTrimIdRef = useRef(1);
   const nextSpeedIdRef = useRef(1);
+
+  const { shortcuts, isMac } = useShortcuts();
   const nextAnnotationIdRef = useRef(1);
   const nextAnnotationZIndexRef = useRef(1); // Track z-index for stacking order
   const exporterRef = useRef<VideoExporter | null>(null);
@@ -93,6 +99,19 @@ export default function VideoEditor() {
     // Unix-style absolute path
     const fileUrl = `file://${normalized}`;
     return fileUrl;
+  };
+
+  const fromFileUrl = (fileUrl: string): string => {
+    if (!fileUrl.startsWith('file://')) {
+      return fileUrl;
+    }
+
+    try {
+      const url = new URL(fileUrl);
+      return decodeURIComponent(url.pathname);
+    } catch {
+      return fileUrl.replace(/^file:\/\//, '');
+    }
   };
 
   useEffect(() => {
@@ -114,6 +133,37 @@ export default function VideoEditor() {
     }
     loadVideo();
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadCursorTelemetry() {
+      if (!videoPath) {
+        if (mounted) {
+          setCursorTelemetry([]);
+        }
+        return;
+      }
+
+      try {
+        const result = await window.electronAPI.getCursorTelemetry(fromFileUrl(videoPath));
+        if (mounted) {
+          setCursorTelemetry(result.success ? result.samples : []);
+        }
+      } catch (telemetryError) {
+        console.warn('Unable to load cursor telemetry:', telemetryError);
+        if (mounted) {
+          setCursorTelemetry([]);
+        }
+      }
+    }
+
+    loadCursorTelemetry();
+
+    return () => {
+      mounted = false;
+    };
+  }, [videoPath]);
 
   // Initialize default wallpaper with resolved asset path
   useEffect(() => {
@@ -179,6 +229,21 @@ export default function VideoEditor() {
       endMs: Math.round(span.end),
       depth: DEFAULT_ZOOM_DEPTH,
       focus: { cx: 0.5, cy: 0.5 },
+    };
+    setZoomRegions((prev) => [...prev, newRegion]);
+    setSelectedZoomId(id);
+    setSelectedTrimId(null);
+    setSelectedAnnotationId(null);
+  }, []);
+
+  const handleZoomSuggested = useCallback((span: Span, focus: ZoomFocus) => {
+    const id = `zoom-${nextZoomIdRef.current++}`;
+    const newRegion: ZoomRegion = {
+      id,
+      startMs: Math.round(span.start),
+      endMs: Math.round(span.end),
+      depth: DEFAULT_ZOOM_DEPTH,
+      focus: clampFocusToDepth(focus, DEFAULT_ZOOM_DEPTH),
     };
     setZoomRegions((prev) => [...prev, newRegion]);
     setSelectedZoomId(id);
@@ -458,7 +523,7 @@ export default function VideoEditor() {
         e.preventDefault();
       }
 
-      if (e.key === ' ' || e.code === 'Space') {
+      if (matchesShortcut(e, shortcuts.playPause, isMac)) {
         // Allow space only in inputs/textareas
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
           return;
@@ -478,7 +543,7 @@ export default function VideoEditor() {
     
     window.addEventListener('keydown', handleKeyDown, { capture: true });
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-  }, []);
+  }, [shortcuts, isMac]);
 
   useEffect(() => {
     if (selectedZoomId && !zoomRegions.some((region) => region.id === selectedZoomId)) {
@@ -873,8 +938,10 @@ export default function VideoEditor() {
               videoDuration={duration}
               currentTime={currentTime}
               onSeek={handleSeek}
+              cursorTelemetry={cursorTelemetry}
               zoomRegions={zoomRegions}
               onZoomAdded={handleZoomAdded}
+              onZoomSuggested={handleZoomSuggested}
               onZoomSpanChange={handleZoomSpanChange}
               onZoomDelete={handleZoomDelete}
               selectedZoomId={selectedZoomId}

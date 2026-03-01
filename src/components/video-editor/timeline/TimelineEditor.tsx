@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTimelineContext } from "dnd-timeline";
 import { Button } from "@/components/ui/button";
-import { Plus, Scissors, ZoomIn, MessageSquare, ChevronDown, Check, Gauge } from "lucide-react";
+import { Plus, Scissors, ZoomIn, MessageSquare, ChevronDown, Check, Gauge, WandSparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import TimelineWrapper from "./TimelineWrapper";
@@ -9,7 +9,7 @@ import Row from "./Row";
 import Item from "./Item";
 import KeyframeMarkers from "./KeyframeMarkers";
 import type { Range, Span } from "dnd-timeline";
-import type { ZoomRegion, TrimRegion, AnnotationRegion, SpeedRegion } from "../types";
+import type { ZoomRegion, TrimRegion, AnnotationRegion, SpeedRegion, CursorTelemetryPoint, ZoomFocus } from "../types";
 import { v4 as uuidv4 } from 'uuid';
 import {
   DropdownMenu,
@@ -20,6 +20,9 @@ import {
 import { type AspectRatio, getAspectRatioLabel, ASPECT_RATIOS } from "@/utils/aspectRatioUtils";
 import { formatShortcut } from "@/utils/platformUtils";
 import { TutorialHelp } from "../TutorialHelp";
+import { useShortcuts } from "@/contexts/ShortcutsContext";
+import { matchesShortcut } from "@/lib/shortcuts";
+import { detectZoomDwellCandidates, normalizeCursorTelemetry } from "./zoomSuggestionUtils";
 
 const ZOOM_ROW_ID = "row-zoom";
 const TRIM_ROW_ID = "row-trim";
@@ -27,13 +30,16 @@ const ANNOTATION_ROW_ID = "row-annotation";
 const SPEED_ROW_ID = "row-speed";
 const FALLBACK_RANGE_MS = 1000;
 const TARGET_MARKER_COUNT = 12;
+const SUGGESTION_SPACING_MS = 1800;
 
 interface TimelineEditorProps {
   videoDuration: number;
   currentTime: number;
   onSeek?: (time: number) => void;
+  cursorTelemetry?: CursorTelemetryPoint[];
   zoomRegions: ZoomRegion[];
   onZoomAdded: (span: Span) => void;
+  onZoomSuggested?: (span: Span, focus: ZoomFocus) => void;
   onZoomSpanChange: (id: string, span: Span) => void;
   onZoomDelete: (id: string) => void;
   selectedZoomId: string | null;
@@ -551,8 +557,10 @@ export default function TimelineEditor({
   videoDuration,
   currentTime,
   onSeek,
+  cursorTelemetry = [],
   zoomRegions,
   onZoomAdded,
+  onZoomSuggested,
   onZoomSpanChange,
   onZoomDelete,
   selectedZoomId,
@@ -589,16 +597,17 @@ export default function TimelineEditor({
   const [range, setRange] = useState<Range>(() => createInitialRange(totalMs));
   const [keyframes, setKeyframes] = useState<{ id: string; time: number }[]>([]);
   const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
-  const [shortcuts, setShortcuts] = useState({
+  const [scrollLabels, setScrollLabels] = useState({
     pan: 'Shift + Ctrl + Scroll',
     zoom: 'Ctrl + Scroll'
   });
   const timelineContainerRef = useRef<HTMLDivElement>(null);
+  const { shortcuts: keyShortcuts, isMac } = useShortcuts();
 
   useEffect(() => {
     formatShortcut(['shift', 'mod', 'Scroll']).then(pan => {
       formatShortcut(['mod', 'Scroll']).then(zoom => {
-        setShortcuts({ pan, zoom });
+        setScrollLabels({ pan, zoom });
       });
     });
   }, []);
@@ -778,6 +787,91 @@ export default function TimelineEditor({
     onZoomAdded({ start: startPos, end: startPos + actualDuration });
   }, [videoDuration, totalMs, currentTimeMs, zoomRegions, onZoomAdded, defaultRegionDurationMs]);
 
+  const handleSuggestZooms = useCallback(() => {
+    if (!videoDuration || videoDuration === 0 || totalMs === 0) {
+      return;
+    }
+
+    if (!onZoomSuggested) {
+      toast.error("Zoom suggestion handler unavailable");
+      return;
+    }
+
+    if (cursorTelemetry.length < 2) {
+      toast.info("No cursor telemetry available", {
+        description: "Record a screencast first to generate cursor-based suggestions.",
+      });
+      return;
+    }
+
+    const defaultDuration = Math.min(defaultRegionDurationMs, totalMs);
+    if (defaultDuration <= 0) {
+      return;
+    }
+
+    const reservedSpans = [...zoomRegions]
+      .map((region) => ({ start: region.startMs, end: region.endMs }))
+      .sort((a, b) => a.start - b.start);
+
+    const normalizedSamples = normalizeCursorTelemetry(cursorTelemetry, totalMs);
+
+    if (normalizedSamples.length < 2) {
+      toast.info("No usable cursor telemetry", {
+        description: "The recording does not include enough cursor movement data.",
+      });
+      return;
+    }
+
+    const dwellCandidates = detectZoomDwellCandidates(normalizedSamples);
+
+    if (dwellCandidates.length === 0) {
+      toast.info("No clear cursor dwell moments found", {
+        description: "Try a recording with slower cursor pauses on important actions.",
+      });
+      return;
+    }
+
+    const sortedCandidates = [...dwellCandidates].sort((a, b) => b.strength - a.strength);
+    const acceptedCenters: number[] = [];
+
+    let addedCount = 0;
+
+    sortedCandidates.forEach((candidate) => {
+      const tooCloseToAccepted = acceptedCenters.some(
+        (center) => Math.abs(center - candidate.centerTimeMs) < SUGGESTION_SPACING_MS,
+      );
+
+      if (tooCloseToAccepted) {
+        return;
+      }
+
+      const centeredStart = Math.round(candidate.centerTimeMs - defaultDuration / 2);
+      const candidateStart = Math.max(0, Math.min(centeredStart, totalMs - defaultDuration));
+      const candidateEnd = candidateStart + defaultDuration;
+      const hasOverlap = reservedSpans.some(
+        (span) => candidateEnd > span.start && candidateStart < span.end,
+      );
+
+      if (hasOverlap) {
+        return;
+      }
+
+      reservedSpans.push({ start: candidateStart, end: candidateEnd });
+      acceptedCenters.push(candidate.centerTimeMs);
+      onZoomSuggested({ start: candidateStart, end: candidateEnd }, candidate.focus);
+      addedCount += 1;
+    });
+
+    if (addedCount === 0) {
+      toast.info("No auto-zoom slots available", {
+        description: "Detected dwell points overlap existing zoom regions.",
+      });
+      return;
+    }
+
+    toast.success(`Added ${addedCount} cursor-based zoom suggestion${addedCount === 1 ? "" : "s"}`);
+  }, [videoDuration, totalMs, defaultRegionDurationMs, zoomRegions, onZoomSuggested, cursorTelemetry]);
+
   const handleAddTrim = useCallback(() => {
     if (!videoDuration || videoDuration === 0 || totalMs === 0 || !onTrimAdded) {
       return;
@@ -861,16 +955,16 @@ export default function TimelineEditor({
         return;
       }
 
-      if (e.key === 'f' || e.key === 'F') {
+      if (matchesShortcut(e, keyShortcuts.addKeyframe, isMac)) {
         addKeyframe();
       }
-      if (e.key === 'z' || e.key === 'Z') {
+      if (matchesShortcut(e, keyShortcuts.addZoom, isMac)) {
         handleAddZoom();
       }
-      if (e.key === 't' || e.key === 'T') {
+      if (matchesShortcut(e, keyShortcuts.addTrim, isMac)) {
         handleAddTrim();
       }
-      if (e.key === 'a' || e.key === 'A') {
+      if (matchesShortcut(e, keyShortcuts.addAnnotation, isMac)) {
         handleAddAnnotation();
       }
       if (e.key === 's' || e.key === 'S') {
@@ -900,7 +994,7 @@ export default function TimelineEditor({
         }
       }
       // Delete key or Ctrl+D / Cmd+D
-      if (e.key === 'Delete' || e.key === 'Backspace' || ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey))) {
+      if (e.key === 'Delete' || e.key === 'Backspace' || matchesShortcut(e, keyShortcuts.deleteSelected, isMac)) {
         if (selectedKeyframeId) {
           deleteSelectedKeyframe();
         } else if (selectedZoomId) {
@@ -916,7 +1010,7 @@ export default function TimelineEditor({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [addKeyframe, handleAddZoom, handleAddTrim, handleAddAnnotation, handleAddSpeed, deleteSelectedKeyframe, deleteSelectedZoom, deleteSelectedTrim, deleteSelectedAnnotation, deleteSelectedSpeed, selectedKeyframeId, selectedZoomId, selectedTrimId, selectedAnnotationId, selectedSpeedId, annotationRegions, currentTime, onSelectAnnotation]);
+  }, [addKeyframe, handleAddZoom, handleAddTrim, handleAddAnnotation, handleAddSpeed, deleteSelectedKeyframe, deleteSelectedZoom, deleteSelectedTrim, deleteSelectedAnnotation, deleteSelectedSpeed, selectedKeyframeId, selectedZoomId, selectedTrimId, selectedAnnotationId, selectedSpeedId, annotationRegions, currentTime, onSelectAnnotation, keyShortcuts, isMac]);
 
   const clampedRange = useMemo<Range>(() => {
     if (totalMs === 0) {
@@ -1030,6 +1124,15 @@ export default function TimelineEditor({
             <ZoomIn className="w-4 h-4" />
           </Button>
           <Button
+            onClick={handleSuggestZooms}
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-slate-400 hover:text-[#34B27B] hover:bg-[#34B27B]/10 transition-all"
+            title="Suggest Zooms from Cursor"
+          >
+            <WandSparkles className="w-4 h-4" />
+          </Button>
+          <Button
             onClick={handleAddTrim}
             variant="ghost"
             size="icon"
@@ -1088,11 +1191,11 @@ export default function TimelineEditor({
         <div className="flex-1" />
         <div className="flex items-center gap-4 text-[10px] text-slate-500 font-medium">
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">{shortcuts.pan}</kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">{scrollLabels.pan}</kbd>
             <span>Pan</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">{shortcuts.zoom}</kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-sans">{scrollLabels.zoom}</kbd>
             <span>Zoom</span>
           </span>
         </div>

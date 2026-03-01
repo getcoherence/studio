@@ -386,7 +386,7 @@ export class FrameRenderer {
 
   private clampFocusToStage(focus: { cx: number; cy: number }, depth: number): { cx: number; cy: number } {
     if (!this.layoutCache) return focus;
-    return clampFocusToStageUtil(focus, depth as any, this.layoutCache);
+    return clampFocusToStageUtil(focus, depth as any, this.layoutCache.stageSize);
   }
 
   private updateAnimationState(timeMs: number): number {

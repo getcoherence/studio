@@ -32,6 +32,7 @@ interface Window {
     storeRecordedVideo: (videoData: ArrayBuffer, fileName: string) => Promise<{ success: boolean; path?: string; message?: string }>
     getRecordedVideoPath: () => Promise<{ success: boolean; path?: string; message?: string }>
     setRecordingState: (recording: boolean) => Promise<void>
+    getCursorTelemetry: (videoPath?: string) => Promise<{ success: boolean; samples: CursorTelemetryPoint[]; message?: string; error?: string }>
     onStopRecordingFromTray: (callback: () => void) => () => void
     openExternalUrl: (url: string) => Promise<{ success: boolean; error?: string }>
     saveExportedVideo: (videoData: ArrayBuffer, fileName: string) => Promise<{ success: boolean; path?: string; message?: string; cancelled?: boolean }>
@@ -40,6 +41,8 @@ interface Window {
     getCurrentVideoPath: () => Promise<{ success: boolean; path?: string }>
     clearCurrentVideoPath: () => Promise<{ success: boolean }>
     getPlatform: () => Promise<string>
+    getShortcuts: () => Promise<Record<string, unknown> | null>
+    saveShortcuts: (shortcuts: unknown) => Promise<{ success: boolean; error?: string }>
     hudOverlayHide: () => void;
     hudOverlayClose: () => void;
   }
@@ -51,4 +54,10 @@ interface ProcessedDesktopSource {
   display_id: string
   thumbnail: string | null
   appIcon: string | null
+}
+
+interface CursorTelemetryPoint {
+  timeMs: number
+  cx: number
+  cy: number
 }
