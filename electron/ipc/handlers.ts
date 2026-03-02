@@ -4,6 +4,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { RECORDINGS_DIR } from '../main'
 
+const SHORTCUTS_FILE = path.join(app.getPath('userData'), 'shortcuts.json')
+
 let selectedSource: any = null
 let currentVideoPath: string | null = null
 
@@ -327,5 +329,24 @@ export function registerIpcHandlers(
 
   ipcMain.handle('get-platform', () => {
     return process.platform;
+  });
+
+  ipcMain.handle('get-shortcuts', async () => {
+    try {
+      const data = await fs.readFile(SHORTCUTS_FILE, 'utf-8');
+      return JSON.parse(data);
+    } catch {
+      return null;
+    }
+  });
+
+  ipcMain.handle('save-shortcuts', async (_, shortcuts: unknown) => {
+    try {
+      await fs.writeFile(SHORTCUTS_FILE, JSON.stringify(shortcuts, null, 2), 'utf-8');
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to save shortcuts:', error);
+      return { success: false, error: String(error) };
+    }
   });
 }

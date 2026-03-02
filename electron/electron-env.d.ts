@@ -41,6 +41,8 @@ interface Window {
     getCurrentVideoPath: () => Promise<{ success: boolean; path?: string }>
     clearCurrentVideoPath: () => Promise<{ success: boolean }>
     getPlatform: () => Promise<string>
+    getShortcuts: () => Promise<Record<string, unknown> | null>
+    saveShortcuts: (shortcuts: unknown) => Promise<{ success: boolean; error?: string }>
     hudOverlayHide: () => void;
     hudOverlayClose: () => void;
   }

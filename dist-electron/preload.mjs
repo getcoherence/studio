@@ -59,5 +59,11 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   },
   getPlatform: () => {
     return electron.ipcRenderer.invoke("get-platform");
+  },
+  getShortcuts: () => {
+    return electron.ipcRenderer.invoke("get-shortcuts");
+  },
+  saveShortcuts: (shortcuts) => {
+    return electron.ipcRenderer.invoke("save-shortcuts", shortcuts);
   }
 });

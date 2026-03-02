@@ -2,7 +2,7 @@ import type React from "react";
 import { useEffect, useRef, useImperativeHandle, forwardRef, useState, useMemo, useCallback } from "react";
 import { getAssetPath } from "@/lib/assetPath";
 import { Application, Container, Sprite, Graphics, BlurFilter, Texture, VideoSource } from 'pixi.js';
-import { ZOOM_DEPTH_SCALES, type ZoomRegion, type ZoomFocus, type ZoomDepth, type TrimRegion, type AnnotationRegion } from "./types";
+import { ZOOM_DEPTH_SCALES, type ZoomRegion, type ZoomFocus, type ZoomDepth, type TrimRegion, type SpeedRegion, type AnnotationRegion } from "./types";
 import { DEFAULT_FOCUS, SMOOTHING_FACTOR, MIN_DELTA } from "./videoPlayback/constants";
 import { clamp01 } from "./videoPlayback/mathUtils";
 import { findDominantRegion } from "./videoPlayback/zoomRegionUtils";
@@ -36,6 +36,7 @@ interface VideoPlaybackProps {
   padding?: number;
   cropRegion?: import('./types').CropRegion;
   trimRegions?: TrimRegion[];
+  speedRegions?: SpeedRegion[];
   aspectRatio: AspectRatio;
   annotationRegions?: AnnotationRegion[];
   selectedAnnotationId?: string | null;
@@ -76,6 +77,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   padding = 50,
   cropRegion,
   trimRegions = [],
+  speedRegions = [],
   aspectRatio,
   annotationRegions = [],
   selectedAnnotationId,
@@ -113,6 +115,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   const lockedVideoDimensionsRef = useRef<{ width: number; height: number } | null>(null);
   const layoutVideoContentRef = useRef<(() => void) | null>(null);
   const trimRegionsRef = useRef<TrimRegion[]>([]);
+  const speedRegionsRef = useRef<SpeedRegion[]>([]);
   const motionBlurEnabledRef = useRef(motionBlurEnabled);
   const videoReadyRafRef = useRef<number | null>(null);
 
@@ -321,6 +324,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
   useEffect(() => {
     trimRegionsRef.current = trimRegions;
   }, [trimRegions]);
+
+  useEffect(() => {
+    speedRegionsRef.current = speedRegions;
+  }, [speedRegions]);
 
   useEffect(() => {
     motionBlurEnabledRef.current = motionBlurEnabled;
@@ -560,6 +567,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(({
       onPlayStateChange,
       onTimeUpdate,
       trimRegionsRef,
+      speedRegionsRef,
     });
     
     video.addEventListener('play', handlePlay);
