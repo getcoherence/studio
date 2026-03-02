@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import type { ZoomRegion, TrimRegion, AnnotationRegion, CropRegion } from "@/components/video-editor/types";
+import type { ZoomRegion, TrimRegion, AnnotationRegion, SpeedRegion, CropRegion } from "@/components/video-editor/types";
 import { DEFAULT_CROP_REGION } from "@/components/video-editor/types";
 import type { AspectRatio } from "@/utils/aspectRatioUtils";
 
@@ -8,6 +8,7 @@ import type { AspectRatio } from "@/utils/aspectRatioUtils";
 export interface EditorState {
   zoomRegions: ZoomRegion[];
   trimRegions: TrimRegion[];
+  speedRegions: SpeedRegion[];
   annotationRegions: AnnotationRegion[];
   cropRegion: CropRegion;
   wallpaper: string;
@@ -22,6 +23,7 @@ export interface EditorState {
 export const INITIAL_EDITOR_STATE: EditorState = {
   zoomRegions: [],
   trimRegions: [],
+  speedRegions: [],
   annotationRegions: [],
   cropRegion: DEFAULT_CROP_REGION,
   wallpaper: "/wallpapers/wallpaper1.jpg",

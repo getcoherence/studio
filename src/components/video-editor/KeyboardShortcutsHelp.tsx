@@ -1,27 +1,9 @@
 import { HelpCircle, Settings2 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { formatShortcut } from "@/utils/platformUtils";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
-import { formatBinding, SHORTCUT_LABELS, SHORTCUT_ACTIONS } from "@/lib/shortcuts";
+import { formatBinding, SHORTCUT_LABELS, SHORTCUT_ACTIONS, FIXED_SHORTCUTS } from "@/lib/shortcuts";
 
 export function KeyboardShortcutsHelp() {
   const { shortcuts, isMac, openConfig } = useShortcuts();
-
-  const [scrollLabels, setScrollLabels] = useState({ pan: 'Shift + Ctrl + Scroll', zoom: 'Ctrl + Scroll' });
-  const [undoRedoLabels, setUndoRedoLabels] = useState({ undo: 'Ctrl + Z', redo: 'Ctrl + Shift + Z', redoAlt: 'Ctrl + Y' });
-
-  useEffect(() => {
-    Promise.all([
-      formatShortcut(['shift', 'mod', 'Scroll']),
-      formatShortcut(['mod', 'Scroll']),
-      formatShortcut(['mod', 'Z']),
-      formatShortcut(['shift', 'mod', 'Z']),
-      formatShortcut(['mod', 'Y']),
-    ]).then(([pan, zoom, undo, redo, redoAlt]) => {
-      setScrollLabels({ pan, zoom });
-      setUndoRedoLabels({ undo, redo, redoAlt });
-    });
-  }, []);
 
   return (
     <div className="relative group">
@@ -51,31 +33,15 @@ export function KeyboardShortcutsHelp() {
             </div>
           ))}
 
-          <div className="pt-1 border-t border-white/5 mt-1">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">Pan Timeline</span>
-              <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{scrollLabels.pan}</kbd>
-            </div>
-            <div className="flex items-center justify-between mt-1.5">
-              <span className="text-slate-400">Zoom Timeline</span>
-              <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{scrollLabels.zoom}</kbd>
-            </div>
-            <div className="flex items-center justify-between mt-1.5">
-              <span className="text-slate-400">Cycle Annotations</span>
-              <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">Tab</kbd>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-400">Undo</span>
-            <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{undoRedoLabels.undo}</kbd>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-400">Redo</span>
-            <div className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{undoRedoLabels.redo}</kbd>
-              <span className="text-slate-600 text-[9px]">or</span>
-              <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">{undoRedoLabels.redoAlt}</kbd>
-            </div>
+          <div className="pt-1 border-t border-white/5 mt-1 space-y-1.5">
+            {FIXED_SHORTCUTS.map((fixed) => (
+              <div key={fixed.label} className="flex items-center justify-between">
+                <span className="text-slate-400">{fixed.label}</span>
+                <kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">
+                  {isMac ? fixed.display.replace(/Ctrl/g, '⌘').replace(/Shift/g, '⇧').replace(/Alt/g, '⌥') : fixed.display}
+                </kbd>
+              </div>
+            ))}
           </div>
         </div>
       </div>

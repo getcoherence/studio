@@ -27,11 +27,13 @@ export interface FixedShortcut {
 }
 
 export const FIXED_SHORTCUTS: FixedShortcut[] = [
-  { label: 'Cycle Annotations Forward',  display: 'Tab',                    bindings: [{ key: 'tab' }] },
-  { label: 'Cycle Annotations Backward', display: 'Shift + Tab',            bindings: [{ key: 'tab', shift: true }] },
-  { label: 'Delete Selected (alt)',      display: 'Del / ⌫',               bindings: [{ key: 'delete' }, { key: 'backspace' }] },
-  { label: 'Pan Timeline',               display: 'Shift + Ctrl + Scroll',  bindings: [] },
-  { label: 'Zoom Timeline',              display: 'Ctrl + Scroll',          bindings: [] },
+  { label: 'Undo',                        display: 'Ctrl + Z',               bindings: [{ key: 'z', ctrl: true }] },
+  { label: 'Redo',                        display: 'Ctrl + Shift + Z / Ctrl + Y', bindings: [{ key: 'z', ctrl: true, shift: true }, { key: 'y', ctrl: true }] },
+  { label: 'Cycle Annotations Forward',   display: 'Tab',                    bindings: [{ key: 'tab' }] },
+  { label: 'Cycle Annotations Backward',  display: 'Shift + Tab',            bindings: [{ key: 'tab', shift: true }] },
+  { label: 'Delete Selected (alt)',       display: 'Del / ⌫',               bindings: [{ key: 'delete' }, { key: 'backspace' }] },
+  { label: 'Pan Timeline',                display: 'Shift + Ctrl + Scroll',  bindings: [] },
+  { label: 'Zoom Timeline',               display: 'Ctrl + Scroll',          bindings: [] },
 ];
 
 export type ShortcutConflict =

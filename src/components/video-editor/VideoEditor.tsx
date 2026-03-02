@@ -45,7 +45,7 @@ export default function VideoEditor() {
     useEditorHistory(INITIAL_EDITOR_STATE);
 
   const {
-    zoomRegions, trimRegions, annotationRegions,
+    zoomRegions, trimRegions, speedRegions, annotationRegions,
     cropRegion, wallpaper, shadowIntensity, showBlur,
     motionBlurEnabled, borderRadius, padding, aspectRatio,
   } = editorState;
@@ -60,7 +60,6 @@ export default function VideoEditor() {
   const [cursorTelemetry, setCursorTelemetry] = useState<CursorTelemetryPoint[]>([]);
   const [selectedZoomId, setSelectedZoomId] = useState<string | null>(null);
   const [selectedTrimId, setSelectedTrimId] = useState<string | null>(null);
-  const [speedRegions, setSpeedRegions] = useState<SpeedRegion[]>([]);
   const [selectedSpeedId, setSelectedSpeedId] = useState<string | null>(null);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -316,16 +315,16 @@ export default function VideoEditor() {
       endMs: Math.round(span.end),
       speed: DEFAULT_PLAYBACK_SPEED,
     };
-    setSpeedRegions((prev) => [...prev, newRegion]);
+    pushState((prev) => ({ speedRegions: [...prev.speedRegions, newRegion] }));
     setSelectedSpeedId(id);
     setSelectedZoomId(null);
     setSelectedTrimId(null);
     setSelectedAnnotationId(null);
-  }, []);
+  }, [pushState]);
 
   const handleSpeedSpanChange = useCallback((id: string, span: Span) => {
-    setSpeedRegions((prev) =>
-      prev.map((region) =>
+    pushState((prev) => ({
+      speedRegions: prev.speedRegions.map((region) =>
         region.id === id
           ? {
               ...region,
@@ -334,24 +333,24 @@ export default function VideoEditor() {
             }
           : region,
       ),
-    );
-  }, []);
+    }));
+  }, [pushState]);
 
   const handleSpeedDelete = useCallback((id: string) => {
-    setSpeedRegions((prev) => prev.filter((region) => region.id !== id));
+    pushState((prev) => ({ speedRegions: prev.speedRegions.filter((region) => region.id !== id) }));
     if (selectedSpeedId === id) {
       setSelectedSpeedId(null);
     }
-  }, [selectedSpeedId]);
+  }, [selectedSpeedId, pushState]);
 
   const handleSpeedChange = useCallback((speed: PlaybackSpeed) => {
     if (!selectedSpeedId) return;
-    setSpeedRegions((prev) =>
-      prev.map((region) =>
+    pushState((prev) => ({
+      speedRegions: prev.speedRegions.map((region) =>
         region.id === selectedSpeedId ? { ...region, speed } : region,
       ),
-    );
-  }, [selectedSpeedId]);
+    }));
+  }, [selectedSpeedId, pushState]);
 
   const handleAnnotationAdded = useCallback((span: Span) => {
     const id = `annotation-${nextAnnotationIdRef.current++}`;
