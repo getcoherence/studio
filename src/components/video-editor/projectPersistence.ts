@@ -5,10 +5,12 @@ import {
   DEFAULT_ANNOTATION_SIZE,
   DEFAULT_ANNOTATION_STYLE,
   DEFAULT_CROP_REGION,
+  DEFAULT_PLAYBACK_SPEED,
   DEFAULT_FIGURE_DATA,
   DEFAULT_ZOOM_DEPTH,
   type AnnotationRegion,
   type CropRegion,
+  type SpeedRegion,
   type TrimRegion,
   type ZoomRegion,
 } from "./types";
@@ -32,6 +34,7 @@ export interface ProjectEditorState {
   cropRegion: CropRegion;
   zoomRegions: ZoomRegion[];
   trimRegions: TrimRegion[];
+  speedRegions: SpeedRegion[];
   annotationRegions: AnnotationRegion[];
   aspectRatio: AspectRatio;
   exportQuality: ExportQuality;
@@ -136,6 +139,35 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
         })
     : [];
 
+  const normalizedSpeedRegions: SpeedRegion[] = Array.isArray(editor.speedRegions)
+    ? editor.speedRegions
+        .filter((region): region is SpeedRegion => Boolean(region && typeof region.id === "string"))
+        .map((region) => {
+          const rawStart = isFiniteNumber(region.startMs) ? Math.round(region.startMs) : 0;
+          const rawEnd = isFiniteNumber(region.endMs) ? Math.round(region.endMs) : rawStart + 1000;
+          const startMs = Math.max(0, Math.min(rawStart, rawEnd));
+          const endMs = Math.max(startMs + 1, rawEnd);
+
+          const speed =
+            region.speed === 0.25 ||
+            region.speed === 0.5 ||
+            region.speed === 0.75 ||
+            region.speed === 1.25 ||
+            region.speed === 1.5 ||
+            region.speed === 1.75 ||
+            region.speed === 2
+              ? region.speed
+              : DEFAULT_PLAYBACK_SPEED;
+
+          return {
+            id: region.id,
+            startMs,
+            endMs,
+            speed,
+          };
+        })
+    : [];
+
   const normalizedAnnotationRegions: AnnotationRegion[] = Array.isArray(editor.annotationRegions)
     ? editor.annotationRegions
         .filter((region): region is AnnotationRegion => Boolean(region && typeof region.id === "string"))
@@ -219,6 +251,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
     },
     zoomRegions: normalizedZoomRegions,
     trimRegions: normalizedTrimRegions,
+    speedRegions: normalizedSpeedRegions,
     annotationRegions: normalizedAnnotationRegions,
     aspectRatio: editor.aspectRatio && validAspectRatios.has(editor.aspectRatio) ? editor.aspectRatio : "16:9",
     exportQuality: editor.exportQuality === "medium" || editor.exportQuality === "source" ? editor.exportQuality : "good",
