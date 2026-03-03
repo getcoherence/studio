@@ -4,10 +4,28 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { RECORDINGS_DIR } from '../main'
 
+const PROJECT_FILE_EXTENSION = 'openscreen'
 const SHORTCUTS_FILE = path.join(app.getPath('userData'), 'shortcuts.json')
 
-let selectedSource: any = null
+type SelectedSource = {
+  name: string
+  [key: string]: unknown
+}
+
+let selectedSource: SelectedSource | null = null
 let currentVideoPath: string | null = null
+let currentProjectPath: string | null = null
+
+function normalizePath(filePath: string) {
+  return path.resolve(filePath)
+}
+
+function isTrustedProjectPath(filePath?: string | null) {
+  if (!filePath || !currentProjectPath) {
+    return false
+  }
+  return normalizePath(filePath) === normalizePath(currentProjectPath)
+}
 
 const CURSOR_TELEMETRY_VERSION = 1
 const CURSOR_SAMPLE_INTERVAL_MS = 100
@@ -78,7 +96,7 @@ export function registerIpcHandlers(
     }))
   })
 
-  ipcMain.handle('select-source', (_, source) => {
+  ipcMain.handle('select-source', (_, source: SelectedSource) => {
     selectedSource = source
     const sourceSelectorWin = getSourceSelectorWindow()
     if (sourceSelectorWin) {
@@ -115,6 +133,7 @@ export function registerIpcHandlers(
       const videoPath = path.join(RECORDINGS_DIR, fileName)
       await fs.writeFile(videoPath, Buffer.from(videoData))
       currentVideoPath = videoPath;
+      currentProjectPath = null
 
       const telemetryPath = `${videoPath}.cursor.json`
       if (pendingCursorSamples.length > 0) {
@@ -261,8 +280,8 @@ export function registerIpcHandlers(
       if (result.canceled || !result.filePath) {
         return {
           success: false,
-          cancelled: true,
-          message: 'Export cancelled'
+          canceled: true,
+          message: 'Export canceled'
         };
       }
 
@@ -296,9 +315,10 @@ export function registerIpcHandlers(
       });
 
       if (result.canceled || result.filePaths.length === 0) {
-        return { success: false, cancelled: true };
+        return { success: false, canceled: true };
       }
 
+      currentProjectPath = null
       return {
         success: true,
         path: result.filePaths[0]
@@ -313,8 +333,131 @@ export function registerIpcHandlers(
     }
   });
 
+  ipcMain.handle('save-project-file', async (_, projectData: unknown, suggestedName?: string, existingProjectPath?: string) => {
+    try {
+      const trustedExistingProjectPath = isTrustedProjectPath(existingProjectPath)
+        ? existingProjectPath
+        : null
+
+      if (trustedExistingProjectPath) {
+        await fs.writeFile(trustedExistingProjectPath, JSON.stringify(projectData, null, 2), 'utf-8')
+        currentProjectPath = trustedExistingProjectPath
+        return {
+          success: true,
+          path: trustedExistingProjectPath,
+          message: 'Project saved successfully'
+        }
+      }
+
+      const safeName = (suggestedName || `project-${Date.now()}`).replace(/[^a-zA-Z0-9-_]/g, '_')
+      const defaultName = safeName.endsWith(`.${PROJECT_FILE_EXTENSION}`)
+        ? safeName
+        : `${safeName}.${PROJECT_FILE_EXTENSION}`
+
+      const result = await dialog.showSaveDialog({
+        title: 'Save OpenScreen Project',
+        defaultPath: path.join(RECORDINGS_DIR, defaultName),
+        filters: [
+          { name: 'OpenScreen Project', extensions: [PROJECT_FILE_EXTENSION] },
+          { name: 'JSON', extensions: ['json'] }
+        ],
+        properties: ['createDirectory', 'showOverwriteConfirmation']
+      })
+
+      if (result.canceled || !result.filePath) {
+        return {
+          success: false,
+          canceled: true,
+          message: 'Save project canceled'
+        }
+      }
+
+      await fs.writeFile(result.filePath, JSON.stringify(projectData, null, 2), 'utf-8')
+      currentProjectPath = result.filePath
+
+      return {
+        success: true,
+        path: result.filePath,
+        message: 'Project saved successfully'
+      }
+    } catch (error) {
+      console.error('Failed to save project file:', error)
+      return {
+        success: false,
+        message: 'Failed to save project file',
+        error: String(error)
+      }
+    }
+  })
+
+  ipcMain.handle('load-project-file', async () => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: 'Open OpenScreen Project',
+        defaultPath: RECORDINGS_DIR,
+        filters: [
+          { name: 'OpenScreen Project', extensions: [PROJECT_FILE_EXTENSION] },
+          { name: 'JSON', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['openFile']
+      })
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, canceled: true, message: 'Open project canceled' }
+      }
+
+      const filePath = result.filePaths[0]
+      const content = await fs.readFile(filePath, 'utf-8')
+      const project = JSON.parse(content)
+      currentProjectPath = filePath
+      if (project && typeof project === 'object' && typeof project.videoPath === 'string') {
+        currentVideoPath = project.videoPath
+      }
+
+      return {
+        success: true,
+        path: filePath,
+        project
+      }
+    } catch (error) {
+      console.error('Failed to load project file:', error)
+      return {
+        success: false,
+        message: 'Failed to load project file',
+        error: String(error)
+      }
+    }
+  })
+
+  ipcMain.handle('load-current-project-file', async () => {
+    try {
+      if (!currentProjectPath) {
+        return { success: false, message: 'No active project' }
+      }
+
+      const content = await fs.readFile(currentProjectPath, 'utf-8')
+      const project = JSON.parse(content)
+      if (project && typeof project === 'object' && typeof project.videoPath === 'string') {
+        currentVideoPath = project.videoPath
+      }
+      return {
+        success: true,
+        path: currentProjectPath,
+        project,
+      }
+    } catch (error) {
+      console.error('Failed to load current project file:', error)
+      return {
+        success: false,
+        message: 'Failed to load current project file',
+        error: String(error),
+      }
+    }
+  })
   ipcMain.handle('set-current-video-path', (_, path: string) => {
     currentVideoPath = path;
+    currentProjectPath = null
     return { success: true };
   });
 

@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import Block from '@uiw/react-color-block';
-import { Trash2, Download, Crop, X, Bug, Upload, Star, Film, Image, Sparkles, Palette } from "lucide-react";
+import { Trash2, Download, Crop, X, Bug, Upload, Star, Film, Image, Sparkles, Palette, Save, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 import type { ZoomDepth, CropRegion, AnnotationRegion, AnnotationType, PlaybackSpeed } from "./types";
 import { SPEED_OPTIONS } from "./types";
@@ -83,6 +83,8 @@ interface SettingsPanelProps {
   gifSizePreset?: GifSizePreset;
   onGifSizePresetChange?: (preset: GifSizePreset) => void;
   gifOutputDimensions?: { width: number; height: number };
+  onSaveProject?: () => void;
+  onLoadProject?: () => void;
   onExport?: () => void;
   selectedAnnotationId?: string | null;
   annotationRegions?: AnnotationRegion[];
@@ -142,6 +144,8 @@ export function SettingsPanel({
   gifSizePreset = 'medium',
   onGifSizePresetChange,
   gifOutputDimensions = { width: 1280, height: 720 },
+  onSaveProject,
+  onLoadProject,
   onExport,
   selectedAnnotationId,
   annotationRegions = [],
@@ -739,6 +743,27 @@ export function SettingsPanel({
           </div>
         )}
         
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onLoadProject}
+            className="h-8 text-[10px] font-medium gap-1.5 bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+          >
+            <FolderOpen className="w-3.5 h-3.5" />
+            Load Project
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onSaveProject}
+            className="h-8 text-[10px] font-medium gap-1.5 bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+          >
+            <Save className="w-3.5 h-3.5" />
+            Save Project
+          </Button>
+        </div>
+
         <Button
           type="button"
           size="lg"
