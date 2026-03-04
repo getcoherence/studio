@@ -2,13 +2,14 @@ import type { ExportConfig, ExportProgress, ExportResult } from './types';
 import { StreamingVideoDecoder } from './streamingDecoder';
 import { FrameRenderer } from './frameRenderer';
 import { VideoMuxer } from './muxer';
-import type { ZoomRegion, CropRegion, TrimRegion, AnnotationRegion } from '@/components/video-editor/types';
+import type { ZoomRegion, CropRegion, TrimRegion, AnnotationRegion, SpeedRegion } from '@/components/video-editor/types';
 
 interface VideoExporterConfig extends ExportConfig {
   videoUrl: string;
   wallpaper: string;
   zoomRegions: ZoomRegion[];
   trimRegions?: TrimRegion[];
+  speedRegions?: SpeedRegion[];
   showShadow: boolean;
   shadowIntensity: number;
   showBlur: boolean;
@@ -68,6 +69,7 @@ export class VideoExporter {
         videoWidth: videoInfo.width,
         videoHeight: videoInfo.height,
         annotationRegions: this.config.annotationRegions,
+        speedRegions: this.config.speedRegions,
         previewWidth: this.config.previewWidth,
         previewHeight: this.config.previewHeight,
       });
@@ -81,7 +83,7 @@ export class VideoExporter {
       await this.muxer.initialize();
 
       // Calculate effective duration and frame count (excluding trim regions)
-      const effectiveDuration = this.streamingDecoder.getEffectiveDuration(this.config.trimRegions);
+      const effectiveDuration = this.streamingDecoder.getEffectiveDuration(this.config.trimRegions, this.config.speedRegions);
       const totalFrames = Math.ceil(effectiveDuration * this.config.frameRate);
 
       console.log('[VideoExporter] Original duration:', videoInfo.duration, 's');
@@ -96,6 +98,7 @@ export class VideoExporter {
       await this.streamingDecoder.decodeAll(
         this.config.frameRate,
         this.config.trimRegions,
+        this.config.speedRegions,
         async (videoFrame, _exportTimestampUs, sourceTimestampMs) => {
           if (this.cancelled) {
             videoFrame.close();
@@ -125,8 +128,8 @@ export class VideoExporter {
           });
 
           // Check encoder queue before encoding to keep it full
-          while (this.encodeQueue >= this.MAX_ENCODE_QUEUE && !this.cancelled) {
-            await new Promise(resolve => setTimeout(resolve, 0));
+          while (this.encoder && this.encoder.encodeQueueSize >= this.MAX_ENCODE_QUEUE && !this.cancelled) {
+            await new Promise(resolve => setTimeout(resolve, 5));
           }
 
           if (this.encoder && this.encoder.state === 'configured') {
@@ -250,7 +253,7 @@ export class VideoExporter {
       height: this.config.height,
       bitrate: this.config.bitrate,
       framerate: this.config.frameRate,
-      latencyMode: 'realtime',
+      latencyMode: 'quality', // Changed from 'realtime' to 'quality' for better throughput
       bitrateMode: 'variable',
       hardwareAcceleration: 'prefer-hardware',
     };

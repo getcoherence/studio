@@ -9,6 +9,12 @@ interface ProcessedDesktopSource {
   appIcon: string | null;
 }
 
+interface CursorTelemetryPoint {
+  timeMs: number;
+  cx: number;
+  cy: number;
+}
+
 interface Window {
   electronAPI: {
     getSources: (opts: Electron.SourcesOptions) => Promise<ProcessedDesktopSource[]>
@@ -30,17 +36,49 @@ interface Window {
     }>
     getAssetBasePath: () => Promise<string | null>
     setRecordingState: (recording: boolean) => Promise<void>
+    getCursorTelemetry: (videoPath?: string) => Promise<{
+      success: boolean
+      samples: CursorTelemetryPoint[]
+      message?: string
+      error?: string
+    }>
     onStopRecordingFromTray: (callback: () => void) => () => void
     openExternalUrl: (url: string) => Promise<{ success: boolean; error?: string }>
     saveExportedVideo: (videoData: ArrayBuffer, fileName: string) => Promise<{
       success: boolean
       path?: string
       message?: string
-      cancelled?: boolean
+      canceled?: boolean
     }>
-    openVideoFilePicker: () => Promise<{ success: boolean; path?: string; cancelled?: boolean }>
+    openVideoFilePicker: () => Promise<{ success: boolean; path?: string; canceled?: boolean }>
     setCurrentVideoPath: (path: string) => Promise<{ success: boolean }>
     getCurrentVideoPath: () => Promise<{ success: boolean; path?: string }>
     clearCurrentVideoPath: () => Promise<{ success: boolean }>
+    saveProjectFile: (projectData: unknown, suggestedName?: string, existingProjectPath?: string) => Promise<{
+      success: boolean
+      path?: string
+      message?: string
+      canceled?: boolean
+      error?: string
+    }>
+    loadProjectFile: () => Promise<{
+      success: boolean
+      path?: string
+      project?: unknown
+      message?: string
+      canceled?: boolean
+      error?: string
+    }>
+    loadCurrentProjectFile: () => Promise<{
+      success: boolean
+      path?: string
+      project?: unknown
+      message?: string
+      canceled?: boolean
+      error?: string
+    }>
+    onMenuLoadProject: (callback: () => void) => () => void
+    onMenuSaveProject: (callback: () => void) => () => void
+    onMenuSaveProjectAs: (callback: () => void) => () => void
   }
 }
