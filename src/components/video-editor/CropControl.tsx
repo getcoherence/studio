@@ -16,7 +16,7 @@ interface CropControlProps {
   aspectRatio: AspectRatio;
 }
 
-type DragHandle = 'top' | 'right' | 'bottom' | 'left' | null;
+type DragHandle = 'top' | 'right' | 'bottom' | 'left' | 'move' | null;
 
 export function CropControl({ videoElement, cropRegion, onCropChange }: CropControlProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -97,6 +97,13 @@ export function CropControl({ videoElement, cropRegion, onCropChange }: CropCont
       case 'right':
         newCrop.width = Math.max(0.1, Math.min(initialCrop.width + deltaX, 1 - initialCrop.x));
         break;
+      case 'move': {
+        const newX = Math.max(0, Math.min(initialCrop.x + deltaX, 1 - initialCrop.width));
+        const newY = Math.max(0, Math.min(initialCrop.y + deltaY, 1 - initialCrop.height));
+        newCrop.x = newX;
+        newCrop.y = newY;
+        break;
+      }
     }
 
     onCropChange(newCrop);
@@ -167,6 +174,18 @@ export function CropControl({ videoElement, cropRegion, onCropChange }: CropCont
             />
           </svg>
         </div>
+
+        <div
+          className="absolute z-10 pointer-events-auto cursor-move"
+          style={{
+            left: `${cropPixelX}%`,
+            top: `${cropPixelY}%`,
+            width: `${cropPixelWidth}%`,
+            height: `${cropPixelHeight}%`,
+            transition: 'none',
+          }}
+          onPointerDown={(e) => handlePointerDown(e, 'move')}
+        />
 
         <div
           className={cn(

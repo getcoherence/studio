@@ -5,9 +5,9 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Block from '@uiw/react-color-block';
-import { Trash2, Download, Crop, X, Bug, Upload, Star, Film, Image, Sparkles, Palette, Save, FolderOpen } from "lucide-react";
+import { Trash2, Download, Crop, X, Bug, Upload, Star, Film, Image, Sparkles, Palette, Save, FolderOpen, Lock, Unlock } from "lucide-react";
 import { toast } from "sonner";
 import type { ZoomDepth, CropRegion, AnnotationRegion, AnnotationType, PlaybackSpeed } from "./types";
 import { SPEED_OPTIONS } from "./types";
@@ -184,6 +184,81 @@ export function SettingsPanel({
   const [selectedColor, setSelectedColor] = useState('#ADADAD');
   const [gradient, setGradient] = useState<string>(GRADIENTS[0]);
   const [showCropDropdown, setShowCropDropdown] = useState(false);
+  const [cropAspectLocked, setCropAspectLocked] = useState(false);
+  const [cropAspectRatio, setCropAspectRatio] = useState<string>('');
+
+  const videoWidth = videoElement?.videoWidth || 1920;
+  const videoHeight = videoElement?.videoHeight || 1080;
+
+  const handleCropNumericChange = useCallback((field: 'x' | 'y' | 'width' | 'height', pixelValue: number) => {
+    if (!cropRegion || !onCropChange) return;
+    const norm = { ...cropRegion };
+    const maxW = videoWidth;
+    const maxH = videoHeight;
+
+    switch (field) {
+      case 'x':
+        norm.x = Math.max(0, Math.min(pixelValue / maxW, 1 - norm.width));
+        break;
+      case 'y':
+        norm.y = Math.max(0, Math.min(pixelValue / maxH, 1 - norm.height));
+        break;
+      case 'width': {
+        const newW = Math.max(0.05, Math.min(pixelValue / maxW, 1 - norm.x));
+        if (cropAspectLocked && norm.width > 0 && norm.height > 0) {
+          const ratio = norm.width / norm.height;
+          const newH = newW / ratio;
+          if (norm.y + newH <= 1) {
+            norm.width = newW;
+            norm.height = newH;
+          }
+        } else {
+          norm.width = newW;
+        }
+        break;
+      }
+      case 'height': {
+        const newH = Math.max(0.05, Math.min(pixelValue / maxH, 1 - norm.y));
+        if (cropAspectLocked && norm.width > 0 && norm.height > 0) {
+          const ratio = norm.width / norm.height;
+          const newW = newH * ratio;
+          if (norm.x + newW <= 1) {
+            norm.height = newH;
+            norm.width = newW;
+          }
+        } else {
+          norm.height = newH;
+        }
+        break;
+      }
+    }
+    onCropChange(norm);
+  }, [cropRegion, onCropChange, videoWidth, videoHeight, cropAspectLocked]);
+
+  const applyCropAspectPreset = useCallback((preset: string) => {
+    if (!cropRegion || !onCropChange) return;
+    setCropAspectRatio(preset);
+    if (preset === '') {
+      setCropAspectLocked(false);
+      return;
+    }
+    const [wStr, hStr] = preset.split(':');
+    const targetRatio = Number(wStr) / Number(hStr);
+    const norm = { ...cropRegion };
+    // Keep the current width, adjust height to match ratio
+    const newH = (norm.width * videoWidth) / (targetRatio * videoHeight);
+    if (norm.y + newH <= 1 && newH >= 0.05) {
+      norm.height = newH;
+    } else {
+      // Keep height, adjust width
+      const newW = (norm.height * videoHeight * targetRatio) / videoWidth;
+      if (norm.x + newW <= 1 && newW >= 0.05) {
+        norm.width = newW;
+      }
+    }
+    onCropChange(norm);
+    setCropAspectLocked(true);
+  }, [cropRegion, onCropChange, videoWidth, videoHeight]);
 
   const zoomEnabled = Boolean(selectedZoomDepth);
   const trimEnabled = Boolean(selectedTrimId);
@@ -624,14 +699,72 @@ export function SettingsPanel({
               onCropChange={onCropChange}
               aspectRatio={aspectRatio}
             />
-            <div className="mt-6 flex justify-end">
-              <Button
-                onClick={() => setShowCropDropdown(false)}
-                size="lg"
-                className="bg-[#34B27B] hover:bg-[#34B27B]/90 text-white"
-              >
-                Done
-              </Button>
+            <div className="mt-6 space-y-4">
+              <div className="flex flex-wrap items-end gap-3">
+                {[
+                  { label: 'X', field: 'x' as const, max: videoWidth },
+                  { label: 'Y', field: 'y' as const, max: videoHeight },
+                  { label: 'W', field: 'width' as const, max: videoWidth },
+                  { label: 'H', field: 'height' as const, max: videoHeight },
+                ].map(({ label, field, max }) => (
+                  <div key={field} className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{label}</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={max}
+                      value={Math.round((cropRegion as Record<string, number>)[field] * (field === 'x' || field === 'width' ? videoWidth : videoHeight))}
+                      onChange={(e) => handleCropNumericChange(field, Number(e.target.value))}
+                      className="w-[90px] h-8 rounded-md border border-white/10 bg-white/5 px-2 text-xs text-slate-200 outline-none focus:border-[#34B27B]/50 focus:ring-1 focus:ring-[#34B27B]/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                ))}
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Ratio</label>
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={cropAspectRatio}
+                      onChange={(e) => applyCropAspectPreset(e.target.value)}
+                      className="h-8 rounded-md border border-white/10 bg-[#1a1a1f] px-2 text-xs text-slate-200 outline-none focus:border-[#34B27B]/50 cursor-pointer"
+                    >
+                      <option value="" className="bg-[#1a1a1f] text-slate-200">Free</option>
+                      <option value="16:9" className="bg-[#1a1a1f] text-slate-200">16:9</option>
+                      <option value="9:16" className="bg-[#1a1a1f] text-slate-200">9:16</option>
+                      <option value="4:3" className="bg-[#1a1a1f] text-slate-200">4:3</option>
+                      <option value="3:4" className="bg-[#1a1a1f] text-slate-200">3:4</option>
+                      <option value="1:1" className="bg-[#1a1a1f] text-slate-200">1:1</option>
+                      <option value="21:9" className="bg-[#1a1a1f] text-slate-200">21:9</option>
+                    </select>
+                    <button
+                      onClick={() => setCropAspectLocked(!cropAspectLocked)}
+                      className={cn(
+                        "h-8 w-8 flex items-center justify-center rounded-md border transition-all",
+                        cropAspectLocked
+                          ? "border-[#34B27B]/50 bg-[#34B27B]/10 text-[#34B27B]"
+                          : "border-white/10 bg-white/5 text-slate-400 hover:text-slate-200"
+                      )}
+                      title={cropAspectLocked ? "Unlock aspect ratio" : "Lock aspect ratio"}
+                    >
+                      {cropAspectLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-slate-500 self-center ml-2">
+                  {videoWidth} × {videoHeight}px
+                </p>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => setShowCropDropdown(false)}
+                  size="lg"
+                  className="bg-[#34B27B] hover:bg-[#34B27B]/90 text-white"
+                >
+                  Done
+                </Button>
+              </div>
             </div>
           </div>
         </>
