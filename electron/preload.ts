@@ -90,6 +90,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPlatform: () => {
     return ipcRenderer.invoke('get-platform')
   },
+  revealInFolder: (filePath: string) => {
+    return ipcRenderer.invoke('reveal-in-folder', filePath)
+  },
+})
   getShortcuts: () => {
     return ipcRenderer.invoke('get-shortcuts')
   },

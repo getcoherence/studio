@@ -82,6 +82,7 @@ export default function VideoEditor() {
   const [gifFrameRate, setGifFrameRate] = useState<GifFrameRate>(15);
   const [gifLoop, setGifLoop] = useState(true);
   const [gifSizePreset, setGifSizePreset] = useState<GifSizePreset>('medium');
+  const [exportedFilePath, setExportedFilePath] = useState<string | undefined>(undefined);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
 
   const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
@@ -882,6 +883,11 @@ export default function VideoEditor() {
 
           const saveResult = await window.electronAPI.saveExportedVideo(arrayBuffer, fileName);
 
+          if (saveResult.cancelled) {
+            toast.info('Export cancelled');
+          } else if (saveResult.success && saveResult.path) {
+            showExportSuccessToast(saveResult.path);
+            setExportedFilePath(saveResult.path);
           if (saveResult.canceled) {
             toast.info('Export canceled');
           } else if (saveResult.success) {
@@ -1008,6 +1014,11 @@ export default function VideoEditor() {
 
           const saveResult = await window.electronAPI.saveExportedVideo(arrayBuffer, fileName);
 
+          if (saveResult.cancelled) {
+            toast.info('Export cancelled');
+          } else if (saveResult.success && saveResult.path) {
+            showExportSuccessToast(saveResult.path);
+            setExportedFilePath(saveResult.path);
           if (saveResult.canceled) {
             toast.info('Export canceled');
           } else if (saveResult.success) {
@@ -1084,7 +1095,32 @@ export default function VideoEditor() {
       setIsExporting(false);
       setExportProgress(null);
       setExportError(null);
+      setExportedFilePath(undefined);
     }
+  }, []);
+
+  const handleExportDialogClose = useCallback(() => {
+    setShowExportDialog(false);
+    setExportedFilePath(undefined);
+  }, []);
+
+  const showExportSuccessToast = useCallback((filePath: string) => {
+    toast.success(`Exported successfully to ${filePath}`, {
+      action: {
+        label: 'Show in Folder',
+        onClick: async () => {
+          try {
+            const result = await window.electronAPI.revealInFolder(filePath);
+            if (!result.success) {
+              const errorMessage = result.error || result.message || 'Failed to reveal item in folder.';
+              toast.error(errorMessage);
+            }
+          } catch (err) {
+            toast.error(`Error revealing in folder: ${String(err)}`);
+          }
+        }
+      }
+    });
   }, []);
 
   if (loading) {
@@ -1285,12 +1321,13 @@ export default function VideoEditor() {
       
       <ExportDialog
         isOpen={showExportDialog}
-        onClose={() => setShowExportDialog(false)}
+        onClose={handleExportDialogClose}
         progress={exportProgress}
         isExporting={isExporting}
         error={exportError}
         onCancel={handleCancelExport}
         exportFormat={exportFormat}
+        exportedFilePath={exportedFilePath}
       />
     </div>
   );

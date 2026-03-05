@@ -47,6 +47,7 @@ interface Window {
     onMenuSaveProject: (callback: () => void) => () => void
     onMenuSaveProjectAs: (callback: () => void) => () => void
     getPlatform: () => Promise<string>
+    revealInFolder: (filePath: string) => Promise<{ success: boolean; error?: string; message?: string }>,
     getShortcuts: () => Promise<Record<string, unknown> | null>
     saveShortcuts: (shortcuts: unknown) => Promise<{ success: boolean; error?: string }>
     hudOverlayHide: () => void;

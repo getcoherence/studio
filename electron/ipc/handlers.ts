@@ -333,6 +333,31 @@ export function registerIpcHandlers(
     }
   });
 
+  ipcMain.handle('reveal-in-folder', async (_, filePath: string) => {
+    try {
+      // shell.showItemInFolder doesn't return a value, it throws on error
+      shell.showItemInFolder(filePath);
+      return { success: true };
+    } catch (error) {
+      console.error(`Error revealing item in folder: ${filePath}`, error);
+      // Fallback to open the directory if revealing the item fails
+      // This might happen if the file was moved or deleted after export,
+      // or if the path is somehow invalid for showItemInFolder
+      try {
+        const openPathResult = await shell.openPath(path.dirname(filePath));
+        if (openPathResult) {
+          // openPath returned an error message
+          return { success: false, error: openPathResult };
+        }
+        return { success: true, message: 'Could not reveal item, but opened directory.' };
+      } catch (openError) {
+        console.error(`Error opening directory: ${path.dirname(filePath)}`, openError);
+        return { success: false, error: String(error) };
+      }
+    }
+  });
+
+  let currentVideoPath: string | null = null;
   ipcMain.handle('save-project-file', async (_, projectData: unknown, suggestedName?: string, existingProjectPath?: string) => {
     try {
       const trustedExistingProjectPath = isTrustedProjectPath(existingProjectPath)
