@@ -42,7 +42,7 @@ import {
   type PlaybackSpeed,
 } from "./types";
 import { VideoExporter, GifExporter, type ExportProgress, type ExportQuality, type ExportSettings, type ExportFormat, type GifFrameRate, type GifSizePreset, GIF_SIZE_PRESETS, calculateOutputDimensions } from "@/lib/exporter";
-import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
+import { type AspectRatio, getAspectRatioValue, getNativeAspectRatioValue } from "@/utils/aspectRatioUtils";
 import { getAssetPath } from "@/lib/assetPath";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import { matchesShortcut } from "@/lib/shortcuts";
@@ -833,9 +833,11 @@ export default function VideoEditor() {
         videoPlaybackRef.current?.pause();
       }
 
-      const aspectRatioValue = getAspectRatioValue(aspectRatio);
       const sourceWidth = video.videoWidth || 1920;
       const sourceHeight = video.videoHeight || 1080;
+      const aspectRatioValue = aspectRatio === 'native'
+        ? getNativeAspectRatioValue(sourceWidth, sourceHeight, cropRegion)
+        : getAspectRatioValue(aspectRatio);
 
       // Get preview CONTAINER dimensions for scaling
       const playbackRef = videoPlaybackRef.current;
@@ -1130,7 +1132,7 @@ export default function VideoEditor() {
               <div className="w-full h-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden">
                 {/* Video preview */}
                 <div className="w-full flex justify-center items-center" style={{ flex: '1 1 auto', margin: '6px 0 0' }}>
-                  <div className="relative" style={{ width: 'auto', height: '100%', aspectRatio: getAspectRatioValue(aspectRatio), maxWidth: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+                  <div className="relative" style={{ width: 'auto', height: '100%', aspectRatio: aspectRatio === 'native' ? getNativeAspectRatioValue(videoPlaybackRef.current?.video?.videoWidth || 1920, videoPlaybackRef.current?.video?.videoHeight || 1080, cropRegion) : getAspectRatioValue(aspectRatio), maxWidth: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
                     <VideoPlayback
                       key={videoPath || 'no-video'}
                       aspectRatio={aspectRatio}
@@ -1217,7 +1219,10 @@ export default function VideoEditor() {
               selectedAnnotationId={selectedAnnotationId}
               onSelectAnnotation={handleSelectAnnotation}
               aspectRatio={aspectRatio}
-              onAspectRatioChange={setAspectRatio}
+              onAspectRatioChange={(ratio) => {
+                setAspectRatio(ratio);
+                if (ratio === 'native') setPadding(0);
+              }}
             />
               </div>
             </Panel>

@@ -1,11 +1,11 @@
-export const ASPECT_RATIOS = ['16:9', '9:16', '1:1', '4:3', '4:5', '16:10', '10:16'] as const;
+export const ASPECT_RATIOS = ['16:9', '9:16', '1:1', '4:3', '4:5', '16:10', '10:16', 'native'] as const;
 
 export type AspectRatio = typeof ASPECT_RATIOS[number];
 
 /**
  * Returns the numeric value of an aspect ratio.
- * Uses exhaustive type checking to ensure all AspectRatio cases are handled.
- * If TypeScript errors here, a new ratio was added to the type but not handled.
+ * For 'native', returns a fallback of 16/9 — callers with video/crop info
+ * should use getNativeAspectRatioValue() instead.
  */
 export function getAspectRatioValue(aspectRatio: AspectRatio): number {
   switch (aspectRatio) {
@@ -16,12 +16,25 @@ export function getAspectRatioValue(aspectRatio: AspectRatio): number {
     case '4:5':  return 4 / 5;
     case '16:10': return 16 / 10;
     case '10:16': return 10 / 16;
+    case 'native': return 16 / 9;
     default: {
-      // Ensures all cases are handled - TypeScript errors if missing
       const _exhaustiveCheck: never = aspectRatio;
       return _exhaustiveCheck;
     }
   }
+}
+
+/**
+ * Returns the aspect ratio value for 'native' mode based on the cropped video dimensions.
+ */
+export function getNativeAspectRatioValue(
+  videoWidth: number,
+  videoHeight: number,
+  cropRegion?: { x: number; y: number; width: number; height: number },
+): number {
+  const cropW = cropRegion?.width ?? 1;
+  const cropH = cropRegion?.height ?? 1;
+  return (videoWidth * cropW) / (videoHeight * cropH);
 }
 
 export function getAspectRatioDimensions(
@@ -36,10 +49,12 @@ export function getAspectRatioDimensions(
 }
 
 export function getAspectRatioLabel(aspectRatio: AspectRatio): string {
+  if (aspectRatio === 'native') return 'Native';
   return aspectRatio;
 }
 
 
-export function formatAspectRatioForCSS(aspectRatio: AspectRatio): string {
+export function formatAspectRatioForCSS(aspectRatio: AspectRatio, nativeRatio?: number): string {
+  if (aspectRatio === 'native') return String(nativeRatio ?? 16 / 9);
   return aspectRatio.replace(':', '/');
 }
