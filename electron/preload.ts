@@ -93,7 +93,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   revealInFolder: (filePath: string) => {
     return ipcRenderer.invoke('reveal-in-folder', filePath)
   },
-})
   getShortcuts: () => {
     return ipcRenderer.invoke('get-shortcuts')
   },
