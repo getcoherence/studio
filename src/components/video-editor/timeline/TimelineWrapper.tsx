@@ -19,7 +19,7 @@ interface TimelineWrapperProps {
   onRangeChange: Dispatch<SetStateAction<Range>>;
   minItemDurationMs: number;
   minVisibleRangeMs: number;
-  gridSizeMs: number;
+  gridSizeMs?: number;
   onItemSpanChange: (id: string, span: Span) => void;
   allRegionSpans?: { id: string; start: number; end: number }[];
 }
@@ -135,7 +135,10 @@ export default function TimelineWrapper({
       const activeItemId = event.active.id as string;
       let clampedSpan = clampSpanToBounds(updatedSpan);
 
-      if (clampedSpan.end - clampedSpan.start < Math.min(minItemDurationMs, totalMs || minItemDurationMs)) {
+      const effectiveMinDuration = totalMs > 0
+        ? Math.min(minItemDurationMs, totalMs)
+        : minItemDurationMs;
+      if (clampedSpan.end - clampedSpan.start < effectiveMinDuration) {
         return;
       }
 
