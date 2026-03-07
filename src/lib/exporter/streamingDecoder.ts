@@ -7,6 +7,8 @@ export interface DecodedVideoInfo {
   duration: number; // seconds
   frameRate: number;
   codec: string;
+  hasAudio: boolean;
+  audioCodec?: string;
 }
 
 /** Caller must close the VideoFrame after use. */
@@ -53,12 +55,16 @@ export class StreamingVideoDecoder {
       }
     }
 
+    const audioStream = mediaInfo.streams.find(s => s.codec_type_string === 'audio');
+
     this.metadata = {
       width: videoStream?.width || 1920,
       height: videoStream?.height || 1080,
       duration: mediaInfo.duration,
       frameRate,
       codec: videoStream?.codec_string || 'unknown',
+      hasAudio: !!audioStream,
+      audioCodec: audioStream?.codec_string,
     };
 
     return this.metadata;
@@ -310,6 +316,10 @@ export class StreamingVideoDecoder {
       if (cursor < segment.endSec) result.push({ startSec: cursor, endSec: segment.endSec, speed: 1 });
     }
     return result.filter(s => s.endSec - s.startSec > 0.0001);
+  }
+
+  getDemuxer(): WebDemuxer | null {
+    return this.demuxer;
   }
 
   cancel(): void {

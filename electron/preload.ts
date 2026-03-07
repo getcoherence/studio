@@ -99,4 +99,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveShortcuts: (shortcuts: unknown) => {
     return ipcRenderer.invoke('save-shortcuts', shortcuts)
   },
+  setMicrophoneExpanded: (expanded: boolean) => {
+    ipcRenderer.send('hud:setMicrophoneExpanded', expanded)
+  },
 })

@@ -2,6 +2,7 @@ import type { ExportConfig, ExportProgress, ExportResult } from './types';
 import { StreamingVideoDecoder } from './streamingDecoder';
 import { FrameRenderer } from './frameRenderer';
 import { VideoMuxer } from './muxer';
+import { AudioProcessor } from './audioEncoder';
 import type { ZoomRegion, CropRegion, TrimRegion, AnnotationRegion, SpeedRegion } from '@/components/video-editor/types';
 
 interface VideoExporterConfig extends ExportConfig {
@@ -30,6 +31,7 @@ export class VideoExporter {
   private renderer: FrameRenderer | null = null;
   private encoder: VideoEncoder | null = null;
   private muxer: VideoMuxer | null = null;
+  private audioProcessor: AudioProcessor | null = null;
   private cancelled = false;
   private encodeQueue = 0;
   // Increased queue size for better throughput with hardware encoding
@@ -78,8 +80,9 @@ export class VideoExporter {
       // Initialize video encoder
       await this.initializeEncoder();
 
-      // Initialize muxer
-      this.muxer = new VideoMuxer(this.config, false);
+      // Initialize muxer (with audio if source has an audio track)
+      const hasAudio = videoInfo.hasAudio;
+      this.muxer = new VideoMuxer(this.config, hasAudio);
       await this.muxer.initialize();
 
       // Calculate effective duration and frame count (excluding trim regions)
@@ -164,8 +167,18 @@ export class VideoExporter {
         await this.encoder.flush();
       }
 
-      // Wait for all muxing operations to complete
+      // Wait for all video muxing operations to complete
       await Promise.all(this.muxingPromises);
+
+      // Process audio track if present
+      if (hasAudio && !this.cancelled) {
+        const demuxer = this.streamingDecoder!.getDemuxer();
+        if (demuxer) {
+          console.log('[VideoExporter] Processing audio track...');
+          this.audioProcessor = new AudioProcessor();
+          await this.audioProcessor.process(demuxer, this.muxer!, this.config.trimRegions);
+        }
+      }
 
       // Finalize muxer and get output blob
       const blob = await this.muxer!.finalize();
@@ -284,6 +297,9 @@ export class VideoExporter {
     if (this.streamingDecoder) {
       this.streamingDecoder.cancel();
     }
+    if (this.audioProcessor) {
+      this.audioProcessor.cancel();
+    }
     this.cleanup();
   }
 
@@ -317,6 +333,7 @@ export class VideoExporter {
       this.renderer = null;
     }
 
+    this.audioProcessor = null;
     this.muxer = null;
     this.encodeQueue = 0;
     this.muxingPromises = [];

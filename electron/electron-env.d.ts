@@ -52,6 +52,7 @@ interface Window {
     saveShortcuts: (shortcuts: unknown) => Promise<{ success: boolean; error?: string }>
     hudOverlayHide: () => void;
     hudOverlayClose: () => void;
+    setMicrophoneExpanded: (expanded: boolean) => void;
   }
 }
 
