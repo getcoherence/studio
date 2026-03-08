@@ -28,6 +28,7 @@
   ],
 
   "mac": {
+    "hardenedRuntime": false,
     "target": [
       {
         "target": "dmg",
@@ -38,7 +39,9 @@
     "artifactName": "${productName}-Mac-${arch}-${version}-Installer.${ext}",
     "extendInfo": {
       "NSAudioCaptureUsageDescription": "OpenScreen needs audio capture permission to record system audio.",
-      "NSCameraUseContinuityCameraDeviceType": true
+      "NSMicrophoneUsageDescription": "OpenScreen needs microphone access to record voice audio.",
+      "NSCameraUseContinuityCameraDeviceType": true,
+      "com.apple.security.device.audio-input": true
     }
   },
   "linux": {

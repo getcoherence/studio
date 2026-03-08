@@ -1,7 +1,17 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Tray } from "electron";
+import {
+	app,
+	BrowserWindow,
+	dialog,
+	ipcMain,
+	Menu,
+	nativeImage,
+	session,
+	systemPreferences,
+	Tray,
+} from "electron";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { createEditorWindow, createHudOverlayWindow, createSourceSelectorWindow } from "./windows";
 
@@ -291,6 +301,25 @@ app.on("activate", () => {
 
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
+	// Allow microphone/media permission checks
+	session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+		const allowed = ["media", "audioCapture", "microphone"];
+		return allowed.includes(permission);
+	});
+
+	session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+		const allowed = ["media", "audioCapture", "microphone"];
+		callback(allowed.includes(permission));
+	});
+
+	// Request microphone permission from macOS
+	if (process.platform === "darwin") {
+		const micStatus = systemPreferences.getMediaAccessStatus("microphone");
+		if (micStatus !== "granted") {
+			await systemPreferences.askForMediaAccess("microphone");
+		}
+	}
+
 	// Listen for HUD overlay quit event (macOS only)
 	ipcMain.on("hud-overlay-close", () => {
 		app.quit();

@@ -39,6 +39,9 @@ export function useAudioLevelMeter(options: AudioLevelMeterOptions) {
 				streamRef.current = stream;
 
 				const audioContext = new AudioContext();
+				if (audioContext.state === "suspended") {
+					await audioContext.resume();
+				}
 				audioContextRef.current = audioContext;
 
 				const analyser = audioContext.createAnalyser();
