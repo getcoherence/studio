@@ -346,19 +346,18 @@ export default function VideoEditor() {
 		],
 	);
 
+	// Sync unsaved changes state to main process for close dialog
 	useEffect(() => {
-		const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-			if (!hasUnsavedChanges) {
-				return;
-			}
-
-			event.preventDefault();
-			event.returnValue = "";
-		};
-
-		window.addEventListener("beforeunload", handleBeforeUnload);
-		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+		window.electronAPI.setHasUnsavedChanges(hasUnsavedChanges);
 	}, [hasUnsavedChanges]);
+
+	// Handle save request from main process before close
+	useEffect(() => {
+		const cleanup = window.electronAPI.onRequestSaveBeforeClose(async () => {
+			await saveProject(false);
+		});
+		return () => cleanup();
+	}, [saveProject]);
 
 	const handleSaveProject = useCallback(async () => {
 		await saveProject(false);

@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow, Menu, nativeImage, Tray } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Tray } from "electron";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { createEditorWindow, createHudOverlayWindow, createSourceSelectorWindow } from "./windows";
 
@@ -217,12 +217,54 @@ function updateTrayMenu(recording: boolean = false) {
 	tray.setContextMenu(Menu.buildFromTemplate(menuTemplate));
 }
 
+let editorHasUnsavedChanges = false;
+let isForceClosing = false;
+
+ipcMain.on("set-has-unsaved-changes", (_, hasChanges: boolean) => {
+	editorHasUnsavedChanges = hasChanges;
+});
+
 function createEditorWindowWrapper() {
 	if (mainWindow) {
+		isForceClosing = true;
 		mainWindow.close();
+		isForceClosing = false;
 		mainWindow = null;
 	}
 	mainWindow = createEditorWindow();
+	editorHasUnsavedChanges = false;
+
+	mainWindow.on("close", (event) => {
+		if (isForceClosing || !editorHasUnsavedChanges) return;
+
+		event.preventDefault();
+
+		const choice = dialog.showMessageBoxSync(mainWindow!, {
+			type: "warning",
+			buttons: ["Save & Close", "Discard & Close", "Cancel"],
+			defaultId: 0,
+			cancelId: 2,
+			title: "Unsaved Changes",
+			message: "You have unsaved changes.",
+			detail: "Do you want to save your project before closing?",
+		});
+
+		if (choice === 0) {
+			// Save & Close — tell renderer to save, then close
+			mainWindow!.webContents.send("request-save-before-close");
+			ipcMain.once("save-before-close-done", () => {
+				isForceClosing = true;
+				mainWindow?.close();
+				isForceClosing = false;
+			});
+		} else if (choice === 1) {
+			// Discard & Close
+			isForceClosing = true;
+			mainWindow?.close();
+			isForceClosing = false;
+		}
+		// choice === 2: Cancel — do nothing, window stays open
+	});
 }
 
 function createSourceSelectorWindowWrapper() {
@@ -250,7 +292,6 @@ app.on("activate", () => {
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
 	// Listen for HUD overlay quit event (macOS only)
-	const { ipcMain } = await import("electron");
 	ipcMain.on("hud-overlay-close", () => {
 		app.quit();
 	});

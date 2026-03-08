@@ -90,6 +90,8 @@ interface Window {
 		hudOverlayHide: () => void;
 		hudOverlayClose: () => void;
 		setMicrophoneExpanded: (expanded: boolean) => void;
+		setHasUnsavedChanges: (hasChanges: boolean) => void;
+		onRequestSaveBeforeClose: (callback: () => Promise<void>) => () => void;
 	};
 }
 

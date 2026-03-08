@@ -102,4 +102,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	setMicrophoneExpanded: (expanded: boolean) => {
 		ipcRenderer.send("hud:setMicrophoneExpanded", expanded);
 	},
+	setHasUnsavedChanges: (hasChanges: boolean) => {
+		ipcRenderer.send("set-has-unsaved-changes", hasChanges);
+	},
+	onRequestSaveBeforeClose: (callback: () => Promise<void>) => {
+		const listener = async () => {
+			await callback();
+			ipcRenderer.send("save-before-close-done");
+		};
+		ipcRenderer.on("request-save-before-close", listener);
+		return () => ipcRenderer.removeListener("request-save-before-close", listener);
+	},
 });

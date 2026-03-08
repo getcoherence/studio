@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { BsRecordCircle } from "react-icons/bs";
 import { FaRegStopCircle } from "react-icons/fa";
-import { FaFolderMinus } from "react-icons/fa6";
+import { FaFolderOpen } from "react-icons/fa6";
 import { FiMinus, FiX } from "react-icons/fi";
-import { MdMic, MdMicOff, MdMonitor, MdVolumeOff, MdVolumeUp } from "react-icons/md";
+import { MdMic, MdMicOff, MdMonitor, MdVideoFile, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
@@ -105,6 +105,12 @@ export function LaunchWindow() {
 			await window.electronAPI.setCurrentVideoPath(result.path);
 			await window.electronAPI.switchToEditor();
 		}
+	};
+
+	const openProjectFile = async () => {
+		const result = await window.electronAPI.loadProjectFile();
+		if (result.canceled || !result.success) return;
+		await window.electronAPI.switchToEditor();
 	};
 
 	const sendHudOverlayHide = () => {
@@ -230,14 +236,24 @@ export function LaunchWindow() {
 						)}
 					</button>
 
-					{/* Open file */}
+					{/* Open video file */}
 					<button
 						className={`${styles.hudIconBtn} ${styles.electronNoDrag}`}
 						onClick={openVideoFile}
 						disabled={recording}
 						title="Open video file"
 					>
-						<FaFolderMinus size={14} className="text-white/60" />
+						<MdVideoFile size={14} className="text-white/60" />
+					</button>
+
+					{/* Open project */}
+					<button
+						className={`${styles.hudIconBtn} ${styles.electronNoDrag}`}
+						onClick={openProjectFile}
+						disabled={recording}
+						title="Open project"
+					>
+						<FaFolderOpen size={14} className="text-white/60" />
 					</button>
 
 					{/* Window controls */}
