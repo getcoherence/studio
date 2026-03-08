@@ -9,17 +9,28 @@
 }
 
 .sourceCard {
-  border-radius: 10px;
+  border-radius: 12px;
   background: linear-gradient(120deg, rgba(38,38,48,0.98) 0%, rgba(24,24,32,0.96) 100%);
   border: 1px solid rgba(60,60,80,0.22);
   box-shadow: 0 2px 8px 0 rgba(0,0,0,0.18);
-  transition: box-shadow 0.2s, border 0.2s, background 0.2s;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+
+.sourceCard:hover {
+  border-color: rgba(120,120,160,0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px 0 rgba(0,0,0,0.25);
 }
 
 .selected {
   border: 2px solid #34B27B;
-  background: linear-gradient(120deg, rgba(91,33,182,0.18) 0%, rgba(38,38,48,0.98) 100%);
-  box-shadow: 0 0 0 2px #34B27B33;
+  background: linear-gradient(120deg, rgba(52,178,123,0.08) 0%, rgba(38,38,48,0.98) 100%);
+  box-shadow: 0 0 12px rgba(52,178,123,0.15), 0 0 4px rgba(52,178,123,0.1);
+}
+
+.selected:hover {
+  transform: translateY(0);
 }
 
 .icon {
@@ -29,8 +40,8 @@
 }
 
 .name {
-  font-size: 0.85rem;
-  color: #f3f4f6;
+  font-size: 0.8rem;
+  color: #e4e4e7;
   font-weight: 500;
   letter-spacing: 0.01em;
 }
@@ -38,6 +49,18 @@
 .cardText {
   color: #a1a1aa;
   font-size: 0.75rem;
+}
+
+/* Checkmark badge */
+.checkBadge {
+  width: 18px;
+  height: 18px;
+  background: #34B27B;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 8px rgba(52,178,123,0.4);
 }
 
 /* scrollbar */

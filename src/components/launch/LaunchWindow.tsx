@@ -4,14 +4,13 @@ import { useScreenRecorder } from "../../hooks/useScreenRecorder";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { AudioLevelMeter } from "../ui/audio-level-meter";
-import { Button } from "../ui/button";
 import { BsRecordCircle } from "react-icons/bs";
 import { FaRegStopCircle } from "react-icons/fa";
 import { MdMonitor, MdMic, MdMicOff, MdVolumeUp, MdVolumeOff } from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { FaFolderMinus } from "react-icons/fa6";
 import { FiMinus, FiX } from "react-icons/fi";
-import { ContentClamp } from "../ui/content-clamp";
+
 
 export function LaunchWindow() {
   const { recording, toggleRecording, microphoneEnabled, setMicrophoneEnabled, microphoneDeviceId, setMicrophoneDeviceId, systemAudioEnabled, setSystemAudioEnabled } = useScreenRecorder();
@@ -73,7 +72,7 @@ export function LaunchWindow() {
     };
 
     checkSelectedSource();
-    
+
     const interval = setInterval(checkSelectedSource, 500);
     return () => clearInterval(interval);
   }, []);
@@ -86,18 +85,17 @@ export function LaunchWindow() {
 
   const openVideoFile = async () => {
     const result = await window.electronAPI.openVideoFilePicker();
-    
+
     if (result.canceled) {
       return;
     }
-    
+
     if (result.success && result.path) {
       await window.electronAPI.setCurrentVideoPath(result.path);
       await window.electronAPI.switchToEditor();
     }
   };
 
-  // IPC events for hide/close
   const sendHudOverlayHide = () => {
     if (window.electronAPI && window.electronAPI.hudOverlayHide) {
       window.electronAPI.hudOverlayHide();
@@ -117,26 +115,17 @@ export function LaunchWindow() {
 
   return (
     <div className="w-full h-full flex items-end justify-center bg-transparent">
-      <div
-        className={`w-full max-w-[500px] mx-auto flex flex-col px-4 py-2 ${styles.electronDrag} ${styles.hudBar}`}
-        style={{
-          borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(28,28,36,0.97) 0%, rgba(18,18,26,0.96) 100%)',
-          backdropFilter: 'blur(16px) saturate(140%)',
-          WebkitBackdropFilter: 'blur(16px) saturate(140%)',
-          border: '1px solid rgba(80,80,120,0.25)',
-          minHeight: 44,
-        }}
-      >
+      <div className={`flex flex-col items-center gap-2 mx-auto ${styles.electronDrag}`}>
+        {/* Mic controls panel */}
         {showMicControls && (
-          <div className={`flex items-center gap-2 mb-2 pb-2 border-b border-white/10 ${styles.electronNoDrag}`}>
+          <div className={`flex items-center gap-2 px-4 py-2 ${styles.micPanel} ${styles.electronNoDrag}`}>
             <select
               value={microphoneDeviceId || selectedDeviceId}
               onChange={(e) => {
                 setSelectedDeviceId(e.target.value);
                 setMicrophoneDeviceId(e.target.value);
               }}
-              className="flex-1 bg-white/10 text-white text-xs rounded px-2 py-1 border border-white/20 outline-none truncate"
+              className="flex-1 bg-white/10 text-white text-xs rounded-full px-3 py-1 border border-white/20 outline-none truncate"
               style={{ maxWidth: '70%' }}
             >
               {devices.map((device) => (
@@ -149,107 +138,105 @@ export function LaunchWindow() {
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <div className={`flex items-center gap-1 ${styles.electronDrag}`}> <RxDragHandleDots2 size={18} className="text-white/40" /> </div>
+        {/* Main pill bar */}
+        <div
+          className={`flex items-center gap-1.5 px-2 py-1.5 ${styles.hudBar}`}
+          style={{
+            borderRadius: 9999,
+            background: 'linear-gradient(135deg, rgba(28,28,36,0.97) 0%, rgba(18,18,26,0.96) 100%)',
+            backdropFilter: 'blur(16px) saturate(140%)',
+            WebkitBackdropFilter: 'blur(16px) saturate(140%)',
+            border: '1px solid rgba(80,80,120,0.25)',
+          }}
+        >
+          {/* Drag handle */}
+          <div className={`flex items-center px-1 ${styles.electronDrag}`}>
+            <RxDragHandleDots2 size={16} className="text-white/30" />
+          </div>
 
-          <Button
-            variant="link"
-            size="sm"
-            className={`gap-1 text-white bg-transparent hover:bg-transparent px-0 flex-1 text-left text-xs ${styles.electronNoDrag}`}
+          {/* Source selector */}
+          <button
+            className={`${styles.hudGroup} ${styles.electronNoDrag}`}
             onClick={openSourceSelector}
             disabled={recording}
+            title={selectedSource}
           >
-            <MdMonitor size={14} className="text-white" />
-            <ContentClamp truncateLength={6}>{selectedSource}</ContentClamp>
-          </Button>
+            <MdMonitor size={14} className="text-white/80" />
+            <span className="text-white/70 text-[11px] max-w-[72px] truncate">{selectedSource}</span>
+          </button>
 
-          <div className="w-px h-6 bg-white/30" />
+          {/* Audio controls group */}
+          <div className={`${styles.hudGroup} ${styles.electronNoDrag}`}>
+            <button
+              className={`${styles.hudIconBtn} ${systemAudioEnabled ? styles.hudIconActive : ''}`}
+              onClick={() => !recording && setSystemAudioEnabled(!systemAudioEnabled)}
+              disabled={recording}
+              title={systemAudioEnabled ? "Disable system audio" : "Enable system audio"}
+            >
+              {systemAudioEnabled ? (
+                <MdVolumeUp size={15} className="text-green-400" />
+              ) : (
+                <MdVolumeOff size={15} className="text-white/40" />
+              )}
+            </button>
+            <button
+              className={`${styles.hudIconBtn} ${microphoneEnabled ? styles.hudIconActive : ''}`}
+              onClick={toggleMicrophone}
+              disabled={recording}
+              title={microphoneEnabled ? "Disable microphone" : "Enable microphone"}
+            >
+              {microphoneEnabled ? (
+                <MdMic size={15} className="text-green-400" />
+              ) : (
+                <MdMicOff size={15} className="text-white/40" />
+              )}
+            </button>
+          </div>
 
-          <Button
-            variant="link"
-            size="sm"
-            onClick={() => !recording && setSystemAudioEnabled(!systemAudioEnabled)}
-            disabled={recording}
-            className={`gap-1 text-white bg-transparent hover:bg-transparent px-1 text-xs ${styles.electronNoDrag}`}
-            title={systemAudioEnabled ? "Disable system audio" : "Enable system audio"}
-          >
-            {systemAudioEnabled ? (
-              <MdVolumeUp size={16} className="text-green-400" />
-            ) : (
-              <MdVolumeOff size={16} className="text-white/50" />
-            )}
-          </Button>
-
-          <Button
-            variant="link"
-            size="sm"
-            onClick={toggleMicrophone}
-            disabled={recording}
-            className={`gap-1 text-white bg-transparent hover:bg-transparent px-1 text-xs ${styles.electronNoDrag}`}
-            title={microphoneEnabled ? "Disable microphone" : "Enable microphone"}
-          >
-            {microphoneEnabled ? (
-              <MdMic size={16} className="text-green-400" />
-            ) : (
-              <MdMicOff size={16} className="text-white/50" />
-            )}
-          </Button>
-
-          <div className="w-px h-6 bg-white/30" />
-
-          <Button
-            variant="link"
-            size="sm"
+          {/* Record/Stop group */}
+          <button
+            className={`${styles.hudGroup} ${styles.electronNoDrag} ${recording ? styles.recordingPulse : ''}`}
             onClick={hasSelectedSource ? toggleRecording : openSourceSelector}
             disabled={!hasSelectedSource && !recording}
-            className={`gap-1 text-white bg-transparent hover:bg-transparent px-0 flex-1 text-center text-xs ${styles.electronNoDrag}`}
+            style={{ flex: '0 0 auto' }}
           >
             {recording ? (
               <>
-                <FaRegStopCircle size={14} className="text-red-400" />
-                <span className="text-red-400">{formatTime(elapsed)}</span>
+                <FaRegStopCircle size={13} className="text-red-400" />
+                <span className="text-red-400 text-xs font-semibold tabular-nums">{formatTime(elapsed)}</span>
               </>
             ) : (
-              <>
-                <BsRecordCircle size={14} className={hasSelectedSource ? "text-white" : "text-white/50"} />
-                <span className={hasSelectedSource ? "text-white" : "text-white/50"}>Record</span>
-              </>
+              <BsRecordCircle size={14} className={hasSelectedSource ? "text-white/80" : "text-white/30"} />
             )}
-          </Button>
+          </button>
 
-          <div className="w-px h-6 bg-white/30" />
-
-          <Button
-            variant="link"
-            size="sm"
+          {/* Open file */}
+          <button
+            className={`${styles.hudIconBtn} ${styles.electronNoDrag}`}
             onClick={openVideoFile}
-            className={`gap-1 text-white bg-transparent hover:bg-transparent px-0 flex-1 text-right text-xs ${styles.electronNoDrag} ${styles.folderButton}`}
             disabled={recording}
+            title="Open video file"
           >
-            <FaFolderMinus size={14} className="text-white" />
-            <span className={styles.folderText}>Open</span>
-          </Button>
+            <FaFolderMinus size={14} className="text-white/60" />
+          </button>
 
-          <div className="w-px h-6 bg-white/30 mx-2" />
-          <Button
-            variant="link"
-            size="icon"
-            className={`ml-2 ${styles.electronNoDrag} hudOverlayButton`}
-            title="Hide HUD"
-            onClick={sendHudOverlayHide}
-          >
-            <FiMinus size={18} style={{ color: '#fff', opacity: 0.7 }} />
-          </Button>
-
-          <Button
-            variant="link"
-            size="icon"
-            className={`ml-1 ${styles.electronNoDrag} hudOverlayButton`}
-            title="Close App"
-            onClick={sendHudOverlayClose}
-          >
-            <FiX size={18} style={{ color: '#fff', opacity: 0.7 }} />
-          </Button>
+          {/* Window controls */}
+          <div className={`flex items-center gap-0.5 ${styles.electronNoDrag}`}>
+            <button
+              className={styles.windowBtn}
+              title="Hide HUD"
+              onClick={sendHudOverlayHide}
+            >
+              <FiMinus size={14} className="text-white" />
+            </button>
+            <button
+              className={styles.windowBtn}
+              title="Close App"
+              onClick={sendHudOverlayClose}
+            >
+              <FiX size={14} className="text-white" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
