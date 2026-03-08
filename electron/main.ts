@@ -8,6 +8,13 @@ import { registerIpcHandlers } from './ipc/handlers'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// Use Screen & System Audio Recording permissions instead of CoreAudio Tap API on macOS.
+// CoreAudio Tap requires NSAudioCaptureUsageDescription in the parent app's Info.plist,
+// which doesn't work when running from a terminal/IDE during development, makes my life easier
+if (process.platform === 'darwin') {
+  app.commandLine.appendSwitch('disable-features', 'MacCatapLoopbackAudioForScreenShare')
+}
+
 export const RECORDINGS_DIR = path.join(app.getPath('userData'), 'recordings')
 
 

@@ -35,7 +35,11 @@
       }
     ],
     "icon": "icons/icons/mac/icon.icns",
-    "artifactName": "${productName}-Mac-${arch}-${version}-Installer.${ext}"
+    "artifactName": "${productName}-Mac-${arch}-${version}-Installer.${ext}",
+    "extendInfo": {
+      "NSAudioCaptureUsageDescription": "OpenScreen needs audio capture permission to record system audio.",
+      "NSCameraUseContinuityCameraDeviceType": true
+    }
   },
   "linux": {
     "target": [

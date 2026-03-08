@@ -7,14 +7,14 @@ import { AudioLevelMeter } from "../ui/audio-level-meter";
 import { Button } from "../ui/button";
 import { BsRecordCircle } from "react-icons/bs";
 import { FaRegStopCircle } from "react-icons/fa";
-import { MdMonitor, MdMic, MdMicOff } from "react-icons/md";
+import { MdMonitor, MdMic, MdMicOff, MdVolumeUp, MdVolumeOff } from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { FaFolderMinus } from "react-icons/fa6";
 import { FiMinus, FiX } from "react-icons/fi";
 import { ContentClamp } from "../ui/content-clamp";
 
 export function LaunchWindow() {
-  const { recording, toggleRecording, microphoneEnabled, setMicrophoneEnabled, microphoneDeviceId, setMicrophoneDeviceId } = useScreenRecorder();
+  const { recording, toggleRecording, microphoneEnabled, setMicrophoneEnabled, microphoneDeviceId, setMicrophoneDeviceId, systemAudioEnabled, setSystemAudioEnabled } = useScreenRecorder();
   const [recordingStart, setRecordingStart] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
 
@@ -164,6 +164,21 @@ export function LaunchWindow() {
           </Button>
 
           <div className="w-px h-6 bg-white/30" />
+
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => !recording && setSystemAudioEnabled(!systemAudioEnabled)}
+            disabled={recording}
+            className={`gap-1 text-white bg-transparent hover:bg-transparent px-1 text-xs ${styles.electronNoDrag}`}
+            title={systemAudioEnabled ? "Disable system audio" : "Enable system audio"}
+          >
+            {systemAudioEnabled ? (
+              <MdVolumeUp size={16} className="text-green-400" />
+            ) : (
+              <MdVolumeOff size={16} className="text-white/50" />
+            )}
+          </Button>
 
           <Button
             variant="link"

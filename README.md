@@ -29,6 +29,8 @@ OpenScreen is 100% free for personal and commercial use. Use it, modify it, dist
 
 ## Core Features
 - Record your whole screen or specific apps
+- Microphone recording with device selection.
+- System audio capture (record what's playing on your screen)
 - Add manual zooms (customizable depth levels)
 - Customize the duration and position of zooms however you please
 - Crop video recordings to hide parts
@@ -69,6 +71,14 @@ You may need to grant screen recording permissions depending on your desktop env
 ```bash
 ./Openscreen-Linux-*.AppImage --no-sandbox
 ```
+
+### Limitations
+
+System audio capture relies on Electron's [desktopCapturer](https://www.electronjs.org/docs/latest/api/desktop-capturer) and has some platform-specific quirks:
+
+- **macOS**: Requires macOS 13+. On macOS 14.2+ you'll be prompted to grant audio capture permission. macOS 12 and below does not support system audio (mic still works).
+- **Windows**: Works out of the box.
+- **Linux**: Needs PipeWire (default on Ubuntu 22.04+, Fedora 34+). Older PulseAudio-only setups may not support system audio (mic should still works).
 
 ## Built with
 - Electron
