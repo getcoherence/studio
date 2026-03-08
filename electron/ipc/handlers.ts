@@ -12,7 +12,6 @@ type SelectedSource = {
 };
 
 let selectedSource: SelectedSource | null = null;
-let currentVideoPath: string | null = null;
 let currentProjectPath: string | null = null;
 
 function normalizePath(filePath: string) {
@@ -129,7 +128,6 @@ export function registerIpcHandlers(
 		try {
 			const videoPath = path.join(RECORDINGS_DIR, fileName);
 			await fs.writeFile(videoPath, Buffer.from(videoData));
-			currentVideoPath = videoPath;
 			currentProjectPath = null;
 
 			const telemetryPath = `${videoPath}.cursor.json`;
