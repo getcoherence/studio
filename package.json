@@ -14,7 +14,8 @@
 		"build:win": "tsc && vite build && electron-builder --win",
 		"build:linux": "tsc && vite build && electron-builder --linux",
 		"test": "vitest --run",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
+		"prepare": "husky"
 	},
 	"dependencies": {
 		"@fix-webm-duration/fix": "^1.0.1",
@@ -69,6 +70,8 @@
 		"electron-icon-builder": "^2.0.1",
 		"electron-rebuild": "^3.2.9",
 		"fast-check": "^4.5.2",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.3.2",
 		"postcss": "^8.5.6",
 		"tailwindcss": "^3.4.18",
 		"terser": "^5.44.1",
@@ -78,5 +81,8 @@
 		"vite-plugin-electron-renderer": "^0.14.5",
 		"vitest": "^4.0.16"
 	},
-	"main": "dist-electron/main.js"
+	"main": "dist-electron/main.js",
+	"lint-staged": {
+		"*.{ts,tsx,js,jsx,mts,cts,json}": "biome check --no-errors-on-unmatched"
+	}
 }
