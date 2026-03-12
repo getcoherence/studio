@@ -12,13 +12,15 @@ import {
 	MdVolumeUp,
 } from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
+import { ChevronDown } from "lucide-react";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
 import { useScreenRecorder } from "../../hooks/useScreenRecorder";
+import { formatTimePadded } from "../../utils/timeUtils";
 import { AudioLevelMeter } from "../ui/audio-level-meter";
 import styles from "./LaunchWindow.module.css";
 
-const ICON_SIZE = 16;
+const ICON_SIZE = 18;
 
 const ICON_CONFIG = {
 	drag: { icon: RxDragHandleDots2, size: ICON_SIZE },
@@ -41,6 +43,15 @@ function getIcon(name: IconName, className?: string) {
 	const { icon: Icon, size } = ICON_CONFIG[name];
 	return <Icon size={size} className={className} />;
 }
+
+const hudGroupClasses =
+	"flex items-center gap-0.5 bg-white/5 rounded-full transition-colors duration-150 hover:bg-white/[0.08]";
+
+const hudIconBtnClasses =
+	"flex items-center justify-center p-2 rounded-full transition-all duration-150 cursor-pointer text-white hover:bg-white/10 hover:scale-[1.08] active:scale-95";
+
+const windowBtnClasses =
+	"flex items-center justify-center p-2 rounded-full transition-all duration-150 cursor-pointer opacity-50 hover:opacity-90 hover:bg-white/[0.08]";
 
 export function LaunchWindow() {
 	const {
@@ -89,13 +100,6 @@ export function LaunchWindow() {
 		};
 	}, [recording, recordingStart]);
 
-	const formatTime = (seconds: number) => {
-		const m = Math.floor(seconds / 60)
-			.toString()
-			.padStart(2, "0");
-		const s = (seconds % 60).toString().padStart(2, "0");
-		return `${m}:${s}`;
-	};
 	const [selectedSource, setSelectedSource] = useState("Screen");
 	const [hasSelectedSource, setHasSelectedSource] = useState(false);
 
@@ -169,39 +173,34 @@ export function LaunchWindow() {
 				{/* Mic controls panel */}
 				{showMicControls && (
 					<div
-						className={`flex items-center gap-2 px-4 py-2 ${styles.micPanel} ${styles.electronNoDrag}`}
+						className={`flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-[rgba(28,28,36,0.97)] to-[rgba(18,18,26,0.96)] backdrop-blur-[16px] backdrop-saturate-[140%] border border-[rgba(80,80,120,0.25)] rounded-2xl shadow-mic-panel animate-mic-panel-in ${styles.electronNoDrag}`}
 					>
-						<select
-							value={microphoneDeviceId || selectedDeviceId}
-							onChange={(e) => {
-								setSelectedDeviceId(e.target.value);
-								setMicrophoneDeviceId(e.target.value);
-							}}
-							className="flex-1 bg-white/10 text-white text-xs rounded-full px-3 py-1 border border-white/20 outline-none truncate"
-							style={{ maxWidth: "70%" }}
-						>
-							{devices.map((device) => (
-								<option key={device.deviceId} value={device.deviceId}>
-									{device.label}
-								</option>
-							))}
-						</select>
+						<div className="relative flex-1" style={{ maxWidth: "70%" }}>
+							<select
+								value={microphoneDeviceId || selectedDeviceId}
+								onChange={(e) => {
+									setSelectedDeviceId(e.target.value);
+									setMicrophoneDeviceId(e.target.value);
+								}}
+								className="w-full appearance-none bg-white/10 text-white text-xs rounded-full pl-3 pr-7 py-2 border border-white/20 outline-none truncate"
+							>
+								{devices.map((device) => (
+									<option key={device.deviceId} value={device.deviceId}>
+										{device.label}
+									</option>
+								))}
+							</select>
+							<ChevronDown
+								size={14}
+								className="absolute right-2 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none"
+							/>
+						</div>
 						<AudioLevelMeter level={level} className="w-24 h-4" />
 					</div>
 				)}
 
 				{/* Main pill bar */}
-				<div
-					className={`flex items-center gap-1.5 px-2 py-1.5 ${styles.hudBar}`}
-					style={{
-						borderRadius: 9999,
-						background:
-							"linear-gradient(135deg, rgba(28,28,36,0.97) 0%, rgba(18,18,26,0.96) 100%)",
-						backdropFilter: "blur(16px) saturate(140%)",
-						WebkitBackdropFilter: "blur(16px) saturate(140%)",
-						border: "1px solid rgba(80,80,120,0.25)",
-					}}
-				>
+				<div className="flex items-center gap-1.5 px-2 py-1.5 isolate rounded-full shadow-hud-bar bg-gradient-to-br from-[rgba(28,28,36,0.97)] to-[rgba(18,18,26,0.96)] backdrop-blur-[16px] backdrop-saturate-[140%] border border-[rgba(80,80,120,0.25)]">
 					{/* Drag handle */}
 					<div className={`flex items-center px-1 ${styles.electronDrag}`}>
 						{getIcon("drag", "text-white/30")}
@@ -209,7 +208,7 @@ export function LaunchWindow() {
 
 					{/* Source selector */}
 					<button
-						className={`${styles.hudGroup} ${styles.electronNoDrag}`}
+						className={`${hudGroupClasses} p-2 ${styles.electronNoDrag}`}
 						onClick={openSourceSelector}
 						disabled={recording}
 						title={selectedSource}
@@ -221,9 +220,9 @@ export function LaunchWindow() {
 					</button>
 
 					{/* Audio controls group */}
-					<div className={`${styles.hudGroup} ${styles.electronNoDrag}`}>
+					<div className={`${hudGroupClasses} ${styles.electronNoDrag}`}>
 						<button
-							className={`${styles.hudIconBtn} ${systemAudioEnabled ? styles.hudIconActive : ""}`}
+							className={`${hudIconBtnClasses} ${systemAudioEnabled ? "drop-shadow-[0_0_4px_rgba(74,222,128,0.4)]" : ""}`}
 							onClick={() =>
 								!recording && setSystemAudioEnabled(!systemAudioEnabled)
 							}
@@ -239,7 +238,7 @@ export function LaunchWindow() {
 								: getIcon("volumeOff", "text-white/40")}
 						</button>
 						<button
-							className={`${styles.hudIconBtn} ${microphoneEnabled ? styles.hudIconActive : ""}`}
+							className={`${hudIconBtnClasses} ${microphoneEnabled ? "drop-shadow-[0_0_4px_rgba(74,222,128,0.4)]" : ""}`}
 							onClick={toggleMicrophone}
 							disabled={recording}
 							title={
@@ -254,7 +253,11 @@ export function LaunchWindow() {
 
 					{/* Record/Stop group */}
 					<button
-						className={`${styles.hudGroup} ${styles.electronNoDrag} ${recording ? styles.recordingPulse : ""}`}
+						className={`flex items-center gap-0.5 rounded-full p-2 transition-colors duration-150 ${styles.electronNoDrag} ${
+							recording
+								? "animate-record-pulse bg-red-500/10"
+								: "bg-white/5 hover:bg-white/[0.08]"
+						}`}
 						onClick={hasSelectedSource ? toggleRecording : openSourceSelector}
 						disabled={!hasSelectedSource && !recording}
 						style={{ flex: "0 0 auto" }}
@@ -263,7 +266,7 @@ export function LaunchWindow() {
 							<>
 								{getIcon("stop", "text-red-400")}
 								<span className="text-red-400 text-xs font-semibold tabular-nums">
-									{formatTime(elapsed)}
+									{formatTimePadded(elapsed)}
 								</span>
 							</>
 						) : (
@@ -276,7 +279,7 @@ export function LaunchWindow() {
 
 					{/* Open video file */}
 					<button
-						className={`${styles.hudIconBtn} ${styles.electronNoDrag}`}
+						className={`${hudIconBtnClasses} ${styles.electronNoDrag}`}
 						onClick={openVideoFile}
 						disabled={recording}
 						title="Open video file"
@@ -286,7 +289,7 @@ export function LaunchWindow() {
 
 					{/* Open project */}
 					<button
-						className={`${styles.hudIconBtn} ${styles.electronNoDrag}`}
+						className={`${hudIconBtnClasses} ${styles.electronNoDrag}`}
 						onClick={openProjectFile}
 						disabled={recording}
 						title="Open project"
@@ -297,14 +300,14 @@ export function LaunchWindow() {
 					{/* Window controls */}
 					<div className={`flex items-center gap-0.5 ${styles.electronNoDrag}`}>
 						<button
-							className={styles.windowBtn}
+							className={windowBtnClasses}
 							title="Hide HUD"
 							onClick={sendHudOverlayHide}
 						>
 							{getIcon("minimize", "text-white")}
 						</button>
 						<button
-							className={styles.windowBtn}
+							className={windowBtnClasses}
 							title="Close App"
 							onClick={sendHudOverlayClose}
 						>
