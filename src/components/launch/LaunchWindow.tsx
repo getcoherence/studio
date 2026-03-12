@@ -3,13 +3,44 @@ import { BsRecordCircle } from "react-icons/bs";
 import { FaRegStopCircle } from "react-icons/fa";
 import { FaFolderOpen } from "react-icons/fa6";
 import { FiMinus, FiX } from "react-icons/fi";
-import { MdMic, MdMicOff, MdMonitor, MdVideoFile, MdVolumeOff, MdVolumeUp } from "react-icons/md";
+import {
+	MdMic,
+	MdMicOff,
+	MdMonitor,
+	MdVideoFile,
+	MdVolumeOff,
+	MdVolumeUp,
+} from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
 import { useScreenRecorder } from "../../hooks/useScreenRecorder";
 import { AudioLevelMeter } from "../ui/audio-level-meter";
 import styles from "./LaunchWindow.module.css";
+
+const ICON_SIZE = 16;
+
+const ICON_CONFIG = {
+	drag: { icon: RxDragHandleDots2, size: ICON_SIZE },
+	monitor: { icon: MdMonitor, size: ICON_SIZE },
+	volumeOn: { icon: MdVolumeUp, size: ICON_SIZE },
+	volumeOff: { icon: MdVolumeOff, size: ICON_SIZE },
+	micOn: { icon: MdMic, size: ICON_SIZE },
+	micOff: { icon: MdMicOff, size: ICON_SIZE },
+	stop: { icon: FaRegStopCircle, size: ICON_SIZE },
+	record: { icon: BsRecordCircle, size: ICON_SIZE },
+	videoFile: { icon: MdVideoFile, size: ICON_SIZE },
+	folder: { icon: FaFolderOpen, size: ICON_SIZE },
+	minimize: { icon: FiMinus, size: ICON_SIZE },
+	close: { icon: FiX, size: ICON_SIZE },
+} as const;
+
+type IconName = keyof typeof ICON_CONFIG;
+
+function getIcon(name: IconName, className?: string) {
+	const { icon: Icon, size } = ICON_CONFIG[name];
+	return <Icon size={size} className={className} />;
+}
 
 export function LaunchWindow() {
 	const {
@@ -132,7 +163,9 @@ export function LaunchWindow() {
 
 	return (
 		<div className="w-full h-full flex items-end justify-center bg-transparent">
-			<div className={`flex flex-col items-center gap-2 mx-auto ${styles.electronDrag}`}>
+			<div
+				className={`flex flex-col items-center gap-2 mx-auto ${styles.electronDrag}`}
+			>
 				{/* Mic controls panel */}
 				{showMicControls && (
 					<div
@@ -162,7 +195,8 @@ export function LaunchWindow() {
 					className={`flex items-center gap-1.5 px-2 py-1.5 ${styles.hudBar}`}
 					style={{
 						borderRadius: 9999,
-						background: "linear-gradient(135deg, rgba(28,28,36,0.97) 0%, rgba(18,18,26,0.96) 100%)",
+						background:
+							"linear-gradient(135deg, rgba(28,28,36,0.97) 0%, rgba(18,18,26,0.96) 100%)",
 						backdropFilter: "blur(16px) saturate(140%)",
 						WebkitBackdropFilter: "blur(16px) saturate(140%)",
 						border: "1px solid rgba(80,80,120,0.25)",
@@ -170,7 +204,7 @@ export function LaunchWindow() {
 				>
 					{/* Drag handle */}
 					<div className={`flex items-center px-1 ${styles.electronDrag}`}>
-						<RxDragHandleDots2 size={16} className="text-white/30" />
+						{getIcon("drag", "text-white/30")}
 					</div>
 
 					{/* Source selector */}
@@ -180,7 +214,7 @@ export function LaunchWindow() {
 						disabled={recording}
 						title={selectedSource}
 					>
-						<MdMonitor size={14} className="text-white/80" />
+						{getIcon("monitor", "text-white/80")}
 						<span className="text-white/70 text-[11px] max-w-[72px] truncate">
 							{selectedSource}
 						</span>
@@ -190,27 +224,31 @@ export function LaunchWindow() {
 					<div className={`${styles.hudGroup} ${styles.electronNoDrag}`}>
 						<button
 							className={`${styles.hudIconBtn} ${systemAudioEnabled ? styles.hudIconActive : ""}`}
-							onClick={() => !recording && setSystemAudioEnabled(!systemAudioEnabled)}
+							onClick={() =>
+								!recording && setSystemAudioEnabled(!systemAudioEnabled)
+							}
 							disabled={recording}
-							title={systemAudioEnabled ? "Disable system audio" : "Enable system audio"}
+							title={
+								systemAudioEnabled
+									? "Disable system audio"
+									: "Enable system audio"
+							}
 						>
-							{systemAudioEnabled ? (
-								<MdVolumeUp size={15} className="text-green-400" />
-							) : (
-								<MdVolumeOff size={15} className="text-white/40" />
-							)}
+							{systemAudioEnabled
+								? getIcon("volumeOn", "text-green-400")
+								: getIcon("volumeOff", "text-white/40")}
 						</button>
 						<button
 							className={`${styles.hudIconBtn} ${microphoneEnabled ? styles.hudIconActive : ""}`}
 							onClick={toggleMicrophone}
 							disabled={recording}
-							title={microphoneEnabled ? "Disable microphone" : "Enable microphone"}
+							title={
+								microphoneEnabled ? "Disable microphone" : "Enable microphone"
+							}
 						>
-							{microphoneEnabled ? (
-								<MdMic size={15} className="text-green-400" />
-							) : (
-								<MdMicOff size={15} className="text-white/40" />
-							)}
+							{microphoneEnabled
+								? getIcon("micOn", "text-green-400")
+								: getIcon("micOff", "text-white/40")}
 						</button>
 					</div>
 
@@ -223,16 +261,16 @@ export function LaunchWindow() {
 					>
 						{recording ? (
 							<>
-								<FaRegStopCircle size={13} className="text-red-400" />
+								{getIcon("stop", "text-red-400")}
 								<span className="text-red-400 text-xs font-semibold tabular-nums">
 									{formatTime(elapsed)}
 								</span>
 							</>
 						) : (
-							<BsRecordCircle
-								size={14}
-								className={hasSelectedSource ? "text-white/80" : "text-white/30"}
-							/>
+							getIcon(
+								"record",
+								hasSelectedSource ? "text-white/80" : "text-white/30",
+							)
 						)}
 					</button>
 
@@ -243,7 +281,7 @@ export function LaunchWindow() {
 						disabled={recording}
 						title="Open video file"
 					>
-						<MdVideoFile size={14} className="text-white/60" />
+						{getIcon("videoFile", "text-white/60")}
 					</button>
 
 					{/* Open project */}
@@ -253,16 +291,24 @@ export function LaunchWindow() {
 						disabled={recording}
 						title="Open project"
 					>
-						<FaFolderOpen size={14} className="text-white/60" />
+						{getIcon("folder", "text-white/60")}
 					</button>
 
 					{/* Window controls */}
 					<div className={`flex items-center gap-0.5 ${styles.electronNoDrag}`}>
-						<button className={styles.windowBtn} title="Hide HUD" onClick={sendHudOverlayHide}>
-							<FiMinus size={14} className="text-white" />
+						<button
+							className={styles.windowBtn}
+							title="Hide HUD"
+							onClick={sendHudOverlayHide}
+						>
+							{getIcon("minimize", "text-white")}
 						</button>
-						<button className={styles.windowBtn} title="Close App" onClick={sendHudOverlayClose}>
-							<FiX size={14} className="text-white" />
+						<button
+							className={styles.windowBtn}
+							title="Close App"
+							onClick={sendHudOverlayClose}
+						>
+							{getIcon("close", "text-white")}
 						</button>
 					</div>
 				</div>
