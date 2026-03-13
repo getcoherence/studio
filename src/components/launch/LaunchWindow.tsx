@@ -13,6 +13,7 @@ import {
 } from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { ChevronDown } from "lucide-react";
+import { Tooltip } from "../ui/tooltip";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
 import { useScreenRecorder } from "../../hooks/useScreenRecorder";
@@ -20,7 +21,7 @@ import { formatTimePadded } from "../../utils/timeUtils";
 import { AudioLevelMeter } from "../ui/audio-level-meter";
 import styles from "./LaunchWindow.module.css";
 
-const ICON_SIZE = 18;
+const ICON_SIZE = 20;
 
 const ICON_CONFIG = {
 	drag: { icon: RxDragHandleDots2, size: ICON_SIZE },
@@ -278,24 +279,26 @@ export function LaunchWindow() {
 					</button>
 
 					{/* Open video file */}
-					<button
-						className={`${hudIconBtnClasses} ${styles.electronNoDrag}`}
-						onClick={openVideoFile}
-						disabled={recording}
-						title="Open video file"
-					>
-						{getIcon("videoFile", "text-white/60")}
-					</button>
+					<Tooltip content="Open video file">
+						<button
+							className={`${hudIconBtnClasses} ${styles.electronNoDrag}`}
+							onClick={openVideoFile}
+							disabled={recording}
+						>
+							{getIcon("videoFile", "text-white/60")}
+						</button>
+					</Tooltip>
 
 					{/* Open project */}
-					<button
-						className={`${hudIconBtnClasses} ${styles.electronNoDrag}`}
-						onClick={openProjectFile}
-						disabled={recording}
-						title="Open project"
-					>
-						{getIcon("folder", "text-white/60")}
-					</button>
+					<Tooltip content="Open project">
+						<button
+							className={`${hudIconBtnClasses} ${styles.electronNoDrag}`}
+							onClick={openProjectFile}
+							disabled={recording}
+						>
+							{getIcon("folder", "text-white/60")}
+						</button>
+					</Tooltip>
 
 					{/* Window controls */}
 					<div className={`flex items-center gap-0.5 ${styles.electronNoDrag}`}>
