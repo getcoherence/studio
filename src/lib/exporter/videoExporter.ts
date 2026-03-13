@@ -219,7 +219,11 @@ export class VideoExporter {
 				// Capture decoder config metadata from encoder output
 				if (meta?.decoderConfig?.description && !videoDescription) {
 					const desc = meta.decoderConfig.description;
-					videoDescription = new Uint8Array(desc instanceof ArrayBuffer ? desc : (desc as any));
+					if (desc instanceof ArrayBuffer || desc instanceof SharedArrayBuffer) {
+						videoDescription = new Uint8Array(desc);
+					} else if (ArrayBuffer.isView(desc)) {
+						videoDescription = new Uint8Array(desc.buffer, desc.byteOffset, desc.byteLength);
+					}
 					this.videoDescription = videoDescription;
 				}
 				// Capture colorSpace from encoder metadata if provided

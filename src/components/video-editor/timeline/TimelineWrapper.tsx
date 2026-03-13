@@ -187,12 +187,12 @@ export default function TimelineWrapper({
 	// Drag/resize tooltip (direct DOM updates, no re-renders)
 	const tooltipRef = useRef<HTMLDivElement>(null);
 
-	const formatTooltipMs = (ms: number) => {
+	const formatTooltipMs = useCallback((ms: number) => {
 		const s = ms / 1000;
 		const min = Math.floor(s / 60);
 		const sec = s % 60;
 		return min > 0 ? `${min}:${sec.toFixed(1).padStart(4, "0")}` : `${sec.toFixed(1)}s`;
-	};
+	}, []);
 
 	const showTooltip = useCallback(
 		(span: { start: number; end: number } | null, screenX?: number) => {
@@ -213,7 +213,7 @@ export default function TimelineWrapper({
 				}
 			}
 		},
-		[],
+		[formatTooltipMs],
 	);
 
 	const onDragStart = useCallback(

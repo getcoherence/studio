@@ -69,7 +69,7 @@ export function useMicrophoneDevices(enabled: boolean = true) {
 			mounted = false;
 			navigator.mediaDevices.removeEventListener("devicechange", handleDeviceChange);
 		};
-	}, [enabled]);
+	}, [enabled, selectedDeviceId]);
 
 	return {
 		devices,

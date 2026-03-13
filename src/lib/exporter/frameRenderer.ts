@@ -1,8 +1,17 @@
-import { Application, BlurFilter, Container, Graphics, Sprite, Texture } from "pixi.js";
+import {
+	Application,
+	BlurFilter,
+	Container,
+	Graphics,
+	Sprite,
+	Texture,
+	type TextureSourceLike,
+} from "pixi.js";
 import type {
 	AnnotationRegion,
 	CropRegion,
 	SpeedRegion,
+	ZoomDepth,
 	ZoomRegion,
 } from "@/components/video-editor/types";
 import { ZOOM_DEPTH_SCALES } from "@/components/video-editor/types";
@@ -42,6 +51,14 @@ interface AnimationState {
 	focusY: number;
 }
 
+interface LayoutCache {
+	stageSize: { width: number; height: number };
+	videoSize: { width: number; height: number };
+	baseScale: number;
+	baseOffset: { x: number; y: number };
+	maskRect: { x: number; y: number; width: number; height: number };
+}
+
 // Renders video frames with all effects (background, zoom, crop, blur, shadow) to an offscreen canvas for export.
 
 export class FrameRenderer {
@@ -49,7 +66,7 @@ export class FrameRenderer {
 	private cameraContainer: Container | null = null;
 	private videoContainer: Container | null = null;
 	private videoSprite: Sprite | null = null;
-	private backgroundSprite: Sprite | null = null;
+	private backgroundSprite: HTMLCanvasElement | null = null;
 	private maskGraphics: Graphics | null = null;
 	private blurFilter: BlurFilter | null = null;
 	private shadowCanvas: HTMLCanvasElement | null = null;
@@ -58,7 +75,7 @@ export class FrameRenderer {
 	private compositeCtx: CanvasRenderingContext2D | null = null;
 	private config: FrameRenderConfig;
 	private animationState: AnimationState;
-	private layoutCache: any = null;
+	private layoutCache: LayoutCache | null = null;
 	private currentVideoTime = 0;
 
 	constructor(config: FrameRenderConfig) {
@@ -263,7 +280,7 @@ export class FrameRenderer {
 		}
 
 		// Store the background canvas for compositing
-		this.backgroundSprite = bgCanvas as any;
+		this.backgroundSprite = bgCanvas;
 	}
 
 	async renderFrame(videoFrame: VideoFrame, timestamp: number): Promise<void> {
@@ -275,13 +292,13 @@ export class FrameRenderer {
 
 		// Create or update video sprite from VideoFrame
 		if (!this.videoSprite) {
-			const texture = Texture.from(videoFrame as any);
+			const texture = Texture.from(videoFrame as unknown as TextureSourceLike);
 			this.videoSprite = new Sprite(texture);
 			this.videoContainer.addChild(this.videoSprite);
 		} else {
 			// Destroy old texture to avoid memory leaks, then create new one
 			const oldTexture = this.videoSprite.texture;
-			const newTexture = Texture.from(videoFrame as any);
+			const newTexture = Texture.from(videoFrame as unknown as TextureSourceLike);
 			this.videoSprite.texture = newTexture;
 			oldTexture.destroy(true);
 		}
@@ -298,12 +315,17 @@ export class FrameRenderer {
 			maxMotionIntensity = Math.max(maxMotionIntensity, motionIntensity);
 		}
 
+		const layoutCache = this.layoutCache;
+		if (!layoutCache) {
+			throw new Error("Layout cache not initialized");
+		}
+
 		// Apply transform once with maximum motion intensity from all ticks
 		applyZoomTransform({
 			cameraContainer: this.cameraContainer,
 			blurFilter: this.blurFilter,
-			stageSize: this.layoutCache.stageSize,
-			baseMask: this.layoutCache.maskRect,
+			stageSize: layoutCache.stageSize,
+			baseMask: layoutCache.maskRect,
 			zoomScale: this.animationState.scale,
 			focusX: this.animationState.focusX,
 			focusY: this.animationState.focusY,
@@ -411,10 +433,10 @@ export class FrameRenderer {
 
 	private clampFocusToStage(
 		focus: { cx: number; cy: number },
-		depth: number,
+		depth: ZoomDepth,
 	): { cx: number; cy: number } {
 		if (!this.layoutCache) return focus;
-		return clampFocusToStageUtil(focus, depth as any, this.layoutCache.stageSize);
+		return clampFocusToStageUtil(focus, depth, this.layoutCache.stageSize);
 	}
 
 	private updateAnimationState(timeMs: number): number {
@@ -493,7 +515,7 @@ export class FrameRenderer {
 
 		// Step 1: Draw background layer (with optional blur, not affected by zoom)
 		if (this.backgroundSprite) {
-			const bgCanvas = this.backgroundSprite as any as HTMLCanvasElement;
+			const bgCanvas = this.backgroundSprite;
 
 			if (this.config.showBlur) {
 				ctx.save();
