@@ -1,24 +1,17 @@
+import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BsRecordCircle } from "react-icons/bs";
 import { FaRegStopCircle } from "react-icons/fa";
 import { FaFolderOpen } from "react-icons/fa6";
 import { FiMinus, FiX } from "react-icons/fi";
-import {
-	MdMic,
-	MdMicOff,
-	MdMonitor,
-	MdVideoFile,
-	MdVolumeOff,
-	MdVolumeUp,
-} from "react-icons/md";
+import { MdMic, MdMicOff, MdMonitor, MdVideoFile, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
-import { ChevronDown } from "lucide-react";
-import { Tooltip } from "../ui/tooltip";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
 import { useScreenRecorder } from "../../hooks/useScreenRecorder";
 import { formatTimePadded } from "../../utils/timeUtils";
 import { AudioLevelMeter } from "../ui/audio-level-meter";
+import { Tooltip } from "../ui/tooltip";
 import styles from "./LaunchWindow.module.css";
 
 const ICON_SIZE = 20;
@@ -168,9 +161,7 @@ export function LaunchWindow() {
 
 	return (
 		<div className="w-full h-full flex items-end justify-center bg-transparent">
-			<div
-				className={`flex flex-col items-center gap-2 mx-auto ${styles.electronDrag}`}
-			>
+			<div className={`flex flex-col items-center gap-2 mx-auto ${styles.electronDrag}`}>
 				{/* Mic controls panel */}
 				{showMicControls && (
 					<div
@@ -224,15 +215,9 @@ export function LaunchWindow() {
 					<div className={`${hudGroupClasses} ${styles.electronNoDrag}`}>
 						<button
 							className={`${hudIconBtnClasses} ${systemAudioEnabled ? "drop-shadow-[0_0_4px_rgba(74,222,128,0.4)]" : ""}`}
-							onClick={() =>
-								!recording && setSystemAudioEnabled(!systemAudioEnabled)
-							}
+							onClick={() => !recording && setSystemAudioEnabled(!systemAudioEnabled)}
 							disabled={recording}
-							title={
-								systemAudioEnabled
-									? "Disable system audio"
-									: "Enable system audio"
-							}
+							title={systemAudioEnabled ? "Disable system audio" : "Enable system audio"}
 						>
 							{systemAudioEnabled
 								? getIcon("volumeOn", "text-green-400")
@@ -242,9 +227,7 @@ export function LaunchWindow() {
 							className={`${hudIconBtnClasses} ${microphoneEnabled ? "drop-shadow-[0_0_4px_rgba(74,222,128,0.4)]" : ""}`}
 							onClick={toggleMicrophone}
 							disabled={recording}
-							title={
-								microphoneEnabled ? "Disable microphone" : "Enable microphone"
-							}
+							title={microphoneEnabled ? "Disable microphone" : "Enable microphone"}
 						>
 							{microphoneEnabled
 								? getIcon("micOn", "text-green-400")
@@ -255,9 +238,7 @@ export function LaunchWindow() {
 					{/* Record/Stop group */}
 					<button
 						className={`flex items-center gap-0.5 rounded-full p-2 transition-colors duration-150 ${styles.electronNoDrag} ${
-							recording
-								? "animate-record-pulse bg-red-500/10"
-								: "bg-white/5 hover:bg-white/[0.08]"
+							recording ? "animate-record-pulse bg-red-500/10" : "bg-white/5 hover:bg-white/[0.08]"
 						}`}
 						onClick={hasSelectedSource ? toggleRecording : openSourceSelector}
 						disabled={!hasSelectedSource && !recording}
@@ -271,10 +252,7 @@ export function LaunchWindow() {
 								</span>
 							</>
 						) : (
-							getIcon(
-								"record",
-								hasSelectedSource ? "text-white/80" : "text-white/30",
-							)
+							getIcon("record", hasSelectedSource ? "text-white/80" : "text-white/30")
 						)}
 					</button>
 
@@ -302,18 +280,10 @@ export function LaunchWindow() {
 
 					{/* Window controls */}
 					<div className={`flex items-center gap-0.5 ${styles.electronNoDrag}`}>
-						<button
-							className={windowBtnClasses}
-							title="Hide HUD"
-							onClick={sendHudOverlayHide}
-						>
+						<button className={windowBtnClasses} title="Hide HUD" onClick={sendHudOverlayHide}>
 							{getIcon("minimize", "text-white")}
 						</button>
-						<button
-							className={windowBtnClasses}
-							title="Close App"
-							onClick={sendHudOverlayClose}
-						>
+						<button className={windowBtnClasses} title="Close App" onClick={sendHudOverlayClose}>
 							{getIcon("close", "text-white")}
 						</button>
 					</div>

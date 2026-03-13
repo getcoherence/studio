@@ -29,10 +29,8 @@ module.exports = {
 				"mic-panel-in": "mic-panel-in 0.15s ease-out",
 			},
 			boxShadow: {
-				"hud-bar":
-					"0 2px 16px rgba(0, 0, 0, 0.25), 0 0 40px rgba(100, 80, 200, 0.08)",
-				"mic-panel":
-					"0 2px 12px rgba(0, 0, 0, 0.2), 0 0 30px rgba(100, 80, 200, 0.06)",
+				"hud-bar": "0 2px 16px rgba(0, 0, 0, 0.25), 0 0 40px rgba(100, 80, 200, 0.08)",
+				"mic-panel": "0 2px 12px rgba(0, 0, 0, 0.2), 0 0 30px rgba(100, 80, 200, 0.06)",
 			},
 			borderRadius: {
 				lg: "var(--radius)",
