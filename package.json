@@ -31,6 +31,7 @@
 		"@radix-ui/react-tabs": "^1.1.13",
 		"@radix-ui/react-toggle": "^1.1.10",
 		"@radix-ui/react-toggle-group": "^1.1.11",
+		"@radix-ui/react-tooltip": "^1.2.8",
 		"@types/gif.js": "^0.2.5",
 		"@uiw/color-convert": "^2.9.2",
 		"@uiw/react-color-block": "^2.9.2",
