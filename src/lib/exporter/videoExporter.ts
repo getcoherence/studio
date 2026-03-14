@@ -13,6 +13,9 @@ import { VideoMuxer } from "./muxer";
 import { StreamingVideoDecoder } from "./streamingDecoder";
 import type { ExportConfig, ExportProgress, ExportResult } from "./types";
 
+const ENCODER_STALL_TIMEOUT_MS = 15_000;
+const ENCODER_FLUSH_TIMEOUT_MS = 20_000;
+
 interface VideoExporterConfig extends ExportConfig {
 	videoUrl: string;
 	webcamVideoUrl?: string;
@@ -45,35 +48,76 @@ export class VideoExporter {
 	private webcamDecoder: StreamingVideoDecoder | null = null;
 	private cancelled = false;
 	private encodeQueue = 0;
-	// Increased queue size for better throughput with hardware encoding
+	// Keep a smaller queue for software encoding so Windows does not balloon memory.
 	private readonly MAX_ENCODE_QUEUE = 120;
 	private videoDescription: Uint8Array | undefined;
 	private videoColorSpace: VideoColorSpaceInit | undefined;
-	// Track muxing promises for parallel processing
 	private muxingPromises: Promise<void>[] = [];
 	private chunkCount = 0;
+	private lastEncoderOutputAt = 0;
+	private fatalEncoderError: Error | null = null;
 
 	constructor(config: VideoExporterConfig) {
 		this.config = config;
 	}
 
 	async export(): Promise<ExportResult> {
-		let webcamFrameQueue: AsyncVideoFrameQueue | null = null;
-		try {
-			this.cleanup();
-			this.cancelled = false;
+		const encoderPreferences = this.getEncoderPreferences();
+		let lastError: Error | null = null;
 
-			// Initialize streaming decoder and load video metadata
-			this.streamingDecoder = new StreamingVideoDecoder();
-			const videoInfo = await this.streamingDecoder.loadMetadata(this.config.videoUrl);
+		for (const encoderPreference of encoderPreferences) {
+			try {
+				return await this.exportWithEncoderPreference(encoderPreference);
+			} catch (error) {
+				const normalizedError = error instanceof Error ? error : new Error(String(error));
+				lastError = normalizedError;
+
+				if (this.cancelled) {
+					return { success: false, error: "Export cancelled" };
+				}
+
+				if (encoderPreferences.length > 1) {
+					console.warn(
+						`[VideoExporter] ${encoderPreference} export attempt failed:`,
+						normalizedError,
+					);
+				}
+			} finally {
+				this.cleanup();
+			}
+		}
+
+		return {
+			success: false,
+			error: lastError?.message || "Export failed",
+		};
+	}
+
+	private async exportWithEncoderPreference(
+		encoderPreference: HardwareAcceleration,
+	): Promise<ExportResult> {
+		let webcamFrameQueue: AsyncVideoFrameQueue | null = null;
+		let stopWebcamDecode = false;
+		let webcamDecodeError: Error | null = null;
+		let webcamDecodePromise: Promise<void> | null = null;
+		let webcamDecoder: StreamingVideoDecoder | null = null;
+
+		this.cleanup();
+		this.cancelled = false;
+		this.fatalEncoderError = null;
+
+		try {
+			const streamingDecoder = new StreamingVideoDecoder();
+			this.streamingDecoder = streamingDecoder;
+			const videoInfo = await streamingDecoder.loadMetadata(this.config.videoUrl);
 			let webcamInfo: Awaited<ReturnType<StreamingVideoDecoder["loadMetadata"]>> | null = null;
 			if (this.config.webcamVideoUrl) {
-				this.webcamDecoder = new StreamingVideoDecoder();
-				webcamInfo = await this.webcamDecoder.loadMetadata(this.config.webcamVideoUrl);
+				webcamDecoder = new StreamingVideoDecoder();
+				this.webcamDecoder = webcamDecoder;
+				webcamInfo = await webcamDecoder.loadMetadata(this.config.webcamVideoUrl);
 			}
 
-			// Initialize frame renderer
-			this.renderer = new FrameRenderer({
+			const renderer = new FrameRenderer({
 				width: this.config.width,
 				height: this.config.height,
 				wallpaper: this.config.wallpaper,
@@ -94,18 +138,17 @@ export class VideoExporter {
 				previewWidth: this.config.previewWidth,
 				previewHeight: this.config.previewHeight,
 			});
-			await this.renderer.initialize();
+			this.renderer = renderer;
+			await renderer.initialize();
 
-			// Initialize video encoder
-			await this.initializeEncoder();
+			await this.initializeEncoder(encoderPreference);
 
-			// Initialize muxer (with audio if source has an audio track)
 			const hasAudio = videoInfo.hasAudio;
-			this.muxer = new VideoMuxer(this.config, hasAudio);
-			await this.muxer.initialize();
+			const muxer = new VideoMuxer(this.config, hasAudio);
+			this.muxer = muxer;
+			await muxer.initialize();
 
-			// Calculate effective duration and frame count (excluding trim regions)
-			const effectiveDuration = this.streamingDecoder.getEffectiveDuration(
+			const effectiveDuration = streamingDecoder.getEffectiveDuration(
 				this.config.trimRegions,
 				this.config.speedRegions,
 			);
@@ -117,16 +160,19 @@ export class VideoExporter {
 			console.log("[VideoExporter] Total frames to export:", totalFrames);
 			console.log("[VideoExporter] Using streaming decode (web-demuxer + VideoDecoder)");
 
-			const frameDuration = 1_000_000 / this.config.frameRate; // in microseconds
+			const frameDuration = 1_000_000 / this.config.frameRate;
 			let frameIndex = 0;
+			const maxEncodeQueue =
+				encoderPreference === "prefer-software"
+					? Math.min(this.MAX_ENCODE_QUEUE, 32)
+					: this.MAX_ENCODE_QUEUE;
+
 			webcamFrameQueue = this.config.webcamVideoUrl ? new AsyncVideoFrameQueue() : null;
-			let stopWebcamDecode = false;
-			let webcamDecodeError: Error | null = null;
-			const webcamDecodePromise =
-				this.webcamDecoder && webcamFrameQueue
+			webcamDecodePromise =
+				webcamDecoder && webcamFrameQueue
 					? (() => {
 							const queue = webcamFrameQueue;
-							return this.webcamDecoder
+							return webcamDecoder
 								.decodeAll(
 									this.config.frameRate,
 									this.config.trimRegions,
@@ -144,7 +190,7 @@ export class VideoExporter {
 								)
 								.catch((error) => {
 									webcamDecodeError = error instanceof Error ? error : new Error(String(error));
-									throw error;
+									throw webcamDecodeError;
 								})
 								.finally(() => {
 									if (webcamDecodeError) {
@@ -156,8 +202,7 @@ export class VideoExporter {
 						})()
 					: null;
 
-			// Stream decode and process frames — no seeking!
-			await this.streamingDecoder.decodeAll(
+			await streamingDecoder.decodeAll(
 				this.config.frameRate,
 				this.config.trimRegions,
 				this.config.speedRegions,
@@ -168,21 +213,22 @@ export class VideoExporter {
 							return;
 						}
 
+						if (this.fatalEncoderError) {
+							throw this.fatalEncoderError;
+						}
+
 						const timestamp = frameIndex * frameDuration;
 						webcamFrame = webcamFrameQueue ? await webcamFrameQueue.dequeue() : null;
-						const renderer = this.renderer;
-						if (this.cancelled || !renderer) {
+						if (this.cancelled) {
 							return;
 						}
 
-						// Render the frame with all effects using source timestamp
-						const sourceTimestampUs = sourceTimestampMs * 1000; // Convert to microseconds
+						const sourceTimestampUs = sourceTimestampMs * 1000;
 						await renderer.renderFrame(videoFrame, sourceTimestampUs, webcamFrame);
 
 						const canvas = renderer.getCanvas();
 
-						// Create VideoFrame from canvas on GPU without reading pixels
-						// @ts-expect-error - colorSpace not in TypeScript definitions but works at runtime
+						// @ts-expect-error - colorSpace is available at runtime even if TS does not know it.
 						const exportFrame = new VideoFrame(canvas, {
 							timestamp,
 							duration: frameDuration,
@@ -194,12 +240,19 @@ export class VideoExporter {
 							},
 						});
 
-						// Check encoder queue before encoding to keep it full
 						while (
 							this.encoder &&
-							this.encoder.encodeQueueSize >= this.MAX_ENCODE_QUEUE &&
+							this.encoder.encodeQueueSize >= maxEncodeQueue &&
 							!this.cancelled
 						) {
+							if (Date.now() - this.lastEncoderOutputAt > ENCODER_STALL_TIMEOUT_MS) {
+								exportFrame.close();
+								throw new Error(
+									encoderPreference === "prefer-hardware"
+										? "The hardware video encoder stopped responding. Retrying with a safer encoder."
+										: "The video encoder stopped responding during export.",
+								);
+							}
 							await new Promise((resolve) => setTimeout(resolve, 5));
 						}
 
@@ -213,18 +266,14 @@ export class VideoExporter {
 						}
 
 						exportFrame.close();
-
 						frameIndex++;
 
-						// Update progress
-						if (this.config.onProgress) {
-							this.config.onProgress({
-								currentFrame: frameIndex,
-								totalFrames,
-								percentage: (frameIndex / totalFrames) * 100,
-								estimatedTimeRemaining: 0,
-							});
-						}
+						this.reportProgress({
+							currentFrame: frameIndex,
+							totalFrames,
+							percentage: (frameIndex / totalFrames) * 100,
+							estimatedTimeRemaining: 0,
+						});
 					} finally {
 						videoFrame.close();
 						webcamFrame?.close();
@@ -236,38 +285,47 @@ export class VideoExporter {
 				return { success: false, error: "Export cancelled" };
 			}
 
+			if (this.fatalEncoderError) {
+				throw this.fatalEncoderError;
+			}
+
 			stopWebcamDecode = true;
 			webcamFrameQueue?.destroy();
-			this.webcamDecoder?.cancel();
+			webcamDecoder?.cancel();
 			await webcamDecodePromise;
 
-			// Finalize encoding
 			if (this.encoder && this.encoder.state === "configured") {
-				await this.encoder.flush();
+				await this.withTimeout(
+					this.encoder.flush(),
+					ENCODER_FLUSH_TIMEOUT_MS,
+					encoderPreference === "prefer-hardware"
+						? "The hardware video encoder stopped responding while finalizing the export."
+						: "The video encoder stopped responding while finalizing the export.",
+				);
 			}
 
-			// Wait for all video muxing operations to complete
+			if (this.fatalEncoderError) {
+				throw this.fatalEncoderError;
+			}
+
 			await Promise.all(this.muxingPromises);
 
-			if (this.config.onProgress) {
-				this.config.onProgress({
-					currentFrame: totalFrames,
-					totalFrames,
-					percentage: 100,
-					estimatedTimeRemaining: 0,
-					phase: "finalizing",
-				});
-			}
+			this.reportProgress({
+				currentFrame: totalFrames,
+				totalFrames,
+				percentage: 100,
+				estimatedTimeRemaining: 0,
+				phase: "finalizing",
+			});
 
-			// Process audio track if present
 			if (hasAudio && !this.cancelled) {
-				const demuxer = this.streamingDecoder!.getDemuxer();
+				const demuxer = streamingDecoder.getDemuxer();
 				if (demuxer) {
 					console.log("[VideoExporter] Processing audio track...");
 					this.audioProcessor = new AudioProcessor();
 					await this.audioProcessor.process(
 						demuxer,
-						this.muxer!,
+						muxer,
 						this.config.videoUrl,
 						this.config.trimRegions,
 						this.config.speedRegions,
@@ -276,31 +334,30 @@ export class VideoExporter {
 				}
 			}
 
-			// Finalize muxer and get output blob
-			const blob = await this.muxer!.finalize();
-
+			const blob = await muxer.finalize();
 			return { success: true, blob };
-		} catch (error) {
-			console.error("Export error:", error);
-			return {
-				success: false,
-				error: error instanceof Error ? error.message : String(error),
-			};
 		} finally {
+			stopWebcamDecode = true;
 			webcamFrameQueue?.destroy();
-			this.cleanup();
+			webcamDecoder?.cancel();
+			if (webcamDecodePromise) {
+				await webcamDecodePromise.catch(() => undefined);
+			}
 		}
 	}
 
-	private async initializeEncoder(): Promise<void> {
+	private async initializeEncoder(hardwareAcceleration: HardwareAcceleration): Promise<void> {
 		this.encodeQueue = 0;
 		this.muxingPromises = [];
 		this.chunkCount = 0;
+		this.lastEncoderOutputAt = Date.now();
+		this.fatalEncoderError = null;
 		let videoDescription: Uint8Array | undefined;
 
 		this.encoder = new VideoEncoder({
 			output: (chunk, meta) => {
-				// Capture decoder config metadata from encoder output
+				this.lastEncoderOutputAt = Date.now();
+
 				if (meta?.decoderConfig?.description && !videoDescription) {
 					const desc = meta.decoderConfig.description;
 					if (desc instanceof ArrayBuffer || desc instanceof SharedArrayBuffer) {
@@ -310,19 +367,17 @@ export class VideoExporter {
 					}
 					this.videoDescription = videoDescription;
 				}
-				// Capture colorSpace from encoder metadata if provided
+
 				if (meta?.decoderConfig?.colorSpace && !this.videoColorSpace) {
 					this.videoColorSpace = meta.decoderConfig.colorSpace;
 				}
 
-				// Stream chunk to muxer immediately (parallel processing)
 				const isFirstChunk = this.chunkCount === 0;
 				this.chunkCount++;
 
 				const muxingPromise = (async () => {
 					try {
 						if (isFirstChunk && this.videoDescription) {
-							// Add decoder config for the first chunk
 							const colorSpace = this.videoColorSpace || {
 								primaries: "bt709",
 								transfer: "iec61966-2-1",
@@ -354,43 +409,39 @@ export class VideoExporter {
 			},
 			error: (error) => {
 				console.error("[VideoExporter] Encoder error:", error);
-				// Stop export encoding failed
-				this.cancelled = true;
+				this.fatalEncoderError =
+					error instanceof Error
+						? error
+						: new Error(`Video encoder error: ${String(error)}`);
+				this.streamingDecoder?.cancel();
+				this.webcamDecoder?.cancel();
 			},
 		});
 
-		const codec = this.config.codec || "avc1.640033";
-
 		const encoderConfig: VideoEncoderConfig = {
-			codec,
+			codec: this.config.codec || "avc1.640033",
 			width: this.config.width,
 			height: this.config.height,
 			bitrate: this.config.bitrate,
 			framerate: this.config.frameRate,
-			latencyMode: "quality", // Changed from 'realtime' to 'quality' for better throughput
+			latencyMode: "quality",
 			bitrateMode: "variable",
-			hardwareAcceleration: "prefer-hardware",
+			hardwareAcceleration,
 		};
 
-		// Check hardware support first
-		const hardwareSupport = await VideoEncoder.isConfigSupported(encoderConfig);
-
-		if (hardwareSupport.supported) {
-			// Use hardware encoding
-			console.log("[VideoExporter] Using hardware acceleration");
-			this.encoder.configure(encoderConfig);
-		} else {
-			// Fall back to software encoding
-			console.log("[VideoExporter] Hardware not supported, using software encoding");
-			encoderConfig.hardwareAcceleration = "prefer-software";
-
-			const softwareSupport = await VideoEncoder.isConfigSupported(encoderConfig);
-			if (!softwareSupport.supported) {
-				throw new Error("Video encoding not supported on this system");
-			}
-
-			this.encoder.configure(encoderConfig);
+		const support = await VideoEncoder.isConfigSupported(encoderConfig);
+		if (!support.supported) {
+			throw new Error(
+				hardwareAcceleration === "prefer-hardware"
+					? "Hardware video encoding is not supported on this system."
+					: "Software video encoding is not supported on this system.",
+			);
 		}
+
+		console.log(
+			`[VideoExporter] Using ${hardwareAcceleration === "prefer-hardware" ? "hardware" : "software"} acceleration`,
+		);
+		this.encoder.configure(encoderConfig);
 	}
 
 	cancel(): void {
@@ -453,5 +504,34 @@ export class VideoExporter {
 		this.chunkCount = 0;
 		this.videoDescription = undefined;
 		this.videoColorSpace = undefined;
+		this.lastEncoderOutputAt = 0;
+		this.fatalEncoderError = null;
+	}
+
+	private getEncoderPreferences(): HardwareAcceleration[] {
+		if (typeof navigator !== "undefined" && /\bWindows\b/i.test(navigator.userAgent)) {
+			return ["prefer-software", "prefer-hardware"];
+		}
+		return ["prefer-hardware", "prefer-software"];
+	}
+
+	private reportProgress(progress: ExportProgress): void {
+		this.config.onProgress?.(progress);
+	}
+
+	private withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+		return new Promise<T>((resolve, reject) => {
+			const timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+			promise.then(
+				(value) => {
+					window.clearTimeout(timer);
+					resolve(value);
+				},
+				(error) => {
+					window.clearTimeout(timer);
+					reject(error);
+				},
+			);
+		});
 	}
 }
