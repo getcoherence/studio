@@ -203,7 +203,9 @@ export class VideoExporter {
 					await this.audioProcessor.process(
 						demuxer,
 						this.muxer!,
+						this.config.videoUrl,
 						this.config.trimRegions,
+						this.config.speedRegions,
 						readEndSec,
 					);
 				}
