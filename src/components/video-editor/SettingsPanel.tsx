@@ -232,7 +232,8 @@ export function SettingsPanel({
 
 	const [selectedColor, setSelectedColor] = useState("#ADADAD");
 	const [gradient, setGradient] = useState<string>(GRADIENTS[0]);
-	const [showCropDropdown, setShowCropDropdown] = useState(false);
+	const [showCropModal, setShowCropModal] = useState(false);
+	const cropSnapshotRef = useRef<CropRegion | null>(null);
 
 	const zoomEnabled = Boolean(selectedZoomDepth);
 	const trimEnabled = Boolean(selectedTrimId);
@@ -294,6 +295,20 @@ export function SettingsPanel({
 		if (selected === imageUrl) {
 			onWallpaperChange(wallpaperPaths[0] || WALLPAPER_RELATIVE[0]);
 		}
+	};
+
+	const handleCropToggle = () => {
+		if (!showCropModal && cropRegion) {
+			cropSnapshotRef.current = { ...cropRegion };
+		}
+		setShowCropModal(!showCropModal);
+	};
+
+	const handleCropCancel = () => {
+		if (cropSnapshotRef.current && onCropChange) {
+			onCropChange(cropSnapshotRef.current);
+		}
+		setShowCropModal(false);
 	};
 
 	// Find selected annotation
@@ -527,7 +542,7 @@ export function SettingsPanel({
 							</div>
 
 							<Button
-								onClick={() => setShowCropDropdown(!showCropDropdown)}
+								onClick={handleCropToggle}
 								variant="outline"
 								className="w-full mt-2 gap-1.5 bg-white/5 text-slate-200 border-white/10 hover:bg-white/10 hover:border-white/20 hover:text-white text-[10px] h-8 transition-all"
 							>
@@ -703,11 +718,11 @@ export function SettingsPanel({
 				</Accordion>
 			</div>
 
-			{showCropDropdown && cropRegion && onCropChange && (
+			{showCropModal && cropRegion && onCropChange && (
 				<>
 					<div
 						className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 animate-in fade-in duration-200"
-						onClick={() => setShowCropDropdown(false)}
+						onClick={handleCropCancel}
 					/>
 					<div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[60] bg-[#09090b] rounded-2xl shadow-2xl border border-white/10 p-8 w-[90vw] max-w-5xl max-h-[90vh] overflow-auto animate-in zoom-in-95 duration-200">
 						<div className="flex items-center justify-between mb-6">
@@ -720,7 +735,7 @@ export function SettingsPanel({
 							<Button
 								variant="ghost"
 								size="icon"
-								onClick={() => setShowCropDropdown(false)}
+								onClick={handleCropCancel}
 								className="hover:bg-white/10 text-slate-400 hover:text-white"
 							>
 								<X className="w-5 h-5" />
@@ -734,7 +749,7 @@ export function SettingsPanel({
 						/>
 						<div className="mt-6 flex justify-end">
 							<Button
-								onClick={() => setShowCropDropdown(false)}
+								onClick={() => setShowCropModal(false)}
 								size="lg"
 								className="bg-[#34B27B] hover:bg-[#34B27B]/90 text-white"
 							>
