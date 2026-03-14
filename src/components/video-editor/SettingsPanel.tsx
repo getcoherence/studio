@@ -232,7 +232,7 @@ export function SettingsPanel({
 
 	const [selectedColor, setSelectedColor] = useState("#ADADAD");
 	const [gradient, setGradient] = useState<string>(GRADIENTS[0]);
-	const [showCropDropdown, setShowCropDropdown] = useState(false);
+	const [showCropModal, setShowCropModal] = useState(false);
 	const cropSnapshotRef = useRef<CropRegion | null>(null);
 
 	const zoomEnabled = Boolean(selectedZoomDepth);
@@ -298,17 +298,17 @@ export function SettingsPanel({
 	};
 
 	const handleCropToggle = () => {
-		if (!showCropDropdown && cropRegion) {
+		if (!showCropModal && cropRegion) {
 			cropSnapshotRef.current = { ...cropRegion };
 		}
-		setShowCropDropdown(!showCropDropdown);
+		setShowCropModal(!showCropModal);
 	};
 
 	const handleCropCancel = () => {
 		if (cropSnapshotRef.current && onCropChange) {
 			onCropChange(cropSnapshotRef.current);
 		}
-		setShowCropDropdown(false);
+		setShowCropModal(false);
 	};
 
 	// Find selected annotation
@@ -718,7 +718,7 @@ export function SettingsPanel({
 				</Accordion>
 			</div>
 
-			{showCropDropdown && cropRegion && onCropChange && (
+			{showCropModal && cropRegion && onCropChange && (
 				<>
 					<div
 						className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 animate-in fade-in duration-200"
@@ -749,7 +749,7 @@ export function SettingsPanel({
 						/>
 						<div className="mt-6 flex justify-end">
 							<Button
-								onClick={() => setShowCropDropdown(false)}
+								onClick={() => setShowCropModal(false)}
 								size="lg"
 								className="bg-[#34B27B] hover:bg-[#34B27B]/90 text-white"
 							>
