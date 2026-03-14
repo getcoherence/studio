@@ -105,10 +105,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	setHasUnsavedChanges: (hasChanges: boolean) => {
 		ipcRenderer.send("set-has-unsaved-changes", hasChanges);
 	},
-	onRequestSaveBeforeClose: (callback: () => Promise<void>) => {
+	onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => {
 		const listener = async () => {
-			await callback();
-			ipcRenderer.send("save-before-close-done");
+			try {
+				const shouldClose = await callback();
+				ipcRenderer.send("save-before-close-done", shouldClose);
+			} catch {
+				ipcRenderer.send("save-before-close-done", false);
+			}
 		};
 		ipcRenderer.on("request-save-before-close", listener);
 		return () => ipcRenderer.removeListener("request-save-before-close", listener);

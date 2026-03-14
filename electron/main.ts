@@ -234,6 +234,21 @@ ipcMain.on("set-has-unsaved-changes", (_, hasChanges: boolean) => {
 	editorHasUnsavedChanges = hasChanges;
 });
 
+function forceCloseEditorWindow(windowToClose: BrowserWindow | null) {
+	if (!windowToClose || windowToClose.isDestroyed()) return;
+
+	isForceClosing = true;
+	setImmediate(() => {
+		try {
+			if (!windowToClose.isDestroyed()) {
+				windowToClose.close();
+			}
+		} finally {
+			isForceClosing = false;
+		}
+	});
+}
+
 function createEditorWindowWrapper() {
 	if (mainWindow) {
 		isForceClosing = true;
@@ -259,19 +274,19 @@ function createEditorWindowWrapper() {
 			detail: "Do you want to save your project before closing?",
 		});
 
+		const windowToClose = mainWindow;
+		if (!windowToClose || windowToClose.isDestroyed()) return;
+
 		if (choice === 0) {
 			// Save & Close — tell renderer to save, then close
-			mainWindow!.webContents.send("request-save-before-close");
-			ipcMain.once("save-before-close-done", () => {
-				isForceClosing = true;
-				mainWindow?.close();
-				isForceClosing = false;
+			windowToClose.webContents.send("request-save-before-close");
+			ipcMain.once("save-before-close-done", (_, shouldClose: boolean) => {
+				if (!shouldClose) return;
+				forceCloseEditorWindow(windowToClose);
 			});
 		} else if (choice === 1) {
 			// Discard & Close
-			isForceClosing = true;
-			mainWindow?.close();
-			isForceClosing = false;
+			forceCloseEditorWindow(windowToClose);
 		}
 		// choice === 2: Cancel — do nothing, window stays open
 	});

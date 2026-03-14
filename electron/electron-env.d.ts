@@ -92,7 +92,7 @@ interface Window {
 		hudOverlayClose: () => void;
 		setMicrophoneExpanded: (expanded: boolean) => void;
 		setHasUnsavedChanges: (hasChanges: boolean) => void;
-		onRequestSaveBeforeClose: (callback: () => Promise<void>) => () => void;
+		onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => () => void;
 	};
 }
 

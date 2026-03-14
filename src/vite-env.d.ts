@@ -91,5 +91,7 @@ interface Window {
 		onMenuSaveProject: (callback: () => void) => () => void;
 		onMenuSaveProjectAs: (callback: () => void) => () => void;
 		setMicrophoneExpanded: (expanded: boolean) => void;
+		setHasUnsavedChanges: (hasChanges: boolean) => void;
+		onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => () => void;
 	};
 }
