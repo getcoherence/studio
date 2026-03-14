@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, screen, shell } from "electron";
 import { RECORDINGS_DIR } from "../main";
 
@@ -16,6 +17,27 @@ let currentProjectPath: string | null = null;
 
 function normalizePath(filePath: string) {
 	return path.resolve(filePath);
+}
+
+function normalizeVideoSourcePath(videoPath?: string | null): string | null {
+	if (typeof videoPath !== "string") {
+		return null;
+	}
+
+	const trimmed = videoPath.trim();
+	if (!trimmed) {
+		return null;
+	}
+
+	if (/^file:\/\//i.test(trimmed)) {
+		try {
+			return fileURLToPath(trimmed);
+		} catch {
+			// Fall through and keep best-effort string path below.
+		}
+	}
+
+	return trimmed;
 }
 
 function isTrustedProjectPath(filePath?: string | null) {
@@ -199,7 +221,7 @@ export function registerIpcHandlers(
 	});
 
 	ipcMain.handle("get-cursor-telemetry", async (_, videoPath?: string) => {
-		const targetVideoPath = videoPath ?? currentVideoPath;
+		const targetVideoPath = normalizeVideoSourcePath(videoPath ?? currentVideoPath);
 		if (!targetVideoPath) {
 			return { success: true, samples: [] };
 		}
@@ -265,9 +287,11 @@ export function registerIpcHandlers(
 	ipcMain.handle("get-asset-base-path", () => {
 		try {
 			if (app.isPackaged) {
-				return path.join(process.resourcesPath, "assets");
+				const assetPath = path.join(process.resourcesPath, "assets");
+				return pathToFileURL(`${assetPath}${path.sep}`).toString();
 			}
-			return path.join(app.getAppPath(), "public", "assets");
+			const assetPath = path.join(app.getAppPath(), "public", "assets");
+			return pathToFileURL(`${assetPath}${path.sep}`).toString();
 		} catch (err) {
 			console.error("Failed to resolve asset base path:", err);
 			return null;
@@ -456,7 +480,7 @@ export function registerIpcHandlers(
 			const project = JSON.parse(content);
 			currentProjectPath = filePath;
 			if (project && typeof project === "object" && typeof project.videoPath === "string") {
-				currentVideoPath = project.videoPath;
+				currentVideoPath = normalizeVideoSourcePath(project.videoPath) ?? project.videoPath;
 			}
 
 			return {
@@ -483,7 +507,7 @@ export function registerIpcHandlers(
 			const content = await fs.readFile(currentProjectPath, "utf-8");
 			const project = JSON.parse(content);
 			if (project && typeof project === "object" && typeof project.videoPath === "string") {
-				currentVideoPath = project.videoPath;
+				currentVideoPath = normalizeVideoSourcePath(project.videoPath) ?? project.videoPath;
 			}
 			return {
 				success: true,
@@ -500,7 +524,7 @@ export function registerIpcHandlers(
 		}
 	});
 	ipcMain.handle("set-current-video-path", (_, path: string) => {
-		currentVideoPath = path;
+		currentVideoPath = normalizeVideoSourcePath(path) ?? path;
 		currentProjectPath = null;
 		return { success: true };
 	});

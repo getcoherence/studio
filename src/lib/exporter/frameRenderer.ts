@@ -23,6 +23,7 @@ import {
 import { clampFocusToStage as clampFocusToStageUtil } from "@/components/video-editor/videoPlayback/focusUtils";
 import { findDominantRegion } from "@/components/video-editor/videoPlayback/zoomRegionUtils";
 import { applyZoomTransform } from "@/components/video-editor/videoPlayback/zoomTransform";
+import { getAssetPath } from "@/lib/assetPath";
 import { renderAnnotations } from "./annotationRenderer";
 
 interface FrameRenderConfig {
@@ -178,18 +179,14 @@ export class FrameRenderer {
 			) {
 				// Image background
 				const img = new Image();
-				// Don't set crossOrigin for same-origin images to avoid CORS taint
-				// Only set it for cross-origin URLs
-				let imageUrl: string;
-				if (wallpaper.startsWith("http")) {
-					imageUrl = wallpaper;
-					if (!imageUrl.startsWith(window.location.origin)) {
-						img.crossOrigin = "anonymous";
-					}
-				} else if (wallpaper.startsWith("file://") || wallpaper.startsWith("data:")) {
-					imageUrl = wallpaper;
-				} else {
-					imageUrl = window.location.origin + wallpaper;
+				const imageUrl = await this.resolveWallpaperImageUrl(wallpaper);
+				// Don't set crossOrigin for same-origin images to avoid CORS taint.
+				if (
+					imageUrl.startsWith("http") &&
+					window.location.origin &&
+					!imageUrl.startsWith(window.location.origin)
+				) {
+					img.crossOrigin = "anonymous";
 				}
 
 				await new Promise<void>((resolve, reject) => {
@@ -281,6 +278,23 @@ export class FrameRenderer {
 
 		// Store the background canvas for compositing
 		this.backgroundSprite = bgCanvas;
+	}
+
+	private async resolveWallpaperImageUrl(wallpaper: string): Promise<string> {
+		if (
+			wallpaper.startsWith("file://") ||
+			wallpaper.startsWith("data:") ||
+			wallpaper.startsWith("http")
+		) {
+			return wallpaper;
+		}
+
+		const resolved = await getAssetPath(wallpaper.replace(/^\/+/, ""));
+		if (resolved.startsWith("/") && window.location.protocol.startsWith("http")) {
+			return `${window.location.origin}${resolved}`;
+		}
+
+		return resolved;
 	}
 
 	async renderFrame(videoFrame: VideoFrame, timestamp: number): Promise<void> {
