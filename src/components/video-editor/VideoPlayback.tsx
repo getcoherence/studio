@@ -149,6 +149,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const trimRegionsRef = useRef<TrimRegion[]>([]);
 		const speedRegionsRef = useRef<SpeedRegion[]>([]);
 		const motionBlurEnabledRef = useRef(motionBlurEnabled);
+		const onTimeUpdateRef = useRef(onTimeUpdate);
+		const onPlayStateChangeRef = useRef(onPlayStateChange);
 		const videoReadyRafRef = useRef<number | null>(null);
 
 		const clampFocusToStage = useCallback((focus: ZoomFocus, depth: ZoomDepth) => {
@@ -380,6 +382,14 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		}, [motionBlurEnabled]);
 
 		useEffect(() => {
+			onTimeUpdateRef.current = onTimeUpdate;
+		}, [onTimeUpdate]);
+
+		useEffect(() => {
+			onPlayStateChangeRef.current = onPlayStateChange;
+		}, [onPlayStateChange]);
+
+		useEffect(() => {
 			if (!pixiReady || !videoReady) return;
 
 			const app = appRef.current;
@@ -545,6 +555,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		}, []);
 
 		useEffect(() => {
+			if (!videoPath) {
+				setVideoReady(false);
+				return;
+			}
+
 			const video = videoRef.current;
 			if (!video) return;
 			video.pause();
@@ -556,7 +571,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				cancelAnimationFrame(videoReadyRafRef.current);
 				videoReadyRafRef.current = null;
 			}
-		}, []);
+		}, [videoPath]);
 
 		useEffect(() => {
 			if (!pixiReady || !videoReady) return;
@@ -599,7 +614,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			videoContainer.filters = [blurFilter];
 			blurFilterRef.current = blurFilter;
 
-			layoutVideoContent();
+			layoutVideoContentRef.current?.();
 			video.pause();
 
 			const { handlePlay, handlePause, handleSeeked, handleSeeking } = createVideoEventHandlers({
@@ -609,8 +624,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				allowPlaybackRef,
 				currentTimeRef,
 				timeUpdateAnimationRef,
-				onPlayStateChange,
-				onTimeUpdate,
+				onPlayStateChange: (playing) => onPlayStateChangeRef.current(playing),
+				onTimeUpdate: (time) => onTimeUpdateRef.current(time),
 				trimRegionsRef,
 				speedRegionsRef,
 			});
@@ -651,7 +666,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 
 				videoSpriteRef.current = null;
 			};
-		}, [pixiReady, videoReady, onTimeUpdate, onPlayStateChange, layoutVideoContent]);
+		}, [pixiReady, videoReady]);
 
 		useEffect(() => {
 			if (!pixiReady || !videoReady) return;
