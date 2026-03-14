@@ -57,5 +57,9 @@
       "nsis"
     ],
     "icon": "icons/icons/win/icon.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true
   }
 }
