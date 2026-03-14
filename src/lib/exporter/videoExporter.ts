@@ -97,6 +97,7 @@ export class VideoExporter {
 				this.config.speedRegions,
 			);
 			const totalFrames = Math.ceil(effectiveDuration * this.config.frameRate);
+			const readEndSec = Math.max(videoInfo.duration, videoInfo.streamDuration ?? 0) + 0.5;
 
 			console.log("[VideoExporter] Original duration:", videoInfo.duration, "s");
 			console.log("[VideoExporter] Effective duration:", effectiveDuration, "s");
@@ -183,13 +184,28 @@ export class VideoExporter {
 			// Wait for all video muxing operations to complete
 			await Promise.all(this.muxingPromises);
 
+			if (this.config.onProgress) {
+				this.config.onProgress({
+					currentFrame: totalFrames,
+					totalFrames,
+					percentage: 100,
+					estimatedTimeRemaining: 0,
+					phase: "finalizing",
+				});
+			}
+
 			// Process audio track if present
 			if (hasAudio && !this.cancelled) {
 				const demuxer = this.streamingDecoder!.getDemuxer();
 				if (demuxer) {
 					console.log("[VideoExporter] Processing audio track...");
 					this.audioProcessor = new AudioProcessor();
-					await this.audioProcessor.process(demuxer, this.muxer!, this.config.trimRegions);
+					await this.audioProcessor.process(
+						demuxer,
+						this.muxer!,
+						this.config.trimRegions,
+						readEndSec,
+					);
 				}
 			}
 

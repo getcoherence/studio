@@ -66,6 +66,9 @@ export function ExportDialog({
 	const getStatusMessage = () => {
 		if (error) return "Please try again";
 		if (isCompiling || isFinalizing) {
+			if (exportFormat === "mp4") {
+				return "Finalizing video export...";
+			}
 			if (renderProgress !== undefined && renderProgress > 0) {
 				return `Compiling GIF... ${renderProgress}%`;
 			}
@@ -77,6 +80,7 @@ export function ExportDialog({
 	// Get title based on phase
 	const getTitle = () => {
 		if (error) return "Export Failed";
+		if (isFinalizing && exportFormat === "mp4") return "Finalizing Video";
 		if (isCompiling || isFinalizing) return "Compiling GIF";
 		return `Exporting ${formatLabel}`;
 	};
@@ -233,7 +237,11 @@ export function ExportDialog({
 									{isCompiling || isFinalizing ? "Status" : "Format"}
 								</div>
 								<div className="text-slate-200 font-medium text-sm">
-									{isCompiling || isFinalizing ? "Compiling..." : formatLabel}
+									{isFinalizing && exportFormat === "mp4"
+										? "Finalizing..."
+										: isCompiling || isFinalizing
+											? "Compiling..."
+											: formatLabel}
 								</div>
 							</div>
 							<div className="bg-white/5 rounded-xl p-3 border border-white/5">
