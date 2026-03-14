@@ -50,6 +50,7 @@ interface VideoPlaybackProps {
 	selectedZoomId: string | null;
 	onSelectZoom: (id: string | null) => void;
 	onZoomFocusChange: (id: string, focus: ZoomFocus) => void;
+	onZoomFocusDragEnd?: () => void;
 	isPlaying: boolean;
 	showShadow?: boolean;
 	shadowIntensity?: number;
@@ -92,6 +93,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			selectedZoomId,
 			onSelectZoom,
 			onZoomFocusChange,
+			onZoomFocusDragEnd,
 			isPlaying,
 			showShadow,
 			shadowIntensity = 0,
@@ -339,7 +341,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			isDraggingFocusRef.current = false;
 			try {
 				event.currentTarget.releasePointerCapture(event.pointerId);
-			} catch {}
+			} catch {
+				// Pointer may already be released.
+			}
+			onZoomFocusDragEnd?.();
 		};
 
 		const handleOverlayPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -437,14 +442,16 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				requestAnimationFrame(() => {
 					const finalApp = appRef.current;
 					if (wasPlaying && video) {
-						video.play().catch(() => {});
+						video.play().catch(() => {
+							// Ignore autoplay restoration failures.
+						});
 					}
 					if (tickerWasStarted && finalApp?.ticker) {
 						finalApp.ticker.start();
 					}
 				});
 			});
-		}, [pixiReady, videoReady, layoutVideoContent, cropRegion]);
+		}, [pixiReady, videoReady, layoutVideoContent]);
 
 		useEffect(() => {
 			if (!pixiReady || !videoReady) return;
@@ -549,7 +556,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				cancelAnimationFrame(videoReadyRafRef.current);
 				videoReadyRafRef.current = null;
 			}
-		}, [videoPath]);
+		}, []);
 
 		useEffect(() => {
 			if (!pixiReady || !videoReady) return;
@@ -644,7 +651,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 
 				videoSpriteRef.current = null;
 			};
-		}, [pixiReady, videoReady, onTimeUpdate, updateOverlayForRegion]);
+		}, [pixiReady, videoReady, onTimeUpdate, onPlayStateChange, layoutVideoContent]);
 
 		useEffect(() => {
 			if (!pixiReady || !videoReady) return;
@@ -827,7 +834,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					}
 					const p = await getAssetPath(wallpaper.replace(/^\//, ""));
 					if (mounted) setResolvedWallpaper(p);
-				} catch {
+				} catch (_err) {
 					if (mounted) setResolvedWallpaper(wallpaper || "/wallpapers/wallpaper1.jpg");
 				}
 			})();

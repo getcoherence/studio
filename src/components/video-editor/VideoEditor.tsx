@@ -4,7 +4,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
-import { getAssetPath } from "@/lib/assetPath";
+import { INITIAL_EDITOR_STATE, useEditorHistory } from "@/hooks/useEditorHistory";
 import {
 	calculateOutputDimensions,
 	type ExportFormat,
@@ -18,7 +18,7 @@ import {
 	VideoExporter,
 } from "@/lib/exporter";
 import { matchesShortcut } from "@/lib/shortcuts";
-import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
+import { getAspectRatioValue } from "@/utils/aspectRatioUtils";
 import { ExportDialog } from "./ExportDialog";
 import PlaybackControls from "./PlaybackControls";
 import {
@@ -28,19 +28,16 @@ import {
 	normalizeProjectEditor,
 	toFileUrl,
 	validateProjectData,
-	WALLPAPER_PATHS,
 } from "./projectPersistence";
 import { SettingsPanel } from "./SettingsPanel";
 import TimelineEditor from "./timeline/TimelineEditor";
 import {
 	type AnnotationRegion,
-	type CropRegion,
 	type CursorTelemetryPoint,
 	clampFocusToDepth,
 	DEFAULT_ANNOTATION_POSITION,
 	DEFAULT_ANNOTATION_SIZE,
 	DEFAULT_ANNOTATION_STYLE,
-	DEFAULT_CROP_REGION,
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
 	DEFAULT_ZOOM_DEPTH,
@@ -55,6 +52,31 @@ import {
 import VideoPlayback, { VideoPlaybackRef } from "./VideoPlayback";
 
 export default function VideoEditor() {
+	const {
+		state: editorState,
+		pushState,
+		updateState,
+		commitState,
+		undo,
+		redo,
+	} = useEditorHistory(INITIAL_EDITOR_STATE);
+
+	const {
+		zoomRegions,
+		trimRegions,
+		speedRegions,
+		annotationRegions,
+		cropRegion,
+		wallpaper,
+		shadowIntensity,
+		showBlur,
+		motionBlurEnabled,
+		borderRadius,
+		padding,
+		aspectRatio,
+	} = editorState;
+
+	// ── Non-undoable state
 	const [videoPath, setVideoPath] = useState<string | null>(null);
 	const [videoSourcePath, setVideoSourcePath] = useState<string | null>(null);
 	const [currentProjectPath, setCurrentProjectPath] = useState<string | null>(null);
@@ -63,33 +85,20 @@ export default function VideoEditor() {
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [currentTime, setCurrentTime] = useState(0);
 	const [duration, setDuration] = useState(0);
-	const [wallpaper, setWallpaper] = useState<string>(WALLPAPER_PATHS[0]);
-	const [shadowIntensity, setShadowIntensity] = useState(0);
-	const [showBlur, setShowBlur] = useState(false);
-	const [motionBlurEnabled, setMotionBlurEnabled] = useState(false);
-	const [borderRadius, setBorderRadius] = useState(0);
-	const [padding, setPadding] = useState(50);
-	const [cropRegion, setCropRegion] = useState<CropRegion>(DEFAULT_CROP_REGION);
-	const [zoomRegions, setZoomRegions] = useState<ZoomRegion[]>([]);
 	const [cursorTelemetry, setCursorTelemetry] = useState<CursorTelemetryPoint[]>([]);
 	const [selectedZoomId, setSelectedZoomId] = useState<string | null>(null);
-	const [trimRegions, setTrimRegions] = useState<TrimRegion[]>([]);
 	const [selectedTrimId, setSelectedTrimId] = useState<string | null>(null);
-	const [speedRegions, setSpeedRegions] = useState<SpeedRegion[]>([]);
 	const [selectedSpeedId, setSelectedSpeedId] = useState<string | null>(null);
-	const [annotationRegions, setAnnotationRegions] = useState<AnnotationRegion[]>([]);
 	const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
 	const [isExporting, setIsExporting] = useState(false);
 	const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
 	const [exportError, setExportError] = useState<string | null>(null);
 	const [showExportDialog, setShowExportDialog] = useState(false);
-	const [aspectRatio, setAspectRatio] = useState<AspectRatio>("16:9");
 	const [exportQuality, setExportQuality] = useState<ExportQuality>("good");
 	const [exportFormat, setExportFormat] = useState<ExportFormat>("mp4");
 	const [gifFrameRate, setGifFrameRate] = useState<GifFrameRate>(15);
 	const [gifLoop, setGifLoop] = useState(true);
 	const [gifSizePreset, setGifSizePreset] = useState<GifSizePreset>("medium");
-	const [exportedFilePath, setExportedFilePath] = useState<string | undefined>(undefined);
 	const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
 
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
@@ -99,78 +108,85 @@ export default function VideoEditor() {
 
 	const { shortcuts, isMac } = useShortcuts();
 	const nextAnnotationIdRef = useRef(1);
-	const nextAnnotationZIndexRef = useRef(1); // Track z-index for stacking order
+	const nextAnnotationZIndexRef = useRef(1);
 	const exporterRef = useRef<VideoExporter | null>(null);
 
-	const applyLoadedProject = useCallback(async (candidate: unknown, path?: string | null) => {
-		if (!validateProjectData(candidate)) {
-			return false;
-		}
+	const applyLoadedProject = useCallback(
+		async (candidate: unknown, path?: string | null) => {
+			if (!validateProjectData(candidate)) {
+				return false;
+			}
 
-		const project = candidate;
-		const sourcePath = project.videoPath;
-		const normalizedEditor = normalizeProjectEditor(project.editor);
+			const project = candidate;
+			const sourcePath = project.videoPath;
+			const normalizedEditor = normalizeProjectEditor(project.editor);
 
-		try {
-			videoPlaybackRef.current?.pause();
-		} catch {
-			// no-op
-		}
-		setIsPlaying(false);
-		setCurrentTime(0);
-		setDuration(0);
+			try {
+				videoPlaybackRef.current?.pause();
+			} catch {
+				// no-op
+			}
+			setIsPlaying(false);
+			setCurrentTime(0);
+			setDuration(0);
 
-		setError(null);
-		setVideoSourcePath(sourcePath);
-		setVideoPath(toFileUrl(sourcePath));
-		setCurrentProjectPath(path ?? null);
+			setError(null);
+			setVideoSourcePath(sourcePath);
+			setVideoPath(toFileUrl(sourcePath));
+			setCurrentProjectPath(path ?? null);
 
-		setWallpaper(normalizedEditor.wallpaper);
-		setShadowIntensity(normalizedEditor.shadowIntensity);
-		setShowBlur(normalizedEditor.showBlur);
-		setMotionBlurEnabled(normalizedEditor.motionBlurEnabled);
-		setBorderRadius(normalizedEditor.borderRadius);
-		setPadding(normalizedEditor.padding);
-		setCropRegion(normalizedEditor.cropRegion);
-		setZoomRegions(normalizedEditor.zoomRegions);
-		setTrimRegions(normalizedEditor.trimRegions);
-		setSpeedRegions(normalizedEditor.speedRegions);
-		setAnnotationRegions(normalizedEditor.annotationRegions);
-		setAspectRatio(normalizedEditor.aspectRatio);
-		setExportQuality(normalizedEditor.exportQuality);
-		setExportFormat(normalizedEditor.exportFormat);
-		setGifFrameRate(normalizedEditor.gifFrameRate);
-		setGifLoop(normalizedEditor.gifLoop);
-		setGifSizePreset(normalizedEditor.gifSizePreset);
+			pushState({
+				wallpaper: normalizedEditor.wallpaper,
+				shadowIntensity: normalizedEditor.shadowIntensity,
+				showBlur: normalizedEditor.showBlur,
+				motionBlurEnabled: normalizedEditor.motionBlurEnabled,
+				borderRadius: normalizedEditor.borderRadius,
+				padding: normalizedEditor.padding,
+				cropRegion: normalizedEditor.cropRegion,
+				zoomRegions: normalizedEditor.zoomRegions,
+				trimRegions: normalizedEditor.trimRegions,
+				speedRegions: normalizedEditor.speedRegions,
+				annotationRegions: normalizedEditor.annotationRegions,
+				aspectRatio: normalizedEditor.aspectRatio,
+			});
+			setExportQuality(normalizedEditor.exportQuality);
+			setExportFormat(normalizedEditor.exportFormat);
+			setGifFrameRate(normalizedEditor.gifFrameRate);
+			setGifLoop(normalizedEditor.gifLoop);
+			setGifSizePreset(normalizedEditor.gifSizePreset);
 
-		setSelectedZoomId(null);
-		setSelectedTrimId(null);
-		setSelectedSpeedId(null);
-		setSelectedAnnotationId(null);
+			setSelectedZoomId(null);
+			setSelectedTrimId(null);
+			setSelectedSpeedId(null);
+			setSelectedAnnotationId(null);
 
-		nextZoomIdRef.current = deriveNextId(
-			"zoom",
-			normalizedEditor.zoomRegions.map((region) => region.id),
-		);
-		nextTrimIdRef.current = deriveNextId(
-			"trim",
-			normalizedEditor.trimRegions.map((region) => region.id),
-		);
-		nextSpeedIdRef.current = deriveNextId(
-			"speed",
-			normalizedEditor.speedRegions.map((region) => region.id),
-		);
-		nextAnnotationIdRef.current = deriveNextId(
-			"annotation",
-			normalizedEditor.annotationRegions.map((region) => region.id),
-		);
-		nextAnnotationZIndexRef.current =
-			normalizedEditor.annotationRegions.reduce((max, region) => Math.max(max, region.zIndex), 0) +
-			1;
+			nextZoomIdRef.current = deriveNextId(
+				"zoom",
+				normalizedEditor.zoomRegions.map((region) => region.id),
+			);
+			nextTrimIdRef.current = deriveNextId(
+				"trim",
+				normalizedEditor.trimRegions.map((region) => region.id),
+			);
+			nextSpeedIdRef.current = deriveNextId(
+				"speed",
+				normalizedEditor.speedRegions.map((region) => region.id),
+			);
+			nextAnnotationIdRef.current = deriveNextId(
+				"annotation",
+				normalizedEditor.annotationRegions.map((region) => region.id),
+			);
+			nextAnnotationZIndexRef.current =
+				normalizedEditor.annotationRegions.reduce(
+					(max, region) => Math.max(max, region.zIndex),
+					0,
+				) + 1;
 
-		setLastSavedSnapshot(JSON.stringify(createProjectData(sourcePath, normalizedEditor)));
-		return true;
-	}, []);
+			setLastSavedSnapshot(JSON.stringify(createProjectData(sourcePath, normalizedEditor)));
+			return true;
+		},
+		[pushState],
+	);
 
 	const currentProjectSnapshot = useMemo(() => {
 		const sourcePath = videoSourcePath ?? (videoPath ? fromFileUrl(videoPath) : null);
@@ -346,18 +362,19 @@ export default function VideoEditor() {
 		],
 	);
 
-	// Sync unsaved changes state to main process for close dialog
 	useEffect(() => {
-		window.electronAPI.setHasUnsavedChanges(hasUnsavedChanges);
-	}, [hasUnsavedChanges]);
+		const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+			if (!hasUnsavedChanges) {
+				return;
+			}
 
-	// Handle save request from main process before close
-	useEffect(() => {
-		const cleanup = window.electronAPI.onRequestSaveBeforeClose(async () => {
-			await saveProject(false);
-		});
-		return () => cleanup();
-	}, [saveProject]);
+			event.preventDefault();
+			event.returnValue = "";
+		};
+
+		window.addEventListener("beforeunload", handleBeforeUnload);
+		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+	}, [hasUnsavedChanges]);
 
 	const handleSaveProject = useCallback(async () => {
 		await saveProject(false);
@@ -431,25 +448,6 @@ export default function VideoEditor() {
 		};
 	}, [videoPath]);
 
-	// Initialize default wallpaper with resolved asset path
-	useEffect(() => {
-		let mounted = true;
-		(async () => {
-			try {
-				const resolvedPath = await getAssetPath("wallpapers/wallpaper1.jpg");
-				if (mounted) {
-					setWallpaper(resolvedPath);
-				}
-			} catch (err) {
-				// If resolution fails, keep the fallback
-				console.warn("Failed to resolve default wallpaper path:", err);
-			}
-		})();
-		return () => {
-			mounted = false;
-		};
-	}, []);
-
 	function togglePlayPause() {
 		const playback = videoPlaybackRef.current;
 		const video = playback?.video;
@@ -489,126 +487,128 @@ export default function VideoEditor() {
 		}
 	}, []);
 
-	const handleZoomAdded = useCallback((span: Span) => {
-		const id = `zoom-${nextZoomIdRef.current++}`;
-		const newRegion: ZoomRegion = {
-			id,
-			startMs: Math.round(span.start),
-			endMs: Math.round(span.end),
-			depth: DEFAULT_ZOOM_DEPTH,
-			focus: { cx: 0.5, cy: 0.5 },
-		};
-		setZoomRegions((prev) => [...prev, newRegion]);
-		setSelectedZoomId(id);
-		setSelectedTrimId(null);
-		setSelectedAnnotationId(null);
-	}, []);
+	const handleZoomAdded = useCallback(
+		(span: Span) => {
+			const id = `zoom-${nextZoomIdRef.current++}`;
+			const newRegion: ZoomRegion = {
+				id,
+				startMs: Math.round(span.start),
+				endMs: Math.round(span.end),
+				depth: DEFAULT_ZOOM_DEPTH,
+				focus: { cx: 0.5, cy: 0.5 },
+			};
+			pushState((prev) => ({ zoomRegions: [...prev.zoomRegions, newRegion] }));
+			setSelectedZoomId(id);
+			setSelectedTrimId(null);
+			setSelectedAnnotationId(null);
+		},
+		[pushState],
+	);
 
-	const handleZoomSuggested = useCallback((span: Span, focus: ZoomFocus) => {
-		const id = `zoom-${nextZoomIdRef.current++}`;
-		const newRegion: ZoomRegion = {
-			id,
-			startMs: Math.round(span.start),
-			endMs: Math.round(span.end),
-			depth: DEFAULT_ZOOM_DEPTH,
-			focus: clampFocusToDepth(focus, DEFAULT_ZOOM_DEPTH),
-		};
-		setZoomRegions((prev) => [...prev, newRegion]);
-		setSelectedZoomId(id);
-		setSelectedTrimId(null);
-		setSelectedAnnotationId(null);
-	}, []);
+	const handleZoomSuggested = useCallback(
+		(span: Span, focus: ZoomFocus) => {
+			const id = `zoom-${nextZoomIdRef.current++}`;
+			const newRegion: ZoomRegion = {
+				id,
+				startMs: Math.round(span.start),
+				endMs: Math.round(span.end),
+				depth: DEFAULT_ZOOM_DEPTH,
+				focus: clampFocusToDepth(focus, DEFAULT_ZOOM_DEPTH),
+			};
+			pushState((prev) => ({ zoomRegions: [...prev.zoomRegions, newRegion] }));
+			setSelectedZoomId(id);
+			setSelectedTrimId(null);
+			setSelectedAnnotationId(null);
+		},
+		[pushState],
+	);
 
-	const handleTrimAdded = useCallback((span: Span) => {
-		const id = `trim-${nextTrimIdRef.current++}`;
-		const newRegion: TrimRegion = {
-			id,
-			startMs: Math.round(span.start),
-			endMs: Math.round(span.end),
-		};
-		setTrimRegions((prev) => [...prev, newRegion]);
-		setSelectedTrimId(id);
-		setSelectedZoomId(null);
-		setSelectedAnnotationId(null);
-	}, []);
+	const handleTrimAdded = useCallback(
+		(span: Span) => {
+			const id = `trim-${nextTrimIdRef.current++}`;
+			const newRegion: TrimRegion = {
+				id,
+				startMs: Math.round(span.start),
+				endMs: Math.round(span.end),
+			};
+			pushState((prev) => ({ trimRegions: [...prev.trimRegions, newRegion] }));
+			setSelectedTrimId(id);
+			setSelectedZoomId(null);
+			setSelectedAnnotationId(null);
+		},
+		[pushState],
+	);
 
-	const handleZoomSpanChange = useCallback((id: string, span: Span) => {
-		setZoomRegions((prev) =>
-			prev.map((region) =>
-				region.id === id
-					? {
-							...region,
-							startMs: Math.round(span.start),
-							endMs: Math.round(span.end),
-						}
-					: region,
-			),
-		);
-	}, []);
+	const handleZoomSpanChange = useCallback(
+		(id: string, span: Span) => {
+			pushState((prev) => ({
+				zoomRegions: prev.zoomRegions.map((region) =>
+					region.id === id
+						? { ...region, startMs: Math.round(span.start), endMs: Math.round(span.end) }
+						: region,
+				),
+			}));
+		},
+		[pushState],
+	);
 
-	const handleTrimSpanChange = useCallback((id: string, span: Span) => {
-		setTrimRegions((prev) =>
-			prev.map((region) =>
-				region.id === id
-					? {
-							...region,
-							startMs: Math.round(span.start),
-							endMs: Math.round(span.end),
-						}
-					: region,
-			),
-		);
-	}, []);
+	const handleTrimSpanChange = useCallback(
+		(id: string, span: Span) => {
+			pushState((prev) => ({
+				trimRegions: prev.trimRegions.map((region) =>
+					region.id === id
+						? { ...region, startMs: Math.round(span.start), endMs: Math.round(span.end) }
+						: region,
+				),
+			}));
+		},
+		[pushState],
+	);
 
-	const handleZoomFocusChange = useCallback((id: string, focus: ZoomFocus) => {
-		setZoomRegions((prev) =>
-			prev.map((region) =>
-				region.id === id
-					? {
-							...region,
-							focus: clampFocusToDepth(focus, region.depth),
-						}
-					: region,
-			),
-		);
-	}, []);
+	// Focus drag: updateState for live preview, commitState on pointer-up
+	const handleZoomFocusChange = useCallback(
+		(id: string, focus: ZoomFocus) => {
+			updateState((prev) => ({
+				zoomRegions: prev.zoomRegions.map((region) =>
+					region.id === id ? { ...region, focus: clampFocusToDepth(focus, region.depth) } : region,
+				),
+			}));
+		},
+		[updateState],
+	);
 
 	const handleZoomDepthChange = useCallback(
 		(depth: ZoomDepth) => {
 			if (!selectedZoomId) return;
-			setZoomRegions((prev) =>
-				prev.map((region) =>
+			pushState((prev) => ({
+				zoomRegions: prev.zoomRegions.map((region) =>
 					region.id === selectedZoomId
-						? {
-								...region,
-								depth,
-								focus: clampFocusToDepth(region.focus, depth),
-							}
+						? { ...region, depth, focus: clampFocusToDepth(region.focus, depth) }
 						: region,
 				),
-			);
+			}));
 		},
-		[selectedZoomId],
+		[selectedZoomId, pushState],
 	);
 
 	const handleZoomDelete = useCallback(
 		(id: string) => {
-			setZoomRegions((prev) => prev.filter((region) => region.id !== id));
+			pushState((prev) => ({ zoomRegions: prev.zoomRegions.filter((r) => r.id !== id) }));
 			if (selectedZoomId === id) {
 				setSelectedZoomId(null);
 			}
 		},
-		[selectedZoomId],
+		[selectedZoomId, pushState],
 	);
 
 	const handleTrimDelete = useCallback(
 		(id: string) => {
-			setTrimRegions((prev) => prev.filter((region) => region.id !== id));
+			pushState((prev) => ({ trimRegions: prev.trimRegions.filter((r) => r.id !== id) }));
 			if (selectedTrimId === id) {
 				setSelectedTrimId(null);
 			}
 		},
-		[selectedTrimId],
+		[selectedTrimId, pushState],
 	);
 
 	const handleSelectSpeed = useCallback((id: string | null) => {
@@ -620,209 +620,238 @@ export default function VideoEditor() {
 		}
 	}, []);
 
-	const handleSpeedAdded = useCallback((span: Span) => {
-		const id = `speed-${nextSpeedIdRef.current++}`;
-		const newRegion: SpeedRegion = {
-			id,
-			startMs: Math.round(span.start),
-			endMs: Math.round(span.end),
-			speed: DEFAULT_PLAYBACK_SPEED,
-		};
-		setSpeedRegions((prev) => [...prev, newRegion]);
-		setSelectedSpeedId(id);
-		setSelectedZoomId(null);
-		setSelectedTrimId(null);
-		setSelectedAnnotationId(null);
-	}, []);
+	const handleSpeedAdded = useCallback(
+		(span: Span) => {
+			const id = `speed-${nextSpeedIdRef.current++}`;
+			const newRegion: SpeedRegion = {
+				id,
+				startMs: Math.round(span.start),
+				endMs: Math.round(span.end),
+				speed: DEFAULT_PLAYBACK_SPEED,
+			};
+			pushState((prev) => ({ speedRegions: [...prev.speedRegions, newRegion] }));
+			setSelectedSpeedId(id);
+			setSelectedZoomId(null);
+			setSelectedTrimId(null);
+			setSelectedAnnotationId(null);
+		},
+		[pushState],
+	);
 
-	const handleSpeedSpanChange = useCallback((id: string, span: Span) => {
-		setSpeedRegions((prev) =>
-			prev.map((region) =>
-				region.id === id
-					? {
-							...region,
-							startMs: Math.round(span.start),
-							endMs: Math.round(span.end),
-						}
-					: region,
-			),
-		);
-	}, []);
+	const handleSpeedSpanChange = useCallback(
+		(id: string, span: Span) => {
+			pushState((prev) => ({
+				speedRegions: prev.speedRegions.map((region) =>
+					region.id === id
+						? {
+								...region,
+								startMs: Math.round(span.start),
+								endMs: Math.round(span.end),
+							}
+						: region,
+				),
+			}));
+		},
+		[pushState],
+	);
 
 	const handleSpeedDelete = useCallback(
 		(id: string) => {
-			setSpeedRegions((prev) => prev.filter((region) => region.id !== id));
+			pushState((prev) => ({
+				speedRegions: prev.speedRegions.filter((region) => region.id !== id),
+			}));
 			if (selectedSpeedId === id) {
 				setSelectedSpeedId(null);
 			}
 		},
-		[selectedSpeedId],
+		[selectedSpeedId, pushState],
 	);
 
 	const handleSpeedChange = useCallback(
 		(speed: PlaybackSpeed) => {
 			if (!selectedSpeedId) return;
-			setSpeedRegions((prev) =>
-				prev.map((region) => (region.id === selectedSpeedId ? { ...region, speed } : region)),
-			);
+			pushState((prev) => ({
+				speedRegions: prev.speedRegions.map((region) =>
+					region.id === selectedSpeedId ? { ...region, speed } : region,
+				),
+			}));
 		},
-		[selectedSpeedId],
+		[selectedSpeedId, pushState],
 	);
 
-	const handleAnnotationAdded = useCallback((span: Span) => {
-		const id = `annotation-${nextAnnotationIdRef.current++}`;
-		const zIndex = nextAnnotationZIndexRef.current++; // Assign z-index based on creation order
-		const newRegion: AnnotationRegion = {
-			id,
-			startMs: Math.round(span.start),
-			endMs: Math.round(span.end),
-			type: "text",
-			content: "Enter text...",
-			position: { ...DEFAULT_ANNOTATION_POSITION },
-			size: { ...DEFAULT_ANNOTATION_SIZE },
-			style: { ...DEFAULT_ANNOTATION_STYLE },
-			zIndex,
-		};
-		setAnnotationRegions((prev) => [...prev, newRegion]);
-		setSelectedAnnotationId(id);
-		setSelectedZoomId(null);
-		setSelectedTrimId(null);
-	}, []);
+	const handleAnnotationAdded = useCallback(
+		(span: Span) => {
+			const id = `annotation-${nextAnnotationIdRef.current++}`;
+			const zIndex = nextAnnotationZIndexRef.current++;
+			const newRegion: AnnotationRegion = {
+				id,
+				startMs: Math.round(span.start),
+				endMs: Math.round(span.end),
+				type: "text",
+				content: "Enter text...",
+				position: { ...DEFAULT_ANNOTATION_POSITION },
+				size: { ...DEFAULT_ANNOTATION_SIZE },
+				style: { ...DEFAULT_ANNOTATION_STYLE },
+				zIndex,
+			};
+			pushState((prev) => ({ annotationRegions: [...prev.annotationRegions, newRegion] }));
+			setSelectedAnnotationId(id);
+			setSelectedZoomId(null);
+			setSelectedTrimId(null);
+		},
+		[pushState],
+	);
 
-	const handleAnnotationSpanChange = useCallback((id: string, span: Span) => {
-		setAnnotationRegions((prev) =>
-			prev.map((region) =>
-				region.id === id
-					? {
-							...region,
-							startMs: Math.round(span.start),
-							endMs: Math.round(span.end),
-						}
-					: region,
-			),
-		);
-	}, []);
+	const handleAnnotationSpanChange = useCallback(
+		(id: string, span: Span) => {
+			pushState((prev) => ({
+				annotationRegions: prev.annotationRegions.map((region) =>
+					region.id === id
+						? { ...region, startMs: Math.round(span.start), endMs: Math.round(span.end) }
+						: region,
+				),
+			}));
+		},
+		[pushState],
+	);
 
 	const handleAnnotationDelete = useCallback(
 		(id: string) => {
-			setAnnotationRegions((prev) => prev.filter((region) => region.id !== id));
+			pushState((prev) => ({
+				annotationRegions: prev.annotationRegions.filter((r) => r.id !== id),
+			}));
 			if (selectedAnnotationId === id) {
 				setSelectedAnnotationId(null);
 			}
 		},
-		[selectedAnnotationId],
+		[selectedAnnotationId, pushState],
 	);
 
-	const handleAnnotationContentChange = useCallback((id: string, content: string) => {
-		setAnnotationRegions((prev) => {
-			const updated = prev.map((region) => {
-				if (region.id !== id) return region;
-
-				// Store content in type-specific fields
-				if (region.type === "text") {
-					return { ...region, content, textContent: content };
-				} else if (region.type === "image") {
-					return { ...region, content, imageContent: content };
-				} else {
-					return { ...region, content };
-				}
-			});
-			return updated;
-		});
-	}, []);
-
-	const handleAnnotationTypeChange = useCallback((id: string, type: AnnotationRegion["type"]) => {
-		setAnnotationRegions((prev) => {
-			const updated = prev.map((region) => {
-				if (region.id !== id) return region;
-
-				const updatedRegion = { ...region, type };
-
-				// Restore content from type-specific storage
-				if (type === "text") {
-					updatedRegion.content = region.textContent || "Enter text...";
-				} else if (type === "image") {
-					updatedRegion.content = region.imageContent || "";
-				} else if (type === "figure") {
-					updatedRegion.content = "";
-					if (!region.figureData) {
-						updatedRegion.figureData = { ...DEFAULT_FIGURE_DATA };
+	const handleAnnotationContentChange = useCallback(
+		(id: string, content: string) => {
+			pushState((prev) => ({
+				annotationRegions: prev.annotationRegions.map((region) => {
+					if (region.id !== id) return region;
+					if (region.type === "text") {
+						return { ...region, content, textContent: content };
+					} else if (region.type === "image") {
+						return { ...region, content, imageContent: content };
 					}
-				}
+					return { ...region, content };
+				}),
+			}));
+		},
+		[pushState],
+	);
 
-				return updatedRegion;
-			});
-			return updated;
-		});
-	}, []);
+	const handleAnnotationTypeChange = useCallback(
+		(id: string, type: AnnotationRegion["type"]) => {
+			pushState((prev) => ({
+				annotationRegions: prev.annotationRegions.map((region) => {
+					if (region.id !== id) return region;
+					const updatedRegion = { ...region, type };
+					if (type === "text") {
+						updatedRegion.content = region.textContent || "Enter text...";
+					} else if (type === "image") {
+						updatedRegion.content = region.imageContent || "";
+					} else if (type === "figure") {
+						updatedRegion.content = "";
+						if (!region.figureData) {
+							updatedRegion.figureData = { ...DEFAULT_FIGURE_DATA };
+						}
+					}
+					return updatedRegion;
+				}),
+			}));
+		},
+		[pushState],
+	);
 
 	const handleAnnotationStyleChange = useCallback(
 		(id: string, style: Partial<AnnotationRegion["style"]>) => {
-			setAnnotationRegions((prev) =>
-				prev.map((region) =>
+			pushState((prev) => ({
+				annotationRegions: prev.annotationRegions.map((region) =>
 					region.id === id ? { ...region, style: { ...region.style, ...style } } : region,
 				),
-			);
+			}));
 		},
-		[],
+		[pushState],
 	);
 
-	const handleAnnotationFigureDataChange = useCallback((id: string, figureData: FigureData) => {
-		setAnnotationRegions((prev) =>
-			prev.map((region) => (region.id === id ? { ...region, figureData } : region)),
-		);
-	}, []);
+	const handleAnnotationFigureDataChange = useCallback(
+		(id: string, figureData: FigureData) => {
+			pushState((prev) => ({
+				annotationRegions: prev.annotationRegions.map((region) =>
+					region.id === id ? { ...region, figureData } : region,
+				),
+			}));
+		},
+		[pushState],
+	);
 
 	const handleAnnotationPositionChange = useCallback(
 		(id: string, position: { x: number; y: number }) => {
-			setAnnotationRegions((prev) =>
-				prev.map((region) => (region.id === id ? { ...region, position } : region)),
-			);
+			pushState((prev) => ({
+				annotationRegions: prev.annotationRegions.map((region) =>
+					region.id === id ? { ...region, position } : region,
+				),
+			}));
 		},
-		[],
+		[pushState],
 	);
 
 	const handleAnnotationSizeChange = useCallback(
 		(id: string, size: { width: number; height: number }) => {
-			setAnnotationRegions((prev) =>
-				prev.map((region) => (region.id === id ? { ...region, size } : region)),
-			);
+			pushState((prev) => ({
+				annotationRegions: prev.annotationRegions.map((region) =>
+					region.id === id ? { ...region, size } : region,
+				),
+			}));
 		},
-		[],
+		[pushState],
 	);
 
-	// Global Tab prevention
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Tab") {
-				// Allow tab only in inputs/textareas
-				if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-					return;
-				}
+			const mod = e.ctrlKey || e.metaKey;
+			const key = e.key.toLowerCase();
+
+			if (mod && key === "z" && !e.shiftKey) {
+				e.preventDefault();
+				e.stopPropagation();
+				undo();
+				return;
+			}
+			if (mod && (key === "y" || (key === "z" && e.shiftKey))) {
+				e.preventDefault();
+				e.stopPropagation();
+				redo();
+				return;
+			}
+
+			const isInput =
+				e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+
+			if (e.key === "Tab" && !isInput) {
 				e.preventDefault();
 			}
 
 			if (matchesShortcut(e, shortcuts.playPause, isMac)) {
 				// Allow space only in inputs/textareas
-				if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+				if (isInput) {
 					return;
 				}
 				e.preventDefault();
-
 				const playback = videoPlaybackRef.current;
 				if (playback?.video) {
-					if (playback.video.paused) {
-						playback.play().catch(console.error);
-					} else {
-						playback.pause();
-					}
+					playback.video.paused ? playback.play().catch(console.error) : playback.pause();
 				}
 			}
 		};
 
 		window.addEventListener("keydown", handleKeyDown, { capture: true });
 		return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
-	}, [shortcuts, isMac]);
+	}, [undo, redo, shortcuts, isMac]);
 
 	useEffect(() => {
 		if (selectedZoomId && !zoomRegions.some((region) => region.id === selectedZoomId)) {
@@ -925,9 +954,8 @@ export default function VideoEditor() {
 
 						if (saveResult.canceled) {
 							toast.info("Export canceled");
-						} else if (saveResult.success && saveResult.path) {
-							showExportSuccessToast(saveResult.path);
-							setExportedFilePath(saveResult.path);
+						} else if (saveResult.success) {
+							toast.success(`GIF exported successfully to ${saveResult.path}`);
 						} else {
 							setExportError(saveResult.message || "Failed to save GIF");
 							toast.error(saveResult.message || "Failed to save GIF");
@@ -1052,9 +1080,8 @@ export default function VideoEditor() {
 
 						if (saveResult.canceled) {
 							toast.info("Export canceled");
-						} else if (saveResult.success && saveResult.path) {
-							showExportSuccessToast(saveResult.path);
-							setExportedFilePath(saveResult.path);
+						} else if (saveResult.success) {
+							toast.success(`Video exported successfully to ${saveResult.path}`);
 						} else {
 							setExportError(saveResult.message || "Failed to save video");
 							toast.error(saveResult.message || "Failed to save video");
@@ -1153,33 +1180,7 @@ export default function VideoEditor() {
 			setIsExporting(false);
 			setExportProgress(null);
 			setExportError(null);
-			setExportedFilePath(undefined);
 		}
-	}, []);
-
-	const handleExportDialogClose = useCallback(() => {
-		setShowExportDialog(false);
-		setExportedFilePath(undefined);
-	}, []);
-
-	const showExportSuccessToast = useCallback((filePath: string) => {
-		toast.success(`Exported successfully to ${filePath}`, {
-			action: {
-				label: "Show in Folder",
-				onClick: async () => {
-					try {
-						const result = await window.electronAPI.revealInFolder(filePath);
-						if (!result.success) {
-							const errorMessage =
-								result.error || result.message || "Failed to reveal item in folder.";
-							toast.error(errorMessage);
-						}
-					} catch (err) {
-						toast.error(`Error revealing in folder: ${String(err)}`);
-					}
-				},
-			},
-		});
 	}, []);
 
 	if (loading) {
@@ -1253,6 +1254,7 @@ export default function VideoEditor() {
 											selectedZoomId={selectedZoomId}
 											onSelectZoom={handleSelectZoom}
 											onZoomFocusChange={handleZoomFocusChange}
+											onZoomFocusDragEnd={commitState}
 											isPlaying={isPlaying}
 											showShadow={shadowIntensity > 0}
 											shadowIntensity={shadowIntensity}
@@ -1332,7 +1334,7 @@ export default function VideoEditor() {
 									selectedAnnotationId={selectedAnnotationId}
 									onSelectAnnotation={handleSelectAnnotation}
 									aspectRatio={aspectRatio}
-									onAspectRatioChange={setAspectRatio}
+									onAspectRatioChange={(ar) => pushState({ aspectRatio: ar })}
 								/>
 							</div>
 						</Panel>
@@ -1342,7 +1344,7 @@ export default function VideoEditor() {
 				{/* Right section: settings panel */}
 				<SettingsPanel
 					selected={wallpaper}
-					onWallpaperChange={setWallpaper}
+					onWallpaperChange={(w) => pushState({ wallpaper: w })}
 					selectedZoomDepth={
 						selectedZoomId ? zoomRegions.find((z) => z.id === selectedZoomId)?.depth : null
 					}
@@ -1352,17 +1354,20 @@ export default function VideoEditor() {
 					selectedTrimId={selectedTrimId}
 					onTrimDelete={handleTrimDelete}
 					shadowIntensity={shadowIntensity}
-					onShadowChange={setShadowIntensity}
+					onShadowChange={(v) => updateState({ shadowIntensity: v })}
+					onShadowCommit={commitState}
 					showBlur={showBlur}
-					onBlurChange={setShowBlur}
+					onBlurChange={(v) => pushState({ showBlur: v })}
 					motionBlurEnabled={motionBlurEnabled}
-					onMotionBlurChange={setMotionBlurEnabled}
+					onMotionBlurChange={(v) => pushState({ motionBlurEnabled: v })}
 					borderRadius={borderRadius}
-					onBorderRadiusChange={setBorderRadius}
+					onBorderRadiusChange={(v) => updateState({ borderRadius: v })}
+					onBorderRadiusCommit={commitState}
 					padding={padding}
-					onPaddingChange={setPadding}
+					onPaddingChange={(v) => updateState({ padding: v })}
+					onPaddingCommit={commitState}
 					cropRegion={cropRegion}
-					onCropChange={setCropRegion}
+					onCropChange={(r) => pushState({ cropRegion: r })}
 					aspectRatio={aspectRatio}
 					videoElement={videoPlaybackRef.current?.video || null}
 					exportQuality={exportQuality}
@@ -1406,13 +1411,12 @@ export default function VideoEditor() {
 
 			<ExportDialog
 				isOpen={showExportDialog}
-				onClose={handleExportDialogClose}
+				onClose={() => setShowExportDialog(false)}
 				progress={exportProgress}
 				isExporting={isExporting}
 				error={exportError}
 				onCancel={handleCancelExport}
 				exportFormat={exportFormat}
-				exportedFilePath={exportedFilePath}
 			/>
 		</div>
 	);

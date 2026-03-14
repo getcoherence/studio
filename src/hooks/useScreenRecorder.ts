@@ -104,7 +104,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				microphoneStream.current = null;
 			}
 			if (mixingContext.current) {
-				mixingContext.current.close().catch(() => {});
+				mixingContext.current.close().catch(() => {
+					// Ignore close errors during recorder teardown.
+				});
 				mixingContext.current = null;
 			}
 			mediaRecorder.current.stop();
@@ -142,7 +144,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				microphoneStream.current = null;
 			}
 			if (mixingContext.current) {
-				mixingContext.current.close().catch(() => {});
+				mixingContext.current.close().catch(() => {
+					// Ignore close errors during cleanup.
+				});
 				mixingContext.current = null;
 			}
 		};
@@ -171,7 +175,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 			if (systemAudioEnabled) {
 				try {
-					screenMediaStream = await (navigator.mediaDevices as any).getUserMedia({
+					screenMediaStream = await navigator.mediaDevices.getUserMedia({
 						audio: {
 							mandatory: {
 								chromeMediaSource: CHROME_MEDIA_SOURCE,
@@ -179,20 +183,20 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 							},
 						},
 						video: videoConstraints,
-					});
+					} as unknown as MediaStreamConstraints);
 				} catch (audioErr) {
 					console.warn("System audio capture failed, falling back to video-only:", audioErr);
 					toast.error("System audio not available. Recording without system audio.");
-					screenMediaStream = await (navigator.mediaDevices as any).getUserMedia({
+					screenMediaStream = await navigator.mediaDevices.getUserMedia({
 						audio: false,
 						video: videoConstraints,
-					});
+					} as unknown as MediaStreamConstraints);
 				}
 			} else {
-				screenMediaStream = await (navigator.mediaDevices as any).getUserMedia({
+				screenMediaStream = await navigator.mediaDevices.getUserMedia({
 					audio: false,
 					video: videoConstraints,
-				});
+				} as unknown as MediaStreamConstraints);
 			}
 			screenStream.current = screenMediaStream;
 
@@ -354,7 +358,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				microphoneStream.current = null;
 			}
 			if (mixingContext.current) {
-				mixingContext.current.close().catch(() => {});
+				mixingContext.current.close().catch(() => {
+					// Ignore close errors during error recovery.
+				});
 				mixingContext.current = null;
 			}
 		}

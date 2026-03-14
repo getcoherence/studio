@@ -36,7 +36,9 @@ export function ShortcutsProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		getIsMac()
 			.then(setIsMac)
-			.catch(() => {});
+			.catch(() => {
+				// Keep default non-mac fallback if detection fails.
+			});
 
 		window.electronAPI
 			.getShortcuts?.()
@@ -45,7 +47,9 @@ export function ShortcutsProvider({ children }: { children: ReactNode }) {
 					setShortcuts(mergeWithDefaults(saved as Partial<ShortcutsConfig>));
 				}
 			})
-			.catch(() => {});
+			.catch(() => {
+				// Keep default shortcuts if persisted settings can't be loaded.
+			});
 	}, []);
 
 	const persistShortcuts = useCallback(

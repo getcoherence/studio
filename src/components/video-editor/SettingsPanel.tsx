@@ -38,6 +38,7 @@ import type {
 	AnnotationRegion,
 	AnnotationType,
 	CropRegion,
+	FigureData,
 	PlaybackSpeed,
 	ZoomDepth,
 } from "./types";
@@ -86,14 +87,17 @@ interface SettingsPanelProps {
 	onTrimDelete?: (id: string) => void;
 	shadowIntensity?: number;
 	onShadowChange?: (intensity: number) => void;
+	onShadowCommit?: () => void;
 	showBlur?: boolean;
 	onBlurChange?: (showBlur: boolean) => void;
 	motionBlurEnabled?: boolean;
 	onMotionBlurChange?: (enabled: boolean) => void;
 	borderRadius?: number;
 	onBorderRadiusChange?: (radius: number) => void;
+	onBorderRadiusCommit?: () => void;
 	padding?: number;
 	onPaddingChange?: (padding: number) => void;
+	onPaddingCommit?: () => void;
 	cropRegion?: CropRegion;
 	onCropChange?: (region: CropRegion) => void;
 	aspectRatio: AspectRatio;
@@ -118,7 +122,7 @@ interface SettingsPanelProps {
 	onAnnotationContentChange?: (id: string, content: string) => void;
 	onAnnotationTypeChange?: (id: string, type: AnnotationType) => void;
 	onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
-	onAnnotationFigureDataChange?: (id: string, figureData: any) => void;
+	onAnnotationFigureDataChange?: (id: string, figureData: FigureData) => void;
 	onAnnotationDelete?: (id: string) => void;
 	selectedSpeedId?: string | null;
 	selectedSpeedValue?: PlaybackSpeed | null;
@@ -148,14 +152,17 @@ export function SettingsPanel({
 	onTrimDelete,
 	shadowIntensity = 0,
 	onShadowChange,
+	onShadowCommit,
 	showBlur,
 	onBlurChange,
 	motionBlurEnabled = false,
 	onMotionBlurChange,
 	borderRadius = 0,
 	onBorderRadiusChange,
+	onBorderRadiusCommit,
 	padding = 50,
 	onPaddingChange,
+	onPaddingCommit,
 	cropRegion,
 	onCropChange,
 	aspectRatio,
@@ -196,7 +203,7 @@ export function SettingsPanel({
 			try {
 				const resolved = await Promise.all(WALLPAPER_RELATIVE.map((p) => getAssetPath(p)));
 				if (mounted) setWallpaperPaths(resolved);
-			} catch {
+			} catch (_err) {
 				if (mounted) setWallpaperPaths(WALLPAPER_RELATIVE.map((p) => `/${p}`));
 			}
 		})();
@@ -480,6 +487,7 @@ export function SettingsPanel({
 									<Slider
 										value={[shadowIntensity]}
 										onValueChange={(values) => onShadowChange?.(values[0])}
+										onValueCommit={() => onShadowCommit?.()}
 										min={0}
 										max={1}
 										step={0.01}
@@ -494,6 +502,7 @@ export function SettingsPanel({
 									<Slider
 										value={[borderRadius]}
 										onValueChange={(values) => onBorderRadiusChange?.(values[0])}
+										onValueCommit={() => onBorderRadiusCommit?.()}
 										min={0}
 										max={16}
 										step={0.5}
@@ -508,6 +517,7 @@ export function SettingsPanel({
 									<Slider
 										value={[padding]}
 										onValueChange={(values) => onPaddingChange?.(values[0])}
+										onValueCommit={() => onPaddingCommit?.()}
 										min={0}
 										max={100}
 										step={1}
@@ -620,7 +630,9 @@ export function SettingsPanel({
 															s.replace(/^file:\/\//, "").replace(/^\//, "");
 														if (clean(selected).endsWith(clean(path))) return true;
 														if (clean(path).endsWith(clean(selected))) return true;
-													} catch {}
+													} catch {
+														// Best-effort comparison; fallback to strict match.
+													}
 													return false;
 												})();
 												return (

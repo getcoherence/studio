@@ -1,23 +1,9 @@
 import { HelpCircle, Settings2 } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
-import { formatBinding, SHORTCUT_ACTIONS, SHORTCUT_LABELS } from "@/lib/shortcuts";
-import { formatShortcut } from "@/utils/platformUtils";
+import { FIXED_SHORTCUTS, formatBinding, SHORTCUT_ACTIONS, SHORTCUT_LABELS } from "@/lib/shortcuts";
 
 export function KeyboardShortcutsHelp() {
 	const { shortcuts, isMac, openConfig } = useShortcuts();
-
-	const [scrollLabels, setScrollLabels] = useState({
-		pan: "Shift + Ctrl + Scroll",
-		zoom: "Ctrl + Scroll",
-	});
-
-	useEffect(() => {
-		Promise.all([
-			formatShortcut(["shift", "mod", "Scroll"]),
-			formatShortcut(["mod", "Scroll"]),
-		]).then(([pan, zoom]) => setScrollLabels({ pan, zoom }));
-	}, []);
 
 	return (
 		<div className="relative group">
@@ -47,25 +33,20 @@ export function KeyboardShortcutsHelp() {
 						</div>
 					))}
 
-					<div className="pt-1 border-t border-white/5 mt-1">
-						<div className="flex items-center justify-between">
-							<span className="text-slate-400">Pan Timeline</span>
-							<kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">
-								{scrollLabels.pan}
-							</kbd>
-						</div>
-						<div className="flex items-center justify-between mt-1.5">
-							<span className="text-slate-400">Zoom Timeline</span>
-							<kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">
-								{scrollLabels.zoom}
-							</kbd>
-						</div>
-						<div className="flex items-center justify-between mt-1.5">
-							<span className="text-slate-400">Cycle Annotations</span>
-							<kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">
-								Tab
-							</kbd>
-						</div>
+					<div className="pt-1 border-t border-white/5 mt-1 space-y-1.5">
+						{FIXED_SHORTCUTS.map((fixed) => (
+							<div key={fixed.label} className="flex items-center justify-between">
+								<span className="text-slate-400">{fixed.label}</span>
+								<kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">
+									{isMac
+										? fixed.display
+												.replace(/Ctrl/g, "⌘")
+												.replace(/Shift/g, "⇧")
+												.replace(/Alt/g, "⌥")
+										: fixed.display}
+								</kbd>
+							</div>
+						))}
 					</div>
 				</div>
 			</div>
