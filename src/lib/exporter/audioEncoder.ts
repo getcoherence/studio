@@ -8,7 +8,12 @@ const DECODE_BACKPRESSURE_LIMIT = 20;
 export class AudioProcessor {
 	private cancelled = false;
 
-	async process(demuxer: WebDemuxer, muxer: VideoMuxer, trimRegions?: TrimRegion[]): Promise<void> {
+	async process(
+		demuxer: WebDemuxer,
+		muxer: VideoMuxer,
+		trimRegions?: TrimRegion[],
+		readEndSec?: number,
+	): Promise<void> {
 		let audioConfig: AudioDecoderConfig;
 		try {
 			audioConfig = (await demuxer.getDecoderConfig("audio")) as AudioDecoderConfig;
@@ -34,19 +39,36 @@ export class AudioProcessor {
 		});
 		decoder.configure(audioConfig);
 
-		const reader = (demuxer.read("audio") as ReadableStream<EncodedAudioChunk>).getReader();
+		const safeReadEndSec =
+			typeof readEndSec === "number" && Number.isFinite(readEndSec)
+				? Math.max(0, readEndSec)
+				: undefined;
+		const audioStream = (
+			safeReadEndSec !== undefined
+				? demuxer.read("audio", 0, safeReadEndSec)
+				: demuxer.read("audio")
+		) as ReadableStream<EncodedAudioChunk>;
+		const reader = audioStream.getReader();
 
-		while (!this.cancelled) {
-			const { done, value: chunk } = await reader.read();
-			if (done || !chunk) break;
+		try {
+			while (!this.cancelled) {
+				const { done, value: chunk } = await reader.read();
+				if (done || !chunk) break;
 
-			const timestampMs = chunk.timestamp / 1000;
-			if (this.isInTrimRegion(timestampMs, sortedTrims)) continue;
+				const timestampMs = chunk.timestamp / 1000;
+				if (this.isInTrimRegion(timestampMs, sortedTrims)) continue;
 
-			decoder.decode(chunk);
+				decoder.decode(chunk);
 
-			while (decoder.decodeQueueSize > DECODE_BACKPRESSURE_LIMIT && !this.cancelled) {
-				await new Promise((resolve) => setTimeout(resolve, 1));
+				while (decoder.decodeQueueSize > DECODE_BACKPRESSURE_LIMIT && !this.cancelled) {
+					await new Promise((resolve) => setTimeout(resolve, 1));
+				}
+			}
+		} finally {
+			try {
+				await reader.cancel();
+			} catch {
+				/* reader already closed */
 			}
 		}
 
