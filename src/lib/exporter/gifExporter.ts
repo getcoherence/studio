@@ -122,9 +122,10 @@ export class GifExporter {
 			// Initialize GIF encoder
 			// Loop: 0 = infinite loop, 1 = play once (no loop)
 			const repeat = this.config.loop ? 0 : 1;
-
+			const cores = navigator.hardwareConcurrency || 4;
+			const WORKER_COUNT = Math.max(1, Math.min(8, cores - 1));
 			this.gif = new GIF({
-				workers: 4,
+				workers: WORKER_COUNT,
 				quality: 10,
 				width: this.config.width,
 				height: this.config.height,
