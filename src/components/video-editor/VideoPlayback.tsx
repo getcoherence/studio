@@ -7,6 +7,7 @@ import {
 	Texture,
 	VideoSource,
 } from "pixi.js";
+import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import type React from "react";
 import {
 	forwardRef,
@@ -29,14 +30,24 @@ import {
 	type ZoomFocus,
 	type ZoomRegion,
 } from "./types";
-import { DEFAULT_FOCUS, MIN_DELTA, SMOOTHING_FACTOR } from "./videoPlayback/constants";
+import {
+	DEFAULT_FOCUS,
+	ZOOM_SCALE_DEADZONE,
+	ZOOM_TRANSLATION_DEADZONE_PX,
+} from "./videoPlayback/constants";
 import { clampFocusToStage as clampFocusToStageUtil } from "./videoPlayback/focusUtils";
 import { layoutVideoContent as layoutVideoContentUtil } from "./videoPlayback/layoutUtils";
 import { clamp01 } from "./videoPlayback/mathUtils";
 import { updateOverlayIndicator } from "./videoPlayback/overlayUtils";
 import { createVideoEventHandlers } from "./videoPlayback/videoEventHandlers";
 import { findDominantRegion } from "./videoPlayback/zoomRegionUtils";
-import { applyZoomTransform } from "./videoPlayback/zoomTransform";
+import {
+	applyZoomTransform,
+	computeFocusFromTransform,
+	computeZoomTransform,
+	createMotionBlurState,
+	type MotionBlurState,
+} from "./videoPlayback/zoomTransform";
 
 interface VideoPlaybackProps {
 	videoPath: string;
@@ -113,6 +124,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		},
 		ref,
 	) => {
+		const ZOOM_MOTION_BLUR_AMOUNT = 0.35;
 		const videoRef = useRef<HTMLVideoElement | null>(null);
 		const containerRef = useRef<HTMLDivElement | null>(null);
 		const appRef = useRef<Application | null>(null);
@@ -131,8 +143,13 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			scale: 1,
 			focusX: DEFAULT_FOCUS.cx,
 			focusY: DEFAULT_FOCUS.cy,
+			progress: 0,
+			x: 0,
+			y: 0,
+			appliedScale: 1,
 		});
 		const blurFilterRef = useRef<BlurFilter | null>(null);
+		const motionBlurFilterRef = useRef<MotionBlurFilter | null>(null);
 		const isDraggingFocusRef = useRef(false);
 		const stageSizeRef = useRef({ width: 0, height: 0 });
 		const videoSizeRef = useRef({ width: 0, height: 0 });
@@ -149,6 +166,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const trimRegionsRef = useRef<TrimRegion[]>([]);
 		const speedRegionsRef = useRef<SpeedRegion[]>([]);
 		const motionBlurEnabledRef = useRef(motionBlurEnabled);
+		const motionBlurStateRef = useRef<MotionBlurState>(createMotionBlurState());
 		const onTimeUpdateRef = useRef(onTimeUpdate);
 		const onPlayStateChangeRef = useRef(onPlayStateChange);
 		const videoReadyRafRef = useRef<number | null>(null);
@@ -412,7 +430,14 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				scale: 1,
 				focusX: DEFAULT_FOCUS.cx,
 				focusY: DEFAULT_FOCUS.cy,
+				progress: 0,
+				x: 0,
+				y: 0,
+				appliedScale: 1,
 			};
+
+			// Reset motion blur state for clean transitions
+			motionBlurStateRef.current = createMotionBlurState();
 
 			if (blurFilterRef.current) {
 				blurFilterRef.current.blur = 0;
@@ -446,7 +471,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					focusY: DEFAULT_FOCUS.cy,
 					motionIntensity: 0,
 					isPlaying: false,
-					motionBlurEnabled: motionBlurEnabledRef.current,
+					motionBlurAmount: motionBlurEnabledRef.current ? ZOOM_MOTION_BLUR_AMOUNT : 0,
 				});
 
 				requestAnimationFrame(() => {
@@ -605,14 +630,20 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				scale: 1,
 				focusX: DEFAULT_FOCUS.cx,
 				focusY: DEFAULT_FOCUS.cy,
+				progress: 0,
+				x: 0,
+				y: 0,
+				appliedScale: 1,
 			};
 
 			const blurFilter = new BlurFilter();
 			blurFilter.quality = 3;
 			blurFilter.resolution = app.renderer.resolution;
 			blurFilter.blur = 0;
-			videoContainer.filters = [blurFilter];
+			const motionBlurFilter = new MotionBlurFilter([0, 0], 5, 0);
+			videoContainer.filters = [blurFilter, motionBlurFilter];
 			blurFilterRef.current = blurFilter;
+			motionBlurFilterRef.current = motionBlurFilter;
 
 			layoutVideoContentRef.current?.();
 			video.pause();
@@ -662,6 +693,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					blurFilterRef.current.destroy();
 					blurFilterRef.current = null;
 				}
+				if (motionBlurFilterRef.current) {
+					motionBlurFilterRef.current.destroy();
+					motionBlurFilterRef.current = null;
+				}
 				videoTexture.destroy(true);
 
 				videoSpriteRef.current = null;
@@ -676,97 +711,154 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			const videoContainer = videoContainerRef.current;
 			if (!app || !videoSprite || !videoContainer) return;
 
-			const applyTransform = (motionIntensity: number) => {
+			const applyTransformFn = (
+				transform: { scale: number; x: number; y: number },
+				targetFocus: ZoomFocus,
+				motionIntensity: number,
+				motionVector: { x: number; y: number },
+			) => {
 				const cameraContainer = cameraContainerRef.current;
 				if (!cameraContainer) return;
 
 				const state = animationStateRef.current;
 
-				applyZoomTransform({
+				const appliedTransform = applyZoomTransform({
 					cameraContainer,
 					blurFilter: blurFilterRef.current,
+					motionBlurFilter: motionBlurFilterRef.current,
 					stageSize: stageSizeRef.current,
 					baseMask: baseMaskRef.current,
 					zoomScale: state.scale,
-					focusX: state.focusX,
-					focusY: state.focusY,
+					zoomProgress: state.progress,
+					focusX: targetFocus.cx,
+					focusY: targetFocus.cy,
 					motionIntensity,
+					motionVector,
 					isPlaying: isPlayingRef.current,
-					motionBlurEnabled: motionBlurEnabledRef.current,
+					motionBlurAmount: motionBlurEnabledRef.current ? ZOOM_MOTION_BLUR_AMOUNT : 0,
+					transformOverride: transform,
+					motionBlurState: motionBlurStateRef.current,
+					frameTimeMs: performance.now(),
 				});
+
+				state.x = appliedTransform.x;
+				state.y = appliedTransform.y;
+				state.appliedScale = appliedTransform.scale;
 			};
 
 			const ticker = () => {
-				const { region, strength } = findDominantRegion(
+				const { region, strength, blendedScale, transition } = findDominantRegion(
 					zoomRegionsRef.current,
 					currentTimeRef.current,
+					{ connectZooms: true },
 				);
 
 				const defaultFocus = DEFAULT_FOCUS;
 				let targetScaleFactor = 1;
 				let targetFocus = defaultFocus;
+				let targetProgress = 0;
 
 				// If a zoom is selected but video is not playing, show default unzoomed view
-				// (the overlay will show where the zoom will be)
 				const selectedId = selectedZoomIdRef.current;
 				const hasSelectedZoom = selectedId !== null;
 				const shouldShowUnzoomedView = hasSelectedZoom && !isPlayingRef.current;
 
 				if (region && strength > 0 && !shouldShowUnzoomedView) {
-					const zoomScale = ZOOM_DEPTH_SCALES[region.depth];
-					const regionFocus = clampFocusToStage(region.focus, region.depth);
+					const zoomScale = blendedScale ?? ZOOM_DEPTH_SCALES[region.depth];
+					const regionFocus = region.focus;
 
-					// Interpolate scale and focus based on region strength
-					targetScaleFactor = 1 + (zoomScale - 1) * strength;
-					targetFocus = {
-						cx: defaultFocus.cx + (regionFocus.cx - defaultFocus.cx) * strength,
-						cy: defaultFocus.cy + (regionFocus.cy - defaultFocus.cy) * strength,
-					};
+					targetScaleFactor = zoomScale;
+					targetFocus = regionFocus;
+					targetProgress = strength;
+
+					// Handle connected zoom transitions (pan between adjacent zoom regions)
+					if (transition) {
+						const startTransform = computeZoomTransform({
+							stageSize: stageSizeRef.current,
+							baseMask: baseMaskRef.current,
+							zoomScale: transition.startScale,
+							zoomProgress: 1,
+							focusX: transition.startFocus.cx,
+							focusY: transition.startFocus.cy,
+						});
+						const endTransform = computeZoomTransform({
+							stageSize: stageSizeRef.current,
+							baseMask: baseMaskRef.current,
+							zoomScale: transition.endScale,
+							zoomProgress: 1,
+							focusX: transition.endFocus.cx,
+							focusY: transition.endFocus.cy,
+						});
+
+						const interpolatedTransform = {
+							scale:
+								startTransform.scale +
+								(endTransform.scale - startTransform.scale) * transition.progress,
+							x: startTransform.x + (endTransform.x - startTransform.x) * transition.progress,
+							y: startTransform.y + (endTransform.y - startTransform.y) * transition.progress,
+						};
+
+						targetScaleFactor = interpolatedTransform.scale;
+						targetFocus = computeFocusFromTransform({
+							stageSize: stageSizeRef.current,
+							baseMask: baseMaskRef.current,
+							zoomScale: interpolatedTransform.scale,
+							x: interpolatedTransform.x,
+							y: interpolatedTransform.y,
+						});
+						targetProgress = 1;
+					}
 				}
 
 				const state = animationStateRef.current;
+				const prevScale = state.appliedScale;
+				const prevX = state.x;
+				const prevY = state.y;
 
-				const prevScale = state.scale;
-				const prevFocusX = state.focusX;
-				const prevFocusY = state.focusY;
+				state.scale = targetScaleFactor;
+				state.focusX = targetFocus.cx;
+				state.focusY = targetFocus.cy;
+				state.progress = targetProgress;
 
-				const scaleDelta = targetScaleFactor - state.scale;
-				const focusXDelta = targetFocus.cx - state.focusX;
-				const focusYDelta = targetFocus.cy - state.focusY;
+				const projectedTransform = computeZoomTransform({
+					stageSize: stageSizeRef.current,
+					baseMask: baseMaskRef.current,
+					zoomScale: state.scale,
+					zoomProgress: state.progress,
+					focusX: state.focusX,
+					focusY: state.focusY,
+				});
 
-				let nextScale = prevScale;
-				let nextFocusX = prevFocusX;
-				let nextFocusY = prevFocusY;
-
-				if (Math.abs(scaleDelta) > MIN_DELTA) {
-					nextScale = prevScale + scaleDelta * SMOOTHING_FACTOR;
-				} else {
-					nextScale = targetScaleFactor;
-				}
-
-				if (Math.abs(focusXDelta) > MIN_DELTA) {
-					nextFocusX = prevFocusX + focusXDelta * SMOOTHING_FACTOR;
-				} else {
-					nextFocusX = targetFocus.cx;
-				}
-
-				if (Math.abs(focusYDelta) > MIN_DELTA) {
-					nextFocusY = prevFocusY + focusYDelta * SMOOTHING_FACTOR;
-				} else {
-					nextFocusY = targetFocus.cy;
-				}
-
-				state.scale = nextScale;
-				state.focusX = nextFocusX;
-				state.focusY = nextFocusY;
+				const appliedScale =
+					Math.abs(projectedTransform.scale - prevScale) < ZOOM_SCALE_DEADZONE
+						? projectedTransform.scale
+						: projectedTransform.scale;
+				const appliedX =
+					Math.abs(projectedTransform.x - prevX) < ZOOM_TRANSLATION_DEADZONE_PX
+						? projectedTransform.x
+						: projectedTransform.x;
+				const appliedY =
+					Math.abs(projectedTransform.y - prevY) < ZOOM_TRANSLATION_DEADZONE_PX
+						? projectedTransform.y
+						: projectedTransform.y;
 
 				const motionIntensity = Math.max(
-					Math.abs(nextScale - prevScale),
-					Math.abs(nextFocusX - prevFocusX),
-					Math.abs(nextFocusY - prevFocusY),
+					Math.abs(appliedScale - prevScale),
+					Math.abs(appliedX - prevX) / Math.max(1, stageSizeRef.current.width),
+					Math.abs(appliedY - prevY) / Math.max(1, stageSizeRef.current.height),
 				);
 
-				applyTransform(motionIntensity);
+				const motionVector = {
+					x: appliedX - prevX,
+					y: appliedY - prevY,
+				};
+
+				applyTransformFn(
+					{ scale: appliedScale, x: appliedX, y: appliedY },
+					targetFocus,
+					motionIntensity,
+					motionVector,
+				);
 			};
 
 			app.ticker.add(ticker);
@@ -775,7 +867,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					app.ticker.remove(ticker);
 				}
 			};
-		}, [pixiReady, videoReady, clampFocusToStage]);
+		}, [pixiReady, videoReady]);
 
 		const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
 			const video = e.currentTarget;
