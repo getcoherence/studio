@@ -41,6 +41,7 @@ const MIC_GAIN_BOOST = 1.4;
 type UseScreenRecorderReturn = {
 	recording: boolean;
 	toggleRecording: () => void;
+	restartRecording: () => void;
 	microphoneEnabled: boolean;
 	setMicrophoneEnabled: (enabled: boolean) => void;
 	microphoneDeviceId: string | undefined;
@@ -61,6 +62,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const mixingContext = useRef<AudioContext | null>(null);
 	const chunks = useRef<Blob[]>([]);
 	const startTime = useRef<number>(0);
+	const discardRecording = useRef(false);
 
 	const selectMimeType = () => {
 		const preferred = [
@@ -301,6 +303,11 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			};
 			recorder.onstop = async () => {
 				stream.current = null;
+				if (discardRecording.current) {
+					discardRecording.current = false;
+					chunks.current = [];
+					return;
+				}
 				if (chunks.current.length === 0) return;
 				const duration = Date.now() - startTime.current;
 				const recordedChunks = chunks.current;
@@ -370,9 +377,17 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		recording ? stopRecording.current() : startRecording();
 	};
 
+	const restartRecording = () => {
+		if (!recording) return;
+		discardRecording.current = true;
+		stopRecording.current();
+		startRecording();
+	};
+
 	return {
 		recording,
 		toggleRecording,
+		restartRecording,
 		microphoneEnabled,
 		setMicrophoneEnabled,
 		microphoneDeviceId,

@@ -4,7 +4,15 @@ import { BsRecordCircle } from "react-icons/bs";
 import { FaRegStopCircle } from "react-icons/fa";
 import { FaFolderOpen } from "react-icons/fa6";
 import { FiMinus, FiX } from "react-icons/fi";
-import { MdMic, MdMicOff, MdMonitor, MdVideoFile, MdVolumeOff, MdVolumeUp } from "react-icons/md";
+import {
+	MdMic,
+	MdMicOff,
+	MdMonitor,
+	MdRestartAlt,
+	MdVideoFile,
+	MdVolumeOff,
+	MdVolumeUp,
+} from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
@@ -24,6 +32,7 @@ const ICON_CONFIG = {
 	micOn: { icon: MdMic, size: ICON_SIZE },
 	micOff: { icon: MdMicOff, size: ICON_SIZE },
 	stop: { icon: FaRegStopCircle, size: ICON_SIZE },
+	restart: { icon: MdRestartAlt, size: ICON_SIZE },
 	record: { icon: BsRecordCircle, size: ICON_SIZE },
 	videoFile: { icon: MdVideoFile, size: ICON_SIZE },
 	folder: { icon: FaFolderOpen, size: ICON_SIZE },
@@ -51,6 +60,7 @@ export function LaunchWindow() {
 	const {
 		recording,
 		toggleRecording,
+		restartRecording,
 		microphoneEnabled,
 		setMicrophoneEnabled,
 		microphoneDeviceId,
@@ -255,6 +265,18 @@ export function LaunchWindow() {
 							getIcon("record", hasSelectedSource ? "text-white/80" : "text-white/30")
 						)}
 					</button>
+
+					{/* Restart recording */}
+					{recording && (
+						<Tooltip content="Restart recording">
+							<button
+								className={`${hudIconBtnClasses} ${styles.electronNoDrag}`}
+								onClick={restartRecording}
+							>
+								{getIcon("restart", "text-white/60")}
+							</button>
+						</Tooltip>
+					)}
 
 					{/* Open video file */}
 					<Tooltip content="Open video file">
