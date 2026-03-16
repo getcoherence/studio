@@ -40,7 +40,7 @@ interface FrameRenderConfig {
 	showShadow: boolean;
 	shadowIntensity: number;
 	showBlur: boolean;
-	motionBlurEnabled?: boolean;
+	motionBlurAmount?: number;
 	borderRadius?: number;
 	padding?: number;
 	cropRegion: CropRegion;
@@ -351,7 +351,7 @@ export class FrameRenderer {
 			focusY: this.animationState.focusY,
 			motionIntensity: maxMotionIntensity,
 			isPlaying: true,
-			motionBlurAmount: this.config.motionBlurEnabled ? 0.35 : 0,
+			motionBlurAmount: this.config.motionBlurAmount ?? 0,
 			motionBlurState: this.motionBlurState,
 			frameTimeMs: timeMs,
 		});

@@ -70,7 +70,7 @@ export default function VideoEditor() {
 		wallpaper,
 		shadowIntensity,
 		showBlur,
-		motionBlurEnabled,
+		motionBlurAmount,
 		borderRadius,
 		padding,
 		aspectRatio,
@@ -139,7 +139,7 @@ export default function VideoEditor() {
 				wallpaper: normalizedEditor.wallpaper,
 				shadowIntensity: normalizedEditor.shadowIntensity,
 				showBlur: normalizedEditor.showBlur,
-				motionBlurEnabled: normalizedEditor.motionBlurEnabled,
+				motionBlurAmount: normalizedEditor.motionBlurAmount,
 				borderRadius: normalizedEditor.borderRadius,
 				padding: normalizedEditor.padding,
 				cropRegion: normalizedEditor.cropRegion,
@@ -198,7 +198,7 @@ export default function VideoEditor() {
 				wallpaper,
 				shadowIntensity,
 				showBlur,
-				motionBlurEnabled,
+				motionBlurAmount,
 				borderRadius,
 				padding,
 				cropRegion,
@@ -220,7 +220,7 @@ export default function VideoEditor() {
 		wallpaper,
 		shadowIntensity,
 		showBlur,
-		motionBlurEnabled,
+		motionBlurAmount,
 		borderRadius,
 		padding,
 		cropRegion,
@@ -294,7 +294,7 @@ export default function VideoEditor() {
 				wallpaper,
 				shadowIntensity,
 				showBlur,
-				motionBlurEnabled,
+				motionBlurAmount,
 				borderRadius,
 				padding,
 				cropRegion,
@@ -347,7 +347,7 @@ export default function VideoEditor() {
 			wallpaper,
 			shadowIntensity,
 			showBlur,
-			motionBlurEnabled,
+			motionBlurAmount,
 			borderRadius,
 			padding,
 			cropRegion,
@@ -933,7 +933,7 @@ export default function VideoEditor() {
 						showShadow: shadowIntensity > 0,
 						shadowIntensity,
 						showBlur,
-						motionBlurEnabled,
+						motionBlurAmount,
 						borderRadius,
 						padding,
 						videoPadding: padding,
@@ -1060,7 +1060,7 @@ export default function VideoEditor() {
 						showShadow: shadowIntensity > 0,
 						shadowIntensity,
 						showBlur,
-						motionBlurEnabled,
+						motionBlurAmount,
 						borderRadius,
 						padding,
 						cropRegion,
@@ -1121,7 +1121,7 @@ export default function VideoEditor() {
 			speedRegions,
 			shadowIntensity,
 			showBlur,
-			motionBlurEnabled,
+			motionBlurAmount,
 			borderRadius,
 			padding,
 			cropRegion,
@@ -1270,7 +1270,7 @@ export default function VideoEditor() {
 											showShadow={shadowIntensity > 0}
 											shadowIntensity={shadowIntensity}
 											showBlur={showBlur}
-											motionBlurEnabled={motionBlurEnabled}
+											motionBlurAmount={motionBlurAmount}
 											borderRadius={borderRadius}
 											padding={padding}
 											cropRegion={cropRegion}
@@ -1369,8 +1369,9 @@ export default function VideoEditor() {
 					onShadowCommit={commitState}
 					showBlur={showBlur}
 					onBlurChange={(v) => pushState({ showBlur: v })}
-					motionBlurEnabled={motionBlurEnabled}
-					onMotionBlurChange={(v) => pushState({ motionBlurEnabled: v })}
+					motionBlurAmount={motionBlurAmount}
+					onMotionBlurChange={(v) => updateState({ motionBlurAmount: v })}
+					onMotionBlurCommit={commitState}
 					borderRadius={borderRadius}
 					onBorderRadiusChange={(v) => updateState({ borderRadius: v })}
 					onBorderRadiusCommit={commitState}

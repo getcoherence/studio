@@ -1,9 +1,16 @@
 import { BlurFilter, Container } from "pixi.js";
 import { MotionBlurFilter } from "pixi-filters/motion-blur";
 
-const PEAK_VELOCITY_PPS = 2000;
-const MAX_BLUR_PX = 8;
-const VELOCITY_THRESHOLD_PPS = 15;
+const PEAK_VELOCITY_PPS = 1400;
+const MAX_BLUR_PX = 14;
+const VELOCITY_THRESHOLD_PPS = 12;
+const MAX_AMOUNT_BOOST = 2.2;
+
+function getMotionBlurAmountResponse(motionBlurAmount: number) {
+	const clampedAmount = Math.min(1, Math.max(0, motionBlurAmount));
+	// Keep the low end usable while giving the top of the slider substantially more headroom.
+	return clampedAmount * (1 + (MAX_AMOUNT_BOOST - 1) * clampedAmount);
+}
 
 export interface MotionBlurState {
 	lastFrameTimeMs: number;
@@ -185,6 +192,7 @@ export function applyZoomTransform({
 			const dtMs = Math.min(80, Math.max(1, now - motionBlurState.lastFrameTimeMs));
 			const dtSeconds = dtMs / 1000;
 			motionBlurState.lastFrameTimeMs = now;
+			const amountResponse = getMotionBlurAmountResponse(motionBlurAmount);
 
 			// Camera displacement this frame (stage-px)
 			const dx = transform.x - motionBlurState.prevCamX;
@@ -204,17 +212,15 @@ export function applyZoomTransform({
 
 			const normalised = Math.min(1, speed / PEAK_VELOCITY_PPS);
 			const targetBlur =
-				speed < VELOCITY_THRESHOLD_PPS
-					? 0
-					: normalised * normalised * MAX_BLUR_PX * motionBlurAmount;
+				speed < VELOCITY_THRESHOLD_PPS ? 0 : normalised * normalised * MAX_BLUR_PX * amountResponse;
 
 			const dirMag = Math.sqrt(velocityX * velocityX + velocityY * velocityY) || 1;
-			const velocityScale = targetBlur * 1.2;
+			const velocityScale = targetBlur * 2.4;
 			motionBlurFilter.velocity =
 				targetBlur > 0
 					? { x: (velocityX / dirMag) * velocityScale, y: (velocityY / dirMag) * velocityScale }
 					: { x: 0, y: 0 };
-			motionBlurFilter.kernelSize = targetBlur > 4 ? 11 : targetBlur > 1.5 ? 9 : 5;
+			motionBlurFilter.kernelSize = targetBlur > 8 ? 15 : targetBlur > 4 ? 11 : 7;
 			motionBlurFilter.offset = targetBlur > 0.5 ? -0.2 : 0;
 
 			if (blurFilter) {

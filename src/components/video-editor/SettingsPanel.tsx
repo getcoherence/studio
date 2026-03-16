@@ -92,8 +92,9 @@ interface SettingsPanelProps {
 	onShadowCommit?: () => void;
 	showBlur?: boolean;
 	onBlurChange?: (showBlur: boolean) => void;
-	motionBlurEnabled?: boolean;
-	onMotionBlurChange?: (enabled: boolean) => void;
+	motionBlurAmount?: number;
+	onMotionBlurChange?: (amount: number) => void;
+	onMotionBlurCommit?: () => void;
 	borderRadius?: number;
 	onBorderRadiusChange?: (radius: number) => void;
 	onBorderRadiusCommit?: () => void;
@@ -157,8 +158,9 @@ export function SettingsPanel({
 	onShadowCommit,
 	showBlur,
 	onBlurChange,
-	motionBlurEnabled = false,
+	motionBlurAmount = 0,
 	onMotionBlurChange,
+	onMotionBlurCommit,
 	borderRadius = 0,
 	onBorderRadiusChange,
 	onBorderRadiusCommit,
@@ -575,14 +577,6 @@ export function SettingsPanel({
 						<AccordionContent className="pb-3">
 							<div className="grid grid-cols-2 gap-2 mb-3">
 								<div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
-									<div className="text-[10px] font-medium text-slate-300">Motion Blur</div>
-									<Switch
-										checked={motionBlurEnabled}
-										onCheckedChange={onMotionBlurChange}
-										className="data-[state=checked]:bg-[#34B27B] scale-90"
-									/>
-								</div>
-								<div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
 									<div className="text-[10px] font-medium text-slate-300">Blur BG</div>
 									<Switch
 										checked={showBlur}
@@ -593,6 +587,23 @@ export function SettingsPanel({
 							</div>
 
 							<div className="grid grid-cols-2 gap-2">
+								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+									<div className="flex items-center justify-between mb-1">
+										<div className="text-[10px] font-medium text-slate-300">Motion Blur</div>
+										<span className="text-[10px] text-slate-500 font-mono">
+											{motionBlurAmount === 0 ? "off" : motionBlurAmount.toFixed(2)}
+										</span>
+									</div>
+									<Slider
+										value={[motionBlurAmount]}
+										onValueChange={(values) => onMotionBlurChange?.(values[0])}
+										onValueCommit={() => onMotionBlurCommit?.()}
+										min={0}
+										max={1}
+										step={0.01}
+										className="w-full [&_[role=slider]]:bg-[#34B27B] [&_[role=slider]]:border-[#34B27B] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
+									/>
+								</div>
 								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
 									<div className="flex items-center justify-between mb-1">
 										<div className="text-[10px] font-medium text-slate-300">Shadow</div>

@@ -28,7 +28,7 @@ export interface ProjectEditorState {
 	wallpaper: string;
 	shadowIntensity: number;
 	showBlur: boolean;
-	motionBlurEnabled: boolean;
+	motionBlurAmount: number;
 	borderRadius: number;
 	padding: number;
 	cropRegion: CropRegion;
@@ -302,8 +302,13 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		wallpaper: typeof editor.wallpaper === "string" ? editor.wallpaper : WALLPAPER_PATHS[0],
 		shadowIntensity: typeof editor.shadowIntensity === "number" ? editor.shadowIntensity : 0,
 		showBlur: typeof editor.showBlur === "boolean" ? editor.showBlur : false,
-		motionBlurEnabled:
-			typeof editor.motionBlurEnabled === "boolean" ? editor.motionBlurEnabled : false,
+		motionBlurAmount: isFiniteNumber(editor.motionBlurAmount)
+			? clamp(editor.motionBlurAmount, 0, 1)
+			: typeof (editor as { motionBlurEnabled?: unknown }).motionBlurEnabled === "boolean"
+				? (editor as { motionBlurEnabled?: boolean }).motionBlurEnabled
+					? 0.35
+					: 0
+				: 0,
 		borderRadius: typeof editor.borderRadius === "number" ? editor.borderRadius : 0,
 		padding: isFiniteNumber(editor.padding) ? clamp(editor.padding, 0, 100) : 50,
 		cropRegion: {

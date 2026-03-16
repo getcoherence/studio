@@ -20,7 +20,7 @@ interface VideoExporterConfig extends ExportConfig {
 	showShadow: boolean;
 	shadowIntensity: number;
 	showBlur: boolean;
-	motionBlurEnabled?: boolean;
+	motionBlurAmount?: number;
 	borderRadius?: number;
 	padding?: number;
 	videoPadding?: number;
@@ -70,7 +70,7 @@ export class VideoExporter {
 				showShadow: this.config.showShadow,
 				shadowIntensity: this.config.shadowIntensity,
 				showBlur: this.config.showBlur,
-				motionBlurEnabled: this.config.motionBlurEnabled,
+				motionBlurAmount: this.config.motionBlurAmount,
 				borderRadius: this.config.borderRadius,
 				padding: this.config.padding,
 				cropRegion: this.config.cropRegion,
