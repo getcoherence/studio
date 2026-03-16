@@ -1,3 +1,4 @@
+/// <reference path="../../electron/electron-env.d.ts" />
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -13,11 +14,7 @@ test("exports a GIF from a loaded video", async () => {
 	const outputPath = path.join(os.tmpdir(), `test-gif-export-${Date.now()}.gif`);
 
 	const app = await electron.launch({
-		args: [
-			MAIN_JS,
-			// Required in CI sandbox environments (GitHub Actions, Docker, etc.)
-			"--no-sandbox",
-		],
+		args: [MAIN_JS],
 		env: {
 			...process.env,
 			// Set HEADLESS=false to show windows while debugging.
@@ -58,21 +55,31 @@ test("exports a GIF from a loaded video", async () => {
 			);
 		});
 
-		await hudWindow.evaluate((videoPath: string) => {
-			window.electronAPI.setCurrentVideoPath(videoPath);
-			try {
-				window.electronAPI.switchToEditor();
-			} catch {
-				// Expected: HUD window closes during this call, killing the context.
-			}
-		}, TEST_VIDEO);
-
-		// ── 3. Switch to the editor window. This closes the HUD and opens
-		//       a new BrowserWindow with ?windowType=editor.
-		const editorWindow = await app.waitForEvent("window", {
+		// ── 3. Attach the window listener BEFORE triggering the switch so a fast
+		//       main-process response can't create the editor window before the
+		//       listener is live (which would cause a 15s timeout waiting for an
+		//       event that already fired).
+		const editorWindowPromise = app.waitForEvent("window", {
 			predicate: (w) => w.url().includes("windowType=editor"),
 			timeout: 15_000,
 		});
+
+		// Set the video path first and wait for it to settle, then switch.
+		// Calling switchToEditor before setCurrentVideoPath resolves can open the
+		// editor without the expected video loaded.
+		await hudWindow.evaluate(
+			(videoPath: string) => window.electronAPI.setCurrentVideoPath(videoPath),
+			TEST_VIDEO,
+		);
+
+		hudWindow
+			.evaluate(() => window.electronAPI.switchToEditor())
+			.catch(() => {
+				// Expected: the HUD window is destroyed mid-call, which kills the
+				// renderer context and rejects the evaluate promise.
+			});
+
+		const editorWindow = await editorWindowPromise;
 
 		// WebCodecs (VideoEncoder) may not be registered in the renderer on first
 		// load of a second BrowserWindow. A single reload ensures the feature is
