@@ -1,42 +1,8 @@
+/* Electron-specific: no Tailwind equivalent for -webkit-app-region */
 .electronDrag {
-  -webkit-app-region: drag;
-}
-
-.hudBar {
-  isolation: isolate;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+	-webkit-app-region: drag;
 }
 
 .electronNoDrag {
-  -webkit-app-region: no-drag;
-}
-
-
-.folderButton {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.folderText {
-  color: #cbd5e1;
-  transition: text-decoration 0.15s;
-}
-
-.folderButton:hover .folderText {
-  text-decoration: underline;
-}
-
-.hudOverlayButton {
-  cursor: pointer;
-  background: none;
-  border: none;
-  color: #fff;
-  opacity: 0.7;
-  transition: opacity 0.15s;
-}
-.hudOverlayButton:hover {
-  opacity: 0.7;
-  background: none !important;
+	-webkit-app-region: no-drag;
 }

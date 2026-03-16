@@ -28,6 +28,7 @@
   ],
 
   "mac": {
+    "hardenedRuntime": false,
     "target": [
       {
         "target": "dmg",
@@ -35,7 +36,13 @@
       }
     ],
     "icon": "icons/icons/mac/icon.icns",
-    "artifactName": "${productName}-Mac-${arch}-${version}-Installer.${ext}"
+    "artifactName": "${productName}-Mac-${arch}-${version}-Installer.${ext}",
+    "extendInfo": {
+      "NSAudioCaptureUsageDescription": "OpenScreen needs audio capture permission to record system audio.",
+      "NSMicrophoneUsageDescription": "OpenScreen needs microphone access to record voice audio.",
+      "NSCameraUseContinuityCameraDeviceType": true,
+      "com.apple.security.device.audio-input": true
+    }
   },
   "linux": {
     "target": [
@@ -50,5 +57,9 @@
       "nsis"
     ],
     "icon": "icons/icons/win/icon.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true
   }
 }
