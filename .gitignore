@@ -26,3 +26,7 @@ dist-ssr
 release/**
 *.kiro/
 # npx electron-builder --mac --win
+
+# Playwright
+test-results
+playwright-report/
