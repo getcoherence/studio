@@ -54,8 +54,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # Install Electron system dependencies not covered by Playwright's chromium deps
+      - run: npx electron . --version || sudo apt-get install -y libgbm-dev
       - run: npm run build-vite
-      - run: npm run test:e2e
+      # xvfb provides a virtual display; Electron needs one on Linux even with show:false
+      - run: xvfb-run --auto-servernum npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

@@ -13,7 +13,11 @@ test("exports a GIF from a loaded video", async () => {
 	const outputPath = path.join(os.tmpdir(), `test-gif-export-${Date.now()}.gif`);
 
 	const app = await electron.launch({
-		args: [MAIN_JS],
+		args: [
+			MAIN_JS,
+			// Required in CI sandbox environments (GitHub Actions, Docker, etc.)
+			"--no-sandbox",
+		],
 		env: {
 			...process.env,
 			// Set HEADLESS=false to show windows while debugging.
