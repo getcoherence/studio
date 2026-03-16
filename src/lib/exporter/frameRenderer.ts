@@ -7,6 +7,7 @@ import {
 	Texture,
 	type TextureSourceLike,
 } from "pixi.js";
+import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import type {
 	AnnotationRegion,
 	CropRegion,
@@ -17,13 +18,18 @@ import type {
 import { ZOOM_DEPTH_SCALES } from "@/components/video-editor/types";
 import {
 	DEFAULT_FOCUS,
-	MIN_DELTA,
-	SMOOTHING_FACTOR,
+	ZOOM_SCALE_DEADZONE,
+	ZOOM_TRANSLATION_DEADZONE_PX,
 } from "@/components/video-editor/videoPlayback/constants";
 import { clampFocusToStage as clampFocusToStageUtil } from "@/components/video-editor/videoPlayback/focusUtils";
 import { findDominantRegion } from "@/components/video-editor/videoPlayback/zoomRegionUtils";
-import { applyZoomTransform } from "@/components/video-editor/videoPlayback/zoomTransform";
-import { getAssetPath } from "@/lib/assetPath";
+import {
+	applyZoomTransform,
+	computeFocusFromTransform,
+	computeZoomTransform,
+	createMotionBlurState,
+	type MotionBlurState,
+} from "@/components/video-editor/videoPlayback/zoomTransform";
 import { renderAnnotations } from "./annotationRenderer";
 
 interface FrameRenderConfig {
@@ -50,6 +56,10 @@ interface AnimationState {
 	scale: number;
 	focusX: number;
 	focusY: number;
+	progress: number;
+	x: number;
+	y: number;
+	appliedScale: number;
 }
 
 interface LayoutCache {
@@ -70,6 +80,7 @@ export class FrameRenderer {
 	private backgroundSprite: HTMLCanvasElement | null = null;
 	private maskGraphics: Graphics | null = null;
 	private blurFilter: BlurFilter | null = null;
+	private motionBlurFilter: MotionBlurFilter | null = null;
 	private shadowCanvas: HTMLCanvasElement | null = null;
 	private shadowCtx: CanvasRenderingContext2D | null = null;
 	private compositeCanvas: HTMLCanvasElement | null = null;
@@ -78,6 +89,7 @@ export class FrameRenderer {
 	private animationState: AnimationState;
 	private layoutCache: LayoutCache | null = null;
 	private currentVideoTime = 0;
+	private motionBlurState: MotionBlurState = createMotionBlurState();
 
 	constructor(config: FrameRenderConfig) {
 		this.config = config;
@@ -85,6 +97,10 @@ export class FrameRenderer {
 			scale: 1,
 			focusX: DEFAULT_FOCUS.cx,
 			focusY: DEFAULT_FOCUS.cy,
+			progress: 0,
+			x: 0,
+			y: 0,
+			appliedScale: 1,
 		};
 	}
 
@@ -130,7 +146,8 @@ export class FrameRenderer {
 		this.blurFilter.quality = 5;
 		this.blurFilter.resolution = this.app.renderer.resolution;
 		this.blurFilter.blur = 0;
-		this.videoContainer.filters = [this.blurFilter];
+		this.motionBlurFilter = new MotionBlurFilter([0, 0], 5, 0);
+		this.videoContainer.filters = [this.blurFilter, this.motionBlurFilter];
 
 		// Setup composite canvas for final output with shadows
 		this.compositeCanvas = document.createElement("canvas");
@@ -179,14 +196,18 @@ export class FrameRenderer {
 			) {
 				// Image background
 				const img = new Image();
-				const imageUrl = await this.resolveWallpaperImageUrl(wallpaper);
-				// Don't set crossOrigin for same-origin images to avoid CORS taint.
-				if (
-					imageUrl.startsWith("http") &&
-					window.location.origin &&
-					!imageUrl.startsWith(window.location.origin)
-				) {
-					img.crossOrigin = "anonymous";
+				// Don't set crossOrigin for same-origin images to avoid CORS taint
+				// Only set it for cross-origin URLs
+				let imageUrl: string;
+				if (wallpaper.startsWith("http")) {
+					imageUrl = wallpaper;
+					if (!imageUrl.startsWith(window.location.origin)) {
+						img.crossOrigin = "anonymous";
+					}
+				} else if (wallpaper.startsWith("file://") || wallpaper.startsWith("data:")) {
+					imageUrl = wallpaper;
+				} else {
+					imageUrl = window.location.origin + wallpaper;
 				}
 
 				await new Promise<void>((resolve, reject) => {
@@ -280,23 +301,6 @@ export class FrameRenderer {
 		this.backgroundSprite = bgCanvas;
 	}
 
-	private async resolveWallpaperImageUrl(wallpaper: string): Promise<string> {
-		if (
-			wallpaper.startsWith("file://") ||
-			wallpaper.startsWith("data:") ||
-			wallpaper.startsWith("http")
-		) {
-			return wallpaper;
-		}
-
-		const resolved = await getAssetPath(wallpaper.replace(/^\/+/, ""));
-		if (resolved.startsWith("/") && window.location.protocol.startsWith("http")) {
-			return `${window.location.origin}${resolved}`;
-		}
-
-		return resolved;
-	}
-
 	async renderFrame(videoFrame: VideoFrame, timestamp: number): Promise<void> {
 		if (!this.app || !this.videoContainer || !this.cameraContainer) {
 			throw new Error("Renderer not initialized");
@@ -338,14 +342,18 @@ export class FrameRenderer {
 		applyZoomTransform({
 			cameraContainer: this.cameraContainer,
 			blurFilter: this.blurFilter,
+			motionBlurFilter: this.motionBlurFilter,
 			stageSize: layoutCache.stageSize,
 			baseMask: layoutCache.maskRect,
 			zoomScale: this.animationState.scale,
+			zoomProgress: this.animationState.progress,
 			focusX: this.animationState.focusX,
 			focusY: this.animationState.focusY,
 			motionIntensity: maxMotionIntensity,
 			isPlaying: true,
-			motionBlurEnabled: this.config.motionBlurEnabled ?? false,
+			motionBlurAmount: this.config.motionBlurEnabled ? 0.35 : 0,
+			motionBlurState: this.motionBlurState,
+			frameTimeMs: timeMs,
 		});
 
 		// Render the PixiJS stage to its canvas (video only, transparent background)
@@ -456,63 +464,104 @@ export class FrameRenderer {
 	private updateAnimationState(timeMs: number): number {
 		if (!this.cameraContainer || !this.layoutCache) return 0;
 
-		const { region, strength } = findDominantRegion(this.config.zoomRegions, timeMs);
+		const { region, strength, blendedScale, transition } = findDominantRegion(
+			this.config.zoomRegions,
+			timeMs,
+			{ connectZooms: true },
+		);
 
 		const defaultFocus = DEFAULT_FOCUS;
 		let targetScaleFactor = 1;
 		let targetFocus = { ...defaultFocus };
+		let targetProgress = 0;
 
 		if (region && strength > 0) {
-			const zoomScale = ZOOM_DEPTH_SCALES[region.depth];
+			const zoomScale = blendedScale ?? ZOOM_DEPTH_SCALES[region.depth];
 			const regionFocus = this.clampFocusToStage(region.focus, region.depth);
 
-			targetScaleFactor = 1 + (zoomScale - 1) * strength;
-			targetFocus = {
-				cx: defaultFocus.cx + (regionFocus.cx - defaultFocus.cx) * strength,
-				cy: defaultFocus.cy + (regionFocus.cy - defaultFocus.cy) * strength,
-			};
+			targetScaleFactor = zoomScale;
+			targetFocus = regionFocus;
+			targetProgress = strength;
+
+			if (transition) {
+				const startTransform = computeZoomTransform({
+					stageSize: this.layoutCache.stageSize,
+					baseMask: this.layoutCache.maskRect,
+					zoomScale: transition.startScale,
+					zoomProgress: 1,
+					focusX: transition.startFocus.cx,
+					focusY: transition.startFocus.cy,
+				});
+				const endTransform = computeZoomTransform({
+					stageSize: this.layoutCache.stageSize,
+					baseMask: this.layoutCache.maskRect,
+					zoomScale: transition.endScale,
+					zoomProgress: 1,
+					focusX: transition.endFocus.cx,
+					focusY: transition.endFocus.cy,
+				});
+
+				const interpolatedTransform = {
+					scale:
+						startTransform.scale +
+						(endTransform.scale - startTransform.scale) * transition.progress,
+					x: startTransform.x + (endTransform.x - startTransform.x) * transition.progress,
+					y: startTransform.y + (endTransform.y - startTransform.y) * transition.progress,
+				};
+
+				targetScaleFactor = interpolatedTransform.scale;
+				targetFocus = computeFocusFromTransform({
+					stageSize: this.layoutCache.stageSize,
+					baseMask: this.layoutCache.maskRect,
+					zoomScale: interpolatedTransform.scale,
+					x: interpolatedTransform.x,
+					y: interpolatedTransform.y,
+				});
+				targetProgress = 1;
+			}
 		}
 
 		const state = this.animationState;
 
-		const prevScale = state.scale;
-		const prevFocusX = state.focusX;
-		const prevFocusY = state.focusY;
+		const prevScale = state.appliedScale;
+		const prevX = state.x;
+		const prevY = state.y;
 
-		const scaleDelta = targetScaleFactor - state.scale;
-		const focusXDelta = targetFocus.cx - state.focusX;
-		const focusYDelta = targetFocus.cy - state.focusY;
+		state.scale = targetScaleFactor;
+		state.focusX = targetFocus.cx;
+		state.focusY = targetFocus.cy;
+		state.progress = targetProgress;
 
-		let nextScale = prevScale;
-		let nextFocusX = prevFocusX;
-		let nextFocusY = prevFocusY;
+		const projectedTransform = computeZoomTransform({
+			stageSize: this.layoutCache.stageSize,
+			baseMask: this.layoutCache.maskRect,
+			zoomScale: state.scale,
+			zoomProgress: state.progress,
+			focusX: state.focusX,
+			focusY: state.focusY,
+		});
 
-		if (Math.abs(scaleDelta) > MIN_DELTA) {
-			nextScale = prevScale + scaleDelta * SMOOTHING_FACTOR;
-		} else {
-			nextScale = targetScaleFactor;
-		}
+		const appliedScale =
+			Math.abs(projectedTransform.scale - prevScale) < ZOOM_SCALE_DEADZONE
+				? projectedTransform.scale
+				: projectedTransform.scale;
+		const appliedX =
+			Math.abs(projectedTransform.x - prevX) < ZOOM_TRANSLATION_DEADZONE_PX
+				? projectedTransform.x
+				: projectedTransform.x;
+		const appliedY =
+			Math.abs(projectedTransform.y - prevY) < ZOOM_TRANSLATION_DEADZONE_PX
+				? projectedTransform.y
+				: projectedTransform.y;
 
-		if (Math.abs(focusXDelta) > MIN_DELTA) {
-			nextFocusX = prevFocusX + focusXDelta * SMOOTHING_FACTOR;
-		} else {
-			nextFocusX = targetFocus.cx;
-		}
-
-		if (Math.abs(focusYDelta) > MIN_DELTA) {
-			nextFocusY = prevFocusY + focusYDelta * SMOOTHING_FACTOR;
-		} else {
-			nextFocusY = targetFocus.cy;
-		}
-
-		state.scale = nextScale;
-		state.focusX = nextFocusX;
-		state.focusY = nextFocusY;
+		state.x = appliedX;
+		state.y = appliedY;
+		state.appliedScale = appliedScale;
 
 		return Math.max(
-			Math.abs(nextScale - prevScale),
-			Math.abs(nextFocusX - prevFocusX),
-			Math.abs(nextFocusY - prevFocusY),
+			Math.abs(appliedScale - prevScale),
+			Math.abs(appliedX - prevX) / Math.max(1, this.layoutCache.stageSize.width),
+			Math.abs(appliedY - prevY) / Math.max(1, this.layoutCache.stageSize.height),
 		);
 	}
 
@@ -594,6 +643,7 @@ export class FrameRenderer {
 		this.videoContainer = null;
 		this.maskGraphics = null;
 		this.blurFilter = null;
+		this.motionBlurFilter = null;
 		this.shadowCanvas = null;
 		this.shadowCtx = null;
 		this.compositeCanvas = null;
