@@ -94,6 +94,7 @@ interface SettingsPanelProps {
 	onBlurChange?: (showBlur: boolean) => void;
 	motionBlurAmount?: number;
 	onMotionBlurChange?: (amount: number) => void;
+	onMotionBlurCommit?: () => void;
 	borderRadius?: number;
 	onBorderRadiusChange?: (radius: number) => void;
 	onBorderRadiusCommit?: () => void;
@@ -159,6 +160,7 @@ export function SettingsPanel({
 	onBlurChange,
 	motionBlurAmount = 0,
 	onMotionBlurChange,
+	onMotionBlurCommit,
 	borderRadius = 0,
 	onBorderRadiusChange,
 	onBorderRadiusCommit,
@@ -595,7 +597,7 @@ export function SettingsPanel({
 									<Slider
 										value={[motionBlurAmount]}
 										onValueChange={(values) => onMotionBlurChange?.(values[0])}
-										onValueCommit={(values) => onMotionBlurChange?.(values[0])}
+										onValueCommit={() => onMotionBlurCommit?.()}
 										min={0}
 										max={1}
 										step={0.01}

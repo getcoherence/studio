@@ -1370,7 +1370,8 @@ export default function VideoEditor() {
 					showBlur={showBlur}
 					onBlurChange={(v) => pushState({ showBlur: v })}
 					motionBlurAmount={motionBlurAmount}
-					onMotionBlurChange={(v) => pushState({ motionBlurAmount: v })}
+					onMotionBlurChange={(v) => updateState({ motionBlurAmount: v })}
+					onMotionBlurCommit={commitState}
 					borderRadius={borderRadius}
 					onBorderRadiusChange={(v) => updateState({ borderRadius: v })}
 					onBorderRadiusCommit={commitState}
