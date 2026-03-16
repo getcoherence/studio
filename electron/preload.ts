@@ -60,6 +60,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	getCurrentVideoPath: () => {
 		return ipcRenderer.invoke("get-current-video-path");
 	},
+	readBinaryFile: (filePath: string) => {
+		return ipcRenderer.invoke("read-binary-file", filePath);
+	},
 	clearCurrentVideoPath: () => {
 		return ipcRenderer.invoke("clear-current-video-path");
 	},
