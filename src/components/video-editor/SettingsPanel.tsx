@@ -31,6 +31,7 @@ import type { ExportFormat, ExportQuality, GifFrameRate, GifSizePreset } from "@
 import { GIF_FRAME_RATES, GIF_SIZE_PRESETS } from "@/lib/exporter";
 import { cn } from "@/lib/utils";
 import { type AspectRatio } from "@/utils/aspectRatioUtils";
+import { getTestId } from "@/utils/getTestId";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import { CropControl } from "./CropControl";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
@@ -775,6 +776,7 @@ export function SettingsPanel({
 						MP4
 					</button>
 					<button
+						data-testid={getTestId("gif-format-button")}
 						onClick={() => onExportFormatChange?.("gif")}
 						className={cn(
 							"flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border transition-all text-xs font-medium",
@@ -849,6 +851,7 @@ export function SettingsPanel({
 								{Object.entries(GIF_SIZE_PRESETS).map(([key, _preset]) => (
 									<button
 										key={key}
+										data-testid={getTestId(`gif-size-button-${key}`)}
 										onClick={() => onGifSizePresetChange?.(key as GifSizePreset)}
 										className={cn(
 											"rounded-md transition-all text-[10px] font-medium",
@@ -900,6 +903,7 @@ export function SettingsPanel({
 				</div>
 
 				<Button
+					data-testid={getTestId("export-button")}
 					type="button"
 					size="lg"
 					onClick={onExport}
