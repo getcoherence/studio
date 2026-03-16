@@ -20,9 +20,6 @@
 		"prepare": "husky"
 	},
 	"dependencies": {
-		"@ffmpeg/core": "^0.12.10",
-		"@ffmpeg/ffmpeg": "^0.12.15",
-		"@ffmpeg/util": "^0.12.2",
 		"@fix-webm-duration/fix": "^1.0.1",
 		"@pixi/filter-drop-shadow": "^5.2.0",
 		"@radix-ui/react-accordion": "^1.2.12",
