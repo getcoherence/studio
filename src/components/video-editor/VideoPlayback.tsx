@@ -70,7 +70,7 @@ interface VideoPlaybackProps {
 	showShadow?: boolean;
 	shadowIntensity?: number;
 	showBlur?: boolean;
-	motionBlurEnabled?: boolean;
+	motionBlurAmount?: number;
 	borderRadius?: number;
 	padding?: number;
 	cropRegion?: import("./types").CropRegion;
@@ -113,7 +113,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			showShadow,
 			shadowIntensity = 0,
 			showBlur,
-			motionBlurEnabled = false,
+			motionBlurAmount = 0,
 			borderRadius = 0,
 			padding = 50,
 			cropRegion,
@@ -128,7 +128,6 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		},
 		ref,
 	) => {
-		const ZOOM_MOTION_BLUR_AMOUNT = 0.35;
 		const videoRef = useRef<HTMLVideoElement | null>(null);
 		const containerRef = useRef<HTMLDivElement | null>(null);
 		const appRef = useRef<Application | null>(null);
@@ -169,7 +168,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const layoutVideoContentRef = useRef<(() => void) | null>(null);
 		const trimRegionsRef = useRef<TrimRegion[]>([]);
 		const speedRegionsRef = useRef<SpeedRegion[]>([]);
-		const motionBlurEnabledRef = useRef(motionBlurEnabled);
+		const motionBlurAmountRef = useRef(motionBlurAmount);
 		const motionBlurStateRef = useRef<MotionBlurState>(createMotionBlurState());
 		const onTimeUpdateRef = useRef(onTimeUpdate);
 		const onPlayStateChangeRef = useRef(onPlayStateChange);
@@ -400,8 +399,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		}, [speedRegions]);
 
 		useEffect(() => {
-			motionBlurEnabledRef.current = motionBlurEnabled;
-		}, [motionBlurEnabled]);
+			motionBlurAmountRef.current = motionBlurAmount;
+		}, [motionBlurAmount]);
 
 		useEffect(() => {
 			onTimeUpdateRef.current = onTimeUpdate;
@@ -475,7 +474,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					focusY: DEFAULT_FOCUS.cy,
 					motionIntensity: 0,
 					isPlaying: false,
-					motionBlurAmount: motionBlurEnabledRef.current ? ZOOM_MOTION_BLUR_AMOUNT : 0,
+					motionBlurAmount: motionBlurAmountRef.current,
 				});
 
 				requestAnimationFrame(() => {
@@ -739,7 +738,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					motionIntensity,
 					motionVector,
 					isPlaying: isPlayingRef.current,
-					motionBlurAmount: motionBlurEnabledRef.current ? ZOOM_MOTION_BLUR_AMOUNT : 0,
+					motionBlurAmount: motionBlurAmountRef.current,
 					transformOverride: transform,
 					motionBlurState: motionBlurStateRef.current,
 					frameTimeMs: performance.now(),

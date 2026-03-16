@@ -20,7 +20,7 @@ export interface EditorState {
 	wallpaper: string;
 	shadowIntensity: number;
 	showBlur: boolean;
-	motionBlurEnabled: boolean;
+	motionBlurAmount: number;
 	borderRadius: number;
 	padding: number;
 	aspectRatio: AspectRatio;
@@ -35,7 +35,7 @@ export const INITIAL_EDITOR_STATE: EditorState = {
 	wallpaper: "/wallpapers/wallpaper1.jpg",
 	shadowIntensity: 0,
 	showBlur: false,
-	motionBlurEnabled: false,
+	motionBlurAmount: 0,
 	borderRadius: 0,
 	padding: 50,
 	aspectRatio: "16:9",
