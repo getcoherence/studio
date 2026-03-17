@@ -41,6 +41,7 @@ const MIC_GAIN_BOOST = 1.4;
 type UseScreenRecorderReturn = {
 	recording: boolean;
 	toggleRecording: () => void;
+	restartRecording: () => void;
 	microphoneEnabled: boolean;
 	setMicrophoneEnabled: (enabled: boolean) => void;
 	microphoneDeviceId: string | undefined;
@@ -61,6 +62,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const mixingContext = useRef<AudioContext | null>(null);
 	const chunks = useRef<Blob[]>([]);
 	const startTime = useRef<number>(0);
+	const discardRecording = useRef(false);
+	const restarting = useRef(false);
 
 	const selectMimeType = () => {
 		const preferred = [
@@ -301,6 +304,11 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			};
 			recorder.onstop = async () => {
 				stream.current = null;
+				if (discardRecording.current) {
+					discardRecording.current = false;
+					chunks.current = [];
+					return;
+				}
 				if (chunks.current.length === 0) return;
 				const duration = Date.now() - startTime.current;
 				const recordedChunks = chunks.current;
@@ -370,9 +378,33 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		recording ? stopRecording.current() : startRecording();
 	};
 
+	const restartRecording = async () => {
+		if (restarting.current) return;
+
+		const recorder = mediaRecorder.current;
+		if (!recorder || recorder.state !== "recording") return;
+
+		restarting.current = true;
+		discardRecording.current = true;
+
+		const waitForStop = new Promise<void>((resolve) => {
+			recorder.addEventListener("stop", () => resolve(), { once: true });
+		});
+
+		stopRecording.current();
+		await waitForStop;
+
+		try {
+			await startRecording();
+		} finally {
+			restarting.current = false;
+		}
+	};
+
 	return {
 		recording,
 		toggleRecording,
+		restartRecording,
 		microphoneEnabled,
 		setMicrophoneEnabled,
 		microphoneDeviceId,
