@@ -32,11 +32,37 @@ export class StreamingVideoDecoder {
 	private cancelled = false;
 	private metadata: DecodedVideoInfo | null = null;
 
-	async loadMetadata(videoUrl: string): Promise<DecodedVideoInfo> {
+	private async loadSourceFile(videoUrl: string): Promise<{ file: File; blob: Blob }> {
+		const isRemoteUrl = /^(https?:|blob:|data:)/i.test(videoUrl);
+
+		if (!isRemoteUrl && window.electronAPI?.readBinaryFile) {
+			const result = await window.electronAPI.readBinaryFile(videoUrl);
+			if (!result.success || !result.data) {
+				throw new Error(result.message || result.error || "Failed to read source video");
+			}
+
+			const filename = (result.path || videoUrl).split(/[\\/]/).pop() || "video";
+			const blob = new Blob([result.data]);
+			return {
+				blob,
+				file: new File([blob], filename, { type: blob.type || "application/octet-stream" }),
+			};
+		}
+
 		const response = await fetch(videoUrl);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch source video: ${response.status} ${response.statusText}`);
+		}
 		const blob = await response.blob();
 		const filename = videoUrl.split("/").pop() || "video";
-		const file = new File([blob], filename, { type: blob.type });
+		return {
+			blob,
+			file: new File([blob], filename, { type: blob.type }),
+		};
+	}
+
+	async loadMetadata(videoUrl: string): Promise<DecodedVideoInfo> {
+		const { file } = await this.loadSourceFile(videoUrl);
 
 		// Relative URL so it resolves correctly in both dev (http) and packaged (file://) builds
 		const wasmUrl = new URL("./wasm/web-demuxer.wasm", window.location.href).href;

@@ -51,6 +51,13 @@ interface Window {
 		openVideoFilePicker: () => Promise<{ success: boolean; path?: string; canceled?: boolean }>;
 		setCurrentVideoPath: (path: string) => Promise<{ success: boolean }>;
 		getCurrentVideoPath: () => Promise<{ success: boolean; path?: string }>;
+		readBinaryFile: (filePath: string) => Promise<{
+			success: boolean;
+			data?: ArrayBuffer;
+			path?: string;
+			message?: string;
+			error?: string;
+		}>;
 		clearCurrentVideoPath: () => Promise<{ success: boolean }>;
 		saveProjectFile: (
 			projectData: unknown,

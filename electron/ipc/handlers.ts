@@ -200,6 +200,29 @@ export function registerIpcHandlers(
 		}
 	});
 
+	ipcMain.handle("read-binary-file", async (_, inputPath: string) => {
+		try {
+			const normalizedPath = normalizeVideoSourcePath(inputPath);
+			if (!normalizedPath) {
+				return { success: false, message: "Invalid file path" };
+			}
+
+			const data = await fs.readFile(normalizedPath);
+			return {
+				success: true,
+				data: data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
+				path: normalizedPath,
+			};
+		} catch (error) {
+			console.error("Failed to read binary file:", error);
+			return {
+				success: false,
+				message: "Failed to read binary file",
+				error: String(error),
+			};
+		}
+	});
+
 	ipcMain.handle("set-recording-state", (_, recording: boolean) => {
 		if (recording) {
 			stopCursorCapture();
