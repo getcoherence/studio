@@ -63,6 +63,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const chunks = useRef<Blob[]>([]);
 	const startTime = useRef<number>(0);
 	const discardRecording = useRef(false);
+	const restarting = useRef(false);
 
 	const selectMimeType = () => {
 		const preferred = [
@@ -378,22 +379,26 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	};
 
 	const restartRecording = async () => {
-		if (!recording) return;
+		if (restarting.current) return;
+
+		const recorder = mediaRecorder.current;
+		if (!recorder || recorder.state !== "recording") return;
+
+		restarting.current = true;
 		discardRecording.current = true;
 
-		// Wait for the old recorder's onstop to fully complete before starting
-		// a new session, so the discard logic doesn't race with new chunks.
 		const waitForStop = new Promise<void>((resolve) => {
-			if (mediaRecorder.current) {
-				mediaRecorder.current.addEventListener("stop", () => resolve(), { once: true });
-			} else {
-				resolve();
-			}
+			recorder.addEventListener("stop", () => resolve(), { once: true });
 		});
 
 		stopRecording.current();
 		await waitForStop;
-		await startRecording();
+
+		try {
+			await startRecording();
+		} finally {
+			restarting.current = false;
+		}
 	};
 
 	return {
