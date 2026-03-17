@@ -970,8 +970,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 
 			const activeSpeedRegion =
 				speedRegions.find(
-					(region) =>
-						currentTime * 1000 >= region.startMs && currentTime * 1000 < region.endMs,
+					(region) => currentTime * 1000 >= region.startMs && currentTime * 1000 < region.endMs,
 				) ?? null;
 			webcamVideo.playbackRate = activeSpeedRegion ? activeSpeedRegion.speed : 1;
 

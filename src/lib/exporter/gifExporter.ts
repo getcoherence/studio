@@ -170,30 +170,32 @@ export class GifExporter {
 			let webcamDecodeError: Error | null = null;
 			const webcamDecodePromise =
 				this.webcamDecoder && webcamFrameQueue
-					? this.webcamDecoder
-							.decodeAll(
-								this.config.frameRate,
-								this.config.trimRegions,
-								this.config.speedRegions,
-								async (webcamFrame) => {
-									while (webcamFrameQueue.length >= 12 && !this.cancelled) {
-										await new Promise((resolve) => setTimeout(resolve, 2));
+					? (() => {
+							const queue = webcamFrameQueue;
+							return this.webcamDecoder
+								.decodeAll(
+									this.config.frameRate,
+									this.config.trimRegions,
+									this.config.speedRegions,
+									async (webcamFrame) => {
+										while (queue.length >= 12 && !this.cancelled) {
+											await new Promise((resolve) => setTimeout(resolve, 2));
+										}
+										queue.enqueue(webcamFrame);
+									},
+								)
+								.catch((error) => {
+									webcamDecodeError = error instanceof Error ? error : new Error(String(error));
+									throw error;
+								})
+								.finally(() => {
+									if (webcamDecodeError) {
+										queue.fail(webcamDecodeError);
+									} else {
+										queue.close();
 									}
-									webcamFrameQueue.enqueue(webcamFrame);
-								},
-							)
-							.catch((error) => {
-								webcamDecodeError =
-									error instanceof Error ? error : new Error(String(error));
-								throw error;
-							})
-							.finally(() => {
-								if (webcamDecodeError) {
-									webcamFrameQueue.fail(webcamDecodeError);
-								} else {
-									webcamFrameQueue.close();
-								}
-							})
+								});
+						})()
 					: null;
 
 			// Stream decode and process frames — no seeking!

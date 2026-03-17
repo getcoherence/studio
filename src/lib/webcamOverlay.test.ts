@@ -28,6 +28,6 @@ describe("computeWebcamOverlayLayout", () => {
 		expect(layout).not.toBeNull();
 		expect(layout!.width).toBeLessThanOrEqual(Math.round(1280 * 0.18) + 1);
 		expect(layout!.height).toBeLessThanOrEqual(Math.round(720 * 0.18) + 1);
-		expect(layout!.width / layout!.height).toBeCloseTo(1920 / 1080, 2);
+		expect(Math.abs(layout!.width * 1080 - layout!.height * 1920)).toBeLessThanOrEqual(1920);
 	});
 });

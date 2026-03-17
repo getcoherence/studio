@@ -399,26 +399,26 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				}
 			}
 
-				if (webcamEnabled) {
-					try {
-						webcamStream.current = await navigator.mediaDevices.getUserMedia({
-							audio: false,
-							video: {
+			if (webcamEnabled) {
+				try {
+					webcamStream.current = await navigator.mediaDevices.getUserMedia({
+						audio: false,
+						video: {
 							width: { ideal: WEBCAM_TARGET_WIDTH },
 							height: { ideal: WEBCAM_TARGET_HEIGHT },
 							frameRate: { ideal: WEBCAM_TARGET_FRAME_RATE, max: WEBCAM_TARGET_FRAME_RATE },
 						},
-						});
-					} catch (cameraError) {
-						console.warn("Failed to get webcam access:", cameraError);
-						if (webcamStream.current) {
-							webcamStream.current.getTracks().forEach((track) => track.stop());
-							webcamStream.current = null;
-						}
-						setWebcamEnabledState(false);
-						toast.error("Camera access denied. Recording will continue without webcam.");
+					});
+				} catch (cameraError) {
+					console.warn("Failed to get webcam access:", cameraError);
+					if (webcamStream.current) {
+						webcamStream.current.getTracks().forEach((track) => track.stop());
+						webcamStream.current = null;
 					}
+					setWebcamEnabledState(false);
+					toast.error("Camera access denied. Recording will continue without webcam.");
 				}
+			}
 
 			stream.current = new MediaStream();
 			const videoTrack = screenMediaStream.getVideoTracks()[0];
