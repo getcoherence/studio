@@ -249,11 +249,8 @@ export function LaunchWindow() {
 						<button
 							className={`${hudIconBtnClasses} ${webcamEnabled ? "drop-shadow-[0_0_4px_rgba(74,222,128,0.4)]" : ""}`}
 							onClick={() => {
-								if (!recording) {
-									void setWebcamEnabled(!webcamEnabled);
-								}
+								void setWebcamEnabled(!webcamEnabled);
 							}}
-							disabled={recording}
 							title={webcamEnabled ? "Disable webcam" : "Enable webcam"}
 						>
 							{webcamEnabled
