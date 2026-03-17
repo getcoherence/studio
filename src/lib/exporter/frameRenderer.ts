@@ -30,6 +30,7 @@ import {
 	createMotionBlurState,
 	type MotionBlurState,
 } from "@/components/video-editor/videoPlayback/zoomTransform";
+import { computeWebcamOverlayLayout } from "@/lib/webcamOverlay";
 import { renderAnnotations } from "./annotationRenderer";
 
 interface FrameRenderConfig {
@@ -46,6 +47,8 @@ interface FrameRenderConfig {
 	cropRegion: CropRegion;
 	videoWidth: number;
 	videoHeight: number;
+	webcamWidth?: number;
+	webcamHeight?: number;
 	annotationRegions?: AnnotationRegion[];
 	speedRegions?: SpeedRegion[];
 	previewWidth?: number;
@@ -301,7 +304,11 @@ export class FrameRenderer {
 		this.backgroundSprite = bgCanvas;
 	}
 
-	async renderFrame(videoFrame: VideoFrame, timestamp: number): Promise<void> {
+	async renderFrame(
+		videoFrame: VideoFrame,
+		timestamp: number,
+		webcamFrame?: VideoFrame | null,
+	): Promise<void> {
 		if (!this.app || !this.videoContainer || !this.cameraContainer) {
 			throw new Error("Renderer not initialized");
 		}
@@ -360,7 +367,7 @@ export class FrameRenderer {
 		this.app.renderer.render(this.app.stage);
 
 		// Composite with shadows to final output canvas
-		this.compositeWithShadows();
+		this.compositeWithShadows(webcamFrame);
 
 		// Render annotations on top if present
 		if (
@@ -565,7 +572,7 @@ export class FrameRenderer {
 		);
 	}
 
-	private compositeWithShadows(): void {
+	private compositeWithShadows(webcamFrame?: VideoFrame | null): void {
 		if (!this.compositeCanvas || !this.compositeCtx || !this.app) return;
 
 		const videoCanvas = this.app.canvas as HTMLCanvasElement;
@@ -619,6 +626,36 @@ export class FrameRenderer {
 			ctx.drawImage(this.shadowCanvas, 0, 0, w, h);
 		} else {
 			ctx.drawImage(videoCanvas, 0, 0, w, h);
+		}
+
+		if (webcamFrame && this.config.webcamWidth && this.config.webcamHeight) {
+			const layout = computeWebcamOverlayLayout({
+				stageWidth: w,
+				stageHeight: h,
+				videoWidth: this.config.webcamWidth,
+				videoHeight: this.config.webcamHeight,
+			});
+
+			if (layout) {
+				ctx.save();
+				ctx.beginPath();
+				ctx.roundRect(layout.x, layout.y, layout.width, layout.height, layout.borderRadius);
+				ctx.closePath();
+				ctx.shadowColor = "rgba(0,0,0,0.35)";
+				ctx.shadowBlur = 24;
+				ctx.shadowOffsetY = 10;
+				ctx.fillStyle = "#000000";
+				ctx.fill();
+				ctx.clip();
+				ctx.drawImage(
+					webcamFrame as unknown as CanvasImageSource,
+					layout.x,
+					layout.y,
+					layout.width,
+					layout.height,
+				);
+				ctx.restore();
+			}
 		}
 	}
 

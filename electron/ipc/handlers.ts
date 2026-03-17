@@ -2,10 +2,17 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, screen, shell } from "electron";
+import {
+	normalizeProjectMedia,
+	normalizeRecordingSession,
+	type RecordingSession,
+	type StoreRecordedSessionInput,
+} from "../../src/lib/recordingSession";
 import { RECORDINGS_DIR } from "../main";
 
 const PROJECT_FILE_EXTENSION = "openscreen";
 const SHORTCUTS_FILE = path.join(app.getPath("userData"), "shortcuts.json");
+const RECORDING_SESSION_SUFFIX = ".session.json";
 
 type SelectedSource = {
 	name: string;
@@ -14,6 +21,7 @@ type SelectedSource = {
 
 let selectedSource: SelectedSource | null = null;
 let currentProjectPath: string | null = null;
+let currentRecordingSession: RecordingSession | null = null;
 
 function normalizePath(filePath: string) {
 	return path.resolve(filePath);
@@ -45,6 +53,54 @@ function isTrustedProjectPath(filePath?: string | null) {
 		return false;
 	}
 	return normalizePath(filePath) === normalizePath(currentProjectPath);
+}
+
+function setCurrentRecordingSessionState(session: RecordingSession | null) {
+	currentRecordingSession = session;
+}
+
+async function storeRecordedSessionFiles(payload: StoreRecordedSessionInput) {
+	const createdAt =
+		typeof payload.createdAt === "number" && Number.isFinite(payload.createdAt)
+			? payload.createdAt
+			: Date.now();
+	const screenVideoPath = path.join(RECORDINGS_DIR, payload.screen.fileName);
+	await fs.writeFile(screenVideoPath, Buffer.from(payload.screen.videoData));
+
+	let webcamVideoPath: string | undefined;
+	if (payload.webcam) {
+		webcamVideoPath = path.join(RECORDINGS_DIR, payload.webcam.fileName);
+		await fs.writeFile(webcamVideoPath, Buffer.from(payload.webcam.videoData));
+	}
+
+	const session: RecordingSession = webcamVideoPath
+		? { screenVideoPath, webcamVideoPath, createdAt }
+		: { screenVideoPath, createdAt };
+	setCurrentRecordingSessionState(session);
+	currentProjectPath = null;
+
+	const telemetryPath = `${screenVideoPath}.cursor.json`;
+	if (pendingCursorSamples.length > 0) {
+		await fs.writeFile(
+			telemetryPath,
+			JSON.stringify({ version: CURSOR_TELEMETRY_VERSION, samples: pendingCursorSamples }, null, 2),
+			"utf-8",
+		);
+	}
+	pendingCursorSamples = [];
+
+	const sessionManifestPath = path.join(
+		RECORDINGS_DIR,
+		`${path.parse(payload.screen.fileName).name}${RECORDING_SESSION_SUFFIX}`,
+	);
+	await fs.writeFile(sessionManifestPath, JSON.stringify(session, null, 2), "utf-8");
+
+	return {
+		success: true,
+		path: screenVideoPath,
+		session,
+		message: "Recording session stored successfully",
+	};
 }
 
 const CURSOR_TELEMETRY_VERSION = 1;
@@ -146,36 +202,30 @@ export function registerIpcHandlers(
 		createEditorWindow();
 	});
 
-	ipcMain.handle("store-recorded-video", async (_, videoData: ArrayBuffer, fileName: string) => {
+	ipcMain.handle("store-recorded-session", async (_, payload: StoreRecordedSessionInput) => {
 		try {
-			const videoPath = path.join(RECORDINGS_DIR, fileName);
-			await fs.writeFile(videoPath, Buffer.from(videoData));
-			currentProjectPath = null;
-
-			const telemetryPath = `${videoPath}.cursor.json`;
-			if (pendingCursorSamples.length > 0) {
-				await fs.writeFile(
-					telemetryPath,
-					JSON.stringify(
-						{ version: CURSOR_TELEMETRY_VERSION, samples: pendingCursorSamples },
-						null,
-						2,
-					),
-					"utf-8",
-				);
-			}
-			pendingCursorSamples = [];
-
-			return {
-				success: true,
-				path: videoPath,
-				message: "Video stored successfully",
-			};
+			return await storeRecordedSessionFiles(payload);
 		} catch (error) {
-			console.error("Failed to store video:", error);
+			console.error("Failed to store recording session:", error);
 			return {
 				success: false,
-				message: "Failed to store video",
+				message: "Failed to store recording session",
+				error: String(error),
+			};
+		}
+	});
+
+	ipcMain.handle("store-recorded-video", async (_, videoData: ArrayBuffer, fileName: string) => {
+		try {
+			return await storeRecordedSessionFiles({
+				screen: { videoData, fileName },
+				createdAt: Date.now(),
+			});
+		} catch (error) {
+			console.error("Failed to store recorded video:", error);
+			return {
+				success: false,
+				message: "Failed to store recorded video",
 				error: String(error),
 			};
 		}
@@ -183,8 +233,14 @@ export function registerIpcHandlers(
 
 	ipcMain.handle("get-recorded-video-path", async () => {
 		try {
+			if (currentRecordingSession?.screenVideoPath) {
+				return { success: true, path: currentRecordingSession.screenVideoPath };
+			}
+
 			const files = await fs.readdir(RECORDINGS_DIR);
-			const videoFiles = files.filter((file) => file.endsWith(".webm"));
+			const videoFiles = files.filter(
+				(file) => file.endsWith(".webm") && !file.endsWith("-webcam.webm"),
+			);
 
 			if (videoFiles.length === 0) {
 				return { success: false, message: "No recorded video found" };
@@ -244,7 +300,9 @@ export function registerIpcHandlers(
 	});
 
 	ipcMain.handle("get-cursor-telemetry", async (_, videoPath?: string) => {
-		const targetVideoPath = normalizeVideoSourcePath(videoPath ?? currentVideoPath);
+		const targetVideoPath = normalizeVideoSourcePath(
+			videoPath ?? currentRecordingSession?.screenVideoPath,
+		);
 		if (!targetVideoPath) {
 			return { success: true, samples: [] };
 		}
@@ -416,7 +474,6 @@ export function registerIpcHandlers(
 		}
 	});
 
-	let currentVideoPath: string | null = null;
 	ipcMain.handle(
 		"save-project-file",
 		async (_, projectData: unknown, suggestedName?: string, existingProjectPath?: string) => {
@@ -502,8 +559,17 @@ export function registerIpcHandlers(
 			const content = await fs.readFile(filePath, "utf-8");
 			const project = JSON.parse(content);
 			currentProjectPath = filePath;
-			if (project && typeof project === "object" && typeof project.videoPath === "string") {
-				currentVideoPath = normalizeVideoSourcePath(project.videoPath) ?? project.videoPath;
+			if (project && typeof project === "object") {
+				const rawProject = project as { media?: unknown; videoPath?: unknown };
+				const media =
+					normalizeProjectMedia(rawProject.media) ??
+					(typeof rawProject.videoPath === "string"
+						? {
+								screenVideoPath:
+									normalizeVideoSourcePath(rawProject.videoPath) ?? rawProject.videoPath,
+							}
+						: null);
+				setCurrentRecordingSessionState(media ? { ...media, createdAt: Date.now() } : null);
 			}
 
 			return {
@@ -529,8 +595,17 @@ export function registerIpcHandlers(
 
 			const content = await fs.readFile(currentProjectPath, "utf-8");
 			const project = JSON.parse(content);
-			if (project && typeof project === "object" && typeof project.videoPath === "string") {
-				currentVideoPath = normalizeVideoSourcePath(project.videoPath) ?? project.videoPath;
+			if (project && typeof project === "object") {
+				const rawProject = project as { media?: unknown; videoPath?: unknown };
+				const media =
+					normalizeProjectMedia(rawProject.media) ??
+					(typeof rawProject.videoPath === "string"
+						? {
+								screenVideoPath:
+									normalizeVideoSourcePath(rawProject.videoPath) ?? rawProject.videoPath,
+							}
+						: null);
+				setCurrentRecordingSessionState(media ? { ...media, createdAt: Date.now() } : null);
 			}
 			return {
 				success: true,
@@ -546,18 +621,36 @@ export function registerIpcHandlers(
 			};
 		}
 	});
+	ipcMain.handle("set-current-recording-session", (_, session: RecordingSession | null) => {
+		const normalized = normalizeRecordingSession(session);
+		setCurrentRecordingSessionState(normalized);
+		currentProjectPath = null;
+		return { success: true, session: normalized ?? undefined };
+	});
+
+	ipcMain.handle("get-current-recording-session", () => {
+		return currentRecordingSession
+			? { success: true, session: currentRecordingSession }
+			: { success: false };
+	});
+
 	ipcMain.handle("set-current-video-path", (_, path: string) => {
-		currentVideoPath = normalizeVideoSourcePath(path) ?? path;
+		setCurrentRecordingSessionState({
+			screenVideoPath: normalizeVideoSourcePath(path) ?? path,
+			createdAt: Date.now(),
+		});
 		currentProjectPath = null;
 		return { success: true };
 	});
 
 	ipcMain.handle("get-current-video-path", () => {
-		return currentVideoPath ? { success: true, path: currentVideoPath } : { success: false };
+		return currentRecordingSession?.screenVideoPath
+			? { success: true, path: currentRecordingSession.screenVideoPath }
+			: { success: false };
 	});
 
 	ipcMain.handle("clear-current-video-path", () => {
-		currentVideoPath = null;
+		setCurrentRecordingSessionState(null);
 		return { success: true };
 	});
 

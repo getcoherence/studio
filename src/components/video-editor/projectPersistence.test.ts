@@ -1,0 +1,57 @@
+import { describe, expect, it } from "vitest";
+import {
+	createProjectData,
+	PROJECT_VERSION,
+	resolveProjectMedia,
+	validateProjectData,
+} from "./projectPersistence";
+
+describe("projectPersistence media compatibility", () => {
+	it("accepts legacy projects with a single videoPath", () => {
+		const project = {
+			version: 1,
+			videoPath: "/tmp/screen.webm",
+			editor: {},
+		};
+
+		expect(validateProjectData(project)).toBe(true);
+		expect(resolveProjectMedia(project)).toEqual({
+			screenVideoPath: "/tmp/screen.webm",
+		});
+	});
+
+	it("creates version 2 projects with explicit media", () => {
+		const project = createProjectData(
+			{
+				screenVideoPath: "/tmp/screen.webm",
+				webcamVideoPath: "/tmp/webcam.webm",
+			},
+			{
+				wallpaper: "/wallpapers/wallpaper1.jpg",
+				shadowIntensity: 0,
+				showBlur: false,
+				motionBlurAmount: 0,
+				borderRadius: 0,
+				padding: 50,
+				cropRegion: { x: 0, y: 0, width: 1, height: 1 },
+				zoomRegions: [],
+				trimRegions: [],
+				speedRegions: [],
+				annotationRegions: [],
+				aspectRatio: "16:9",
+				exportQuality: "good",
+				exportFormat: "mp4",
+				gifFrameRate: 15,
+				gifLoop: true,
+				gifSizePreset: "medium",
+			},
+		);
+
+		expect(project.version).toBe(PROJECT_VERSION);
+		expect(project.media).toEqual({
+			screenVideoPath: "/tmp/screen.webm",
+			webcamVideoPath: "/tmp/webcam.webm",
+		});
+		expect(validateProjectData(project)).toBe(true);
+	});
+});

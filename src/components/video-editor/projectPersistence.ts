@@ -1,4 +1,6 @@
 import type { ExportFormat, ExportQuality, GifFrameRate, GifSizePreset } from "@/lib/exporter";
+import type { ProjectMedia } from "@/lib/recordingSession";
+import { normalizeProjectMedia } from "@/lib/recordingSession";
 import { ASPECT_RATIOS, type AspectRatio } from "@/utils/aspectRatioUtils";
 import {
 	type AnnotationRegion,
@@ -22,7 +24,7 @@ export const WALLPAPER_PATHS = Array.from(
 	(_, i) => `/wallpapers/wallpaper${i + 1}.jpg`,
 );
 
-export const PROJECT_VERSION = 1;
+export const PROJECT_VERSION = 2;
 
 export interface ProjectEditorState {
 	wallpaper: string;
@@ -46,8 +48,9 @@ export interface ProjectEditorState {
 
 export interface EditorProjectData {
 	version: number;
-	videoPath: string;
+	media?: ProjectMedia;
 	editor: ProjectEditorState;
+	videoPath?: string;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -139,9 +142,24 @@ export function validateProjectData(candidate: unknown): candidate is EditorProj
 	if (!candidate || typeof candidate !== "object") return false;
 	const project = candidate as Partial<EditorProjectData>;
 	if (typeof project.version !== "number") return false;
-	if (typeof project.videoPath !== "string" || !project.videoPath) return false;
+	if (!resolveProjectMedia(project)) return false;
 	if (!project.editor || typeof project.editor !== "object") return false;
 	return true;
+}
+
+export function resolveProjectMedia(
+	candidate: Partial<EditorProjectData> | { media?: unknown; videoPath?: unknown },
+): ProjectMedia | null {
+	const media = normalizeProjectMedia(candidate.media);
+	if (media) {
+		return media;
+	}
+
+	if (typeof candidate.videoPath === "string" && candidate.videoPath.trim()) {
+		return { screenVideoPath: candidate.videoPath };
+	}
+
+	return null;
 }
 
 export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): ProjectEditorState {
@@ -346,12 +364,12 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 }
 
 export function createProjectData(
-	videoPath: string,
+	media: ProjectMedia,
 	editor: ProjectEditorState,
 ): EditorProjectData {
 	return {
 		version: PROJECT_VERSION,
-		videoPath,
+		media,
 		editor,
 	};
 }

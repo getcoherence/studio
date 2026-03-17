@@ -19,6 +19,7 @@ import {
 	useState,
 } from "react";
 import { getAssetPath } from "@/lib/assetPath";
+import { computeWebcamOverlayLayout, type WebcamOverlayLayout } from "@/lib/webcamOverlay";
 import {
 	type AspectRatio,
 	formatAspectRatioForCSS,
@@ -55,6 +56,7 @@ import {
 
 interface VideoPlaybackProps {
 	videoPath: string;
+	webcamVideoPath?: string;
 	onDurationChange: (duration: number) => void;
 	onTimeUpdate: (time: number) => void;
 	currentTime: number;
@@ -98,6 +100,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 	(
 		{
 			videoPath,
+			webcamVideoPath,
 			onDurationChange,
 			onTimeUpdate,
 			currentTime,
@@ -129,7 +132,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		ref,
 	) => {
 		const videoRef = useRef<HTMLVideoElement | null>(null);
+		const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
 		const containerRef = useRef<HTMLDivElement | null>(null);
+		const stageRef = useRef<HTMLDivElement | null>(null);
 		const appRef = useRef<Application | null>(null);
 		const videoSpriteRef = useRef<Sprite | null>(null);
 		const videoContainerRef = useRef<Container | null>(null);
@@ -139,6 +144,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const [videoReady, setVideoReady] = useState(false);
 		const overlayRef = useRef<HTMLDivElement | null>(null);
 		const focusIndicatorRef = useRef<HTMLDivElement | null>(null);
+		const [webcamLayout, setWebcamLayout] = useState<WebcamOverlayLayout | null>(null);
+		const [webcamDimensions, setWebcamDimensions] = useState<{
+			width: number;
+			height: number;
+		} | null>(null);
 		const currentTimeRef = useRef(0);
 		const zoomRegionsRef = useRef<ZoomRegion[]>([]);
 		const selectedZoomIdRef = useRef<string | null>(null);
@@ -902,6 +912,90 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const [resolvedWallpaper, setResolvedWallpaper] = useState<string | null>(null);
 
 		useEffect(() => {
+			const webcamVideo = webcamVideoRef.current;
+			if (!webcamVideo || !webcamVideoPath) {
+				setWebcamDimensions(null);
+				return;
+			}
+
+			const handleLoadedMetadata = () => {
+				if (webcamVideo.videoWidth > 0 && webcamVideo.videoHeight > 0) {
+					setWebcamDimensions({
+						width: webcamVideo.videoWidth,
+						height: webcamVideo.videoHeight,
+					});
+				}
+			};
+
+			webcamVideo.addEventListener("loadedmetadata", handleLoadedMetadata);
+			handleLoadedMetadata();
+			return () => {
+				webcamVideo.removeEventListener("loadedmetadata", handleLoadedMetadata);
+			};
+		}, [webcamVideoPath]);
+
+		useEffect(() => {
+			const stage = stageRef.current;
+			if (!stage || !webcamDimensions) {
+				setWebcamLayout(null);
+				return;
+			}
+
+			const updateLayout = () => {
+				const layout = computeWebcamOverlayLayout({
+					stageWidth: stage.clientWidth,
+					stageHeight: stage.clientHeight,
+					videoWidth: webcamDimensions.width,
+					videoHeight: webcamDimensions.height,
+				});
+				setWebcamLayout(layout);
+			};
+
+			updateLayout();
+
+			if (typeof ResizeObserver === "undefined") {
+				return;
+			}
+
+			const observer = new ResizeObserver(updateLayout);
+			observer.observe(stage);
+			return () => observer.disconnect();
+		}, [webcamDimensions]);
+
+		useEffect(() => {
+			const webcamVideo = webcamVideoRef.current;
+			if (!webcamVideo || !webcamVideoPath) {
+				return;
+			}
+
+			if (!isPlaying) {
+				webcamVideo.pause();
+				if (Math.abs(webcamVideo.currentTime - currentTime) > 0.05) {
+					webcamVideo.currentTime = currentTime;
+				}
+				return;
+			}
+
+			if (Math.abs(webcamVideo.currentTime - currentTime) > 0.15) {
+				webcamVideo.currentTime = currentTime;
+			}
+
+			webcamVideo.play().catch(() => {
+				// Ignore webcam autoplay restoration failures.
+			});
+		}, [currentTime, isPlaying, webcamVideoPath]);
+
+		useEffect(() => {
+			const webcamVideo = webcamVideoRef.current;
+			if (!webcamVideo || !webcamVideoPath) {
+				return;
+			}
+
+			webcamVideo.pause();
+			webcamVideo.currentTime = 0;
+		}, [webcamVideoPath]);
+
+		useEffect(() => {
 			let mounted = true;
 			(async () => {
 				try {
@@ -975,6 +1069,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 
 		return (
 			<div
+				ref={stageRef}
 				className="relative rounded-sm overflow-hidden"
 				style={{
 					width: "100%",
@@ -1008,12 +1103,33 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 								: "none",
 					}}
 				/>
+				{webcamVideoPath && (
+					<video
+						ref={webcamVideoRef}
+						src={webcamVideoPath}
+						className="absolute object-cover pointer-events-none"
+						style={{
+							left: webcamLayout?.x ?? 0,
+							top: webcamLayout?.y ?? 0,
+							width: webcamLayout?.width ?? 0,
+							height: webcamLayout?.height ?? 0,
+							borderRadius: webcamLayout?.borderRadius ?? 0,
+							boxShadow: "0 12px 36px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.22)",
+							zIndex: 20,
+							opacity: webcamLayout ? 1 : 0,
+							backgroundColor: "#000",
+						}}
+						muted
+						preload="metadata"
+						playsInline
+					/>
+				)}
 				{/* Only render overlay after PIXI and video are fully initialized */}
 				{pixiReady && videoReady && (
 					<div
 						ref={overlayRef}
 						className="absolute inset-0 select-none"
-						style={{ pointerEvents: "none" }}
+						style={{ pointerEvents: "none", zIndex: 30 }}
 						onPointerDown={handleOverlayPointerDown}
 						onPointerMove={handleOverlayPointerMove}
 						onPointerUp={handleOverlayPointerUp}

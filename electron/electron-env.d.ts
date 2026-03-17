@@ -33,8 +33,28 @@ interface Window {
 		storeRecordedVideo: (
 			videoData: ArrayBuffer,
 			fileName: string,
-		) => Promise<{ success: boolean; path?: string; message?: string }>;
-		getRecordedVideoPath: () => Promise<{ success: boolean; path?: string; message?: string }>;
+		) => Promise<{
+			success: boolean;
+			path?: string;
+			session?: import("../src/lib/recordingSession").RecordingSession;
+			message?: string;
+			error?: string;
+		}>;
+		storeRecordedSession: (
+			payload: import("../src/lib/recordingSession").StoreRecordedSessionInput,
+		) => Promise<{
+			success: boolean;
+			path?: string;
+			session?: import("../src/lib/recordingSession").RecordingSession;
+			message?: string;
+			error?: string;
+		}>;
+		getRecordedVideoPath: () => Promise<{
+			success: boolean;
+			path?: string;
+			message?: string;
+			error?: string;
+		}>;
 		setRecordingState: (recording: boolean) => Promise<void>;
 		getCursorTelemetry: (videoPath?: string) => Promise<{
 			success: boolean;
@@ -50,7 +70,17 @@ interface Window {
 		) => Promise<{ success: boolean; path?: string; message?: string; canceled?: boolean }>;
 		openVideoFilePicker: () => Promise<{ success: boolean; path?: string; canceled?: boolean }>;
 		setCurrentVideoPath: (path: string) => Promise<{ success: boolean }>;
+		setCurrentRecordingSession: (
+			session: import("../src/lib/recordingSession").RecordingSession | null,
+		) => Promise<{
+			success: boolean;
+			session?: import("../src/lib/recordingSession").RecordingSession;
+		}>;
 		getCurrentVideoPath: () => Promise<{ success: boolean; path?: string }>;
+		getCurrentRecordingSession: () => Promise<{
+			success: boolean;
+			session?: import("../src/lib/recordingSession").RecordingSession;
+		}>;
 		readBinaryFile: (filePath: string) => Promise<{
 			success: boolean;
 			data?: ArrayBuffer;

@@ -28,7 +28,17 @@ interface Window {
 		) => Promise<{
 			success: boolean;
 			path?: string;
-			message: string;
+			session?: import("./lib/recordingSession").RecordingSession;
+			message?: string;
+			error?: string;
+		}>;
+		storeRecordedSession: (
+			payload: import("./lib/recordingSession").StoreRecordedSessionInput,
+		) => Promise<{
+			success: boolean;
+			path?: string;
+			session?: import("./lib/recordingSession").RecordingSession;
+			message?: string;
 			error?: string;
 		}>;
 		getRecordedVideoPath: () => Promise<{
@@ -58,7 +68,17 @@ interface Window {
 		}>;
 		openVideoFilePicker: () => Promise<{ success: boolean; path?: string; canceled?: boolean }>;
 		setCurrentVideoPath: (path: string) => Promise<{ success: boolean }>;
+		setCurrentRecordingSession: (
+			session: import("./lib/recordingSession").RecordingSession | null,
+		) => Promise<{
+			success: boolean;
+			session?: import("./lib/recordingSession").RecordingSession;
+		}>;
 		getCurrentVideoPath: () => Promise<{ success: boolean; path?: string }>;
+		getCurrentRecordingSession: () => Promise<{
+			success: boolean;
+			session?: import("./lib/recordingSession").RecordingSession;
+		}>;
 		clearCurrentVideoPath: () => Promise<{ success: boolean }>;
 		saveProjectFile: (
 			projectData: unknown,
