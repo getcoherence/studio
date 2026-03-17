@@ -377,11 +377,23 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		recording ? stopRecording.current() : startRecording();
 	};
 
-	const restartRecording = () => {
+	const restartRecording = async () => {
 		if (!recording) return;
 		discardRecording.current = true;
+
+		// Wait for the old recorder's onstop to fully complete before starting
+		// a new session, so the discard logic doesn't race with new chunks.
+		const waitForStop = new Promise<void>((resolve) => {
+			if (mediaRecorder.current) {
+				mediaRecorder.current.addEventListener("stop", () => resolve(), { once: true });
+			} else {
+				resolve();
+			}
+		});
+
 		stopRecording.current();
-		startRecording();
+		await waitForStop;
+		await startRecording();
 	};
 
 	return {
