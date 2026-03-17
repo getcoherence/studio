@@ -92,6 +92,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const mixingContext = useRef<AudioContext | null>(null);
 	const startTime = useRef<number>(0);
 	const recordingId = useRef<number>(0);
+	const finalizingRecordingId = useRef<number | null>(null);
+	const allowAutoFinalize = useRef(false);
 
 	const selectMimeType = () => {
 		const preferred = [
@@ -178,9 +180,88 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		}
 	}, []);
 
+	const finalizeRecording = useCallback(
+		(
+			activeScreenRecorder: RecorderHandle,
+			activeWebcamRecorder: RecorderHandle | null,
+			duration: number,
+			activeRecordingId: number,
+		) => {
+			if (finalizingRecordingId.current === activeRecordingId) {
+				return;
+			}
+			finalizingRecordingId.current = activeRecordingId;
+
+			if (screenRecorder.current === activeScreenRecorder) {
+				screenRecorder.current = null;
+			}
+			if (activeWebcamRecorder && webcamRecorder.current === activeWebcamRecorder) {
+				webcamRecorder.current = null;
+			}
+
+			teardownMedia();
+			setRecording(false);
+			window.electronAPI?.setRecordingState(false);
+
+			void (async () => {
+				try {
+					const screenBlob = await activeScreenRecorder.recordedBlobPromise;
+					if (screenBlob.size === 0) {
+						return;
+					}
+
+					const fixedScreenBlob = await fixWebmDuration(screenBlob, duration);
+					let fixedWebcamBlob: Blob | null = null;
+					if (activeWebcamRecorder) {
+						const webcamBlob = await activeWebcamRecorder.recordedBlobPromise.catch(() => null);
+						if (webcamBlob && webcamBlob.size > 0) {
+							fixedWebcamBlob = await fixWebmDuration(webcamBlob, duration);
+						}
+					}
+
+					const screenFileName = `${RECORDING_FILE_PREFIX}${activeRecordingId}${VIDEO_FILE_EXTENSION}`;
+					const webcamFileName = `${RECORDING_FILE_PREFIX}${activeRecordingId}${WEBCAM_FILE_SUFFIX}${VIDEO_FILE_EXTENSION}`;
+					const result = await window.electronAPI.storeRecordedSession({
+						screen: {
+							videoData: await fixedScreenBlob.arrayBuffer(),
+							fileName: screenFileName,
+						},
+						webcam: fixedWebcamBlob
+							? {
+									videoData: await fixedWebcamBlob.arrayBuffer(),
+									fileName: webcamFileName,
+								}
+							: undefined,
+						createdAt: activeRecordingId,
+					});
+
+					if (!result.success) {
+						console.error("Failed to store recording session:", result.message);
+						return;
+					}
+
+					if (result.session) {
+						await window.electronAPI.setCurrentRecordingSession(result.session);
+					} else if (result.path) {
+						await window.electronAPI.setCurrentVideoPath(result.path);
+					}
+
+					await window.electronAPI.switchToEditor();
+				} catch (error) {
+					console.error("Error saving recording:", error);
+				} finally {
+					if (finalizingRecordingId.current === activeRecordingId) {
+						finalizingRecordingId.current = null;
+					}
+				}
+			})();
+		},
+		[teardownMedia],
+	);
+
 	const stopRecording = useRef(() => {
 		const activeScreenRecorder = screenRecorder.current;
-		if (activeScreenRecorder?.recorder.state !== "recording") {
+		if (!activeScreenRecorder) {
 			return;
 		}
 
@@ -188,74 +269,29 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		const duration = Date.now() - startTime.current;
 		const activeRecordingId = recordingId.current;
 
-		screenRecorder.current = null;
-		webcamRecorder.current = null;
+		finalizeRecording(
+			activeScreenRecorder,
+			activeWebcamRecorder ?? null,
+			duration,
+			activeRecordingId,
+		);
 
-		try {
-			activeScreenRecorder.recorder.stop();
-		} catch {
-			// Recorder may already be stopping.
-		}
-		if (activeWebcamRecorder) {
+		if (activeScreenRecorder.recorder.state === "recording") {
 			try {
-				activeWebcamRecorder.recorder.stop();
+				activeScreenRecorder.recorder.stop();
 			} catch {
 				// Recorder may already be stopping.
 			}
 		}
-
-		teardownMedia();
-		setRecording(false);
-		window.electronAPI?.setRecordingState(false);
-
-		void (async () => {
-			try {
-				const screenBlob = await activeScreenRecorder.recordedBlobPromise;
-				if (screenBlob.size === 0) {
-					return;
+		if (activeWebcamRecorder) {
+			if (activeWebcamRecorder.recorder.state === "recording") {
+				try {
+					activeWebcamRecorder.recorder.stop();
+				} catch {
+					// Recorder may already be stopping.
 				}
-
-				const fixedScreenBlob = await fixWebmDuration(screenBlob, duration);
-				let fixedWebcamBlob: Blob | null = null;
-				if (activeWebcamRecorder) {
-					const webcamBlob = await activeWebcamRecorder.recordedBlobPromise.catch(() => null);
-					if (webcamBlob && webcamBlob.size > 0) {
-						fixedWebcamBlob = await fixWebmDuration(webcamBlob, duration);
-					}
-				}
-
-				const screenFileName = `${RECORDING_FILE_PREFIX}${activeRecordingId}${VIDEO_FILE_EXTENSION}`;
-				const webcamFileName = `${RECORDING_FILE_PREFIX}${activeRecordingId}${WEBCAM_FILE_SUFFIX}${VIDEO_FILE_EXTENSION}`;
-				const result = await window.electronAPI.storeRecordedSession({
-					screen: {
-						videoData: await fixedScreenBlob.arrayBuffer(),
-						fileName: screenFileName,
-					},
-					webcam: fixedWebcamBlob
-						? {
-								videoData: await fixedWebcamBlob.arrayBuffer(),
-								fileName: webcamFileName,
-							}
-						: undefined,
-					createdAt: activeRecordingId,
-				});
-
-				if (!result.success) {
-					console.error("Failed to store recording session:", result.message);
-					return;
-				}
-
-				if (result.session) {
-					await window.electronAPI.setCurrentRecordingSession(result.session);
-				} else if (result.path) {
-					await window.electronAPI.setCurrentVideoPath(result.path);
-				}
-
-				await window.electronAPI.switchToEditor();
-			} catch (error) {
-				console.error("Error saving recording:", error);
 			}
-		})();
+		}
 	});
 
 	useEffect(() => {
@@ -269,6 +305,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 		return () => {
 			if (cleanup) cleanup();
+			allowAutoFinalize.current = false;
 
 			if (screenRecorder.current?.recorder.state === "recording") {
 				try {
@@ -461,8 +498,30 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 			recordingId.current = Date.now();
 			startTime.current = recordingId.current;
+			allowAutoFinalize.current = true;
 			setRecording(true);
 			window.electronAPI?.setRecordingState(true);
+
+			const activeScreenRecorder = screenRecorder.current;
+			const activeWebcamRecorder = webcamRecorder.current;
+			const activeRecordingId = recordingId.current;
+			if (activeScreenRecorder) {
+				activeScreenRecorder.recorder.addEventListener(
+					"stop",
+					() => {
+						if (!allowAutoFinalize.current) {
+							return;
+						}
+						finalizeRecording(
+							activeScreenRecorder,
+							activeWebcamRecorder ?? null,
+							Math.max(0, Date.now() - startTime.current),
+							activeRecordingId,
+						);
+					},
+					{ once: true },
+				);
+			}
 		} catch (error) {
 			console.error("Failed to start recording:", error);
 			const errorMsg = error instanceof Error ? error.message : "Failed to start recording";
