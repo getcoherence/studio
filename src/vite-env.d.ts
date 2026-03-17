@@ -22,6 +22,12 @@ interface Window {
 		openSourceSelector: () => Promise<void>;
 		selectSource: (source: ProcessedDesktopSource) => Promise<ProcessedDesktopSource | null>;
 		getSelectedSource: () => Promise<ProcessedDesktopSource | null>;
+		requestCameraAccess: () => Promise<{
+			success: boolean;
+			granted: boolean;
+			status: string;
+			error?: string;
+		}>;
 		storeRecordedVideo: (
 			videoData: ArrayBuffer,
 			fileName: string,

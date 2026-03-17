@@ -1,7 +1,16 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, screen, shell } from "electron";
+import {
+	app,
+	BrowserWindow,
+	desktopCapturer,
+	dialog,
+	ipcMain,
+	screen,
+	shell,
+	systemPreferences,
+} from "electron";
 import {
 	normalizeProjectMedia,
 	normalizeRecordingSession,
@@ -183,6 +192,38 @@ export function registerIpcHandlers(
 
 	ipcMain.handle("get-selected-source", () => {
 		return selectedSource;
+	});
+
+	ipcMain.handle("request-camera-access", async () => {
+		if (process.platform !== "darwin") {
+			return { success: true, granted: true, status: "granted" };
+		}
+
+		try {
+			const status = systemPreferences.getMediaAccessStatus("camera");
+			if (status === "granted") {
+				return { success: true, granted: true, status };
+			}
+
+			if (status === "not-determined") {
+				const granted = await systemPreferences.askForMediaAccess("camera");
+				return {
+					success: true,
+					granted,
+					status: granted ? "granted" : systemPreferences.getMediaAccessStatus("camera"),
+				};
+			}
+
+			return { success: true, granted: false, status };
+		} catch (error) {
+			console.error("Failed to request camera access:", error);
+			return {
+				success: false,
+				granted: false,
+				status: "unknown",
+				error: String(error),
+			};
+		}
 	});
 
 	ipcMain.handle("open-source-selector", () => {

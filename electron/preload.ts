@@ -27,6 +27,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	getSelectedSource: () => {
 		return ipcRenderer.invoke("get-selected-source");
 	},
+	requestCameraAccess: () => {
+		return ipcRenderer.invoke("request-camera-access");
+	},
 
 	storeRecordedVideo: (videoData: ArrayBuffer, fileName: string) => {
 		return ipcRenderer.invoke("store-recorded-video", videoData, fileName);

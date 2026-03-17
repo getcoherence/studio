@@ -333,12 +333,12 @@ app.on("activate", () => {
 app.whenReady().then(async () => {
 	// Allow microphone/media permission checks
 	session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
-		const allowed = ["media", "audioCapture", "microphone"];
+		const allowed = ["media", "audioCapture", "microphone", "videoCapture", "camera"];
 		return allowed.includes(permission);
 	});
 
 	session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-		const allowed = ["media", "audioCapture", "microphone"];
+		const allowed = ["media", "audioCapture", "microphone", "videoCapture", "camera"];
 		callback(allowed.includes(permission));
 	});
 

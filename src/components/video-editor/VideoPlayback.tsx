@@ -968,6 +968,13 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				return;
 			}
 
+			const activeSpeedRegion =
+				speedRegions.find(
+					(region) =>
+						currentTime * 1000 >= region.startMs && currentTime * 1000 < region.endMs,
+				) ?? null;
+			webcamVideo.playbackRate = activeSpeedRegion ? activeSpeedRegion.speed : 1;
+
 			if (!isPlaying) {
 				webcamVideo.pause();
 				if (Math.abs(webcamVideo.currentTime - currentTime) > 0.05) {
@@ -983,7 +990,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			webcamVideo.play().catch(() => {
 				// Ignore webcam autoplay restoration failures.
 			});
-		}, [currentTime, isPlaying, webcamVideoPath]);
+		}, [currentTime, isPlaying, speedRegions, webcamVideoPath]);
 
 		useEffect(() => {
 			const webcamVideo = webcamVideoRef.current;

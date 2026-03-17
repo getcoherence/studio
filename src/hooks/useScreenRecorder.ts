@@ -47,7 +47,7 @@ type UseScreenRecorderReturn = {
 	systemAudioEnabled: boolean;
 	setSystemAudioEnabled: (enabled: boolean) => void;
 	webcamEnabled: boolean;
-	setWebcamEnabled: (enabled: boolean) => void;
+	setWebcamEnabled: (enabled: boolean) => Promise<boolean>;
 };
 
 type RecorderHandle = {
@@ -82,7 +82,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const [microphoneEnabled, setMicrophoneEnabled] = useState(false);
 	const [microphoneDeviceId, setMicrophoneDeviceId] = useState<string | undefined>(undefined);
 	const [systemAudioEnabled, setSystemAudioEnabled] = useState(false);
-	const [webcamEnabled, setWebcamEnabled] = useState(false);
+	const [webcamEnabled, setWebcamEnabledState] = useState(false);
 	const screenRecorder = useRef<RecorderHandle | null>(null);
 	const webcamRecorder = useRef<RecorderHandle | null>(null);
 	const stream = useRef<MediaStream | null>(null);
@@ -143,6 +143,38 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				// Ignore close errors during recorder teardown.
 			});
 			mixingContext.current = null;
+		}
+	}, []);
+
+	const setWebcamEnabled = useCallback(async (enabled: boolean) => {
+		if (!enabled) {
+			setWebcamEnabledState(false);
+			return true;
+		}
+
+		const accessResult = await window.electronAPI.requestCameraAccess();
+		if (!accessResult.success) {
+			toast.error("Failed to request camera access.");
+			return false;
+		}
+
+		if (!accessResult.granted) {
+			toast.error("Camera access is blocked. Enable it in system settings to use the webcam.");
+			return false;
+		}
+
+		try {
+			const probeStream = await navigator.mediaDevices.getUserMedia({
+				audio: false,
+				video: true,
+			});
+			probeStream.getTracks().forEach((track) => track.stop());
+			setWebcamEnabledState(true);
+			return true;
+		} catch (error) {
+			console.warn("Failed to preflight webcam access:", error);
+			toast.error("Camera access denied. Webcam overlay will stay disabled.");
+			return false;
 		}
 	}, []);
 
