@@ -56,6 +56,7 @@ export class VideoExporter {
 	}
 
 	async export(): Promise<ExportResult> {
+		let webcamFrameQueue: AsyncVideoFrameQueue | null = null;
 		try {
 			this.cleanup();
 			this.cancelled = false;
@@ -116,7 +117,8 @@ export class VideoExporter {
 
 			const frameDuration = 1_000_000 / this.config.frameRate; // in microseconds
 			let frameIndex = 0;
-			const webcamFrameQueue = this.config.webcamVideoUrl ? new AsyncVideoFrameQueue() : null;
+			webcamFrameQueue = this.config.webcamVideoUrl ? new AsyncVideoFrameQueue() : null;
+			let webcamDecodeError: Error | null = null;
 			const webcamDecodePromise =
 				this.webcamDecoder && webcamFrameQueue
 					? this.webcamDecoder
@@ -131,12 +133,17 @@ export class VideoExporter {
 									webcamFrameQueue.enqueue(webcamFrame);
 								},
 							)
-							.then(() => {
-								webcamFrameQueue.close();
-							})
 							.catch((error) => {
-								webcamFrameQueue.fail(error instanceof Error ? error : new Error(String(error)));
+								webcamDecodeError =
+									error instanceof Error ? error : new Error(String(error));
 								throw error;
+							})
+							.finally(() => {
+								if (webcamDecodeError) {
+									webcamFrameQueue.fail(webcamDecodeError);
+								} else {
+									webcamFrameQueue.close();
+								}
 							})
 					: null;
 
@@ -259,6 +266,7 @@ export class VideoExporter {
 				error: error instanceof Error ? error.message : String(error),
 			};
 		} finally {
+			webcamFrameQueue?.destroy();
 			this.cleanup();
 		}
 	}

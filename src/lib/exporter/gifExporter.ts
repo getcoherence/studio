@@ -92,6 +92,7 @@ export class GifExporter {
 	}
 
 	async export(): Promise<ExportResult> {
+		let webcamFrameQueue: AsyncVideoFrameQueue | null = null;
 		try {
 			this.cleanup();
 			this.cancelled = false;
@@ -165,7 +166,8 @@ export class GifExporter {
 			console.log("[GifExporter] Using streaming decode (web-demuxer + VideoDecoder)");
 
 			let frameIndex = 0;
-			const webcamFrameQueue = this.config.webcamVideoUrl ? new AsyncVideoFrameQueue() : null;
+			webcamFrameQueue = this.config.webcamVideoUrl ? new AsyncVideoFrameQueue() : null;
+			let webcamDecodeError: Error | null = null;
 			const webcamDecodePromise =
 				this.webcamDecoder && webcamFrameQueue
 					? this.webcamDecoder
@@ -180,12 +182,17 @@ export class GifExporter {
 									webcamFrameQueue.enqueue(webcamFrame);
 								},
 							)
-							.then(() => {
-								webcamFrameQueue.close();
-							})
 							.catch((error) => {
-								webcamFrameQueue.fail(error instanceof Error ? error : new Error(String(error)));
+								webcamDecodeError =
+									error instanceof Error ? error : new Error(String(error));
 								throw error;
+							})
+							.finally(() => {
+								if (webcamDecodeError) {
+									webcamFrameQueue.fail(webcamDecodeError);
+								} else {
+									webcamFrameQueue.close();
+								}
 							})
 					: null;
 
@@ -277,6 +284,7 @@ export class GifExporter {
 				error: error instanceof Error ? error.message : String(error),
 			};
 		} finally {
+			webcamFrameQueue?.destroy();
 			this.cleanup();
 		}
 	}
