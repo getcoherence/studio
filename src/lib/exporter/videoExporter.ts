@@ -155,63 +155,72 @@ export class VideoExporter {
 				this.config.trimRegions,
 				this.config.speedRegions,
 				async (videoFrame, _exportTimestampUs, sourceTimestampMs) => {
-					if (this.cancelled) {
-						videoFrame.close();
-						return;
-					}
+					let webcamFrame: VideoFrame | null = null;
+					try {
+						if (this.cancelled) {
+							return;
+						}
 
-					const timestamp = frameIndex * frameDuration;
-					const webcamFrame = webcamFrameQueue ? await webcamFrameQueue.dequeue() : null;
+						const timestamp = frameIndex * frameDuration;
+						webcamFrame = webcamFrameQueue ? await webcamFrameQueue.dequeue() : null;
+						const renderer = this.renderer;
+						if (this.cancelled || !renderer) {
+							return;
+						}
 
-					// Render the frame with all effects using source timestamp
-					const sourceTimestampUs = sourceTimestampMs * 1000; // Convert to microseconds
-					await this.renderer!.renderFrame(videoFrame, sourceTimestampUs, webcamFrame);
-					videoFrame.close();
-					webcamFrame?.close();
+						// Render the frame with all effects using source timestamp
+						const sourceTimestampUs = sourceTimestampMs * 1000; // Convert to microseconds
+						await renderer.renderFrame(videoFrame, sourceTimestampUs, webcamFrame);
 
-					const canvas = this.renderer!.getCanvas();
+						const canvas = renderer.getCanvas();
 
-					// Create VideoFrame from canvas on GPU without reading pixels
-					// @ts-expect-error - colorSpace not in TypeScript definitions but works at runtime
-					const exportFrame = new VideoFrame(canvas, {
-						timestamp,
-						duration: frameDuration,
-						colorSpace: {
-							primaries: "bt709",
-							transfer: "iec61966-2-1",
-							matrix: "rgb",
-							fullRange: true,
-						},
-					});
-
-					// Check encoder queue before encoding to keep it full
-					while (
-						this.encoder &&
-						this.encoder.encodeQueueSize >= this.MAX_ENCODE_QUEUE &&
-						!this.cancelled
-					) {
-						await new Promise((resolve) => setTimeout(resolve, 5));
-					}
-
-					if (this.encoder && this.encoder.state === "configured") {
-						this.encodeQueue++;
-						this.encoder.encode(exportFrame, { keyFrame: frameIndex % 150 === 0 });
-					} else {
-						console.warn(`[Frame ${frameIndex}] Encoder not ready! State: ${this.encoder?.state}`);
-					}
-
-					exportFrame.close();
-
-					frameIndex++;
-
-					// Update progress
-					if (this.config.onProgress) {
-						this.config.onProgress({
-							currentFrame: frameIndex,
-							totalFrames,
-							percentage: (frameIndex / totalFrames) * 100,
-							estimatedTimeRemaining: 0,
+						// Create VideoFrame from canvas on GPU without reading pixels
+						// @ts-expect-error - colorSpace not in TypeScript definitions but works at runtime
+						const exportFrame = new VideoFrame(canvas, {
+							timestamp,
+							duration: frameDuration,
+							colorSpace: {
+								primaries: "bt709",
+								transfer: "iec61966-2-1",
+								matrix: "rgb",
+								fullRange: true,
+							},
 						});
+
+						// Check encoder queue before encoding to keep it full
+						while (
+							this.encoder &&
+							this.encoder.encodeQueueSize >= this.MAX_ENCODE_QUEUE &&
+							!this.cancelled
+						) {
+							await new Promise((resolve) => setTimeout(resolve, 5));
+						}
+
+						if (this.encoder && this.encoder.state === "configured") {
+							this.encodeQueue++;
+							this.encoder.encode(exportFrame, { keyFrame: frameIndex % 150 === 0 });
+						} else {
+							console.warn(
+								`[Frame ${frameIndex}] Encoder not ready! State: ${this.encoder?.state}`,
+							);
+						}
+
+						exportFrame.close();
+
+						frameIndex++;
+
+						// Update progress
+						if (this.config.onProgress) {
+							this.config.onProgress({
+								currentFrame: frameIndex,
+								totalFrames,
+								percentage: (frameIndex / totalFrames) * 100,
+								estimatedTimeRemaining: 0,
+							});
+						}
+					} finally {
+						videoFrame.close();
+						webcamFrame?.close();
 					}
 				},
 			);

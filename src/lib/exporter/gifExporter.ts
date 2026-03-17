@@ -204,35 +204,42 @@ export class GifExporter {
 				this.config.trimRegions,
 				this.config.speedRegions,
 				async (videoFrame, _exportTimestampUs, sourceTimestampMs) => {
-					if (this.cancelled) {
+					let webcamFrame: VideoFrame | null = null;
+					try {
+						if (this.cancelled) {
+							return;
+						}
+
+						webcamFrame = webcamFrameQueue ? await webcamFrameQueue.dequeue() : null;
+						const renderer = this.renderer;
+						if (this.cancelled || !renderer) {
+							return;
+						}
+
+						// Render the frame with all effects using source timestamp
+						const sourceTimestampUs = sourceTimestampMs * 1000; // Convert to microseconds
+						await renderer.renderFrame(videoFrame, sourceTimestampUs, webcamFrame);
+
+						// Get the rendered canvas and add to GIF
+						const canvas = renderer.getCanvas();
+
+						// Add frame to GIF encoder with delay
+						this.gif!.addFrame(canvas, { delay: frameDelay, copy: true });
+
+						frameIndex++;
+
+						// Update progress
+						if (this.config.onProgress) {
+							this.config.onProgress({
+								currentFrame: frameIndex,
+								totalFrames,
+								percentage: (frameIndex / totalFrames) * 100,
+								estimatedTimeRemaining: 0,
+							});
+						}
+					} finally {
 						videoFrame.close();
-						return;
-					}
-
-					const webcamFrame = webcamFrameQueue ? await webcamFrameQueue.dequeue() : null;
-
-					// Render the frame with all effects using source timestamp
-					const sourceTimestampUs = sourceTimestampMs * 1000; // Convert to microseconds
-					await this.renderer!.renderFrame(videoFrame, sourceTimestampUs, webcamFrame);
-					videoFrame.close();
-					webcamFrame?.close();
-
-					// Get the rendered canvas and add to GIF
-					const canvas = this.renderer!.getCanvas();
-
-					// Add frame to GIF encoder with delay
-					this.gif!.addFrame(canvas, { delay: frameDelay, copy: true });
-
-					frameIndex++;
-
-					// Update progress
-					if (this.config.onProgress) {
-						this.config.onProgress({
-							currentFrame: frameIndex,
-							totalFrames,
-							percentage: (frameIndex / totalFrames) * 100,
-							estimatedTimeRemaining: 0,
-						});
+						webcamFrame?.close();
 					}
 				},
 			);
