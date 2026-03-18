@@ -167,6 +167,7 @@ export class GifExporter {
 
 			let frameIndex = 0;
 			webcamFrameQueue = this.config.webcamVideoUrl ? new AsyncVideoFrameQueue() : null;
+			let stopWebcamDecode = false;
 			let webcamDecodeError: Error | null = null;
 			const webcamDecodePromise =
 				this.webcamDecoder && webcamFrameQueue
@@ -178,8 +179,12 @@ export class GifExporter {
 									this.config.trimRegions,
 									this.config.speedRegions,
 									async (webcamFrame) => {
-										while (queue.length >= 12 && !this.cancelled) {
+										while (queue.length >= 12 && !this.cancelled && !stopWebcamDecode) {
 											await new Promise((resolve) => setTimeout(resolve, 2));
+										}
+										if (this.cancelled || stopWebcamDecode) {
+											webcamFrame.close();
+											return;
 										}
 										queue.enqueue(webcamFrame);
 									},
@@ -248,6 +253,9 @@ export class GifExporter {
 				return { success: false, error: "Export cancelled" };
 			}
 
+			stopWebcamDecode = true;
+			webcamFrameQueue?.destroy();
+			this.webcamDecoder?.cancel();
 			await webcamDecodePromise;
 
 			// Update progress to show we're now in the finalizing phase

@@ -118,6 +118,7 @@ export class VideoExporter {
 			const frameDuration = 1_000_000 / this.config.frameRate; // in microseconds
 			let frameIndex = 0;
 			webcamFrameQueue = this.config.webcamVideoUrl ? new AsyncVideoFrameQueue() : null;
+			let stopWebcamDecode = false;
 			let webcamDecodeError: Error | null = null;
 			const webcamDecodePromise =
 				this.webcamDecoder && webcamFrameQueue
@@ -129,8 +130,12 @@ export class VideoExporter {
 									this.config.trimRegions,
 									this.config.speedRegions,
 									async (webcamFrame) => {
-										while (queue.length >= 12 && !this.cancelled) {
+										while (queue.length >= 12 && !this.cancelled && !stopWebcamDecode) {
 											await new Promise((resolve) => setTimeout(resolve, 2));
+										}
+										if (this.cancelled || stopWebcamDecode) {
+											webcamFrame.close();
+											return;
 										}
 										queue.enqueue(webcamFrame);
 									},
@@ -229,6 +234,9 @@ export class VideoExporter {
 				return { success: false, error: "Export cancelled" };
 			}
 
+			stopWebcamDecode = true;
+			webcamFrameQueue?.destroy();
+			this.webcamDecoder?.cancel();
 			await webcamDecodePromise;
 
 			// Finalize encoding

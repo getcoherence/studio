@@ -68,6 +68,53 @@ function setCurrentRecordingSessionState(session: RecordingSession | null) {
 	currentRecordingSession = session;
 }
 
+function getSessionManifestPathForVideo(videoPath: string) {
+	const parsed = path.parse(videoPath);
+	const baseName = parsed.name.endsWith("-webcam")
+		? parsed.name.slice(0, -"-webcam".length)
+		: parsed.name;
+	return path.join(parsed.dir, `${baseName}${RECORDING_SESSION_SUFFIX}`);
+}
+
+async function loadRecordedSessionForVideoPath(
+	videoPath: string,
+): Promise<RecordingSession | null> {
+	const normalizedVideoPath = normalizeVideoSourcePath(videoPath);
+	if (!normalizedVideoPath) {
+		return null;
+	}
+
+	try {
+		const manifestPath = getSessionManifestPathForVideo(normalizedVideoPath);
+		const content = await fs.readFile(manifestPath, "utf-8");
+		const session = normalizeRecordingSession(JSON.parse(content));
+		if (!session) {
+			return null;
+		}
+
+		const normalizedSession: RecordingSession = {
+			...session,
+			screenVideoPath: normalizeVideoSourcePath(session.screenVideoPath) ?? session.screenVideoPath,
+			...(session.webcamVideoPath
+				? {
+						webcamVideoPath:
+							normalizeVideoSourcePath(session.webcamVideoPath) ?? session.webcamVideoPath,
+					}
+				: {}),
+		};
+
+		const targetPath = normalizePath(normalizedVideoPath);
+		const screenMatches = normalizePath(normalizedSession.screenVideoPath) === targetPath;
+		const webcamMatches = normalizedSession.webcamVideoPath
+			? normalizePath(normalizedSession.webcamVideoPath) === targetPath
+			: false;
+
+		return screenMatches || webcamMatches ? normalizedSession : null;
+	} catch {
+		return null;
+	}
+}
+
 async function storeRecordedSessionFiles(payload: StoreRecordedSessionInput) {
 	const createdAt =
 		typeof payload.createdAt === "number" && Number.isFinite(payload.createdAt)
@@ -675,11 +722,16 @@ export function registerIpcHandlers(
 			: { success: false };
 	});
 
-	ipcMain.handle("set-current-video-path", (_, path: string) => {
-		setCurrentRecordingSessionState({
-			screenVideoPath: normalizeVideoSourcePath(path) ?? path,
-			createdAt: Date.now(),
-		});
+	ipcMain.handle("set-current-video-path", async (_, path: string) => {
+		const restoredSession = await loadRecordedSessionForVideoPath(path);
+		if (restoredSession) {
+			setCurrentRecordingSessionState(restoredSession);
+		} else {
+			setCurrentRecordingSessionState({
+				screenVideoPath: normalizeVideoSourcePath(path) ?? path,
+				createdAt: Date.now(),
+			});
+		}
 		currentProjectPath = null;
 		return { success: true };
 	});
