@@ -14,26 +14,22 @@ export interface DecodedVideoInfo {
 
 type EarlyDecodeEndCheck = {
 	cancelled: boolean;
-	segmentsLength: number;
-	completedSegments: number;
 	lastDecodedFrameSec: number | null;
 	requiredEndSec: number;
+	streamDurationSec?: number;
 };
+
+const EARLY_DECODE_END_THRESHOLD_SEC = 1;
+const METADATA_TAIL_TOLERANCE_SEC = 1.5;
+const STREAM_DURATION_MATCH_TOLERANCE_SEC = 0.25;
 
 export function shouldFailDecodeEndedEarly({
 	cancelled,
-	segmentsLength,
-	completedSegments,
 	lastDecodedFrameSec,
 	requiredEndSec,
+	streamDurationSec,
 }: EarlyDecodeEndCheck): boolean {
-	if (cancelled || segmentsLength === 0) {
-		return false;
-	}
-
-	// If we already satisfied every segment, the exporter has successfully
-	// filled any short metadata tail using the last decoded frame.
-	if (completedSegments >= segmentsLength) {
+	if (cancelled || requiredEndSec <= 0) {
 		return false;
 	}
 
@@ -41,7 +37,28 @@ export function shouldFailDecodeEndedEarly({
 		return true;
 	}
 
-	return requiredEndSec - lastDecodedFrameSec > 1;
+	const decodeGapSec = requiredEndSec - lastDecodedFrameSec;
+	if (decodeGapSec <= EARLY_DECODE_END_THRESHOLD_SEC) {
+		return false;
+	}
+
+	if (typeof streamDurationSec !== "number" || !Number.isFinite(streamDurationSec)) {
+		return true;
+	}
+
+	const metadataTailSec = requiredEndSec - streamDurationSec;
+	const decodedNearStreamEnd =
+		Math.abs(lastDecodedFrameSec - streamDurationSec) <= STREAM_DURATION_MATCH_TOLERANCE_SEC;
+
+	if (
+		decodedNearStreamEnd &&
+		metadataTailSec > 0 &&
+		metadataTailSec <= METADATA_TAIL_TOLERANCE_SEC
+	) {
+		return false;
+	}
+
+	return true;
 }
 
 /** Caller must close the VideoFrame after use. */
@@ -400,10 +417,9 @@ export class StreamingVideoDecoder {
 		if (
 			shouldFailDecodeEndedEarly({
 				cancelled: this.cancelled,
-				segmentsLength: segments.length,
-				completedSegments: segmentIdx,
 				lastDecodedFrameSec,
 				requiredEndSec,
+				streamDurationSec: this.metadata.streamDuration,
 			})
 		) {
 			const decodedAtLabel =

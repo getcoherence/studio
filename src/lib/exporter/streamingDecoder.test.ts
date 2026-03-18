@@ -6,22 +6,20 @@ describe("shouldFailDecodeEndedEarly", () => {
 		expect(
 			shouldFailDecodeEndedEarly({
 				cancelled: false,
-				segmentsLength: 1,
-				completedSegments: 1,
 				lastDecodedFrameSec: 5.33,
 				requiredEndSec: 6.498,
+				streamDurationSec: 5.33,
 			}),
 		).toBe(false);
 	});
 
-	it("fails when decode stops before the remaining segments can be covered", () => {
+	it("fails when decode stops far before the required end", () => {
 		expect(
 			shouldFailDecodeEndedEarly({
 				cancelled: false,
-				segmentsLength: 2,
-				completedSegments: 1,
 				lastDecodedFrameSec: 5.33,
-				requiredEndSec: 6.498,
+				requiredEndSec: 10,
+				streamDurationSec: 5.33,
 			}),
 		).toBe(true);
 	});
@@ -30,10 +28,19 @@ describe("shouldFailDecodeEndedEarly", () => {
 		expect(
 			shouldFailDecodeEndedEarly({
 				cancelled: false,
-				segmentsLength: 1,
-				completedSegments: 0,
 				lastDecodedFrameSec: null,
 				requiredEndSec: 1,
+			}),
+		).toBe(true);
+	});
+
+	it("fails when the decoder has not reached the reported stream end", () => {
+		expect(
+			shouldFailDecodeEndedEarly({
+				cancelled: false,
+				lastDecodedFrameSec: 4.9,
+				requiredEndSec: 6.498,
+				streamDurationSec: 5.33,
 			}),
 		).toBe(true);
 	});
