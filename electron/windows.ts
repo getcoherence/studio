@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const RENDERER_DIST = path.join(APP_ROOT, "dist");
+const HEADLESS = process.env["HEADLESS"] === "true";
 
 let hudOverlayWindow: BrowserWindow | null = null;
 
@@ -41,6 +42,7 @@ export function createHudOverlayWindow(): BrowserWindow {
 		alwaysOnTop: true,
 		skipTaskbar: true,
 		hasShadow: false,
+		show: !HEADLESS,
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),
 			nodeIntegration: false,
@@ -90,6 +92,7 @@ export function createEditorWindow(): BrowserWindow {
 		skipTaskbar: false,
 		title: "OpenScreen",
 		backgroundColor: "#000000",
+		show: !HEADLESS,
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),
 			nodeIntegration: false,

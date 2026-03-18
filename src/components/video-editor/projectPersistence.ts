@@ -1,4 +1,6 @@
 import type { ExportFormat, ExportQuality, GifFrameRate, GifSizePreset } from "@/lib/exporter";
+import type { ProjectMedia } from "@/lib/recordingSession";
+import { normalizeProjectMedia } from "@/lib/recordingSession";
 import { ASPECT_RATIOS, type AspectRatio } from "@/utils/aspectRatioUtils";
 import {
 	type AnnotationRegion,
@@ -22,13 +24,13 @@ export const WALLPAPER_PATHS = Array.from(
 	(_, i) => `/wallpapers/wallpaper${i + 1}.jpg`,
 );
 
-export const PROJECT_VERSION = 1;
+export const PROJECT_VERSION = 2;
 
 export interface ProjectEditorState {
 	wallpaper: string;
 	shadowIntensity: number;
 	showBlur: boolean;
-	motionBlurEnabled: boolean;
+	motionBlurAmount: number;
 	borderRadius: number;
 	padding: number;
 	cropRegion: CropRegion;
@@ -46,8 +48,9 @@ export interface ProjectEditorState {
 
 export interface EditorProjectData {
 	version: number;
-	videoPath: string;
+	media?: ProjectMedia;
 	editor: ProjectEditorState;
+	videoPath?: string;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -139,9 +142,24 @@ export function validateProjectData(candidate: unknown): candidate is EditorProj
 	if (!candidate || typeof candidate !== "object") return false;
 	const project = candidate as Partial<EditorProjectData>;
 	if (typeof project.version !== "number") return false;
-	if (typeof project.videoPath !== "string" || !project.videoPath) return false;
+	if (!resolveProjectMedia(project)) return false;
 	if (!project.editor || typeof project.editor !== "object") return false;
 	return true;
+}
+
+export function resolveProjectMedia(
+	candidate: Partial<EditorProjectData> | { media?: unknown; videoPath?: unknown },
+): ProjectMedia | null {
+	const media = normalizeProjectMedia(candidate.media);
+	if (media) {
+		return media;
+	}
+
+	if (typeof candidate.videoPath === "string" && candidate.videoPath.trim()) {
+		return { screenVideoPath: candidate.videoPath };
+	}
+
+	return null;
 }
 
 export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): ProjectEditorState {
@@ -302,8 +320,13 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		wallpaper: typeof editor.wallpaper === "string" ? editor.wallpaper : WALLPAPER_PATHS[0],
 		shadowIntensity: typeof editor.shadowIntensity === "number" ? editor.shadowIntensity : 0,
 		showBlur: typeof editor.showBlur === "boolean" ? editor.showBlur : false,
-		motionBlurEnabled:
-			typeof editor.motionBlurEnabled === "boolean" ? editor.motionBlurEnabled : false,
+		motionBlurAmount: isFiniteNumber(editor.motionBlurAmount)
+			? clamp(editor.motionBlurAmount, 0, 1)
+			: typeof (editor as { motionBlurEnabled?: unknown }).motionBlurEnabled === "boolean"
+				? (editor as { motionBlurEnabled?: boolean }).motionBlurEnabled
+					? 0.35
+					: 0
+				: 0,
 		borderRadius: typeof editor.borderRadius === "number" ? editor.borderRadius : 0,
 		padding: isFiniteNumber(editor.padding) ? clamp(editor.padding, 0, 100) : 50,
 		cropRegion: {
@@ -341,12 +364,12 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 }
 
 export function createProjectData(
-	videoPath: string,
+	media: ProjectMedia,
 	editor: ProjectEditorState,
 ): EditorProjectData {
 	return {
 		version: PROJECT_VERSION,
-		videoPath,
+		media,
 		editor,
 	};
 }

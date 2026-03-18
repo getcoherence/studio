@@ -17,6 +17,7 @@ import {
 	type GifSizePreset,
 	VideoExporter,
 } from "@/lib/exporter";
+import type { ProjectMedia } from "@/lib/recordingSession";
 import { matchesShortcut } from "@/lib/shortcuts";
 import { getAspectRatioValue, getNativeAspectRatioValue } from "@/utils/aspectRatioUtils";
 import { ExportDialog } from "./ExportDialog";
@@ -26,6 +27,7 @@ import {
 	deriveNextId,
 	fromFileUrl,
 	normalizeProjectEditor,
+	resolveProjectMedia,
 	toFileUrl,
 	validateProjectData,
 } from "./projectPersistence";
@@ -70,7 +72,7 @@ export default function VideoEditor() {
 		wallpaper,
 		shadowIntensity,
 		showBlur,
-		motionBlurEnabled,
+		motionBlurAmount,
 		borderRadius,
 		padding,
 		aspectRatio,
@@ -79,6 +81,8 @@ export default function VideoEditor() {
 	// ── Non-undoable state
 	const [videoPath, setVideoPath] = useState<string | null>(null);
 	const [videoSourcePath, setVideoSourcePath] = useState<string | null>(null);
+	const [webcamVideoPath, setWebcamVideoPath] = useState<string | null>(null);
+	const [webcamVideoSourcePath, setWebcamVideoSourcePath] = useState<string | null>(null);
 	const [currentProjectPath, setCurrentProjectPath] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -111,6 +115,19 @@ export default function VideoEditor() {
 	const nextAnnotationZIndexRef = useRef(1);
 	const exporterRef = useRef<VideoExporter | null>(null);
 
+	const currentProjectMedia = useMemo<ProjectMedia | null>(() => {
+		const screenVideoPath = videoSourcePath ?? (videoPath ? fromFileUrl(videoPath) : null);
+		if (!screenVideoPath) {
+			return null;
+		}
+
+		const webcamSourcePath =
+			webcamVideoSourcePath ?? (webcamVideoPath ? fromFileUrl(webcamVideoPath) : null);
+		return webcamSourcePath
+			? { screenVideoPath, webcamVideoPath: webcamSourcePath }
+			: { screenVideoPath };
+	}, [videoPath, videoSourcePath, webcamVideoPath, webcamVideoSourcePath]);
+
 	const applyLoadedProject = useCallback(
 		async (candidate: unknown, path?: string | null) => {
 			if (!validateProjectData(candidate)) {
@@ -118,7 +135,12 @@ export default function VideoEditor() {
 			}
 
 			const project = candidate;
-			const sourcePath = fromFileUrl(project.videoPath);
+			const media = resolveProjectMedia(project);
+			if (!media) {
+				return false;
+			}
+			const sourcePath = fromFileUrl(media.screenVideoPath);
+			const webcamSourcePath = media.webcamVideoPath ? fromFileUrl(media.webcamVideoPath) : null;
 			const normalizedEditor = normalizeProjectEditor(project.editor);
 
 			try {
@@ -133,13 +155,15 @@ export default function VideoEditor() {
 			setError(null);
 			setVideoSourcePath(sourcePath);
 			setVideoPath(toFileUrl(sourcePath));
+			setWebcamVideoSourcePath(webcamSourcePath);
+			setWebcamVideoPath(webcamSourcePath ? toFileUrl(webcamSourcePath) : null);
 			setCurrentProjectPath(path ?? null);
 
 			pushState({
 				wallpaper: normalizedEditor.wallpaper,
 				shadowIntensity: normalizedEditor.shadowIntensity,
 				showBlur: normalizedEditor.showBlur,
-				motionBlurEnabled: normalizedEditor.motionBlurEnabled,
+				motionBlurAmount: normalizedEditor.motionBlurAmount,
 				borderRadius: normalizedEditor.borderRadius,
 				padding: normalizedEditor.padding,
 				cropRegion: normalizedEditor.cropRegion,
@@ -182,23 +206,31 @@ export default function VideoEditor() {
 					0,
 				) + 1;
 
-			setLastSavedSnapshot(JSON.stringify(createProjectData(sourcePath, normalizedEditor)));
+			setLastSavedSnapshot(
+				JSON.stringify(
+					createProjectData(
+						webcamSourcePath
+							? { screenVideoPath: sourcePath, webcamVideoPath: webcamSourcePath }
+							: { screenVideoPath: sourcePath },
+						normalizedEditor,
+					),
+				),
+			);
 			return true;
 		},
 		[pushState],
 	);
 
 	const currentProjectSnapshot = useMemo(() => {
-		const sourcePath = videoSourcePath ?? (videoPath ? fromFileUrl(videoPath) : null);
-		if (!sourcePath) {
+		if (!currentProjectMedia) {
 			return null;
 		}
 		return JSON.stringify(
-			createProjectData(sourcePath, {
+			createProjectData(currentProjectMedia, {
 				wallpaper,
 				shadowIntensity,
 				showBlur,
-				motionBlurEnabled,
+				motionBlurAmount,
 				borderRadius,
 				padding,
 				cropRegion,
@@ -215,12 +247,11 @@ export default function VideoEditor() {
 			}),
 		);
 	}, [
-		videoPath,
-		videoSourcePath,
+		currentProjectMedia,
 		wallpaper,
 		shadowIntensity,
 		showBlur,
-		motionBlurEnabled,
+		motionBlurAmount,
 		borderRadius,
 		padding,
 		cropRegion,
@@ -257,11 +288,29 @@ export default function VideoEditor() {
 					}
 				}
 
+				const currentSessionResult = await window.electronAPI.getCurrentRecordingSession();
+				if (currentSessionResult.success && currentSessionResult.session) {
+					const session = currentSessionResult.session;
+					const sourcePath = fromFileUrl(session.screenVideoPath);
+					const webcamSourcePath = session.webcamVideoPath
+						? fromFileUrl(session.webcamVideoPath)
+						: null;
+					setVideoSourcePath(sourcePath);
+					setVideoPath(toFileUrl(sourcePath));
+					setWebcamVideoSourcePath(webcamSourcePath);
+					setWebcamVideoPath(webcamSourcePath ? toFileUrl(webcamSourcePath) : null);
+					setCurrentProjectPath(null);
+					setLastSavedSnapshot(null);
+					return;
+				}
+
 				const result = await window.electronAPI.getCurrentVideoPath();
 				if (result.success && result.path) {
 					const sourcePath = fromFileUrl(result.path);
 					setVideoSourcePath(sourcePath);
 					setVideoPath(toFileUrl(sourcePath));
+					setWebcamVideoSourcePath(null);
+					setWebcamVideoPath(null);
 					setCurrentProjectPath(null);
 					setLastSavedSnapshot(null);
 				} else {
@@ -284,17 +333,16 @@ export default function VideoEditor() {
 				return false;
 			}
 
-			const sourcePath = videoSourcePath ?? fromFileUrl(videoPath);
-			if (!sourcePath) {
+			if (!currentProjectMedia) {
 				toast.error("Unable to determine source video path");
 				return false;
 			}
 
-			const projectData = createProjectData(sourcePath, {
+			const projectData = createProjectData(currentProjectMedia, {
 				wallpaper,
 				shadowIntensity,
 				showBlur,
-				motionBlurEnabled,
+				motionBlurAmount,
 				borderRadius,
 				padding,
 				cropRegion,
@@ -311,7 +359,7 @@ export default function VideoEditor() {
 			});
 
 			const fileNameBase =
-				sourcePath
+				currentProjectMedia.screenVideoPath
 					.split(/[\\/]/)
 					.pop()
 					?.replace(/\.[^.]+$/, "") || `project-${Date.now()}`;
@@ -341,13 +389,12 @@ export default function VideoEditor() {
 			return true;
 		},
 		[
-			videoPath,
-			videoSourcePath,
+			currentProjectMedia,
 			currentProjectPath,
 			wallpaper,
 			shadowIntensity,
 			showBlur,
-			motionBlurEnabled,
+			motionBlurAmount,
 			borderRadius,
 			padding,
 			cropRegion,
@@ -361,6 +408,7 @@ export default function VideoEditor() {
 			gifFrameRate,
 			gifLoop,
 			gifSizePreset,
+			videoPath,
 		],
 	);
 
@@ -420,7 +468,7 @@ export default function VideoEditor() {
 		let mounted = true;
 
 		async function loadCursorTelemetry() {
-			const sourcePath = videoSourcePath ?? (videoPath ? fromFileUrl(videoPath) : null);
+			const sourcePath = currentProjectMedia?.screenVideoPath ?? null;
 
 			if (!sourcePath) {
 				if (mounted) {
@@ -447,7 +495,7 @@ export default function VideoEditor() {
 		return () => {
 			mounted = false;
 		};
-	}, [videoPath, videoSourcePath]);
+	}, [currentProjectMedia]);
 
 	function togglePlayPause() {
 		const playback = videoPlaybackRef.current;
@@ -921,6 +969,7 @@ export default function VideoEditor() {
 					// GIF Export
 					const gifExporter = new GifExporter({
 						videoUrl: videoPath,
+						webcamVideoUrl: webcamVideoPath || undefined,
 						width: settings.gifConfig.width,
 						height: settings.gifConfig.height,
 						frameRate: settings.gifConfig.frameRate,
@@ -933,7 +982,7 @@ export default function VideoEditor() {
 						showShadow: shadowIntensity > 0,
 						shadowIntensity,
 						showBlur,
-						motionBlurEnabled,
+						motionBlurAmount,
 						borderRadius,
 						padding,
 						videoPadding: padding,
@@ -1048,6 +1097,7 @@ export default function VideoEditor() {
 
 					const exporter = new VideoExporter({
 						videoUrl: videoPath,
+						webcamVideoUrl: webcamVideoPath || undefined,
 						width: exportWidth,
 						height: exportHeight,
 						frameRate: 60,
@@ -1060,7 +1110,7 @@ export default function VideoEditor() {
 						showShadow: shadowIntensity > 0,
 						shadowIntensity,
 						showBlur,
-						motionBlurEnabled,
+						motionBlurAmount,
 						borderRadius,
 						padding,
 						cropRegion,
@@ -1115,13 +1165,14 @@ export default function VideoEditor() {
 		},
 		[
 			videoPath,
+			webcamVideoPath,
 			wallpaper,
 			zoomRegions,
 			trimRegions,
 			speedRegions,
 			shadowIntensity,
 			showBlur,
-			motionBlurEnabled,
+			motionBlurAmount,
 			borderRadius,
 			padding,
 			cropRegion,
@@ -1251,10 +1302,11 @@ export default function VideoEditor() {
 										}}
 									>
 										<VideoPlayback
-											key={videoPath || "no-video"}
+											key={`${videoPath || "no-video"}:${webcamVideoPath || "no-webcam"}`}
 											aspectRatio={aspectRatio}
 											ref={videoPlaybackRef}
 											videoPath={videoPath || ""}
+											webcamVideoPath={webcamVideoPath || undefined}
 											onDurationChange={setDuration}
 											onTimeUpdate={setCurrentTime}
 											currentTime={currentTime}
@@ -1270,7 +1322,7 @@ export default function VideoEditor() {
 											showShadow={shadowIntensity > 0}
 											shadowIntensity={shadowIntensity}
 											showBlur={showBlur}
-											motionBlurEnabled={motionBlurEnabled}
+											motionBlurAmount={motionBlurAmount}
 											borderRadius={borderRadius}
 											padding={padding}
 											cropRegion={cropRegion}
@@ -1369,8 +1421,9 @@ export default function VideoEditor() {
 					onShadowCommit={commitState}
 					showBlur={showBlur}
 					onBlurChange={(v) => pushState({ showBlur: v })}
-					motionBlurEnabled={motionBlurEnabled}
-					onMotionBlurChange={(v) => pushState({ motionBlurEnabled: v })}
+					motionBlurAmount={motionBlurAmount}
+					onMotionBlurChange={(v) => updateState({ motionBlurAmount: v })}
+					onMotionBlurCommit={commitState}
 					borderRadius={borderRadius}
 					onBorderRadiusChange={(v) => updateState({ borderRadius: v })}
 					onBorderRadiusCommit={commitState}

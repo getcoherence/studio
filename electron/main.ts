@@ -70,6 +70,19 @@ function createWindow() {
 	mainWindow = createHudOverlayWindow();
 }
 
+function showMainWindow() {
+	if (mainWindow && !mainWindow.isDestroyed()) {
+		if (mainWindow.isMinimized()) {
+			mainWindow.restore();
+		}
+		mainWindow.show();
+		mainWindow.focus();
+		return;
+	}
+
+	createWindow();
+}
+
 function isEditorWindow(window: BrowserWindow) {
 	return window.webContents.getURL().includes("windowType=editor");
 }
@@ -177,6 +190,12 @@ function setupApplicationMenu() {
 
 function createTray() {
 	tray = new Tray(defaultTrayIcon);
+	tray.on("click", () => {
+		showMainWindow();
+	});
+	tray.on("double-click", () => {
+		showMainWindow();
+	});
 }
 
 function getTrayIcon(filename: string) {
@@ -208,11 +227,7 @@ function updateTrayMenu(recording: boolean = false) {
 				{
 					label: "Open",
 					click: () => {
-						if (mainWindow && !mainWindow.isDestroyed()) {
-							mainWindow.isMinimized() && mainWindow.restore();
-						} else {
-							createWindow();
-						}
+						showMainWindow();
 					},
 				},
 				{
@@ -318,12 +333,12 @@ app.on("activate", () => {
 app.whenReady().then(async () => {
 	// Allow microphone/media permission checks
 	session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
-		const allowed = ["media", "audioCapture", "microphone"];
+		const allowed = ["media", "audioCapture", "microphone", "videoCapture", "camera"];
 		return allowed.includes(permission);
 	});
 
 	session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-		const allowed = ["media", "audioCapture", "microphone"];
+		const allowed = ["media", "audioCapture", "microphone", "videoCapture", "camera"];
 		callback(allowed.includes(permission));
 	});
 
@@ -355,7 +370,7 @@ app.whenReady().then(async () => {
 			if (!tray) createTray();
 			updateTrayMenu(recording);
 			if (!recording) {
-				if (mainWindow) mainWindow.restore();
+				showMainWindow();
 			}
 		},
 	);

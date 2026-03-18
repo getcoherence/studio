@@ -5,6 +5,7 @@ import type {
 	TrimRegion,
 	ZoomRegion,
 } from "@/components/video-editor/types";
+import { AsyncVideoFrameQueue } from "./asyncVideoFrameQueue";
 import { AudioProcessor } from "./audioEncoder";
 import { FrameRenderer } from "./frameRenderer";
 import { VideoMuxer } from "./muxer";
@@ -13,6 +14,7 @@ import type { ExportConfig, ExportProgress, ExportResult } from "./types";
 
 interface VideoExporterConfig extends ExportConfig {
 	videoUrl: string;
+	webcamVideoUrl?: string;
 	wallpaper: string;
 	zoomRegions: ZoomRegion[];
 	trimRegions?: TrimRegion[];
@@ -20,7 +22,7 @@ interface VideoExporterConfig extends ExportConfig {
 	showShadow: boolean;
 	shadowIntensity: number;
 	showBlur: boolean;
-	motionBlurEnabled?: boolean;
+	motionBlurAmount?: number;
 	borderRadius?: number;
 	padding?: number;
 	videoPadding?: number;
@@ -38,6 +40,7 @@ export class VideoExporter {
 	private encoder: VideoEncoder | null = null;
 	private muxer: VideoMuxer | null = null;
 	private audioProcessor: AudioProcessor | null = null;
+	private webcamDecoder: StreamingVideoDecoder | null = null;
 	private cancelled = false;
 	private encodeQueue = 0;
 	// Increased queue size for better throughput with hardware encoding
@@ -53,6 +56,7 @@ export class VideoExporter {
 	}
 
 	async export(): Promise<ExportResult> {
+		let webcamFrameQueue: AsyncVideoFrameQueue | null = null;
 		try {
 			this.cleanup();
 			this.cancelled = false;
@@ -60,6 +64,11 @@ export class VideoExporter {
 			// Initialize streaming decoder and load video metadata
 			this.streamingDecoder = new StreamingVideoDecoder();
 			const videoInfo = await this.streamingDecoder.loadMetadata(this.config.videoUrl);
+			let webcamInfo: Awaited<ReturnType<StreamingVideoDecoder["loadMetadata"]>> | null = null;
+			if (this.config.webcamVideoUrl) {
+				this.webcamDecoder = new StreamingVideoDecoder();
+				webcamInfo = await this.webcamDecoder.loadMetadata(this.config.webcamVideoUrl);
+			}
 
 			// Initialize frame renderer
 			this.renderer = new FrameRenderer({
@@ -70,12 +79,14 @@ export class VideoExporter {
 				showShadow: this.config.showShadow,
 				shadowIntensity: this.config.shadowIntensity,
 				showBlur: this.config.showBlur,
-				motionBlurEnabled: this.config.motionBlurEnabled,
+				motionBlurAmount: this.config.motionBlurAmount,
 				borderRadius: this.config.borderRadius,
 				padding: this.config.padding,
 				cropRegion: this.config.cropRegion,
 				videoWidth: videoInfo.width,
 				videoHeight: videoInfo.height,
+				webcamWidth: webcamInfo?.width,
+				webcamHeight: webcamInfo?.height,
 				annotationRegions: this.config.annotationRegions,
 				speedRegions: this.config.speedRegions,
 				previewWidth: this.config.previewWidth,
@@ -106,6 +117,37 @@ export class VideoExporter {
 
 			const frameDuration = 1_000_000 / this.config.frameRate; // in microseconds
 			let frameIndex = 0;
+			webcamFrameQueue = this.config.webcamVideoUrl ? new AsyncVideoFrameQueue() : null;
+			let webcamDecodeError: Error | null = null;
+			const webcamDecodePromise =
+				this.webcamDecoder && webcamFrameQueue
+					? (() => {
+							const queue = webcamFrameQueue;
+							return this.webcamDecoder
+								.decodeAll(
+									this.config.frameRate,
+									this.config.trimRegions,
+									this.config.speedRegions,
+									async (webcamFrame) => {
+										while (queue.length >= 12 && !this.cancelled) {
+											await new Promise((resolve) => setTimeout(resolve, 2));
+										}
+										queue.enqueue(webcamFrame);
+									},
+								)
+								.catch((error) => {
+									webcamDecodeError = error instanceof Error ? error : new Error(String(error));
+									throw error;
+								})
+								.finally(() => {
+									if (webcamDecodeError) {
+										queue.fail(webcamDecodeError);
+									} else {
+										queue.close();
+									}
+								});
+						})()
+					: null;
 
 			// Stream decode and process frames — no seeking!
 			await this.streamingDecoder.decodeAll(
@@ -113,61 +155,72 @@ export class VideoExporter {
 				this.config.trimRegions,
 				this.config.speedRegions,
 				async (videoFrame, _exportTimestampUs, sourceTimestampMs) => {
-					if (this.cancelled) {
-						videoFrame.close();
-						return;
-					}
+					let webcamFrame: VideoFrame | null = null;
+					try {
+						if (this.cancelled) {
+							return;
+						}
 
-					const timestamp = frameIndex * frameDuration;
+						const timestamp = frameIndex * frameDuration;
+						webcamFrame = webcamFrameQueue ? await webcamFrameQueue.dequeue() : null;
+						const renderer = this.renderer;
+						if (this.cancelled || !renderer) {
+							return;
+						}
 
-					// Render the frame with all effects using source timestamp
-					const sourceTimestampUs = sourceTimestampMs * 1000; // Convert to microseconds
-					await this.renderer!.renderFrame(videoFrame, sourceTimestampUs);
-					videoFrame.close();
+						// Render the frame with all effects using source timestamp
+						const sourceTimestampUs = sourceTimestampMs * 1000; // Convert to microseconds
+						await renderer.renderFrame(videoFrame, sourceTimestampUs, webcamFrame);
 
-					const canvas = this.renderer!.getCanvas();
+						const canvas = renderer.getCanvas();
 
-					// Create VideoFrame from canvas on GPU without reading pixels
-					// @ts-expect-error - colorSpace not in TypeScript definitions but works at runtime
-					const exportFrame = new VideoFrame(canvas, {
-						timestamp,
-						duration: frameDuration,
-						colorSpace: {
-							primaries: "bt709",
-							transfer: "iec61966-2-1",
-							matrix: "rgb",
-							fullRange: true,
-						},
-					});
-
-					// Check encoder queue before encoding to keep it full
-					while (
-						this.encoder &&
-						this.encoder.encodeQueueSize >= this.MAX_ENCODE_QUEUE &&
-						!this.cancelled
-					) {
-						await new Promise((resolve) => setTimeout(resolve, 5));
-					}
-
-					if (this.encoder && this.encoder.state === "configured") {
-						this.encodeQueue++;
-						this.encoder.encode(exportFrame, { keyFrame: frameIndex % 150 === 0 });
-					} else {
-						console.warn(`[Frame ${frameIndex}] Encoder not ready! State: ${this.encoder?.state}`);
-					}
-
-					exportFrame.close();
-
-					frameIndex++;
-
-					// Update progress
-					if (this.config.onProgress) {
-						this.config.onProgress({
-							currentFrame: frameIndex,
-							totalFrames,
-							percentage: (frameIndex / totalFrames) * 100,
-							estimatedTimeRemaining: 0,
+						// Create VideoFrame from canvas on GPU without reading pixels
+						// @ts-expect-error - colorSpace not in TypeScript definitions but works at runtime
+						const exportFrame = new VideoFrame(canvas, {
+							timestamp,
+							duration: frameDuration,
+							colorSpace: {
+								primaries: "bt709",
+								transfer: "iec61966-2-1",
+								matrix: "rgb",
+								fullRange: true,
+							},
 						});
+
+						// Check encoder queue before encoding to keep it full
+						while (
+							this.encoder &&
+							this.encoder.encodeQueueSize >= this.MAX_ENCODE_QUEUE &&
+							!this.cancelled
+						) {
+							await new Promise((resolve) => setTimeout(resolve, 5));
+						}
+
+						if (this.encoder && this.encoder.state === "configured") {
+							this.encodeQueue++;
+							this.encoder.encode(exportFrame, { keyFrame: frameIndex % 150 === 0 });
+						} else {
+							console.warn(
+								`[Frame ${frameIndex}] Encoder not ready! State: ${this.encoder?.state}`,
+							);
+						}
+
+						exportFrame.close();
+
+						frameIndex++;
+
+						// Update progress
+						if (this.config.onProgress) {
+							this.config.onProgress({
+								currentFrame: frameIndex,
+								totalFrames,
+								percentage: (frameIndex / totalFrames) * 100,
+								estimatedTimeRemaining: 0,
+							});
+						}
+					} finally {
+						videoFrame.close();
+						webcamFrame?.close();
 					}
 				},
 			);
@@ -175,6 +228,8 @@ export class VideoExporter {
 			if (this.cancelled) {
 				return { success: false, error: "Export cancelled" };
 			}
+
+			await webcamDecodePromise;
 
 			// Finalize encoding
 			if (this.encoder && this.encoder.state === "configured") {
@@ -222,6 +277,7 @@ export class VideoExporter {
 				error: error instanceof Error ? error.message : String(error),
 			};
 		} finally {
+			webcamFrameQueue?.destroy();
 			this.cleanup();
 		}
 	}
@@ -332,6 +388,9 @@ export class VideoExporter {
 		if (this.streamingDecoder) {
 			this.streamingDecoder.cancel();
 		}
+		if (this.webcamDecoder) {
+			this.webcamDecoder.cancel();
+		}
 		if (this.audioProcessor) {
 			this.audioProcessor.cancel();
 		}
@@ -357,6 +416,15 @@ export class VideoExporter {
 				console.warn("Error destroying streaming decoder:", e);
 			}
 			this.streamingDecoder = null;
+		}
+
+		if (this.webcamDecoder) {
+			try {
+				this.webcamDecoder.destroy();
+			} catch (e) {
+				console.warn("Error destroying webcam decoder:", e);
+			}
+			this.webcamDecoder = null;
 		}
 
 		if (this.renderer) {

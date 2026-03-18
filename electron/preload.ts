@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { RecordingSession, StoreRecordedSessionInput } from "../src/lib/recordingSession";
 
 contextBridge.exposeInMainWorld("electronAPI", {
 	hudOverlayHide: () => {
@@ -26,9 +27,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	getSelectedSource: () => {
 		return ipcRenderer.invoke("get-selected-source");
 	},
+	requestCameraAccess: () => {
+		return ipcRenderer.invoke("request-camera-access");
+	},
 
 	storeRecordedVideo: (videoData: ArrayBuffer, fileName: string) => {
 		return ipcRenderer.invoke("store-recorded-video", videoData, fileName);
+	},
+	storeRecordedSession: (payload: StoreRecordedSessionInput) => {
+		return ipcRenderer.invoke("store-recorded-session", payload);
 	},
 
 	getRecordedVideoPath: () => {
@@ -57,8 +64,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	setCurrentVideoPath: (path: string) => {
 		return ipcRenderer.invoke("set-current-video-path", path);
 	},
+	setCurrentRecordingSession: (session: RecordingSession | null) => {
+		return ipcRenderer.invoke("set-current-recording-session", session);
+	},
 	getCurrentVideoPath: () => {
 		return ipcRenderer.invoke("get-current-video-path");
+	},
+	getCurrentRecordingSession: () => {
+		return ipcRenderer.invoke("get-current-recording-session");
+	},
+	readBinaryFile: (filePath: string) => {
+		return ipcRenderer.invoke("read-binary-file", filePath);
 	},
 	clearCurrentVideoPath: () => {
 		return ipcRenderer.invoke("clear-current-video-path");

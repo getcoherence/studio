@@ -4,7 +4,16 @@ import { BsRecordCircle } from "react-icons/bs";
 import { FaRegStopCircle } from "react-icons/fa";
 import { FaFolderOpen } from "react-icons/fa6";
 import { FiMinus, FiX } from "react-icons/fi";
-import { MdMic, MdMicOff, MdMonitor, MdVideoFile, MdVolumeOff, MdVolumeUp } from "react-icons/md";
+import {
+	MdMic,
+	MdMicOff,
+	MdMonitor,
+	MdVideocam,
+	MdVideocamOff,
+	MdVideoFile,
+	MdVolumeOff,
+	MdVolumeUp,
+} from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
@@ -23,6 +32,8 @@ const ICON_CONFIG = {
 	volumeOff: { icon: MdVolumeOff, size: ICON_SIZE },
 	micOn: { icon: MdMic, size: ICON_SIZE },
 	micOff: { icon: MdMicOff, size: ICON_SIZE },
+	webcamOn: { icon: MdVideocam, size: ICON_SIZE },
+	webcamOff: { icon: MdVideocamOff, size: ICON_SIZE },
 	stop: { icon: FaRegStopCircle, size: ICON_SIZE },
 	record: { icon: BsRecordCircle, size: ICON_SIZE },
 	videoFile: { icon: MdVideoFile, size: ICON_SIZE },
@@ -57,6 +68,8 @@ export function LaunchWindow() {
 		setMicrophoneDeviceId,
 		systemAudioEnabled,
 		setSystemAudioEnabled,
+		webcamEnabled,
+		setWebcamEnabled,
 	} = useScreenRecorder();
 	const [recordingStart, setRecordingStart] = useState<number | null>(null);
 	const [elapsed, setElapsed] = useState(0);
@@ -232,6 +245,17 @@ export function LaunchWindow() {
 							{microphoneEnabled
 								? getIcon("micOn", "text-green-400")
 								: getIcon("micOff", "text-white/40")}
+						</button>
+						<button
+							className={`${hudIconBtnClasses} ${webcamEnabled ? "drop-shadow-[0_0_4px_rgba(74,222,128,0.4)]" : ""}`}
+							onClick={() => {
+								void setWebcamEnabled(!webcamEnabled);
+							}}
+							title={webcamEnabled ? "Disable webcam" : "Enable webcam"}
+						>
+							{webcamEnabled
+								? getIcon("webcamOn", "text-green-400")
+								: getIcon("webcamOff", "text-white/40")}
 						</button>
 					</div>
 
