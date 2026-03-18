@@ -58,24 +58,39 @@ export function calculateOutputDimensions(
 	sourceHeight: number,
 	sizePreset: GifSizePreset,
 	sizePresets: typeof GIF_SIZE_PRESETS,
+	targetAspectRatio = sourceWidth / sourceHeight,
 ): { width: number; height: number } {
 	const preset = sizePresets[sizePreset];
 	const maxHeight = preset.maxHeight;
+	const aspectRatio =
+		Number.isFinite(targetAspectRatio) && targetAspectRatio > 0
+			? targetAspectRatio
+			: sourceWidth / sourceHeight;
 
-	// If original is smaller than max height or preset is 'original', use source dimensions
-	if (sourceHeight <= maxHeight || sizePreset === "original") {
-		return { width: sourceWidth, height: sourceHeight };
+	const toEven = (value: number) => {
+		const evenValue = Math.max(2, Math.floor(value / 2) * 2);
+		return evenValue;
+	};
+
+	if (sizePreset === "original") {
+		const sourceAspect = sourceWidth / sourceHeight;
+		if (aspectRatio >= sourceAspect) {
+			const width = toEven(sourceWidth);
+			const height = toEven(width / aspectRatio);
+			return { width, height };
+		}
+
+		const height = toEven(sourceHeight);
+		const width = toEven(height * aspectRatio);
+		return { width, height };
 	}
 
-	// Calculate scaled dimensions preserving aspect ratio
-	const aspectRatio = sourceWidth / sourceHeight;
-	const newHeight = maxHeight;
-	const newWidth = Math.round(newHeight * aspectRatio);
+	const targetHeight = maxHeight;
+	const targetWidth = Math.round(targetHeight * aspectRatio);
 
-	// Ensure dimensions are even (required for some encoders)
 	return {
-		width: newWidth % 2 === 0 ? newWidth : newWidth + 1,
-		height: newHeight % 2 === 0 ? newHeight : newHeight + 1,
+		width: toEven(targetWidth),
+		height: toEven(targetHeight),
 	};
 }
 

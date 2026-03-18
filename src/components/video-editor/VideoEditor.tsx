@@ -1232,11 +1232,16 @@ export default function VideoEditor() {
 		// Build export settings from current state
 		const sourceWidth = video.videoWidth || 1920;
 		const sourceHeight = video.videoHeight || 1080;
+		const aspectRatioValue =
+			aspectRatio === "native"
+				? getNativeAspectRatioValue(sourceWidth, sourceHeight, cropRegion)
+				: getAspectRatioValue(aspectRatio);
 		const gifDimensions = calculateOutputDimensions(
 			sourceWidth,
 			sourceHeight,
 			gifSizePreset,
 			GIF_SIZE_PRESETS,
+			aspectRatioValue,
 		);
 
 		const settings: ExportSettings = {
@@ -1260,7 +1265,17 @@ export default function VideoEditor() {
 
 		// Start export immediately
 		handleExport(settings);
-	}, [videoPath, exportFormat, exportQuality, gifFrameRate, gifLoop, gifSizePreset, handleExport]);
+	}, [
+		videoPath,
+		exportFormat,
+		exportQuality,
+		gifFrameRate,
+		gifLoop,
+		gifSizePreset,
+		aspectRatio,
+		cropRegion,
+		handleExport,
+	]);
 
 	const handleCancelExport = useCallback(() => {
 		if (exporterRef.current) {
@@ -1475,6 +1490,13 @@ export default function VideoEditor() {
 								videoPlaybackRef.current?.video?.videoHeight || 1080,
 								gifSizePreset,
 								GIF_SIZE_PRESETS,
+								aspectRatio === "native"
+									? getNativeAspectRatioValue(
+											videoPlaybackRef.current?.video?.videoWidth || 1920,
+											videoPlaybackRef.current?.video?.videoHeight || 1080,
+											cropRegion,
+										)
+									: getAspectRatioValue(aspectRatio),
 							)}
 							onExport={handleOpenExportDialog}
 							selectedAnnotationId={selectedAnnotationId}
