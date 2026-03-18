@@ -12,6 +12,38 @@ export interface DecodedVideoInfo {
 	audioCodec?: string;
 }
 
+type EarlyDecodeEndCheck = {
+	cancelled: boolean;
+	segmentsLength: number;
+	completedSegments: number;
+	lastDecodedFrameSec: number | null;
+	requiredEndSec: number;
+};
+
+export function shouldFailDecodeEndedEarly({
+	cancelled,
+	segmentsLength,
+	completedSegments,
+	lastDecodedFrameSec,
+	requiredEndSec,
+}: EarlyDecodeEndCheck): boolean {
+	if (cancelled || segmentsLength === 0) {
+		return false;
+	}
+
+	// If we already satisfied every segment, the exporter has successfully
+	// filled any short metadata tail using the last decoded frame.
+	if (completedSegments >= segmentsLength) {
+		return false;
+	}
+
+	if (lastDecodedFrameSec === null) {
+		return true;
+	}
+
+	return requiredEndSec - lastDecodedFrameSec > 1;
+}
+
 /** Caller must close the VideoFrame after use. */
 type OnFrameCallback = (
 	frame: VideoFrame,
@@ -366,12 +398,18 @@ export class StreamingVideoDecoder {
 
 		const requiredEndSec = segments.length > 0 ? segments[segments.length - 1].endSec : 0;
 		if (
-			!this.cancelled &&
-			lastDecodedFrameSec !== null &&
-			requiredEndSec - lastDecodedFrameSec > 1
+			shouldFailDecodeEndedEarly({
+				cancelled: this.cancelled,
+				segmentsLength: segments.length,
+				completedSegments: segmentIdx,
+				lastDecodedFrameSec,
+				requiredEndSec,
+			})
 		) {
+			const decodedAtLabel =
+				lastDecodedFrameSec === null ? "no decoded frame" : `${lastDecodedFrameSec.toFixed(3)}s`;
 			throw new Error(
-				`Video decode ended early at ${lastDecodedFrameSec.toFixed(3)}s (needed ${requiredEndSec.toFixed(3)}s).`,
+				`Video decode ended early at ${decodedAtLabel} (needed ${requiredEndSec.toFixed(3)}s).`,
 			);
 		}
 	}
