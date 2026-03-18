@@ -40,6 +40,7 @@ const WEBCAM_TARGET_FRAME_RATE = 30;
 type UseScreenRecorderReturn = {
 	recording: boolean;
 	toggleRecording: () => void;
+	restartRecording: () => void;
 	microphoneEnabled: boolean;
 	setMicrophoneEnabled: (enabled: boolean) => void;
 	microphoneDeviceId: string | undefined;
@@ -94,6 +95,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const recordingId = useRef<number>(0);
 	const finalizingRecordingId = useRef<number | null>(null);
 	const allowAutoFinalize = useRef(false);
+	const discardRecordingId = useRef<number | null>(null);
+	const restarting = useRef(false);
 
 	const selectMimeType = () => {
 		const preferred = [
@@ -206,6 +209,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			void (async () => {
 				try {
 					const screenBlob = await activeScreenRecorder.recordedBlobPromise;
+					if (discardRecordingId.current === activeRecordingId) {
+						return;
+					}
 					if (screenBlob.size === 0) {
 						return;
 					}
@@ -252,6 +258,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				} finally {
 					if (finalizingRecordingId.current === activeRecordingId) {
 						finalizingRecordingId.current = null;
+					}
+					if (discardRecordingId.current === activeRecordingId) {
+						discardRecordingId.current = null;
 					}
 				}
 			})();
@@ -306,6 +315,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		return () => {
 			if (cleanup) cleanup();
 			allowAutoFinalize.current = false;
+			restarting.current = false;
+			discardRecordingId.current = null;
 
 			if (screenRecorder.current?.recorder.state === "recording") {
 				try {
@@ -546,9 +557,48 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		recording ? stopRecording.current() : startRecording();
 	};
 
+	const restartRecording = async () => {
+		if (restarting.current) return;
+
+		const activeScreenRecorder = screenRecorder.current;
+		if (!activeScreenRecorder || activeScreenRecorder.recorder.state !== "recording") return;
+
+		const activeWebcamRecorder = webcamRecorder.current;
+		const activeRecordingId = recordingId.current;
+
+		restarting.current = true;
+		discardRecordingId.current = activeRecordingId;
+
+		const stopPromises = [
+			new Promise<void>((resolve) => {
+				activeScreenRecorder.recorder.addEventListener("stop", () => resolve(), { once: true });
+			}),
+		];
+
+		if (activeWebcamRecorder?.recorder.state === "recording") {
+			stopPromises.push(
+				new Promise<void>((resolve) => {
+					activeWebcamRecorder.recorder.addEventListener("stop", () => resolve(), {
+						once: true,
+					});
+				}),
+			);
+		}
+
+		stopRecording.current();
+		await Promise.all(stopPromises);
+
+		try {
+			await startRecording();
+		} finally {
+			restarting.current = false;
+		}
+	};
+
 	return {
 		recording,
 		toggleRecording,
+		restartRecording,
 		microphoneEnabled,
 		setMicrophoneEnabled,
 		microphoneDeviceId,

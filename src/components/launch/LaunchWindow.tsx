@@ -8,6 +8,7 @@ import {
 	MdMic,
 	MdMicOff,
 	MdMonitor,
+	MdRestartAlt,
 	MdVideocam,
 	MdVideocamOff,
 	MdVideoFile,
@@ -35,6 +36,7 @@ const ICON_CONFIG = {
 	webcamOn: { icon: MdVideocam, size: ICON_SIZE },
 	webcamOff: { icon: MdVideocamOff, size: ICON_SIZE },
 	stop: { icon: FaRegStopCircle, size: ICON_SIZE },
+	restart: { icon: MdRestartAlt, size: ICON_SIZE },
 	record: { icon: BsRecordCircle, size: ICON_SIZE },
 	videoFile: { icon: MdVideoFile, size: ICON_SIZE },
 	folder: { icon: FaFolderOpen, size: ICON_SIZE },
@@ -62,6 +64,7 @@ export function LaunchWindow() {
 	const {
 		recording,
 		toggleRecording,
+		restartRecording,
 		microphoneEnabled,
 		setMicrophoneEnabled,
 		microphoneDeviceId,
@@ -279,6 +282,18 @@ export function LaunchWindow() {
 							getIcon("record", hasSelectedSource ? "text-white/80" : "text-white/30")
 						)}
 					</button>
+
+					{/* Restart recording */}
+					{recording && (
+						<Tooltip content="Restart recording">
+							<button
+								className={`${hudIconBtnClasses} ${styles.electronNoDrag}`}
+								onClick={restartRecording}
+							>
+								{getIcon("restart", "text-white/60")}
+							</button>
+						</Tooltip>
+					)}
 
 					{/* Open video file */}
 					<Tooltip content="Open video file">

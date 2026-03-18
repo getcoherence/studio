@@ -1273,202 +1273,194 @@ export default function VideoEditor() {
 
 			<div className="flex-1 p-5 gap-4 flex min-h-0 relative">
 				{/* Left Column - Video & Timeline */}
-				<div className="flex-[7] flex flex-col gap-3 min-w-0 h-full">
-					<PanelGroup direction="vertical" className="gap-3">
-						{/* Top section: video preview and controls */}
-						<Panel defaultSize={70} minSize={40}>
-							<div className="w-full h-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden">
-								{/* Video preview */}
-								<div
-									className="w-full flex justify-center items-center"
-									style={{ flex: "1 1 auto", margin: "6px 0 0" }}
-								>
-									<div
-										className="relative"
-										style={{
-											width: "auto",
-											height: "100%",
-											aspectRatio:
-												aspectRatio === "native"
-													? getNativeAspectRatioValue(
-															videoPlaybackRef.current?.video?.videoWidth || 1920,
-															videoPlaybackRef.current?.video?.videoHeight || 1080,
-															cropRegion,
-														)
-													: getAspectRatioValue(aspectRatio),
-											maxWidth: "100%",
-											margin: "0 auto",
-											boxSizing: "border-box",
-										}}
-									>
-										<VideoPlayback
-											key={`${videoPath || "no-video"}:${webcamVideoPath || "no-webcam"}`}
-											aspectRatio={aspectRatio}
-											ref={videoPlaybackRef}
-											videoPath={videoPath || ""}
-											webcamVideoPath={webcamVideoPath || undefined}
-											onDurationChange={setDuration}
-											onTimeUpdate={setCurrentTime}
-											currentTime={currentTime}
-											onPlayStateChange={setIsPlaying}
-											onError={setError}
-											wallpaper={wallpaper}
-											zoomRegions={zoomRegions}
-											selectedZoomId={selectedZoomId}
-											onSelectZoom={handleSelectZoom}
-											onZoomFocusChange={handleZoomFocusChange}
-											onZoomFocusDragEnd={commitState}
-											isPlaying={isPlaying}
-											showShadow={shadowIntensity > 0}
-											shadowIntensity={shadowIntensity}
-											showBlur={showBlur}
-											motionBlurAmount={motionBlurAmount}
-											borderRadius={borderRadius}
-											padding={padding}
-											cropRegion={cropRegion}
-											trimRegions={trimRegions}
-											speedRegions={speedRegions}
-											annotationRegions={annotationRegions}
-											selectedAnnotationId={selectedAnnotationId}
-											onSelectAnnotation={handleSelectAnnotation}
-											onAnnotationPositionChange={handleAnnotationPositionChange}
-											onAnnotationSizeChange={handleAnnotationSizeChange}
-										/>
+				<PanelGroup direction="horizontal" className="gap-3">
+					<Panel>
+						<PanelGroup direction="vertical" className="gap-3">
+							{/* Top section: video preview and controls */}
+							<Panel defaultSize={70} maxSize={70} minSize={40}>
+								<div className="w-full h-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden">
+									{/* Video preview */}
+									<div className="w-full flex justify-center items-center flex-auto mt-1.5">
+										<div
+											className="relative flex justify-center items-center w-auto h-full max-w-full box-border"
+											style={{
+												aspectRatio:
+													aspectRatio === "native"
+														? getNativeAspectRatioValue(
+																videoPlaybackRef.current?.video?.videoWidth || 1920,
+																videoPlaybackRef.current?.video?.videoHeight || 1080,
+																cropRegion,
+															)
+														: getAspectRatioValue(aspectRatio),
+											}}
+										>
+											<VideoPlayback
+												key={`${videoPath || "no-video"}:${webcamVideoPath || "no-webcam"}`}
+												aspectRatio={aspectRatio}
+												ref={videoPlaybackRef}
+												videoPath={videoPath || ""}
+												webcamVideoPath={webcamVideoPath || undefined}
+												onDurationChange={setDuration}
+												onTimeUpdate={setCurrentTime}
+												currentTime={currentTime}
+												onPlayStateChange={setIsPlaying}
+												onError={setError}
+												wallpaper={wallpaper}
+												zoomRegions={zoomRegions}
+												selectedZoomId={selectedZoomId}
+												onSelectZoom={handleSelectZoom}
+												onZoomFocusChange={handleZoomFocusChange}
+												onZoomFocusDragEnd={commitState}
+												isPlaying={isPlaying}
+												showShadow={shadowIntensity > 0}
+												shadowIntensity={shadowIntensity}
+												showBlur={showBlur}
+												motionBlurAmount={motionBlurAmount}
+												borderRadius={borderRadius}
+												padding={padding}
+												cropRegion={cropRegion}
+												trimRegions={trimRegions}
+												speedRegions={speedRegions}
+												annotationRegions={annotationRegions}
+												selectedAnnotationId={selectedAnnotationId}
+												onSelectAnnotation={handleSelectAnnotation}
+												onAnnotationPositionChange={handleAnnotationPositionChange}
+												onAnnotationSizeChange={handleAnnotationSizeChange}
+											/>
+										</div>
+									</div>
+									{/* Playback controls */}
+									<div className="w-full flex justify-center items-center h-12 flex-shrink-0 px-3 py-1.5 my-1.5">
+										<div className="w-full max-w-[700px]">
+											<PlaybackControls
+												isPlaying={isPlaying}
+												currentTime={currentTime}
+												duration={duration}
+												onTogglePlayPause={togglePlayPause}
+												onSeek={handleSeek}
+											/>
+										</div>
 									</div>
 								</div>
-								{/* Playback controls */}
-								<div
-									className="w-full flex justify-center items-center"
-									style={{
-										height: "48px",
-										flexShrink: 0,
-										padding: "6px 12px",
-										margin: "6px 0 6px 0",
-									}}
-								>
-									<div style={{ width: "100%", maxWidth: "700px" }}>
-										<PlaybackControls
-											isPlaying={isPlaying}
-											currentTime={currentTime}
-											duration={duration}
-											onTogglePlayPause={togglePlayPause}
-											onSeek={handleSeek}
-										/>
-									</div>
+							</Panel>
+
+							<PanelResizeHandle className="bg-[#09090b]/80 hover:bg-[#09090b] transition-colors rounded-full flex items-center justify-center">
+								<div className="w-8 h-1 bg-white/20 rounded-full"></div>
+							</PanelResizeHandle>
+
+							{/* Timeline section */}
+							<Panel defaultSize={30} maxSize={60} minSize={30}>
+								<div className="h-full bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden flex flex-col">
+									<TimelineEditor
+										videoDuration={duration}
+										currentTime={currentTime}
+										onSeek={handleSeek}
+										cursorTelemetry={cursorTelemetry}
+										zoomRegions={zoomRegions}
+										onZoomAdded={handleZoomAdded}
+										onZoomSuggested={handleZoomSuggested}
+										onZoomSpanChange={handleZoomSpanChange}
+										onZoomDelete={handleZoomDelete}
+										selectedZoomId={selectedZoomId}
+										onSelectZoom={handleSelectZoom}
+										trimRegions={trimRegions}
+										onTrimAdded={handleTrimAdded}
+										onTrimSpanChange={handleTrimSpanChange}
+										onTrimDelete={handleTrimDelete}
+										selectedTrimId={selectedTrimId}
+										onSelectTrim={handleSelectTrim}
+										speedRegions={speedRegions}
+										onSpeedAdded={handleSpeedAdded}
+										onSpeedSpanChange={handleSpeedSpanChange}
+										onSpeedDelete={handleSpeedDelete}
+										selectedSpeedId={selectedSpeedId}
+										onSelectSpeed={handleSelectSpeed}
+										annotationRegions={annotationRegions}
+										onAnnotationAdded={handleAnnotationAdded}
+										onAnnotationSpanChange={handleAnnotationSpanChange}
+										onAnnotationDelete={handleAnnotationDelete}
+										selectedAnnotationId={selectedAnnotationId}
+										onSelectAnnotation={handleSelectAnnotation}
+										aspectRatio={aspectRatio}
+										onAspectRatioChange={(ar) => pushState({ aspectRatio: ar })}
+									/>
 								</div>
-							</div>
-						</Panel>
+							</Panel>
+						</PanelGroup>
+					</Panel>
 
-						<PanelResizeHandle className="h-3 bg-[#09090b]/80 hover:bg-[#09090b] transition-colors rounded-full mx-4 flex items-center justify-center">
-							<div className="w-8 h-1 bg-white/20 rounded-full"></div>
-						</PanelResizeHandle>
+					<PanelResizeHandle className="h-full bg-[#09090b]/80 hover:bg-[#09090b] transition-colors rounded-full flex items-center justify-center">
+						<div className="w-1 h-8 bg-white/20 rounded-full"></div>
+					</PanelResizeHandle>
 
-						{/* Timeline section */}
-						<Panel defaultSize={30} minSize={20}>
-							<div className="h-full bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden flex flex-col">
-								<TimelineEditor
-									videoDuration={duration}
-									currentTime={currentTime}
-									onSeek={handleSeek}
-									cursorTelemetry={cursorTelemetry}
-									zoomRegions={zoomRegions}
-									onZoomAdded={handleZoomAdded}
-									onZoomSuggested={handleZoomSuggested}
-									onZoomSpanChange={handleZoomSpanChange}
-									onZoomDelete={handleZoomDelete}
-									selectedZoomId={selectedZoomId}
-									onSelectZoom={handleSelectZoom}
-									trimRegions={trimRegions}
-									onTrimAdded={handleTrimAdded}
-									onTrimSpanChange={handleTrimSpanChange}
-									onTrimDelete={handleTrimDelete}
-									selectedTrimId={selectedTrimId}
-									onSelectTrim={handleSelectTrim}
-									speedRegions={speedRegions}
-									onSpeedAdded={handleSpeedAdded}
-									onSpeedSpanChange={handleSpeedSpanChange}
-									onSpeedDelete={handleSpeedDelete}
-									selectedSpeedId={selectedSpeedId}
-									onSelectSpeed={handleSelectSpeed}
-									annotationRegions={annotationRegions}
-									onAnnotationAdded={handleAnnotationAdded}
-									onAnnotationSpanChange={handleAnnotationSpanChange}
-									onAnnotationDelete={handleAnnotationDelete}
-									selectedAnnotationId={selectedAnnotationId}
-									onSelectAnnotation={handleSelectAnnotation}
-									aspectRatio={aspectRatio}
-									onAspectRatioChange={(ar) => pushState({ aspectRatio: ar })}
-								/>
-							</div>
-						</Panel>
-					</PanelGroup>
-				</div>
-
-				{/* Right section: settings panel */}
-				<SettingsPanel
-					selected={wallpaper}
-					onWallpaperChange={(w) => pushState({ wallpaper: w })}
-					selectedZoomDepth={
-						selectedZoomId ? zoomRegions.find((z) => z.id === selectedZoomId)?.depth : null
-					}
-					onZoomDepthChange={(depth) => selectedZoomId && handleZoomDepthChange(depth)}
-					selectedZoomId={selectedZoomId}
-					onZoomDelete={handleZoomDelete}
-					selectedTrimId={selectedTrimId}
-					onTrimDelete={handleTrimDelete}
-					shadowIntensity={shadowIntensity}
-					onShadowChange={(v) => updateState({ shadowIntensity: v })}
-					onShadowCommit={commitState}
-					showBlur={showBlur}
-					onBlurChange={(v) => pushState({ showBlur: v })}
-					motionBlurAmount={motionBlurAmount}
-					onMotionBlurChange={(v) => updateState({ motionBlurAmount: v })}
-					onMotionBlurCommit={commitState}
-					borderRadius={borderRadius}
-					onBorderRadiusChange={(v) => updateState({ borderRadius: v })}
-					onBorderRadiusCommit={commitState}
-					padding={padding}
-					onPaddingChange={(v) => updateState({ padding: v })}
-					onPaddingCommit={commitState}
-					cropRegion={cropRegion}
-					onCropChange={(r) => pushState({ cropRegion: r })}
-					aspectRatio={aspectRatio}
-					videoElement={videoPlaybackRef.current?.video || null}
-					exportQuality={exportQuality}
-					onExportQualityChange={setExportQuality}
-					exportFormat={exportFormat}
-					onExportFormatChange={setExportFormat}
-					gifFrameRate={gifFrameRate}
-					onGifFrameRateChange={setGifFrameRate}
-					gifLoop={gifLoop}
-					onGifLoopChange={setGifLoop}
-					gifSizePreset={gifSizePreset}
-					onGifSizePresetChange={setGifSizePreset}
-					gifOutputDimensions={calculateOutputDimensions(
-						videoPlaybackRef.current?.video?.videoWidth || 1920,
-						videoPlaybackRef.current?.video?.videoHeight || 1080,
-						gifSizePreset,
-						GIF_SIZE_PRESETS,
-					)}
-					onExport={handleOpenExportDialog}
-					selectedAnnotationId={selectedAnnotationId}
-					annotationRegions={annotationRegions}
-					onAnnotationContentChange={handleAnnotationContentChange}
-					onAnnotationTypeChange={handleAnnotationTypeChange}
-					onAnnotationStyleChange={handleAnnotationStyleChange}
-					onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
-					onAnnotationDelete={handleAnnotationDelete}
-					onSaveProject={handleSaveProject}
-					onLoadProject={handleLoadProject}
-					selectedSpeedId={selectedSpeedId}
-					selectedSpeedValue={
-						selectedSpeedId
-							? (speedRegions.find((r) => r.id === selectedSpeedId)?.speed ?? null)
-							: null
-					}
-					onSpeedChange={handleSpeedChange}
-					onSpeedDelete={handleSpeedDelete}
-				/>
+					{/* Right section: settings panel */}
+					<Panel defaultSize={30} minSize={25} maxSize={50}>
+						<SettingsPanel
+							selected={wallpaper}
+							onWallpaperChange={(w) => pushState({ wallpaper: w })}
+							selectedZoomDepth={
+								selectedZoomId ? zoomRegions.find((z) => z.id === selectedZoomId)?.depth : null
+							}
+							onZoomDepthChange={(depth) => selectedZoomId && handleZoomDepthChange(depth)}
+							selectedZoomId={selectedZoomId}
+							onZoomDelete={handleZoomDelete}
+							selectedTrimId={selectedTrimId}
+							onTrimDelete={handleTrimDelete}
+							shadowIntensity={shadowIntensity}
+							onShadowChange={(v) => updateState({ shadowIntensity: v })}
+							onShadowCommit={commitState}
+							showBlur={showBlur}
+							onBlurChange={(v) => pushState({ showBlur: v })}
+							motionBlurAmount={motionBlurAmount}
+							onMotionBlurChange={(v) => updateState({ motionBlurAmount: v })}
+							onMotionBlurCommit={commitState}
+							borderRadius={borderRadius}
+							onBorderRadiusChange={(v) => updateState({ borderRadius: v })}
+							onBorderRadiusCommit={commitState}
+							padding={padding}
+							onPaddingChange={(v) => updateState({ padding: v })}
+							onPaddingCommit={commitState}
+							cropRegion={cropRegion}
+							onCropChange={(r) => pushState({ cropRegion: r })}
+							aspectRatio={aspectRatio}
+							videoElement={videoPlaybackRef.current?.video || null}
+							exportQuality={exportQuality}
+							onExportQualityChange={setExportQuality}
+							exportFormat={exportFormat}
+							onExportFormatChange={setExportFormat}
+							gifFrameRate={gifFrameRate}
+							onGifFrameRateChange={setGifFrameRate}
+							gifLoop={gifLoop}
+							onGifLoopChange={setGifLoop}
+							gifSizePreset={gifSizePreset}
+							onGifSizePresetChange={setGifSizePreset}
+							gifOutputDimensions={calculateOutputDimensions(
+								videoPlaybackRef.current?.video?.videoWidth || 1920,
+								videoPlaybackRef.current?.video?.videoHeight || 1080,
+								gifSizePreset,
+								GIF_SIZE_PRESETS,
+							)}
+							onExport={handleOpenExportDialog}
+							selectedAnnotationId={selectedAnnotationId}
+							annotationRegions={annotationRegions}
+							onAnnotationContentChange={handleAnnotationContentChange}
+							onAnnotationTypeChange={handleAnnotationTypeChange}
+							onAnnotationStyleChange={handleAnnotationStyleChange}
+							onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
+							onAnnotationDelete={handleAnnotationDelete}
+							onSaveProject={handleSaveProject}
+							onLoadProject={handleLoadProject}
+							selectedSpeedId={selectedSpeedId}
+							selectedSpeedValue={
+								selectedSpeedId
+									? (speedRegions.find((r) => r.id === selectedSpeedId)?.speed ?? null)
+									: null
+							}
+							onSpeedChange={handleSpeedChange}
+							onSpeedDelete={handleSpeedDelete}
+						/>
+					</Panel>
+				</PanelGroup>
 			</div>
 
 			<Toaster theme="dark" className="pointer-events-auto" />
