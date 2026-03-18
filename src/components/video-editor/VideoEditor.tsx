@@ -1040,7 +1040,7 @@ export default function VideoEditor() {
 
 						if (saveResult.canceled) {
 							toast.info("Export canceled");
-						} else if (saveResult.success) {
+						} else if (saveResult.success && saveResult.path) {
 							handleExportSaved("GIF", saveResult.path);
 						} else {
 							setExportError(saveResult.message || "Failed to save GIF");
@@ -1167,7 +1167,7 @@ export default function VideoEditor() {
 
 						if (saveResult.canceled) {
 							toast.info("Export canceled");
-						} else if (saveResult.success) {
+						} else if (saveResult.success && saveResult.path) {
 							handleExportSaved("Video", saveResult.path);
 						} else {
 							setExportError(saveResult.message || "Failed to save video");

@@ -87,8 +87,8 @@ test("exports a GIF from a loaded video", async () => {
 		await editorWindow.getByTestId("testId-gif-format-button").click();
 		await editorWindow.getByTestId("testId-export-button").click();
 
-		// ── 6. Wait for the toast to say exported successfully
-		await expect(editorWindow.getByText(`GIF exported successfully to pending`)).toBeVisible({
+		// ── 6. Wait for the success toast.
+		await expect(editorWindow.getByText("GIF exported successfully")).toBeVisible({
 			timeout: 90_000,
 		});
 

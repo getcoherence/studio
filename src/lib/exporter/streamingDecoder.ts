@@ -12,6 +12,55 @@ export interface DecodedVideoInfo {
 	audioCodec?: string;
 }
 
+type EarlyDecodeEndCheck = {
+	cancelled: boolean;
+	lastDecodedFrameSec: number | null;
+	requiredEndSec: number;
+	streamDurationSec?: number;
+};
+
+const EARLY_DECODE_END_THRESHOLD_SEC = 1;
+const METADATA_TAIL_TOLERANCE_SEC = 1.5;
+const STREAM_DURATION_MATCH_TOLERANCE_SEC = 0.25;
+
+export function shouldFailDecodeEndedEarly({
+	cancelled,
+	lastDecodedFrameSec,
+	requiredEndSec,
+	streamDurationSec,
+}: EarlyDecodeEndCheck): boolean {
+	if (cancelled || requiredEndSec <= 0) {
+		return false;
+	}
+
+	if (lastDecodedFrameSec === null) {
+		return true;
+	}
+
+	const decodeGapSec = requiredEndSec - lastDecodedFrameSec;
+	if (decodeGapSec <= EARLY_DECODE_END_THRESHOLD_SEC) {
+		return false;
+	}
+
+	if (typeof streamDurationSec !== "number" || !Number.isFinite(streamDurationSec)) {
+		return true;
+	}
+
+	const metadataTailSec = requiredEndSec - streamDurationSec;
+	const decodedNearStreamEnd =
+		Math.abs(lastDecodedFrameSec - streamDurationSec) <= STREAM_DURATION_MATCH_TOLERANCE_SEC;
+
+	if (
+		decodedNearStreamEnd &&
+		metadataTailSec > 0 &&
+		metadataTailSec <= METADATA_TAIL_TOLERANCE_SEC
+	) {
+		return false;
+	}
+
+	return true;
+}
+
 /** Caller must close the VideoFrame after use. */
 type OnFrameCallback = (
 	frame: VideoFrame,
@@ -366,12 +415,17 @@ export class StreamingVideoDecoder {
 
 		const requiredEndSec = segments.length > 0 ? segments[segments.length - 1].endSec : 0;
 		if (
-			!this.cancelled &&
-			lastDecodedFrameSec !== null &&
-			requiredEndSec - lastDecodedFrameSec > 1
+			shouldFailDecodeEndedEarly({
+				cancelled: this.cancelled,
+				lastDecodedFrameSec,
+				requiredEndSec,
+				streamDurationSec: this.metadata.streamDuration,
+			})
 		) {
+			const decodedAtLabel =
+				lastDecodedFrameSec === null ? "no decoded frame" : `${lastDecodedFrameSec.toFixed(3)}s`;
 			throw new Error(
-				`Video decode ended early at ${lastDecodedFrameSec.toFixed(3)}s (needed ${requiredEndSec.toFixed(3)}s).`,
+				`Video decode ended early at ${decodedAtLabel} (needed ${requiredEndSec.toFixed(3)}s).`,
 			);
 		}
 	}
