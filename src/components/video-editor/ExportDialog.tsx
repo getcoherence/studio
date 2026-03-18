@@ -1,6 +1,5 @@
 import { Download, Loader2, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner"; // Add this import
 import { Button } from "@/components/ui/button";
 import type { ExportProgress } from "@/lib/exporter";
 
@@ -13,6 +12,7 @@ interface ExportDialogProps {
 	onCancel?: () => void;
 	exportFormat?: "mp4" | "gif";
 	exportedFilePath?: string;
+	onShowInFolder?: () => void;
 }
 
 export function ExportDialog({
@@ -23,7 +23,8 @@ export function ExportDialog({
 	error,
 	onCancel,
 	exportFormat = "mp4",
-	exportedFilePath, // Add this line
+	exportedFilePath,
+	onShowInFolder,
 }: ExportDialogProps) {
 	const [showSuccess, setShowSuccess] = useState(false);
 
@@ -85,23 +86,6 @@ export function ExportDialog({
 		return `Exporting ${formatLabel}`;
 	};
 
-	const handleClickShowInFolder = async () => {
-		if (exportedFilePath) {
-			try {
-				const result = await window.electronAPI.revealInFolder(exportedFilePath);
-				if (!result.success) {
-					const errorMessage = result.error || result.message || "Failed to reveal item in folder.";
-					console.error("Failed to reveal in folder:", errorMessage);
-					toast.error(errorMessage);
-				}
-			} catch (err) {
-				const errorMessage = String(err);
-				console.error("Error calling revealInFolder IPC:", errorMessage);
-				toast.error(`Error revealing in folder: ${errorMessage}`);
-			}
-		}
-	};
-
 	return (
 		<>
 			<div
@@ -124,7 +108,7 @@ export function ExportDialog({
 									{exportedFilePath && (
 										<Button
 											variant="secondary"
-											onClick={handleClickShowInFolder}
+											onClick={onShowInFolder}
 											className="mt-2 w-fit px-3 py-1 text-sm rounded-md bg-white/10 hover:bg-white/20 text-slate-200"
 										>
 											Show in Folder

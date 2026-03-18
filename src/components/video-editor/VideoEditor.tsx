@@ -103,6 +103,7 @@ export default function VideoEditor() {
 	const [gifFrameRate, setGifFrameRate] = useState<GifFrameRate>(15);
 	const [gifLoop, setGifLoop] = useState(true);
 	const [gifSizePreset, setGifSizePreset] = useState<GifSizePreset>("medium");
+	const [exportedFilePath, setExportedFilePath] = useState<string | null>(null);
 	const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
 
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
@@ -929,6 +930,37 @@ export default function VideoEditor() {
 		}
 	}, [selectedSpeedId, speedRegions]);
 
+	const handleShowExportedFile = useCallback(async (filePath: string) => {
+		try {
+			const result = await window.electronAPI.revealInFolder(filePath);
+			if (!result.success) {
+				const errorMessage = result.error || result.message || "Failed to reveal item in folder.";
+				console.error("Failed to reveal in folder:", errorMessage);
+				toast.error(errorMessage);
+			}
+		} catch (error) {
+			const errorMessage = String(error);
+			console.error("Error calling revealInFolder IPC:", errorMessage);
+			toast.error(`Error revealing in folder: ${errorMessage}`);
+		}
+	}, []);
+
+	const handleExportSaved = useCallback(
+		(formatLabel: "GIF" | "Video", filePath: string) => {
+			setExportedFilePath(filePath);
+			toast.success(`${formatLabel} exported successfully`, {
+				description: filePath,
+				action: {
+					label: "Show in Folder",
+					onClick: () => {
+						void handleShowExportedFile(filePath);
+					},
+				},
+			});
+		},
+		[handleShowExportedFile],
+	);
+
 	const handleExport = useCallback(
 		async (settings: ExportSettings) => {
 			if (!videoPath) {
@@ -945,6 +977,7 @@ export default function VideoEditor() {
 			setIsExporting(true);
 			setExportProgress(null);
 			setExportError(null);
+			setExportedFilePath(null);
 
 			try {
 				const wasPlaying = isPlaying;
@@ -1008,7 +1041,7 @@ export default function VideoEditor() {
 						if (saveResult.canceled) {
 							toast.info("Export canceled");
 						} else if (saveResult.success) {
-							toast.success(`GIF exported successfully to ${saveResult.path}`);
+							handleExportSaved("GIF", saveResult.path);
 						} else {
 							setExportError(saveResult.message || "Failed to save GIF");
 							toast.error(saveResult.message || "Failed to save GIF");
@@ -1135,7 +1168,7 @@ export default function VideoEditor() {
 						if (saveResult.canceled) {
 							toast.info("Export canceled");
 						} else if (saveResult.success) {
-							toast.success(`Video exported successfully to ${saveResult.path}`);
+							handleExportSaved("Video", saveResult.path);
 						} else {
 							setExportError(saveResult.message || "Failed to save video");
 							toast.error(saveResult.message || "Failed to save video");
@@ -1180,6 +1213,7 @@ export default function VideoEditor() {
 			isPlaying,
 			aspectRatio,
 			exportQuality,
+			handleExportSaved,
 		],
 	);
 
@@ -1222,6 +1256,7 @@ export default function VideoEditor() {
 
 		setShowExportDialog(true);
 		setExportError(null);
+		setExportedFilePath(null);
 
 		// Start export immediately
 		handleExport(settings);
@@ -1235,6 +1270,7 @@ export default function VideoEditor() {
 			setIsExporting(false);
 			setExportProgress(null);
 			setExportError(null);
+			setExportedFilePath(null);
 		}
 	}, []);
 
@@ -1473,6 +1509,10 @@ export default function VideoEditor() {
 				error={exportError}
 				onCancel={handleCancelExport}
 				exportFormat={exportFormat}
+				exportedFilePath={exportedFilePath || undefined}
+				onShowInFolder={
+					exportedFilePath ? () => void handleShowExportedFile(exportedFilePath) : undefined
+				}
 			/>
 		</div>
 	);
