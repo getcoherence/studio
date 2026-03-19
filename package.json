@@ -3,6 +3,11 @@
 	"private": true,
 	"version": "1.2.0",
 	"type": "module",
+	"packageManager": "npm@10.9.4",
+	"engines": {
+		"node": "22.22.1",
+		"npm": "10.9.4"
+	},
 	"scripts": {
 		"dev": "vite",
 		"build": "tsc && vite build && electron-builder",
