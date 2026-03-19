@@ -2,7 +2,6 @@ import type { Span } from "dnd-timeline";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import { INITIAL_EDITOR_STATE, useEditorHistory } from "@/hooks/useEditorHistory";
 import {
@@ -1533,8 +1532,6 @@ export default function VideoEditor() {
 					</Panel>
 				</PanelGroup>
 			</div>
-
-			<Toaster theme="dark" className="pointer-events-auto" />
 
 			<ExportDialog
 				isOpen={showExportDialog}
