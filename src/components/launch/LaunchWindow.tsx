@@ -19,6 +19,7 @@ import { RxDragHandleDots2 } from "react-icons/rx";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
 import { useScreenRecorder } from "../../hooks/useScreenRecorder";
+import { requestCameraAccess } from "../../lib/requestCameraAccess";
 import { formatTimePadded } from "../../utils/timeUtils";
 import { AudioLevelMeter } from "../ui/audio-level-meter";
 import { Tooltip } from "../ui/tooltip";
@@ -109,6 +110,16 @@ export function LaunchWindow() {
 			if (timer) clearInterval(timer);
 		};
 	}, [recording, recordingStart]);
+
+	useEffect(() => {
+		if (!import.meta.env.DEV) {
+			return;
+		}
+
+		void requestCameraAccess().catch((error) => {
+			console.warn("Failed to trigger camera access request during development:", error);
+		});
+	}, []);
 
 	const [selectedSource, setSelectedSource] = useState("Screen");
 	const [hasSelectedSource, setHasSelectedSource] = useState(false);
@@ -251,8 +262,8 @@ export function LaunchWindow() {
 						</button>
 						<button
 							className={`${hudIconBtnClasses} ${webcamEnabled ? "drop-shadow-[0_0_4px_rgba(74,222,128,0.4)]" : ""}`}
-							onClick={() => {
-								void setWebcamEnabled(!webcamEnabled);
+							onClick={async () => {
+								await setWebcamEnabled(!webcamEnabled);
 							}}
 							title={webcamEnabled ? "Disable webcam" : "Enable webcam"}
 						>

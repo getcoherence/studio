@@ -1,4 +1,11 @@
 import { Application, Graphics, Sprite } from "pixi.js";
+import {
+	computeCompositeLayout,
+	type RenderRect,
+	type Size,
+	type StyledRenderRect,
+	type WebcamLayoutPreset,
+} from "@/lib/compositeLayout";
 import type { CropRegion } from "../types";
 
 interface LayoutParams {
@@ -11,6 +18,8 @@ interface LayoutParams {
 	lockedVideoDimensions?: { width: number; height: number } | null;
 	borderRadius?: number;
 	padding?: number;
+	webcamDimensions?: Size | null;
+	webcamLayoutPreset?: WebcamLayoutPreset;
 }
 
 interface LayoutResult {
@@ -18,7 +27,8 @@ interface LayoutResult {
 	videoSize: { width: number; height: number };
 	baseScale: number;
 	baseOffset: { x: number; y: number };
-	maskRect: { x: number; y: number; width: number; height: number };
+	maskRect: RenderRect;
+	webcamRect: StyledRenderRect | null;
 	cropBounds: { startX: number; endX: number; startY: number; endY: number };
 }
 
@@ -33,6 +43,8 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 		lockedVideoDimensions,
 		borderRadius = 0,
 		padding = 0,
+		webcamDimensions,
+		webcamLayoutPreset,
 	} = params;
 
 	const videoWidth = lockedVideoDimensions?.width || videoElement.videoWidth;
@@ -71,11 +83,19 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 	const maxDisplayWidth = width * paddingScale;
 	const maxDisplayHeight = height * paddingScale;
 
-	const scale = Math.min(
-		maxDisplayWidth / croppedVideoWidth,
-		maxDisplayHeight / croppedVideoHeight,
-		1,
-	);
+	const compositeLayout = computeCompositeLayout({
+		canvasSize: { width, height },
+		maxContentSize: { width: maxDisplayWidth, height: maxDisplayHeight },
+		screenSize: { width: croppedVideoWidth, height: croppedVideoHeight },
+		webcamSize: webcamDimensions,
+		layoutPreset: webcamLayoutPreset,
+	});
+
+	if (!compositeLayout) {
+		return null;
+	}
+
+	const scale = compositeLayout.screenRect.width / croppedVideoWidth;
 
 	videoSprite.scale.set(scale);
 
@@ -84,30 +104,25 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 	const fullVideoDisplayHeight = videoHeight * scale;
 
 	// Calculate display size of just the cropped region
-	const croppedDisplayWidth = croppedVideoWidth * scale;
-	const croppedDisplayHeight = croppedVideoHeight * scale;
-
-	// Center the cropped region in the container
-	const centerOffsetX = (width - croppedDisplayWidth) / 2;
-	const centerOffsetY = (height - croppedDisplayHeight) / 2;
-
 	// Position the full video sprite so that when we apply the mask,
 	// the cropped region appears centered
 	// The crop starts at (crop.x * videoWidth, crop.y * videoHeight) in video coordinates
 	// In display coordinates, that's (crop.x * fullVideoDisplayWidth, crop.y * fullVideoDisplayHeight)
-	// We want that point to be at centerOffsetX, centerOffsetY
-	const spriteX = centerOffsetX - crop.x * fullVideoDisplayWidth;
-	const spriteY = centerOffsetY - crop.y * fullVideoDisplayHeight;
+	// We want that point to be at screenRect.x, screenRect.y
+	const spriteX = compositeLayout.screenRect.x - crop.x * fullVideoDisplayWidth;
+	const spriteY = compositeLayout.screenRect.y - crop.y * fullVideoDisplayHeight;
 
 	videoSprite.position.set(spriteX, spriteY);
 
-	// Create a mask that only shows the cropped region (centered in container)
-	const maskX = centerOffsetX;
-	const maskY = centerOffsetY;
-
 	// Apply border radius
 	maskGraphics.clear();
-	maskGraphics.roundRect(maskX, maskY, croppedDisplayWidth, croppedDisplayHeight, borderRadius);
+	maskGraphics.roundRect(
+		compositeLayout.screenRect.x,
+		compositeLayout.screenRect.y,
+		compositeLayout.screenRect.width,
+		compositeLayout.screenRect.height,
+		borderRadius,
+	);
 	maskGraphics.fill({ color: 0xffffff });
 
 	return {
@@ -115,7 +130,8 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 		videoSize: { width: croppedVideoWidth, height: croppedVideoHeight },
 		baseScale: scale,
 		baseOffset: { x: spriteX, y: spriteY },
-		maskRect: { x: maskX, y: maskY, width: croppedDisplayWidth, height: croppedDisplayHeight },
+		maskRect: compositeLayout.screenRect,
+		webcamRect: compositeLayout.webcamRect,
 		cropBounds: { startX: cropStartX, endX: cropEndX, startY: cropStartY, endY: cropEndY },
 	};
 }

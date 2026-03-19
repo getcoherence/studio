@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { LaunchWindow } from "./components/launch/LaunchWindow";
 import { SourceSelector } from "./components/launch/SourceSelector";
+import { Toaster } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { ShortcutsConfigDialog } from "./components/video-editor/ShortcutsConfigDialog";
 import VideoEditor from "./components/video-editor/VideoEditor";
@@ -48,5 +49,10 @@ export default function App() {
 		}
 	})();
 
-	return <TooltipProvider>{content}</TooltipProvider>;
+	return (
+		<TooltipProvider>
+			{content}
+			<Toaster theme="dark" className="pointer-events-auto" />
+		</TooltipProvider>
+	);
 }

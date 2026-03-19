@@ -1,6 +1,7 @@
 import { fixWebmDuration } from "@fix-webm-duration/fix";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { requestCameraAccess } from "@/lib/requestCameraAccess";
 
 const TARGET_FRAME_RATE = 60;
 const MIN_FRAME_RATE = 30;
@@ -157,7 +158,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			return true;
 		}
 
-		const accessResult = await window.electronAPI.requestCameraAccess();
+		const accessResult = await requestCameraAccess();
 		if (!accessResult.success) {
 			toast.error("Failed to request camera access.");
 			return false;
@@ -168,19 +169,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			return false;
 		}
 
-		try {
-			const probeStream = await navigator.mediaDevices.getUserMedia({
-				audio: false,
-				video: true,
-			});
-			probeStream.getTracks().forEach((track) => track.stop());
-			setWebcamEnabledState(true);
-			return true;
-		} catch (error) {
-			console.warn("Failed to preflight webcam access:", error);
-			toast.error("Camera access denied. Webcam overlay will stay disabled.");
-			return false;
-		}
+		setWebcamEnabledState(true);
+		return true;
 	}, []);
 
 	const finalizeRecording = useCallback(
