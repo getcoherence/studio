@@ -1,4 +1,4 @@
-import type { WebcamLayoutPreset } from "@/lib/webcamOverlay";
+import type { WebcamLayoutPreset } from "@/lib/compositeLayout";
 
 export type ZoomDepth = 1 | 2 | 3 | 4 | 5 | 6;
 export type { WebcamLayoutPreset };
