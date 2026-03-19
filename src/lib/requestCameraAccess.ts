@@ -15,9 +15,18 @@ function getDeniedStatus(error: unknown) {
 
 export async function requestCameraAccess(): Promise<CameraAccessResult> {
 	if (window.electronAPI?.requestCameraAccess) {
-		const electronResult = await window.electronAPI.requestCameraAccess();
-		if (!electronResult.success || !electronResult.granted) {
-			return electronResult;
+		try {
+			const electronResult = await window.electronAPI.requestCameraAccess();
+			if (!electronResult.success || !electronResult.granted) {
+				return electronResult;
+			}
+		} catch (error) {
+			return {
+				success: false,
+				granted: false,
+				status: "error",
+				error: String(error),
+			};
 		}
 	}
 

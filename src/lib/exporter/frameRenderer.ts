@@ -336,7 +336,7 @@ export class FrameRenderer {
 		}
 
 		// Apply layout
-		this.updateLayout();
+		this.updateLayout(webcamFrame);
 
 		const timeMs = this.currentVideoTime * 1000;
 		const TICKS_PER_FRAME = 1;
@@ -400,7 +400,7 @@ export class FrameRenderer {
 		}
 	}
 
-	private updateLayout(): void {
+	private updateLayout(webcamFrame?: VideoFrame | null): void {
 		if (!this.app || !this.videoSprite || !this.maskGraphics || !this.videoContainer) return;
 
 		const { width, height } = this.config;
@@ -426,7 +426,7 @@ export class FrameRenderer {
 			canvasSize: { width, height },
 			maxContentSize: { width: viewportWidth, height: viewportHeight },
 			screenSize: { width: croppedVideoWidth, height: croppedVideoHeight },
-			webcamSize: this.config.webcamSize,
+			webcamSize: webcamFrame ? this.config.webcamSize : null,
 			layoutPreset: this.config.webcamLayoutPreset,
 		});
 		if (!compositeLayout) return;
