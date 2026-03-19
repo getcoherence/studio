@@ -25,6 +25,13 @@ import {
 	AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,6 +39,7 @@ import { getAssetPath } from "@/lib/assetPath";
 import type { ExportFormat, ExportQuality, GifFrameRate, GifSizePreset } from "@/lib/exporter";
 import { GIF_FRAME_RATES, GIF_SIZE_PRESETS } from "@/lib/exporter";
 import { cn } from "@/lib/utils";
+import { WEBCAM_LAYOUT_PRESETS } from "@/lib/webcamOverlay";
 import { type AspectRatio } from "@/utils/aspectRatioUtils";
 import { getTestId } from "@/utils/getTestId";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
@@ -43,6 +51,7 @@ import type {
 	CropRegion,
 	FigureData,
 	PlaybackSpeed,
+	WebcamLayoutPreset,
 	ZoomDepth,
 } from "./types";
 import { SPEED_OPTIONS } from "./types";
@@ -132,6 +141,9 @@ interface SettingsPanelProps {
 	selectedSpeedValue?: PlaybackSpeed | null;
 	onSpeedChange?: (speed: PlaybackSpeed) => void;
 	onSpeedDelete?: (id: string) => void;
+	hasWebcam?: boolean;
+	webcamLayoutPreset?: WebcamLayoutPreset;
+	onWebcamLayoutPresetChange?: (preset: WebcamLayoutPreset) => void;
 }
 
 export default SettingsPanel;
@@ -197,6 +209,9 @@ export function SettingsPanel({
 	selectedSpeedValue,
 	onSpeedChange,
 	onSpeedDelete,
+	hasWebcam = false,
+	webcamLayoutPreset = "picture-in-picture",
+	onWebcamLayoutPresetChange,
 }: SettingsPanelProps) {
 	const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
 	const [customImages, setCustomImages] = useState<string[]>([]);
@@ -586,6 +601,28 @@ export function SettingsPanel({
 									/>
 								</div>
 							</div>
+							{hasWebcam && (
+								<div className="mb-3 p-2 rounded-lg bg-white/5 border border-white/5">
+									<div className="text-[10px] font-medium text-slate-300 mb-1.5">Webcam Layout</div>
+									<Select
+										value={webcamLayoutPreset}
+										onValueChange={(value: WebcamLayoutPreset) =>
+											onWebcamLayoutPresetChange?.(value)
+										}
+									>
+										<SelectTrigger className="h-8 bg-black/20 border-white/10 text-xs">
+											<SelectValue placeholder="Select layout" />
+										</SelectTrigger>
+										<SelectContent>
+											{WEBCAM_LAYOUT_PRESETS.map((preset) => (
+												<SelectItem key={preset.value} value={preset.value} className="text-xs">
+													{preset.label}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							)}
 
 							<div className="grid grid-cols-2 gap-2">
 								<div className="p-2 rounded-lg bg-white/5 border border-white/5">

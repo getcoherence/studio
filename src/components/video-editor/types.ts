@@ -1,4 +1,9 @@
+import type { WebcamLayoutPreset } from "@/lib/webcamOverlay";
+
 export type ZoomDepth = 1 | 2 | 3 | 4 | 5 | 6;
+export type { WebcamLayoutPreset };
+
+export const DEFAULT_WEBCAM_LAYOUT_PRESET: WebcamLayoutPreset = "picture-in-picture";
 
 export interface ZoomFocus {
 	cx: number; // normalized horizontal center (0-1)

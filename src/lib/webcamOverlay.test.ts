@@ -30,4 +30,34 @@ describe("computeWebcamOverlayLayout", () => {
 		expect(layout!.height).toBeLessThanOrEqual(Math.round(720 * 0.18) + 1);
 		expect(Math.abs(layout!.width * 1080 - layout!.height * 1920)).toBeLessThanOrEqual(1920);
 	});
+
+	it("places the webcam directly below the screencast in vertical stack mode", () => {
+		const layout = computeWebcamOverlayLayout({
+			stageWidth: 1920,
+			stageHeight: 1080,
+			videoWidth: 1280,
+			videoHeight: 720,
+			screenVideoWidth: 1920,
+			screenVideoHeight: 1080,
+			layoutPreset: "vertical-stack",
+		});
+
+		expect(layout).not.toBeNull();
+		expect(layout?.y).toBe(648);
+		expect(layout?.height).toBe(432);
+		expect(layout?.width).toBe(768);
+		expect(layout?.borderRadius).toBe(0);
+	});
+
+	it("returns null for vertical stack until screen dimensions are available", () => {
+		const layout = computeWebcamOverlayLayout({
+			stageWidth: 1920,
+			stageHeight: 1080,
+			videoWidth: 1280,
+			videoHeight: 720,
+			layoutPreset: "vertical-stack",
+		});
+
+		expect(layout).toBeNull();
+	});
 });

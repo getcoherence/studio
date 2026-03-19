@@ -4,9 +4,10 @@ import type {
 	CropRegion,
 	SpeedRegion,
 	TrimRegion,
+	WebcamLayoutPreset,
 	ZoomRegion,
 } from "@/components/video-editor/types";
-import { DEFAULT_CROP_REGION } from "@/components/video-editor/types";
+import { DEFAULT_CROP_REGION, DEFAULT_WEBCAM_LAYOUT_PRESET } from "@/components/video-editor/types";
 import type { AspectRatio } from "@/utils/aspectRatioUtils";
 
 // Undoable state — selection IDs are intentionally excluded (undoing a
@@ -24,6 +25,7 @@ export interface EditorState {
 	borderRadius: number;
 	padding: number;
 	aspectRatio: AspectRatio;
+	webcamLayoutPreset: WebcamLayoutPreset;
 }
 
 export const INITIAL_EDITOR_STATE: EditorState = {
@@ -39,6 +41,7 @@ export const INITIAL_EDITOR_STATE: EditorState = {
 	borderRadius: 0,
 	padding: 50,
 	aspectRatio: "16:9",
+	webcamLayoutPreset: DEFAULT_WEBCAM_LAYOUT_PRESET,
 };
 
 type StateUpdate = Partial<EditorState> | ((prev: EditorState) => Partial<EditorState>);

@@ -19,7 +19,12 @@ import {
 	useState,
 } from "react";
 import { getAssetPath } from "@/lib/assetPath";
-import { computeWebcamOverlayLayout, type WebcamOverlayLayout } from "@/lib/webcamOverlay";
+import {
+	computeWebcamOverlayLayout,
+	getWebcamLayoutCssBoxShadow,
+	type WebcamLayoutPreset,
+	type WebcamOverlayLayout,
+} from "@/lib/webcamOverlay";
 import {
 	type AspectRatio,
 	formatAspectRatioForCSS,
@@ -57,6 +62,7 @@ import {
 interface VideoPlaybackProps {
 	videoPath: string;
 	webcamVideoPath?: string;
+	webcamLayoutPreset: WebcamLayoutPreset;
 	onDurationChange: (duration: number) => void;
 	onTimeUpdate: (time: number) => void;
 	currentTime: number;
@@ -101,6 +107,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		{
 			videoPath,
 			webcamVideoPath,
+			webcamLayoutPreset,
 			onDurationChange,
 			onTimeUpdate,
 			currentTime,
@@ -146,6 +153,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const focusIndicatorRef = useRef<HTMLDivElement | null>(null);
 		const [webcamLayout, setWebcamLayout] = useState<WebcamOverlayLayout | null>(null);
 		const [webcamDimensions, setWebcamDimensions] = useState<{
+			width: number;
+			height: number;
+		} | null>(null);
+		const [screenVideoDimensions, setScreenVideoDimensions] = useState<{
 			width: number;
 			height: number;
 		} | null>(null);
@@ -609,6 +620,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				cancelAnimationFrame(videoReadyRafRef.current);
 				videoReadyRafRef.current = null;
 			}
+			if (video.videoWidth > 0 && video.videoHeight > 0) {
+				setScreenVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
+			}
 		}, [videoPath]);
 
 		useEffect(() => {
@@ -910,6 +924,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		};
 
 		const [resolvedWallpaper, setResolvedWallpaper] = useState<string | null>(null);
+		const webcamCssBoxShadow = useMemo(
+			() => getWebcamLayoutCssBoxShadow(webcamLayoutPreset),
+			[webcamLayoutPreset],
+		);
 
 		useEffect(() => {
 			const webcamVideo = webcamVideoRef.current;
@@ -936,7 +954,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 
 		useEffect(() => {
 			const stage = stageRef.current;
-			if (!stage || !webcamDimensions) {
+			if (!stage || !webcamDimensions || !screenVideoDimensions) {
 				setWebcamLayout(null);
 				return;
 			}
@@ -947,6 +965,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					stageHeight: stage.clientHeight,
 					videoWidth: webcamDimensions.width,
 					videoHeight: webcamDimensions.height,
+					layoutPreset: webcamLayoutPreset,
+					screenVideoWidth: screenVideoDimensions?.width,
+					screenVideoHeight: screenVideoDimensions?.height,
 				});
 				setWebcamLayout(layout);
 			};
@@ -960,7 +981,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			const observer = new ResizeObserver(updateLayout);
 			observer.observe(stage);
 			return () => observer.disconnect();
-		}, [webcamDimensions]);
+		}, [screenVideoDimensions, webcamDimensions, webcamLayoutPreset]);
 
 		useEffect(() => {
 			const webcamVideo = webcamVideoRef.current;
@@ -1109,7 +1130,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 								: "none",
 					}}
 				/>
-				{webcamVideoPath && (
+				{webcamVideoPath && screenVideoDimensions && (
 					<video
 						ref={webcamVideoRef}
 						src={webcamVideoPath}
@@ -1120,7 +1141,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 							width: webcamLayout?.width ?? 0,
 							height: webcamLayout?.height ?? 0,
 							borderRadius: webcamLayout?.borderRadius ?? 0,
-							boxShadow: "0 12px 36px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.22)",
+							boxShadow: webcamCssBoxShadow,
 							zIndex: 20,
 							opacity: webcamLayout ? 1 : 0,
 							backgroundColor: "#000",

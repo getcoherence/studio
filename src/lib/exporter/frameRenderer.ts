@@ -12,6 +12,7 @@ import type {
 	AnnotationRegion,
 	CropRegion,
 	SpeedRegion,
+	WebcamLayoutPreset,
 	ZoomDepth,
 	ZoomRegion,
 } from "@/components/video-editor/types";
@@ -30,7 +31,7 @@ import {
 	createMotionBlurState,
 	type MotionBlurState,
 } from "@/components/video-editor/videoPlayback/zoomTransform";
-import { computeWebcamOverlayLayout } from "@/lib/webcamOverlay";
+import { computeWebcamOverlayLayout, getWebcamLayoutPresetDefinition } from "@/lib/webcamOverlay";
 import { renderAnnotations } from "./annotationRenderer";
 
 interface FrameRenderConfig {
@@ -49,6 +50,7 @@ interface FrameRenderConfig {
 	videoHeight: number;
 	webcamWidth?: number;
 	webcamHeight?: number;
+	webcamLayoutPreset?: WebcamLayoutPreset;
 	annotationRegions?: AnnotationRegion[];
 	speedRegions?: SpeedRegion[];
 	previewWidth?: number;
@@ -634,16 +636,23 @@ export class FrameRenderer {
 				stageHeight: h,
 				videoWidth: this.config.webcamWidth,
 				videoHeight: this.config.webcamHeight,
+				layoutPreset: this.config.webcamLayoutPreset,
+				screenVideoWidth: this.config.videoWidth,
+				screenVideoHeight: this.config.videoHeight,
 			});
 
 			if (layout) {
+				const preset = getWebcamLayoutPresetDefinition(this.config.webcamLayoutPreset);
 				ctx.save();
 				ctx.beginPath();
 				ctx.roundRect(layout.x, layout.y, layout.width, layout.height, layout.borderRadius);
 				ctx.closePath();
-				ctx.shadowColor = "rgba(0,0,0,0.35)";
-				ctx.shadowBlur = 24;
-				ctx.shadowOffsetY = 10;
+				if (preset.shadow) {
+					ctx.shadowColor = preset.shadow.color;
+					ctx.shadowBlur = preset.shadow.blur;
+					ctx.shadowOffsetX = preset.shadow.offsetX;
+					ctx.shadowOffsetY = preset.shadow.offsetY;
+				}
 				ctx.fillStyle = "#000000";
 				ctx.fill();
 				ctx.clip();
