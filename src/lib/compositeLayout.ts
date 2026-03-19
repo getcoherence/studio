@@ -1,0 +1,250 @@
+export interface RenderRect {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
+export interface StyledRenderRect extends RenderRect {
+	borderRadius: number;
+}
+
+export interface Size {
+	width: number;
+	height: number;
+}
+
+export type WebcamLayoutPreset = "picture-in-picture" | "vertical-stack";
+
+export interface WebcamLayoutShadow {
+	color: string;
+	blur: number;
+	offsetX: number;
+	offsetY: number;
+}
+
+interface BorderRadiusRule {
+	max: number;
+	min: number;
+	fraction: number;
+}
+
+interface OverlayTransform {
+	type: "overlay";
+	maxStageFraction: number;
+	marginFraction: number;
+	minMargin: number;
+	minSize: number;
+}
+
+interface StackTransform {
+	type: "stack";
+	gap: number;
+}
+
+export interface WebcamLayoutPresetDefinition {
+	label: string;
+	transform: OverlayTransform | StackTransform;
+	borderRadius: BorderRadiusRule;
+	shadow: WebcamLayoutShadow | null;
+}
+
+export interface WebcamCompositeLayout {
+	screenRect: RenderRect;
+	webcamRect: StyledRenderRect | null;
+}
+
+const MAX_STAGE_FRACTION = 0.18;
+const MARGIN_FRACTION = 0.02;
+const MIN_SIZE = 96;
+const MAX_BORDER_RADIUS = 24;
+const WEBCAM_LAYOUT_PRESET_MAP: Record<WebcamLayoutPreset, WebcamLayoutPresetDefinition> = {
+	"picture-in-picture": {
+		label: "Picture in Picture",
+		transform: {
+			type: "overlay",
+			maxStageFraction: MAX_STAGE_FRACTION,
+			marginFraction: MARGIN_FRACTION,
+			minMargin: 12,
+			minSize: MIN_SIZE,
+		},
+		borderRadius: {
+			max: MAX_BORDER_RADIUS,
+			min: 12,
+			fraction: 0.12,
+		},
+		shadow: {
+			color: "rgba(0,0,0,0.35)",
+			blur: 24,
+			offsetX: 0,
+			offsetY: 10,
+		},
+	},
+	"vertical-stack": {
+		label: "Vertical Stack",
+		transform: {
+			type: "stack",
+			gap: 0,
+		},
+		borderRadius: {
+			max: 0,
+			min: 0,
+			fraction: 0,
+		},
+		shadow: null,
+	},
+};
+
+export const WEBCAM_LAYOUT_PRESETS = Object.entries(WEBCAM_LAYOUT_PRESET_MAP).map(
+	([value, preset]) => ({
+		value: value as WebcamLayoutPreset,
+		label: preset.label,
+	}),
+);
+
+export function getWebcamLayoutPresetDefinition(
+	preset: WebcamLayoutPreset = "picture-in-picture",
+): WebcamLayoutPresetDefinition {
+	return WEBCAM_LAYOUT_PRESET_MAP[preset];
+}
+
+export function getWebcamLayoutCssBoxShadow(
+	preset: WebcamLayoutPreset = "picture-in-picture",
+): string {
+	const shadow = getWebcamLayoutPresetDefinition(preset).shadow;
+	return shadow
+		? `${shadow.offsetX}px ${shadow.offsetY}px ${shadow.blur}px ${shadow.color}`
+		: "none";
+}
+
+export function computeCompositeLayout(params: {
+	canvasSize: Size;
+	maxContentSize?: Size;
+	screenSize: Size;
+	webcamSize?: Size | null;
+	layoutPreset?: WebcamLayoutPreset;
+}): WebcamCompositeLayout | null {
+	const {
+		canvasSize,
+		maxContentSize = canvasSize,
+		screenSize,
+		webcamSize,
+		layoutPreset = "picture-in-picture",
+	} = params;
+	const { width: canvasWidth, height: canvasHeight } = canvasSize;
+	const { width: maxContentWidth, height: maxContentHeight } = maxContentSize;
+	const { width: screenWidth, height: screenHeight } = screenSize;
+	const webcamWidth = webcamSize?.width;
+	const webcamHeight = webcamSize?.height;
+	const preset = getWebcamLayoutPresetDefinition(layoutPreset);
+
+	if (canvasWidth <= 0 || canvasHeight <= 0 || screenWidth <= 0 || screenHeight <= 0) {
+		return null;
+	}
+
+	if (preset.transform.type === "stack") {
+		if (!webcamWidth || !webcamHeight || webcamWidth <= 0 || webcamHeight <= 0) {
+			return {
+				screenRect: centerRect({
+					canvasSize,
+					size: screenSize,
+					maxSize: maxContentSize,
+				}),
+				webcamRect: null,
+			};
+		}
+
+		const gap = preset.transform.gap;
+		const normalizedWebcamHeight = webcamHeight * (screenWidth / webcamWidth);
+		const combinedHeight = screenHeight + gap + normalizedWebcamHeight;
+		const scale = Math.min(maxContentWidth / screenWidth, maxContentHeight / combinedHeight, 1);
+		const clampedScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+		const resolvedScreenHeight = Math.round(screenHeight * clampedScale);
+		const resolvedScreenWidth = Math.round(screenWidth * clampedScale);
+		const resolvedWebcamHeight = Math.round(normalizedWebcamHeight * clampedScale);
+		const resolvedGap = Math.round(gap * clampedScale);
+		const totalHeight = resolvedScreenHeight + resolvedGap + resolvedWebcamHeight;
+		const top = Math.max(0, Math.floor((canvasHeight - totalHeight) / 2));
+		const left = Math.max(0, Math.floor((canvasWidth - resolvedScreenWidth) / 2));
+		const screenRect = {
+			x: left,
+			y: top,
+			width: resolvedScreenWidth,
+			height: resolvedScreenHeight,
+		};
+
+		return {
+			screenRect,
+			webcamRect: {
+				x: left,
+				y: top + resolvedScreenHeight + resolvedGap,
+				width: resolvedScreenWidth,
+				height: resolvedWebcamHeight,
+				borderRadius: Math.min(
+					preset.borderRadius.max,
+					Math.max(
+						preset.borderRadius.min,
+						Math.round(
+							Math.min(resolvedScreenWidth, resolvedWebcamHeight) * preset.borderRadius.fraction,
+						),
+					),
+				),
+			},
+		};
+	}
+
+	const transform = preset.transform;
+	const screenRect = centerRect({
+		canvasSize,
+		size: screenSize,
+		maxSize: maxContentSize,
+	});
+
+	if (!webcamWidth || !webcamHeight || webcamWidth <= 0 || webcamHeight <= 0) {
+		return { screenRect, webcamRect: null };
+	}
+
+	const margin = Math.max(
+		transform.minMargin,
+		Math.round(Math.min(canvasWidth, canvasHeight) * transform.marginFraction),
+	);
+	const maxWidth = Math.max(transform.minSize, canvasWidth * transform.maxStageFraction);
+	const maxHeight = Math.max(transform.minSize, canvasHeight * transform.maxStageFraction);
+	const scale = Math.min(maxWidth / webcamWidth, maxHeight / webcamHeight);
+	const width = Math.round(webcamWidth * scale);
+	const height = Math.round(webcamHeight * scale);
+
+	return {
+		screenRect,
+		webcamRect: {
+			x: Math.max(0, Math.round(canvasWidth - margin - width)),
+			y: Math.max(0, Math.round(canvasHeight - margin - height)),
+			width,
+			height,
+			borderRadius: Math.min(
+				preset.borderRadius.max,
+				Math.max(
+					preset.borderRadius.min,
+					Math.round(Math.min(width, height) * preset.borderRadius.fraction),
+				),
+			),
+		},
+	};
+}
+
+function centerRect(params: { canvasSize: Size; size: Size; maxSize: Size }): RenderRect {
+	const { canvasSize, size, maxSize } = params;
+	const { width: canvasWidth, height: canvasHeight } = canvasSize;
+	const { width, height } = size;
+	const { width: maxWidth, height: maxHeight } = maxSize;
+	const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+	const resolvedWidth = Math.round(width * scale);
+	const resolvedHeight = Math.round(height * scale);
+
+	return {
+		x: Math.max(0, Math.floor((canvasWidth - resolvedWidth) / 2)),
+		y: Math.max(0, Math.floor((canvasHeight - resolvedHeight) / 2)),
+		width: resolvedWidth,
+		height: resolvedHeight,
+	};
+}

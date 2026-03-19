@@ -31,7 +31,12 @@ import {
 	createMotionBlurState,
 	type MotionBlurState,
 } from "@/components/video-editor/videoPlayback/zoomTransform";
-import { computeWebcamOverlayLayout, getWebcamLayoutPresetDefinition } from "@/lib/webcamOverlay";
+import {
+	computeCompositeLayout,
+	getWebcamLayoutPresetDefinition,
+	type Size,
+	type StyledRenderRect,
+} from "@/lib/compositeLayout";
 import { renderAnnotations } from "./annotationRenderer";
 
 interface FrameRenderConfig {
@@ -48,8 +53,7 @@ interface FrameRenderConfig {
 	cropRegion: CropRegion;
 	videoWidth: number;
 	videoHeight: number;
-	webcamWidth?: number;
-	webcamHeight?: number;
+	webcamSize?: Size | null;
 	webcamLayoutPreset?: WebcamLayoutPreset;
 	annotationRegions?: AnnotationRegion[];
 	speedRegions?: SpeedRegion[];
@@ -73,6 +77,7 @@ interface LayoutCache {
 	baseScale: number;
 	baseOffset: { x: number; y: number };
 	maskRect: { x: number; y: number; width: number; height: number };
+	webcamRect: StyledRenderRect | null;
 }
 
 // Renders video frames with all effects (background, zoom, crop, blur, shadow) to an offscreen canvas for export.
@@ -417,7 +422,16 @@ export class FrameRenderer {
 		const paddingScale = 1.0 - (padding / 100) * 0.4;
 		const viewportWidth = width * paddingScale;
 		const viewportHeight = height * paddingScale;
-		const scale = Math.min(viewportWidth / croppedVideoWidth, viewportHeight / croppedVideoHeight);
+		const compositeLayout = computeCompositeLayout({
+			canvasSize: { width, height },
+			maxContentSize: { width: viewportWidth, height: viewportHeight },
+			screenSize: { width: croppedVideoWidth, height: croppedVideoHeight },
+			webcamSize: this.config.webcamSize,
+			layoutPreset: this.config.webcamLayoutPreset,
+		});
+		if (!compositeLayout) return;
+
+		const scale = compositeLayout.screenRect.width / croppedVideoWidth;
 
 		// Position video sprite
 		this.videoSprite.width = videoWidth * scale;
@@ -429,12 +443,10 @@ export class FrameRenderer {
 		this.videoSprite.y = -cropPixelY;
 
 		// Position video container
-		const croppedDisplayWidth = croppedVideoWidth * scale;
-		const croppedDisplayHeight = croppedVideoHeight * scale;
-		const centerOffsetX = (width - croppedDisplayWidth) / 2;
-		const centerOffsetY = (height - croppedDisplayHeight) / 2;
-		this.videoContainer.x = centerOffsetX;
-		this.videoContainer.y = centerOffsetY;
+		const croppedDisplayWidth = compositeLayout.screenRect.width;
+		const croppedDisplayHeight = compositeLayout.screenRect.height;
+		this.videoContainer.x = compositeLayout.screenRect.x;
+		this.videoContainer.y = compositeLayout.screenRect.y;
 
 		// scale border radius by export/preview canvas ratio
 		const previewWidth = this.config.previewWidth || 1920;
@@ -457,8 +469,9 @@ export class FrameRenderer {
 			stageSize: { width, height },
 			videoSize: { width: croppedVideoWidth, height: croppedVideoHeight },
 			baseScale: scale,
-			baseOffset: { x: centerOffsetX, y: centerOffsetY },
-			maskRect: { x: 0, y: 0, width: croppedDisplayWidth, height: croppedDisplayHeight },
+			baseOffset: { x: compositeLayout.screenRect.x, y: compositeLayout.screenRect.y },
+			maskRect: compositeLayout.screenRect,
+			webcamRect: compositeLayout.webcamRect,
 		};
 	}
 
@@ -630,41 +643,36 @@ export class FrameRenderer {
 			ctx.drawImage(videoCanvas, 0, 0, w, h);
 		}
 
-		if (webcamFrame && this.config.webcamWidth && this.config.webcamHeight) {
-			const layout = computeWebcamOverlayLayout({
-				stageWidth: w,
-				stageHeight: h,
-				videoWidth: this.config.webcamWidth,
-				videoHeight: this.config.webcamHeight,
-				layoutPreset: this.config.webcamLayoutPreset,
-				screenVideoWidth: this.config.videoWidth,
-				screenVideoHeight: this.config.videoHeight,
-			});
-
-			if (layout) {
-				const preset = getWebcamLayoutPresetDefinition(this.config.webcamLayoutPreset);
-				ctx.save();
-				ctx.beginPath();
-				ctx.roundRect(layout.x, layout.y, layout.width, layout.height, layout.borderRadius);
-				ctx.closePath();
-				if (preset.shadow) {
-					ctx.shadowColor = preset.shadow.color;
-					ctx.shadowBlur = preset.shadow.blur;
-					ctx.shadowOffsetX = preset.shadow.offsetX;
-					ctx.shadowOffsetY = preset.shadow.offsetY;
-				}
-				ctx.fillStyle = "#000000";
-				ctx.fill();
-				ctx.clip();
-				ctx.drawImage(
-					webcamFrame as unknown as CanvasImageSource,
-					layout.x,
-					layout.y,
-					layout.width,
-					layout.height,
-				);
-				ctx.restore();
+		const webcamRect = this.layoutCache?.webcamRect ?? null;
+		if (webcamFrame && webcamRect) {
+			const preset = getWebcamLayoutPresetDefinition(this.config.webcamLayoutPreset);
+			ctx.save();
+			ctx.beginPath();
+			ctx.roundRect(
+				webcamRect.x,
+				webcamRect.y,
+				webcamRect.width,
+				webcamRect.height,
+				webcamRect.borderRadius,
+			);
+			ctx.closePath();
+			if (preset.shadow) {
+				ctx.shadowColor = preset.shadow.color;
+				ctx.shadowBlur = preset.shadow.blur;
+				ctx.shadowOffsetX = preset.shadow.offsetX;
+				ctx.shadowOffsetY = preset.shadow.offsetY;
 			}
+			ctx.fillStyle = "#000000";
+			ctx.fill();
+			ctx.clip();
+			ctx.drawImage(
+				webcamFrame as unknown as CanvasImageSource,
+				webcamRect.x,
+				webcamRect.y,
+				webcamRect.width,
+				webcamRect.height,
+			);
+			ctx.restore();
 		}
 	}
 
