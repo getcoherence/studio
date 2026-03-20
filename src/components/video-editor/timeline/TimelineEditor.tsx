@@ -184,6 +184,18 @@ function clampVisibleRange(candidate: Range, totalMs: number): Range {
 	return { start, end: start + span };
 }
 
+function normalizeWheelDelta(delta: number, deltaMode: number, pageSizePx: number): number {
+	if (deltaMode === WheelEvent.DOM_DELTA_LINE) {
+		return delta * 16;
+	}
+
+	if (deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+		return delta * pageSizePx;
+	}
+
+	return delta;
+}
+
 function formatTimeLabel(milliseconds: number, intervalMs: number) {
 	const totalSeconds = milliseconds / 1000;
 	const hours = Math.floor(totalSeconds / 3600);
@@ -580,6 +592,46 @@ function Timeline({
 		],
 	);
 
+	const handleTimelineWheel = useCallback(
+		(event: React.WheelEvent<HTMLDivElement>) => {
+			if (!onRangeChange || event.ctrlKey || event.metaKey || videoDurationMs <= 0) {
+				return;
+			}
+
+			const visibleMs = range.end - range.start;
+			if (visibleMs <= 0 || videoDurationMs <= visibleMs) {
+				return;
+			}
+
+			const dominantDelta =
+				Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+			if (dominantDelta === 0) {
+				return;
+			}
+
+			event.preventDefault();
+
+			const pageWidthPx = Math.max(event.currentTarget.clientWidth - sidebarWidth, 1);
+			const normalizedDeltaPx = normalizeWheelDelta(dominantDelta, event.deltaMode, pageWidthPx);
+			const shiftMs = pixelsToValue(normalizedDeltaPx);
+
+			onRangeChange((previous) => {
+				const nextRange = clampVisibleRange(
+					{
+						start: previous.start + shiftMs,
+						end: previous.end + shiftMs,
+					},
+					videoDurationMs,
+				);
+
+				return nextRange.start === previous.start && nextRange.end === previous.end
+					? previous
+					: nextRange;
+			});
+		},
+		[onRangeChange, videoDurationMs, range.end, range.start, sidebarWidth, pixelsToValue],
+	);
+
 	const zoomItems = items.filter((item) => item.rowId === ZOOM_ROW_ID);
 	const trimItems = items.filter((item) => item.rowId === TRIM_ROW_ID);
 	const annotationItems = items.filter((item) => item.rowId === ANNOTATION_ROW_ID);
@@ -591,6 +643,7 @@ function Timeline({
 			style={style}
 			className="select-none bg-[#09090b] min-h-[140px] relative cursor-pointer group"
 			onClick={handleTimelineClick}
+			onWheel={handleTimelineWheel}
 		>
 			<div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px)] bg-[length:20px_100%] pointer-events-none" />
 			<TimelineAxis videoDurationMs={videoDurationMs} currentTimeMs={currentTimeMs} />
@@ -724,17 +777,15 @@ export default function TimelineEditor({
 	const [keyframes, setKeyframes] = useState<{ id: string; time: number }[]>([]);
 	const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
 	const [scrollLabels, setScrollLabels] = useState({
-		pan: "Shift + Ctrl + Scroll",
+		pan: "Scroll",
 		zoom: "Ctrl + Scroll",
 	});
 	const timelineContainerRef = useRef<HTMLDivElement>(null);
 	const { shortcuts: keyShortcuts, isMac } = useShortcuts();
 
 	useEffect(() => {
-		formatShortcut(["shift", "mod", "Scroll"]).then((pan) => {
-			formatShortcut(["mod", "Scroll"]).then((zoom) => {
-				setScrollLabels({ pan, zoom });
-			});
+		formatShortcut(["mod", "Scroll"]).then((zoom) => {
+			setScrollLabels({ pan: "Scroll", zoom });
 		});
 	}, []);
 
