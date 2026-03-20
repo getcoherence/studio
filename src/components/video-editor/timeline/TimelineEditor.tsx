@@ -169,6 +169,21 @@ function createInitialRange(totalMs: number): Range {
 	return { start: 0, end: FALLBACK_RANGE_MS };
 }
 
+function clampVisibleRange(candidate: Range, totalMs: number): Range {
+	if (totalMs <= 0) {
+		return candidate;
+	}
+
+	const span = Math.max(candidate.end - candidate.start, 1);
+
+	if (span >= totalMs) {
+		return { start: 0, end: totalMs };
+	}
+
+	const start = Math.max(0, Math.min(candidate.start, totalMs - span));
+	return { start, end: start + span };
+}
+
 function formatTimeLabel(milliseconds: number, intervalMs: number) {
 	const totalSeconds = milliseconds / 1000;
 	const hours = Math.floor(totalSeconds / 3600);
@@ -204,18 +219,21 @@ function PlaybackCursor({
 	currentTimeMs,
 	videoDurationMs,
 	onSeek,
+	onRangeChange,
 	timelineRef,
 	keyframes = [],
 }: {
 	currentTimeMs: number;
 	videoDurationMs: number;
 	onSeek?: (time: number) => void;
+	onRangeChange?: (updater: (previous: Range) => Range) => void;
 	timelineRef: React.RefObject<HTMLDivElement>;
 	keyframes?: { id: string; time: number }[];
 }) {
 	const { sidebarWidth, direction, range, valueToPixels, pixelsToValue } = useTimelineContext();
 	const sideProperty = direction === "rtl" ? "right" : "left";
 	const [isDragging, setIsDragging] = useState(false);
+	const [dragPreviewTimeMs, setDragPreviewTimeMs] = useState<number | null>(null);
 
 	useEffect(() => {
 		if (!isDragging) return;
@@ -225,6 +243,7 @@ function PlaybackCursor({
 
 			const rect = timelineRef.current.getBoundingClientRect();
 			const clickX = e.clientX - rect.left - sidebarWidth;
+			const contentWidth = Math.max(rect.width - sidebarWidth, 1);
 
 			// Allow dragging outside to 0 or max, but clamp the value
 			const relativeMs = pixelsToValue(clickX);
@@ -243,11 +262,51 @@ function PlaybackCursor({
 				absoluteMs = nearbyKeyframe.time;
 			}
 
+			setDragPreviewTimeMs(absoluteMs);
+
+			const visibleMs = range.end - range.start;
+			if (onRangeChange && visibleMs > 0 && videoDurationMs > visibleMs) {
+				const msPerPixel = visibleMs / contentWidth;
+				const overflowLeftPx = Math.max(0, -clickX);
+				const overflowRightPx = Math.max(0, clickX - contentWidth);
+
+				if (overflowLeftPx > 0 && range.start > 0) {
+					const shiftMs = overflowLeftPx * msPerPixel;
+					onRangeChange((previous) => {
+						const nextRange = clampVisibleRange(
+							{
+								start: previous.start - shiftMs,
+								end: previous.end - shiftMs,
+							},
+							videoDurationMs,
+						);
+						return nextRange.start === previous.start && nextRange.end === previous.end
+							? previous
+							: nextRange;
+					});
+				} else if (overflowRightPx > 0 && range.end < videoDurationMs) {
+					const shiftMs = overflowRightPx * msPerPixel;
+					onRangeChange((previous) => {
+						const nextRange = clampVisibleRange(
+							{
+								start: previous.start + shiftMs,
+								end: previous.end + shiftMs,
+							},
+							videoDurationMs,
+						);
+						return nextRange.start === previous.start && nextRange.end === previous.end
+							? previous
+							: nextRange;
+					});
+				}
+			}
+
 			onSeek(absoluteMs / 1000);
 		};
 
 		const handleMouseUp = () => {
 			setIsDragging(false);
+			setDragPreviewTimeMs(null);
 			document.body.style.cursor = "";
 		};
 
@@ -263,6 +322,7 @@ function PlaybackCursor({
 	}, [
 		isDragging,
 		onSeek,
+		onRangeChange,
 		timelineRef,
 		sidebarWidth,
 		range.start,
@@ -272,11 +332,14 @@ function PlaybackCursor({
 		keyframes,
 	]);
 
-	if (videoDurationMs <= 0 || currentTimeMs < 0) {
+	const displayTimeMs =
+		isDragging && dragPreviewTimeMs !== null ? dragPreviewTimeMs : currentTimeMs;
+
+	if (videoDurationMs <= 0 || displayTimeMs < 0) {
 		return null;
 	}
 
-	const clampedTime = Math.min(currentTimeMs, videoDurationMs);
+	const clampedTime = Math.min(displayTimeMs, videoDurationMs);
 
 	if (clampedTime < range.start || clampedTime > range.end) {
 		return null;
@@ -299,6 +362,7 @@ function PlaybackCursor({
 				}}
 				onMouseDown={(e) => {
 					e.stopPropagation(); // Prevent timeline click
+					setDragPreviewTimeMs(currentTimeMs);
 					setIsDragging(true);
 				}}
 			>
@@ -444,6 +508,7 @@ function Timeline({
 	videoDurationMs,
 	currentTimeMs,
 	onSeek,
+	onRangeChange,
 	onSelectZoom,
 	onSelectTrim,
 	onSelectAnnotation,
@@ -458,6 +523,7 @@ function Timeline({
 	videoDurationMs: number;
 	currentTimeMs: number;
 	onSeek?: (time: number) => void;
+	onRangeChange?: (updater: (previous: Range) => Range) => void;
 	onSelectZoom?: (id: string | null) => void;
 	onSelectTrim?: (id: string | null) => void;
 	onSelectAnnotation?: (id: string | null) => void;
@@ -532,6 +598,7 @@ function Timeline({
 				currentTimeMs={currentTimeMs}
 				videoDurationMs={videoDurationMs}
 				onSeek={onSeek}
+				onRangeChange={onRangeChange}
 				timelineRef={localTimelineRef}
 				keyframes={keyframes}
 			/>
@@ -1351,6 +1418,7 @@ export default function TimelineEditor({
 						videoDurationMs={totalMs}
 						currentTimeMs={currentTimeMs}
 						onSeek={onSeek}
+						onRangeChange={setRange}
 						onSelectZoom={onSelectZoom}
 						onSelectTrim={onSelectTrim}
 						onSelectAnnotation={onSelectAnnotation}
