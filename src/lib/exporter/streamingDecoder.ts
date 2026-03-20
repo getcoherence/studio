@@ -1,6 +1,8 @@
 import { WebDemuxer } from "web-demuxer";
 import type { SpeedRegion, TrimRegion } from "@/components/video-editor/types";
 
+const SOURCE_LOAD_TIMEOUT_MS = 60_000;
+
 export interface DecodedVideoInfo {
 	width: number;
 	height: number;
@@ -85,7 +87,11 @@ export class StreamingVideoDecoder {
 		const isRemoteUrl = /^(https?:|blob:|data:)/i.test(videoUrl);
 
 		if (!isRemoteUrl && window.electronAPI?.readBinaryFile) {
-			const result = await window.electronAPI.readBinaryFile(videoUrl);
+			const result = await this.withTimeout(
+				window.electronAPI.readBinaryFile(videoUrl),
+				SOURCE_LOAD_TIMEOUT_MS,
+				"Timed out while loading the source video.",
+			);
 			if (!result.success || !result.data) {
 				throw new Error(result.message || result.error || "Failed to read source video");
 			}
@@ -98,11 +104,19 @@ export class StreamingVideoDecoder {
 			};
 		}
 
-		const response = await fetch(videoUrl);
+		const response = await this.withTimeout(
+			fetch(videoUrl),
+			SOURCE_LOAD_TIMEOUT_MS,
+			"Timed out while loading the source video.",
+		);
 		if (!response.ok) {
 			throw new Error(`Failed to fetch source video: ${response.status} ${response.statusText}`);
 		}
-		const blob = await response.blob();
+		const blob = await this.withTimeout(
+			response.blob(),
+			SOURCE_LOAD_TIMEOUT_MS,
+			"Timed out while reading the source video.",
+		);
 		const filename = videoUrl.split("/").pop() || "video";
 		return {
 			blob,
@@ -116,9 +130,17 @@ export class StreamingVideoDecoder {
 		// Relative URL so it resolves correctly in both dev (http) and packaged (file://) builds
 		const wasmUrl = new URL("./wasm/web-demuxer.wasm", window.location.href).href;
 		this.demuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
-		await this.demuxer.load(file);
+		await this.withTimeout(
+			this.demuxer.load(file),
+			SOURCE_LOAD_TIMEOUT_MS,
+			"Timed out while parsing the source video.",
+		);
 
-		const mediaInfo = await this.demuxer.getMediaInfo();
+		const mediaInfo = await this.withTimeout(
+			this.demuxer.getMediaInfo(),
+			SOURCE_LOAD_TIMEOUT_MS,
+			"Timed out while reading video metadata.",
+		);
 		const videoStream = mediaInfo.streams.find((s) => s.codec_type_string === "video");
 
 		let frameRate = 60;
@@ -525,5 +547,21 @@ export class StreamingVideoDecoder {
 			}
 			this.demuxer = null;
 		}
+	}
+
+	private withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+		return new Promise<T>((resolve, reject) => {
+			const timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+			promise.then(
+				(value) => {
+					window.clearTimeout(timer);
+					resolve(value);
+				},
+				(error) => {
+					window.clearTimeout(timer);
+					reject(error);
+				},
+			);
+		});
 	}
 }
