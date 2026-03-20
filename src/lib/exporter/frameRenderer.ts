@@ -38,6 +38,12 @@ import {
 	type StyledRenderRect,
 } from "@/lib/compositeLayout";
 import { renderAnnotations } from "./annotationRenderer";
+import {
+	getLinearGradientPoints,
+	getRadialGradientShape,
+	parseCssGradient,
+	resolveLinearGradientAngle,
+} from "./gradientParser";
 
 interface FrameRenderConfig {
 	width: number;
@@ -163,7 +169,9 @@ export class FrameRenderer {
 		this.compositeCanvas = document.createElement("canvas");
 		this.compositeCanvas.width = this.config.width;
 		this.compositeCanvas.height = this.config.height;
-		this.compositeCtx = this.compositeCanvas.getContext("2d", { willReadFrequently: false });
+		this.compositeCtx = this.compositeCanvas.getContext("2d", {
+			willReadFrequently: false,
+		});
 
 		if (!this.compositeCtx) {
 			throw new Error("Failed to get 2D context for composite canvas");
@@ -174,7 +182,9 @@ export class FrameRenderer {
 			this.shadowCanvas = document.createElement("canvas");
 			this.shadowCanvas.width = this.config.width;
 			this.shadowCanvas.height = this.config.height;
-			this.shadowCtx = this.shadowCanvas.getContext("2d", { willReadFrequently: false });
+			this.shadowCtx = this.shadowCanvas.getContext("2d", {
+				willReadFrequently: false,
+			});
 
 			if (!this.shadowCtx) {
 				throw new Error("Failed to get 2D context for shadow canvas");
@@ -255,40 +265,39 @@ export class FrameRenderer {
 				wallpaper.startsWith("linear-gradient") ||
 				wallpaper.startsWith("radial-gradient")
 			) {
-				const gradientMatch = wallpaper.match(/(linear|radial)-gradient\((.+)\)/);
-				if (gradientMatch) {
-					const [, type, params] = gradientMatch;
-					const parts = params.split(",").map((s) => s.trim());
+				const parsedGradient = parseCssGradient(wallpaper);
+				if (parsedGradient) {
+					const gradient =
+						parsedGradient.type === "linear"
+							? (() => {
+									const points = getLinearGradientPoints(
+										resolveLinearGradientAngle(parsedGradient.descriptor),
+										this.config.width,
+										this.config.height,
+									);
 
-					let gradient: CanvasGradient;
+									return bgCtx.createLinearGradient(points.x0, points.y0, points.x1, points.y1);
+								})()
+							: (() => {
+									const shape = getRadialGradientShape(
+										parsedGradient.descriptor,
+										this.config.width,
+										this.config.height,
+									);
 
-					if (type === "linear") {
-						gradient = bgCtx.createLinearGradient(0, 0, 0, this.config.height);
-						parts.forEach((part, index) => {
-							if (part.startsWith("to ") || part.includes("deg")) return;
+									return bgCtx.createRadialGradient(
+										shape.cx,
+										shape.cy,
+										0,
+										shape.cx,
+										shape.cy,
+										shape.radius,
+									);
+								})();
 
-							const colorMatch = part.match(/^(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-z]+)/);
-							if (colorMatch) {
-								const color = colorMatch[1];
-								const position = index / (parts.length - 1);
-								gradient.addColorStop(position, color);
-							}
-						});
-					} else {
-						const cx = this.config.width / 2;
-						const cy = this.config.height / 2;
-						const radius = Math.max(this.config.width, this.config.height) / 2;
-						gradient = bgCtx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-
-						parts.forEach((part, index) => {
-							const colorMatch = part.match(/^(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-z]+)/);
-							if (colorMatch) {
-								const color = colorMatch[1];
-								const position = index / (parts.length - 1);
-								gradient.addColorStop(position, color);
-							}
-						});
-					}
+					parsedGradient.stops.forEach((stop) => {
+						gradient.addColorStop(stop.offset, stop.color);
+					});
 
 					bgCtx.fillStyle = gradient;
 					bgCtx.fillRect(0, 0, this.config.width, this.config.height);
@@ -690,7 +699,11 @@ export class FrameRenderer {
 		}
 		this.backgroundSprite = null;
 		if (this.app) {
-			this.app.destroy(true, { children: true, texture: true, textureSource: true });
+			this.app.destroy(true, {
+				children: true,
+				texture: true,
+				textureSource: true,
+			});
 			this.app = null;
 		}
 		this.cameraContainer = null;
