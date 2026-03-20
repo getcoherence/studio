@@ -410,9 +410,7 @@ export class VideoExporter {
 			error: (error) => {
 				console.error("[VideoExporter] Encoder error:", error);
 				this.fatalEncoderError =
-					error instanceof Error
-						? error
-						: new Error(`Video encoder error: ${String(error)}`);
+					error instanceof Error ? error : new Error(`Video encoder error: ${String(error)}`);
 				this.streamingDecoder?.cancel();
 				this.webcamDecoder?.cancel();
 			},
