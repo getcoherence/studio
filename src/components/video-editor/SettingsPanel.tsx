@@ -25,10 +25,18 @@ import {
 	AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getAssetPath } from "@/lib/assetPath";
+import { WEBCAM_LAYOUT_PRESETS } from "@/lib/compositeLayout";
 import type { ExportFormat, ExportQuality, GifFrameRate, GifSizePreset } from "@/lib/exporter";
 import { GIF_FRAME_RATES, GIF_SIZE_PRESETS } from "@/lib/exporter";
 import { cn } from "@/lib/utils";
@@ -43,6 +51,7 @@ import type {
 	CropRegion,
 	FigureData,
 	PlaybackSpeed,
+	WebcamLayoutPreset,
 	ZoomDepth,
 } from "./types";
 import { SPEED_OPTIONS } from "./types";
@@ -132,6 +141,9 @@ interface SettingsPanelProps {
 	selectedSpeedValue?: PlaybackSpeed | null;
 	onSpeedChange?: (speed: PlaybackSpeed) => void;
 	onSpeedDelete?: (id: string) => void;
+	hasWebcam?: boolean;
+	webcamLayoutPreset?: WebcamLayoutPreset;
+	onWebcamLayoutPresetChange?: (preset: WebcamLayoutPreset) => void;
 }
 
 export default SettingsPanel;
@@ -197,6 +209,9 @@ export function SettingsPanel({
 	selectedSpeedValue,
 	onSpeedChange,
 	onSpeedDelete,
+	hasWebcam = false,
+	webcamLayoutPreset = "picture-in-picture",
+	onWebcamLayoutPresetChange,
 }: SettingsPanelProps) {
 	const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
 	const [customImages, setCustomImages] = useState<string[]>([]);
@@ -567,7 +582,47 @@ export function SettingsPanel({
 					)}
 				</div>
 
-				<Accordion type="multiple" defaultValue={["effects", "background"]} className="space-y-1">
+				<Accordion
+					type="multiple"
+					defaultValue={hasWebcam ? ["layout", "effects", "background"] : ["effects", "background"]}
+					className="space-y-1"
+				>
+					{hasWebcam && (
+						<AccordionItem
+							value="layout"
+							className="border-white/5 rounded-xl bg-white/[0.02] px-3"
+						>
+							<AccordionTrigger className="py-2.5 hover:no-underline">
+								<div className="flex items-center gap-2">
+									<Sparkles className="w-4 h-4 text-[#34B27B]" />
+									<span className="text-xs font-medium">Layout</span>
+								</div>
+							</AccordionTrigger>
+							<AccordionContent className="pb-3">
+								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+									<div className="text-[10px] font-medium text-slate-300 mb-1.5">Preset</div>
+									<Select
+										value={webcamLayoutPreset}
+										onValueChange={(value: WebcamLayoutPreset) =>
+											onWebcamLayoutPresetChange?.(value)
+										}
+									>
+										<SelectTrigger className="h-8 bg-black/20 border-white/10 text-xs">
+											<SelectValue placeholder="Select preset" />
+										</SelectTrigger>
+										<SelectContent>
+											{WEBCAM_LAYOUT_PRESETS.map((preset) => (
+												<SelectItem key={preset.value} value={preset.value} className="text-xs">
+													{preset.label}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							</AccordionContent>
+						</AccordionItem>
+					)}
+
 					<AccordionItem value="effects" className="border-white/5 rounded-xl bg-white/[0.02] px-3">
 						<AccordionTrigger className="py-2.5 hover:no-underline">
 							<div className="flex items-center gap-2">

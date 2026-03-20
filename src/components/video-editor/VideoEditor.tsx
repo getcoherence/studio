@@ -2,7 +2,6 @@ import type { Span } from "dnd-timeline";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import { INITIAL_EDITOR_STATE, useEditorHistory } from "@/hooks/useEditorHistory";
 import {
@@ -76,6 +75,7 @@ export default function VideoEditor() {
 		borderRadius,
 		padding,
 		aspectRatio,
+		webcamLayoutPreset,
 	} = editorState;
 
 	// ── Non-undoable state
@@ -173,6 +173,7 @@ export default function VideoEditor() {
 				speedRegions: normalizedEditor.speedRegions,
 				annotationRegions: normalizedEditor.annotationRegions,
 				aspectRatio: normalizedEditor.aspectRatio,
+				webcamLayoutPreset: normalizedEditor.webcamLayoutPreset,
 			});
 			setExportQuality(normalizedEditor.exportQuality);
 			setExportFormat(normalizedEditor.exportFormat);
@@ -240,6 +241,7 @@ export default function VideoEditor() {
 				speedRegions,
 				annotationRegions,
 				aspectRatio,
+				webcamLayoutPreset,
 				exportQuality,
 				exportFormat,
 				gifFrameRate,
@@ -261,6 +263,7 @@ export default function VideoEditor() {
 		speedRegions,
 		annotationRegions,
 		aspectRatio,
+		webcamLayoutPreset,
 		exportQuality,
 		exportFormat,
 		gifFrameRate,
@@ -352,6 +355,7 @@ export default function VideoEditor() {
 				speedRegions,
 				annotationRegions,
 				aspectRatio,
+				webcamLayoutPreset,
 				exportQuality,
 				exportFormat,
 				gifFrameRate,
@@ -404,6 +408,7 @@ export default function VideoEditor() {
 			speedRegions,
 			annotationRegions,
 			aspectRatio,
+			webcamLayoutPreset,
 			exportQuality,
 			exportFormat,
 			gifFrameRate,
@@ -1021,6 +1026,7 @@ export default function VideoEditor() {
 						videoPadding: padding,
 						cropRegion,
 						annotationRegions,
+						webcamLayoutPreset,
 						previewWidth,
 						previewHeight,
 						onProgress: (progress: ExportProgress) => {
@@ -1148,6 +1154,7 @@ export default function VideoEditor() {
 						padding,
 						cropRegion,
 						annotationRegions,
+						webcamLayoutPreset,
 						previewWidth,
 						previewHeight,
 						onProgress: (progress: ExportProgress) => {
@@ -1212,6 +1219,7 @@ export default function VideoEditor() {
 			annotationRegions,
 			isPlaying,
 			aspectRatio,
+			webcamLayoutPreset,
 			exportQuality,
 			handleExportSaved,
 		],
@@ -1351,6 +1359,7 @@ export default function VideoEditor() {
 												ref={videoPlaybackRef}
 												videoPath={videoPath || ""}
 												webcamVideoPath={webcamVideoPath || undefined}
+												webcamLayoutPreset={webcamLayoutPreset}
 												onDurationChange={setDuration}
 												onTimeUpdate={setCurrentTime}
 												currentTime={currentTime}
@@ -1474,6 +1483,9 @@ export default function VideoEditor() {
 							cropRegion={cropRegion}
 							onCropChange={(r) => pushState({ cropRegion: r })}
 							aspectRatio={aspectRatio}
+							hasWebcam={Boolean(webcamVideoPath)}
+							webcamLayoutPreset={webcamLayoutPreset}
+							onWebcamLayoutPresetChange={(preset) => pushState({ webcamLayoutPreset: preset })}
 							videoElement={videoPlaybackRef.current?.video || null}
 							exportQuality={exportQuality}
 							onExportQualityChange={setExportQuality}
@@ -1520,8 +1532,6 @@ export default function VideoEditor() {
 					</Panel>
 				</PanelGroup>
 			</div>
-
-			<Toaster theme="dark" className="pointer-events-auto" />
 
 			<ExportDialog
 				isOpen={showExportDialog}

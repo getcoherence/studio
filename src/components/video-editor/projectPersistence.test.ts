@@ -39,6 +39,7 @@ describe("projectPersistence media compatibility", () => {
 				speedRegions: [],
 				annotationRegions: [],
 				aspectRatio: "16:9",
+				webcamLayoutPreset: "picture-in-picture",
 				exportQuality: "good",
 				exportFormat: "mp4",
 				gifFrameRate: 15,

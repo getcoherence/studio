@@ -11,9 +11,11 @@ import {
 	DEFAULT_CROP_REGION,
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
+	DEFAULT_WEBCAM_LAYOUT_PRESET,
 	DEFAULT_ZOOM_DEPTH,
 	type SpeedRegion,
 	type TrimRegion,
+	type WebcamLayoutPreset,
 	type ZoomRegion,
 } from "./types";
 
@@ -39,6 +41,7 @@ export interface ProjectEditorState {
 	speedRegions: SpeedRegion[];
 	annotationRegions: AnnotationRegion[];
 	aspectRatio: AspectRatio;
+	webcamLayoutPreset: WebcamLayoutPreset;
 	exportQuality: ExportQuality;
 	exportFormat: ExportFormat;
 	gifFrameRate: GifFrameRate;
@@ -341,6 +344,11 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		annotationRegions: normalizedAnnotationRegions,
 		aspectRatio:
 			editor.aspectRatio && validAspectRatios.has(editor.aspectRatio) ? editor.aspectRatio : "16:9",
+		webcamLayoutPreset:
+			editor.webcamLayoutPreset === "vertical-stack" ||
+			editor.webcamLayoutPreset === "picture-in-picture"
+				? editor.webcamLayoutPreset
+				: DEFAULT_WEBCAM_LAYOUT_PRESET,
 		exportQuality:
 			editor.exportQuality === "medium" || editor.exportQuality === "source"
 				? editor.exportQuality

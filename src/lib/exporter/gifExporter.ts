@@ -4,6 +4,7 @@ import type {
 	CropRegion,
 	SpeedRegion,
 	TrimRegion,
+	WebcamLayoutPreset,
 	ZoomRegion,
 } from "@/components/video-editor/types";
 import { AsyncVideoFrameQueue } from "./asyncVideoFrameQueue";
@@ -39,6 +40,7 @@ interface GifExporterConfig {
 	padding?: number;
 	videoPadding?: number;
 	cropRegion: CropRegion;
+	webcamLayoutPreset?: WebcamLayoutPreset;
 	annotationRegions?: AnnotationRegion[];
 	previewWidth?: number;
 	previewHeight?: number;
@@ -136,8 +138,8 @@ export class GifExporter {
 				cropRegion: this.config.cropRegion,
 				videoWidth: videoInfo.width,
 				videoHeight: videoInfo.height,
-				webcamWidth: webcamInfo?.width,
-				webcamHeight: webcamInfo?.height,
+				webcamSize: webcamInfo ? { width: webcamInfo.width, height: webcamInfo.height } : null,
+				webcamLayoutPreset: this.config.webcamLayoutPreset,
 				annotationRegions: this.config.annotationRegions,
 				speedRegions: this.config.speedRegions,
 				previewWidth: this.config.previewWidth,
