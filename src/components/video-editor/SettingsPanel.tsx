@@ -39,7 +39,7 @@ import { WEBCAM_LAYOUT_PRESETS } from "@/lib/compositeLayout";
 import type { ExportFormat, ExportQuality, GifFrameRate, GifSizePreset } from "@/lib/exporter";
 import { GIF_FRAME_RATES, GIF_SIZE_PRESETS } from "@/lib/exporter";
 import { cn } from "@/lib/utils";
-import { type AspectRatio } from "@/utils/aspectRatioUtils";
+import { type AspectRatio, isPortraitAspectRatio } from "@/utils/aspectRatioUtils";
 import { getTestId } from "@/utils/getTestId";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import { CropControl } from "./CropControl";
@@ -609,7 +609,11 @@ export function SettingsPanel({
 											<SelectValue placeholder={t("layout.selectPreset")} />
 										</SelectTrigger>
 										<SelectContent>
-											{WEBCAM_LAYOUT_PRESETS.map((preset) => (
+											{WEBCAM_LAYOUT_PRESETS.filter(
+												(preset) =>
+													preset.value === "picture-in-picture" ||
+													isPortraitAspectRatio(aspectRatio),
+											).map((preset) => (
 												<SelectItem key={preset.value} value={preset.value} className="text-xs">
 													{preset.value === "picture-in-picture"
 														? t("layout.pictureInPicture")
@@ -700,20 +704,25 @@ export function SettingsPanel({
 										className="w-full [&_[role=slider]]:bg-[#34B27B] [&_[role=slider]]:border-[#34B27B] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
 									/>
 								</div>
-								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+								<div
+									className={`p-2 rounded-lg bg-white/5 border border-white/5 ${webcamLayoutPreset === "vertical-stack" ? "opacity-40 pointer-events-none" : ""}`}
+								>
 									<div className="flex items-center justify-between mb-1">
 										<div className="text-[10px] font-medium text-slate-300">
 											{t("effects.padding")}
 										</div>
-										<span className="text-[10px] text-slate-500 font-mono">{padding}%</span>
+										<span className="text-[10px] text-slate-500 font-mono">
+											{webcamLayoutPreset === "vertical-stack" ? "—" : `${padding}%`}
+										</span>
 									</div>
 									<Slider
-										value={[padding]}
+										value={[webcamLayoutPreset === "vertical-stack" ? 0 : padding]}
 										onValueChange={(values) => onPaddingChange?.(values[0])}
 										onValueCommit={() => onPaddingCommit?.()}
 										min={0}
 										max={100}
 										step={1}
+										disabled={webcamLayoutPreset === "vertical-stack"}
 										className="w-full [&_[role=slider]]:bg-[#34B27B] [&_[role=slider]]:border-[#34B27B] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
 									/>
 								</div>

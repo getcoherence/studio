@@ -22,7 +22,11 @@ import {
 } from "@/lib/exporter";
 import type { ProjectMedia } from "@/lib/recordingSession";
 import { matchesShortcut } from "@/lib/shortcuts";
-import { getAspectRatioValue, getNativeAspectRatioValue } from "@/utils/aspectRatioUtils";
+import {
+	getAspectRatioValue,
+	getNativeAspectRatioValue,
+	isPortraitAspectRatio,
+} from "@/utils/aspectRatioUtils";
 import { ExportDialog } from "./ExportDialog";
 import PlaybackControls from "./PlaybackControls";
 import {
@@ -1529,7 +1533,15 @@ export default function VideoEditor() {
 									selectedAnnotationId={selectedAnnotationId}
 									onSelectAnnotation={handleSelectAnnotation}
 									aspectRatio={aspectRatio}
-									onAspectRatioChange={(ar) => pushState({ aspectRatio: ar })}
+									onAspectRatioChange={(ar) =>
+										pushState({
+											aspectRatio: ar,
+											webcamLayoutPreset:
+												!isPortraitAspectRatio(ar) && webcamLayoutPreset === "vertical-stack"
+													? "picture-in-picture"
+													: webcamLayoutPreset,
+										})
+									}
 								/>
 							</div>
 						</Panel>

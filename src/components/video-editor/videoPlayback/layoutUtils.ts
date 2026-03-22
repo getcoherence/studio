@@ -81,7 +81,9 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 
 	// Calculate scale to fit the cropped area in the viewport
 	// Padding is a percentage (0-100), where 50 matches the original VIEWPORT_SCALE of 0.8
-	const paddingScale = 1.0 - (padding / 100) * 0.4;
+	// Vertical stack ignores padding — it's full-bleed
+	const effectivePadding = webcamLayoutPreset === "vertical-stack" ? 0 : padding;
+	const paddingScale = 1.0 - (effectivePadding / 100) * 0.4;
 	const maxDisplayWidth = width * paddingScale;
 	const maxDisplayHeight = height * paddingScale;
 
@@ -98,7 +100,15 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 		return null;
 	}
 
-	const scale = compositeLayout.screenRect.width / croppedVideoWidth;
+	const screenRect = compositeLayout.screenRect;
+
+	// Cover mode: scale to fill the rect (may crop), otherwise fit-to-width
+	let scale: number;
+	if (compositeLayout.screenCover) {
+		scale = Math.max(screenRect.width / croppedVideoWidth, screenRect.height / croppedVideoHeight);
+	} else {
+		scale = screenRect.width / croppedVideoWidth;
+	}
 
 	videoSprite.scale.set(scale);
 
@@ -106,25 +116,24 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 	const fullVideoDisplayWidth = videoWidth * scale;
 	const fullVideoDisplayHeight = videoHeight * scale;
 
-	// Calculate display size of just the cropped region
-	// Position the full video sprite so that when we apply the mask,
-	// the cropped region appears centered
-	// The crop starts at (crop.x * videoWidth, crop.y * videoHeight) in video coordinates
-	// In display coordinates, that's (crop.x * fullVideoDisplayWidth, crop.y * fullVideoDisplayHeight)
-	// We want that point to be at screenRect.x, screenRect.y
-	const spriteX = compositeLayout.screenRect.x - crop.x * fullVideoDisplayWidth;
-	const spriteY = compositeLayout.screenRect.y - crop.y * fullVideoDisplayHeight;
+	// Position the video so the cropped region is centered within the screenRect
+	const croppedDisplayWidth = croppedVideoWidth * scale;
+	const croppedDisplayHeight = croppedVideoHeight * scale;
+	const offsetX = screenRect.x + (screenRect.width - croppedDisplayWidth) / 2;
+	const offsetY = screenRect.y + (screenRect.height - croppedDisplayHeight) / 2;
+	const spriteX = offsetX - crop.x * fullVideoDisplayWidth;
+	const spriteY = offsetY - crop.y * fullVideoDisplayHeight;
 
 	videoSprite.position.set(spriteX, spriteY);
 
-	// Apply border radius
+	// Apply border radius — mask clips the video to the screenRect
 	maskGraphics.clear();
 	maskGraphics.roundRect(
-		compositeLayout.screenRect.x,
-		compositeLayout.screenRect.y,
-		compositeLayout.screenRect.width,
-		compositeLayout.screenRect.height,
-		borderRadius,
+		screenRect.x,
+		screenRect.y,
+		screenRect.width,
+		screenRect.height,
+		compositeLayout.screenCover ? 0 : borderRadius,
 	);
 	maskGraphics.fill({ color: 0xffffff });
 

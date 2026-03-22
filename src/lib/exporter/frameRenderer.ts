@@ -429,7 +429,9 @@ export class FrameRenderer {
 
 		// Calculate scale to fit in viewport
 		// Padding is a percentage (0-100), where 50% ~ 0.8 scale
-		const paddingScale = 1.0 - (padding / 100) * 0.4;
+		// Vertical stack ignores padding — it's full-bleed
+		const effectivePadding = this.config.webcamLayoutPreset === "vertical-stack" ? 0 : padding;
+		const paddingScale = 1.0 - (effectivePadding / 100) * 0.4;
 		const viewportWidth = width * paddingScale;
 		const viewportHeight = height * paddingScale;
 		const compositeLayout = computeCompositeLayout({
@@ -442,37 +444,46 @@ export class FrameRenderer {
 		});
 		if (!compositeLayout) return;
 
-		const scale = compositeLayout.screenRect.width / croppedVideoWidth;
+		const screenRect = compositeLayout.screenRect;
+
+		// Cover mode: scale to fill the rect (may crop), otherwise fit-to-width
+		let scale: number;
+		if (compositeLayout.screenCover) {
+			scale = Math.max(
+				screenRect.width / croppedVideoWidth,
+				screenRect.height / croppedVideoHeight,
+			);
+		} else {
+			scale = screenRect.width / croppedVideoWidth;
+		}
 
 		// Position video sprite
 		this.videoSprite.width = videoWidth * scale;
 		this.videoSprite.height = videoHeight * scale;
 
+		// Center the cropped region within the screenRect
+		const croppedDisplayWidth = croppedVideoWidth * scale;
+		const croppedDisplayHeight = croppedVideoHeight * scale;
+		const coverOffsetX = (screenRect.width - croppedDisplayWidth) / 2;
+		const coverOffsetY = (screenRect.height - croppedDisplayHeight) / 2;
+
 		const cropPixelX = cropStartX * videoWidth * scale;
 		const cropPixelY = cropStartY * videoHeight * scale;
-		this.videoSprite.x = -cropPixelX;
-		this.videoSprite.y = -cropPixelY;
+		this.videoSprite.x = -cropPixelX + coverOffsetX;
+		this.videoSprite.y = -cropPixelY + coverOffsetY;
 
 		// Position video container
-		const croppedDisplayWidth = compositeLayout.screenRect.width;
-		const croppedDisplayHeight = compositeLayout.screenRect.height;
-		this.videoContainer.x = compositeLayout.screenRect.x;
-		this.videoContainer.y = compositeLayout.screenRect.y;
+		this.videoContainer.x = screenRect.x;
+		this.videoContainer.y = screenRect.y;
 
 		// scale border radius by export/preview canvas ratio
 		const previewWidth = this.config.previewWidth || 1920;
 		const previewHeight = this.config.previewHeight || 1080;
 		const canvasScaleFactor = Math.min(width / previewWidth, height / previewHeight);
-		const scaledBorderRadius = borderRadius * canvasScaleFactor;
+		const scaledBorderRadius = compositeLayout.screenCover ? 0 : borderRadius * canvasScaleFactor;
 
 		this.maskGraphics.clear();
-		this.maskGraphics.roundRect(
-			0,
-			0,
-			croppedDisplayWidth,
-			croppedDisplayHeight,
-			scaledBorderRadius,
-		);
+		this.maskGraphics.roundRect(0, 0, screenRect.width, screenRect.height, scaledBorderRadius);
 		this.maskGraphics.fill({ color: 0xffffff });
 
 		// Cache layout info

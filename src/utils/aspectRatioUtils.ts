@@ -67,6 +67,10 @@ export function getAspectRatioLabel(aspectRatio: AspectRatio): string {
 	return aspectRatio;
 }
 
+export function isPortraitAspectRatio(aspectRatio: AspectRatio): boolean {
+	return getAspectRatioValue(aspectRatio) < 1;
+}
+
 export function formatAspectRatioForCSS(aspectRatio: AspectRatio, nativeRatio?: number): string {
 	if (aspectRatio === "native") return String(nativeRatio ?? 16 / 9);
 	return aspectRatio.replace(":", "/");
