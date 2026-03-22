@@ -1,4 +1,4 @@
-import { Pause, Play } from "lucide-react";
+import { Maximize, Minimize, Pause, Play } from "lucide-react";
 import { useScopedT } from "@/contexts/I18nContext";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
@@ -7,6 +7,8 @@ interface PlaybackControlsProps {
 	isPlaying: boolean;
 	currentTime: number;
 	duration: number;
+	isFullscreen?: boolean;
+	onToggleFullscreen?: () => void;
 	onTogglePlayPause: () => void;
 	onSeek: (time: number) => void;
 }
@@ -15,6 +17,8 @@ export default function PlaybackControls({
 	isPlaying,
 	currentTime,
 	duration,
+	isFullscreen = false,
+	onToggleFullscreen,
 	onTogglePlayPause,
 	onSeek,
 }: PlaybackControlsProps) {
@@ -87,6 +91,21 @@ export default function PlaybackControls({
 			<span className="text-[9px] font-medium text-slate-500 tabular-nums w-[30px]">
 				{formatTime(duration)}
 			</span>
+
+			{onToggleFullscreen && (
+				<Button
+					onClick={onToggleFullscreen}
+					size="icon"
+					className="w-7 h-7 rounded-full transition-all duration-200 border border-transparent hover:bg-white/10 text-white hover:border-white/10 shrink-0 shadow-none ml-0.5"
+					aria-label={isFullscreen ? t("playback.exitFullscreen") : t("playback.fullscreen")}
+				>
+					{isFullscreen ? (
+						<Minimize className="w-3.5 h-3.5 fill-current" />
+					) : (
+						<Maximize className="w-3.5 h-3.5 fill-current" />
+					)}
+				</Button>
+			)}
 		</div>
 	);
 }
