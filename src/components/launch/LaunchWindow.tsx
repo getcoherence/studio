@@ -19,6 +19,7 @@ import { RxDragHandleDots2 } from "react-icons/rx";
 import { useI18n, useScopedT } from "@/contexts/I18nContext";
 import { type Locale, SUPPORTED_LOCALES } from "@/i18n/config";
 import { getLocaleName } from "@/i18n/loader";
+import { isMac as getIsMac } from "@/utils/platformUtils";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
 import { useScreenRecorder } from "../../hooks/useScreenRecorder";
@@ -67,6 +68,11 @@ const windowBtnClasses =
 export function LaunchWindow() {
 	const t = useScopedT("launch");
 	const { locale, setLocale } = useI18n();
+	const [isMac, setIsMac] = useState(false);
+
+	useEffect(() => {
+		getIsMac().then(setIsMac);
+	}, []);
 
 	const {
 		recording,
@@ -196,7 +202,7 @@ export function LaunchWindow() {
 		<div className="w-full h-full flex items-end justify-center bg-transparent relative">
 			{/* Language switcher — top-left, beside traffic lights */}
 			<div
-				className={`absolute top-2 left-[72px] flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 ${styles.electronNoDrag}`}
+				className={`absolute top-2 flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 ${isMac ? "left-[72px]" : "left-2"} ${styles.electronNoDrag}`}
 			>
 				<Languages size={14} />
 				<select

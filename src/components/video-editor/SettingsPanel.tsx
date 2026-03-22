@@ -4,11 +4,9 @@ import {
 	Crop,
 	Download,
 	Film,
-	FolderOpen,
 	Image,
 	Lock,
 	Palette,
-	Save,
 	Sparkles,
 	Star,
 	Trash2,
@@ -128,8 +126,6 @@ interface SettingsPanelProps {
 	gifSizePreset?: GifSizePreset;
 	onGifSizePresetChange?: (preset: GifSizePreset) => void;
 	gifOutputDimensions?: { width: number; height: number };
-	onSaveProject?: () => void;
-	onLoadProject?: () => void;
 	onExport?: () => void;
 	unsavedExport?: { arrayBuffer: ArrayBuffer; fileName: string; format: string } | null;
 	onSaveUnsavedExport?: () => void;
@@ -198,8 +194,6 @@ export function SettingsPanel({
 	gifSizePreset = "medium",
 	onGifSizePresetChange,
 	gifOutputDimensions = { width: 1280, height: 720 },
-	onSaveProject,
-	onLoadProject,
 	onExport,
 	unsavedExport,
 	onSaveUnsavedExport,
@@ -1144,27 +1138,6 @@ export function SettingsPanel({
 						</div>
 					</div>
 				)}
-
-				<div className="grid grid-cols-2 gap-2 mb-2">
-					<Button
-						type="button"
-						variant="outline"
-						onClick={onLoadProject}
-						className="h-8 text-[10px] font-medium gap-1.5 bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
-					>
-						<FolderOpen className="w-3.5 h-3.5" />
-						{t("project.load")}
-					</Button>
-					<Button
-						type="button"
-						variant="outline"
-						onClick={onSaveProject}
-						className="h-8 text-[10px] font-medium gap-1.5 bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
-					>
-						<Save className="w-3.5 h-3.5" />
-						{t("project.save")}
-					</Button>
-				</div>
 
 				{unsavedExport && (
 					<Button
