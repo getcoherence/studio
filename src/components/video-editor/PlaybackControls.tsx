@@ -100,9 +100,9 @@ export default function PlaybackControls({
 					aria-label={isFullscreen ? t("playback.exitFullscreen") : t("playback.fullscreen")}
 				>
 					{isFullscreen ? (
-						<Minimize className="w-3.5 h-3.5 fill-current" />
+						<Minimize className="w-3.5 h-3.5" />
 					) : (
-						<Maximize className="w-3.5 h-3.5 fill-current" />
+						<Maximize className="w-3.5 h-3.5" />
 					)}
 				</Button>
 			)}

@@ -18,7 +18,9 @@
 	},
 	"playback": {
 		"play": "Play",
-		"pause": "Pause"
+		"pause": "Pause",
+		"fullscreen": "Fullscreen",
+		"exitFullscreen": "Exit Fullscreen"
 	},
 	"locale": {
 		"name": "English",

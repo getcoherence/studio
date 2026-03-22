@@ -18,7 +18,9 @@
 	},
 	"playback": {
 		"play": "播放",
-		"pause": "暂停"
+		"pause": "暂停",
+		"fullscreen": "全屏",
+		"exitFullscreen": "退出全屏"
 	},
 	"locale": {
 		"name": "中文",
