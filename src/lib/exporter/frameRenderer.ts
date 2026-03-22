@@ -61,6 +61,7 @@ interface FrameRenderConfig {
 	videoHeight: number;
 	webcamSize?: Size | null;
 	webcamLayoutPreset?: WebcamLayoutPreset;
+	webcamPosition?: { cx: number; cy: number } | null;
 	annotationRegions?: AnnotationRegion[];
 	speedRegions?: SpeedRegion[];
 	previewWidth?: number;
@@ -437,6 +438,7 @@ export class FrameRenderer {
 			screenSize: { width: croppedVideoWidth, height: croppedVideoHeight },
 			webcamSize: webcamFrame ? this.config.webcamSize : null,
 			layoutPreset: this.config.webcamLayoutPreset,
+			webcamPosition: this.config.webcamPosition,
 		});
 		if (!compositeLayout) return;
 

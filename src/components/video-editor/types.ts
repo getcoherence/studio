@@ -5,6 +5,13 @@ export type { WebcamLayoutPreset };
 
 export const DEFAULT_WEBCAM_LAYOUT_PRESET: WebcamLayoutPreset = "picture-in-picture";
 
+export interface WebcamPosition {
+	cx: number; // normalized horizontal center (0-1)
+	cy: number; // normalized vertical center (0-1)
+}
+
+export const DEFAULT_WEBCAM_POSITION: WebcamPosition | null = null;
+
 export interface ZoomFocus {
 	cx: number; // normalized horizontal center (0-1)
 	cy: number; // normalized vertical center (0-1)

@@ -123,6 +123,7 @@ export function computeCompositeLayout(params: {
 	screenSize: Size;
 	webcamSize?: Size | null;
 	layoutPreset?: WebcamLayoutPreset;
+	webcamPosition?: { cx: number; cy: number } | null;
 }): WebcamCompositeLayout | null {
 	const {
 		canvasSize,
@@ -130,6 +131,7 @@ export function computeCompositeLayout(params: {
 		screenSize,
 		webcamSize,
 		layoutPreset = "picture-in-picture",
+		webcamPosition,
 	} = params;
 	const { width: canvasWidth, height: canvasHeight } = canvasSize;
 	const { width: maxContentWidth, height: maxContentHeight } = maxContentSize;
@@ -214,11 +216,27 @@ export function computeCompositeLayout(params: {
 	const width = Math.round(webcamWidth * scale);
 	const height = Math.round(webcamHeight * scale);
 
+	let webcamX: number;
+	let webcamY: number;
+
+	if (webcamPosition) {
+		// Custom position: cx/cy represent the center of the webcam as a fraction of the canvas
+		webcamX = Math.round(webcamPosition.cx * canvasWidth - width / 2);
+		webcamY = Math.round(webcamPosition.cy * canvasHeight - height / 2);
+		// Clamp to stay within canvas bounds
+		webcamX = Math.max(0, Math.min(canvasWidth - width, webcamX));
+		webcamY = Math.max(0, Math.min(canvasHeight - height, webcamY));
+	} else {
+		// Default: bottom-right with margin
+		webcamX = Math.max(0, Math.round(canvasWidth - margin - width));
+		webcamY = Math.max(0, Math.round(canvasHeight - margin - height));
+	}
+
 	return {
 		screenRect,
 		webcamRect: {
-			x: Math.max(0, Math.round(canvasWidth - margin - width)),
-			y: Math.max(0, Math.round(canvasHeight - margin - height)),
+			x: webcamX,
+			y: webcamY,
 			width,
 			height,
 			borderRadius: Math.min(

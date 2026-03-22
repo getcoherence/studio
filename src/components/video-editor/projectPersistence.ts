@@ -12,10 +12,12 @@ import {
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
 	DEFAULT_WEBCAM_LAYOUT_PRESET,
+	DEFAULT_WEBCAM_POSITION,
 	DEFAULT_ZOOM_DEPTH,
 	type SpeedRegion,
 	type TrimRegion,
 	type WebcamLayoutPreset,
+	type WebcamPosition,
 	type ZoomRegion,
 } from "./types";
 
@@ -42,6 +44,7 @@ export interface ProjectEditorState {
 	annotationRegions: AnnotationRegion[];
 	aspectRatio: AspectRatio;
 	webcamLayoutPreset: WebcamLayoutPreset;
+	webcamPosition: WebcamPosition | null;
 	exportQuality: ExportQuality;
 	exportFormat: ExportFormat;
 	gifFrameRate: GifFrameRate;
@@ -349,6 +352,16 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			editor.webcamLayoutPreset === "picture-in-picture"
 				? editor.webcamLayoutPreset
 				: DEFAULT_WEBCAM_LAYOUT_PRESET,
+		webcamPosition:
+			editor.webcamPosition &&
+			typeof editor.webcamPosition === "object" &&
+			isFiniteNumber((editor.webcamPosition as WebcamPosition).cx) &&
+			isFiniteNumber((editor.webcamPosition as WebcamPosition).cy)
+				? {
+						cx: clamp((editor.webcamPosition as WebcamPosition).cx, 0, 1),
+						cy: clamp((editor.webcamPosition as WebcamPosition).cy, 0, 1),
+					}
+				: DEFAULT_WEBCAM_POSITION,
 		exportQuality:
 			editor.exportQuality === "medium" || editor.exportQuality === "source"
 				? editor.exportQuality

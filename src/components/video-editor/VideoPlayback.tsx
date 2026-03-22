@@ -63,6 +63,9 @@ interface VideoPlaybackProps {
 	videoPath: string;
 	webcamVideoPath?: string;
 	webcamLayoutPreset: WebcamLayoutPreset;
+	webcamPosition?: { cx: number; cy: number } | null;
+	onWebcamPositionChange?: (position: { cx: number; cy: number }) => void;
+	onWebcamPositionDragEnd?: () => void;
 	onDurationChange: (duration: number) => void;
 	onTimeUpdate: (time: number) => void;
 	currentTime: number;
@@ -108,6 +111,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			videoPath,
 			webcamVideoPath,
 			webcamLayoutPreset,
+			webcamPosition,
+			onWebcamPositionChange,
+			onWebcamPositionDragEnd,
 			onDurationChange,
 			onTimeUpdate,
 			currentTime,
@@ -167,6 +173,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const blurFilterRef = useRef<BlurFilter | null>(null);
 		const motionBlurFilterRef = useRef<MotionBlurFilter | null>(null);
 		const isDraggingFocusRef = useRef(false);
+		const isDraggingWebcamRef = useRef(false);
+		const webcamDragOffsetRef = useRef({ dx: 0, dy: 0 });
 		const stageSizeRef = useRef({ width: 0, height: 0 });
 		const videoSizeRef = useRef({ width: 0, height: 0 });
 		const baseScaleRef = useRef(1);
@@ -263,6 +271,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				padding,
 				webcamDimensions,
 				webcamLayoutPreset,
+				webcamPosition,
 			});
 
 			if (result) {
@@ -292,6 +301,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			padding,
 			webcamDimensions,
 			webcamLayoutPreset,
+			webcamPosition,
 		]);
 
 		useEffect(() => {
@@ -399,6 +409,53 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 
 		const handleOverlayPointerLeave = (event: React.PointerEvent<HTMLDivElement>) => {
 			endFocusDrag(event);
+		};
+
+		// ── Webcam PiP drag handlers ──
+
+		const handleWebcamPointerDown = (event: React.PointerEvent<HTMLVideoElement>) => {
+			if (isPlayingRef.current) return;
+			if (webcamLayoutPreset !== "picture-in-picture") return;
+			event.preventDefault();
+			event.stopPropagation();
+			isDraggingWebcamRef.current = true;
+			event.currentTarget.setPointerCapture(event.pointerId);
+
+			const webcamEl = event.currentTarget;
+			const webcamRect = webcamEl.getBoundingClientRect();
+			webcamDragOffsetRef.current = {
+				dx: event.clientX - (webcamRect.left + webcamRect.width / 2),
+				dy: event.clientY - (webcamRect.top + webcamRect.height / 2),
+			};
+		};
+
+		const handleWebcamPointerMove = (event: React.PointerEvent<HTMLVideoElement>) => {
+			if (!isDraggingWebcamRef.current) return;
+			event.preventDefault();
+			event.stopPropagation();
+
+			const containerEl = containerRef.current;
+			if (!containerEl || !onWebcamPositionChange) return;
+
+			const containerRect = containerEl.getBoundingClientRect();
+			const cx = clamp01(
+				(event.clientX - webcamDragOffsetRef.current.dx - containerRect.left) / containerRect.width,
+			);
+			const cy = clamp01(
+				(event.clientY - webcamDragOffsetRef.current.dy - containerRect.top) / containerRect.height,
+			);
+			onWebcamPositionChange({ cx, cy });
+		};
+
+		const handleWebcamPointerUp = (event: React.PointerEvent<HTMLVideoElement>) => {
+			if (!isDraggingWebcamRef.current) return;
+			isDraggingWebcamRef.current = false;
+			try {
+				event.currentTarget.releasePointerCapture(event.pointerId);
+			} catch {
+				// Pointer may already be released.
+			}
+			onWebcamPositionDragEnd?.();
 		};
 
 		useEffect(() => {
@@ -1101,7 +1158,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					<video
 						ref={webcamVideoRef}
 						src={webcamVideoPath}
-						className="absolute object-cover pointer-events-none"
+						className={`absolute object-cover ${webcamLayoutPreset === "picture-in-picture" ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"}`}
 						style={{
 							left: webcamLayout?.x ?? 0,
 							top: webcamLayout?.y ?? 0,
@@ -1113,6 +1170,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 							opacity: webcamLayout ? 1 : 0,
 							backgroundColor: "#000",
 						}}
+						onPointerDown={handleWebcamPointerDown}
+						onPointerMove={handleWebcamPointerMove}
+						onPointerUp={handleWebcamPointerUp}
+						onPointerLeave={handleWebcamPointerUp}
 						muted
 						preload="metadata"
 						playsInline

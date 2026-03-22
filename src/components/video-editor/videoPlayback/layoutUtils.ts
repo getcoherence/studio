@@ -20,6 +20,7 @@ interface LayoutParams {
 	padding?: number;
 	webcamDimensions?: Size | null;
 	webcamLayoutPreset?: WebcamLayoutPreset;
+	webcamPosition?: { cx: number; cy: number } | null;
 }
 
 interface LayoutResult {
@@ -45,6 +46,7 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 		padding = 0,
 		webcamDimensions,
 		webcamLayoutPreset,
+		webcamPosition,
 	} = params;
 
 	const videoWidth = lockedVideoDimensions?.width || videoElement.videoWidth;
@@ -89,6 +91,7 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 		screenSize: { width: croppedVideoWidth, height: croppedVideoHeight },
 		webcamSize: webcamDimensions,
 		layoutPreset: webcamLayoutPreset,
+		webcamPosition,
 	});
 
 	if (!compositeLayout) {
