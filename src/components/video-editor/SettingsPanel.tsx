@@ -130,6 +130,8 @@ interface SettingsPanelProps {
 	onSaveProject?: () => void;
 	onLoadProject?: () => void;
 	onExport?: () => void;
+	unsavedExport?: { arrayBuffer: ArrayBuffer; fileName: string; format: string } | null;
+	onSaveUnsavedExport?: () => void;
 	selectedAnnotationId?: string | null;
 	annotationRegions?: AnnotationRegion[];
 	onAnnotationContentChange?: (id: string, content: string) => void;
@@ -198,6 +200,8 @@ export function SettingsPanel({
 	onSaveProject,
 	onLoadProject,
 	onExport,
+	unsavedExport,
+	onSaveUnsavedExport,
 	selectedAnnotationId,
 	annotationRegions = [],
 	onAnnotationContentChange,
@@ -1150,6 +1154,17 @@ export function SettingsPanel({
 					</Button>
 				</div>
 
+				{unsavedExport && (
+					<Button
+						type="button"
+						size="lg"
+						onClick={onSaveUnsavedExport}
+						className="w-full mb-2 py-5 text-sm font-semibold flex items-center justify-center gap-2 bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20 hover:bg-indigo-500/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+					>
+						<Download className="w-4 h-4" />
+						Choose Save Location
+					</Button>
+				)}
 				<Button
 					data-testid={getTestId("export-button")}
 					type="button"

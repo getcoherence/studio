@@ -105,6 +105,11 @@ export default function VideoEditor() {
 	const [gifSizePreset, setGifSizePreset] = useState<GifSizePreset>("medium");
 	const [exportedFilePath, setExportedFilePath] = useState<string | null>(null);
 	const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
+	const [unsavedExport, setUnsavedExport] = useState<{
+		arrayBuffer: ArrayBuffer;
+		fileName: string;
+		format: string;
+	} | null>(null);
 
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
 	const nextZoomIdRef = useRef(1);
@@ -966,6 +971,27 @@ export default function VideoEditor() {
 		[handleShowExportedFile],
 	);
 
+	const handleSaveUnsavedExport = useCallback(async () => {
+		if (!unsavedExport) return;
+		try {
+			const saveResult = await window.electronAPI.saveExportedVideo(
+				unsavedExport.arrayBuffer,
+				unsavedExport.fileName,
+			);
+			if (saveResult.canceled) {
+				toast.info("Export canceled");
+			} else if (saveResult.success && saveResult.path) {
+				setUnsavedExport(null);
+				handleExportSaved(unsavedExport.format === "gif" ? "GIF" : "Video", saveResult.path);
+			} else {
+				toast.error(saveResult.message || "Failed to save export");
+			}
+		} catch (error) {
+			console.error("Error saving unsaved export:", error);
+			toast.error("Failed to save exported video");
+		}
+	}, [unsavedExport, handleExportSaved]);
+
 	const handleExport = useCallback(
 		async (settings: ExportSettings) => {
 			if (!videoPath) {
@@ -1045,8 +1071,10 @@ export default function VideoEditor() {
 						const saveResult = await window.electronAPI.saveExportedVideo(arrayBuffer, fileName);
 
 						if (saveResult.canceled) {
+							setUnsavedExport({ arrayBuffer, fileName, format: "gif" });
 							toast.info("Export canceled");
 						} else if (saveResult.success && saveResult.path) {
+							setUnsavedExport(null);
 							handleExportSaved("GIF", saveResult.path);
 						} else {
 							setExportError(saveResult.message || "Failed to save GIF");
@@ -1173,8 +1201,10 @@ export default function VideoEditor() {
 						const saveResult = await window.electronAPI.saveExportedVideo(arrayBuffer, fileName);
 
 						if (saveResult.canceled) {
+							setUnsavedExport({ arrayBuffer, fileName, format: "mp4" });
 							toast.info("Export canceled");
 						} else if (saveResult.success && saveResult.path) {
+							setUnsavedExport(null);
 							handleExportSaved("Video", saveResult.path);
 						} else {
 							setExportError(saveResult.message || "Failed to save video");
@@ -1528,6 +1558,8 @@ export default function VideoEditor() {
 							}
 							onSpeedChange={handleSpeedChange}
 							onSpeedDelete={handleSpeedDelete}
+							unsavedExport={unsavedExport}
+							onSaveUnsavedExport={handleSaveUnsavedExport}
 						/>
 					</Panel>
 				</PanelGroup>
