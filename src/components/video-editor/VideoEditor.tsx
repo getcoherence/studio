@@ -119,8 +119,11 @@ export default function VideoEditor() {
 		fileName: string;
 		format: string;
 	} | null>(null);
+	const [isFullscreen, setIsFullscreen] = useState(false);
 
+	const playerContainerRef = useRef<HTMLDivElement>(null);
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
+
 	const nextZoomIdRef = useRef(1);
 	const nextTrimIdRef = useRef(1);
 	const nextSpeedIdRef = useRef(1);
@@ -538,6 +541,21 @@ export default function VideoEditor() {
 			playback.play().catch((err) => console.error("Video play failed:", err));
 		}
 	}
+
+	const toggleFullscreen = useCallback(() => {
+		setIsFullscreen((prev) => !prev);
+	}, []);
+
+	useEffect(() => {
+		if (!isFullscreen) return;
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === "Escape") {
+				setIsFullscreen(false);
+			}
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [isFullscreen]);
 
 	function handleSeek(time: number) {
 		const video = videoPlaybackRef.current?.video;
@@ -1425,7 +1443,14 @@ export default function VideoEditor() {
 					<PanelGroup direction="vertical" className="gap-3">
 						{/* Top section: video preview and controls */}
 						<Panel defaultSize={70} maxSize={70} minSize={40}>
-							<div className="w-full h-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden">
+							<div
+								ref={playerContainerRef}
+								className={
+									isFullscreen
+										? "fixed inset-0 z-[99999] w-full h-full flex flex-col items-center justify-center bg-[#09090b]"
+										: "w-full h-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden relative"
+								}
+							>
 								{/* Video preview */}
 								<div className="w-full flex justify-center items-center flex-auto mt-1.5">
 									<div
@@ -1487,6 +1512,8 @@ export default function VideoEditor() {
 											isPlaying={isPlaying}
 											currentTime={currentTime}
 											duration={duration}
+											isFullscreen={isFullscreen}
+											onToggleFullscreen={toggleFullscreen}
 											onTogglePlayPause={togglePlayPause}
 											onSeek={handleSeek}
 										/>
