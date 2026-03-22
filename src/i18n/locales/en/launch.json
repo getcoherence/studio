@@ -1,0 +1,29 @@
+{
+	"tooltips": {
+		"hideHUD": "Hide HUD",
+		"closeApp": "Close App",
+		"restartRecording": "Restart recording",
+		"openVideoFile": "Open video file",
+		"openProject": "Open project"
+	},
+	"audio": {
+		"enableSystemAudio": "Enable system audio",
+		"disableSystemAudio": "Disable system audio",
+		"enableMicrophone": "Enable microphone",
+		"disableMicrophone": "Disable microphone"
+	},
+	"webcam": {
+		"enableWebcam": "Enable webcam",
+		"disableWebcam": "Disable webcam"
+	},
+	"sourceSelector": {
+		"loading": "Loading sources...",
+		"screens": "Screens ({{count}})",
+		"windows": "Windows ({{count}})",
+		"defaultSourceName": "Screen"
+	},
+	"recording": {
+		"selectSource": "Please select a source to record"
+	},
+	"language": "Language"
+}

@@ -1,0 +1,152 @@
+{
+	"zoom": {
+		"level": "Nivel de zoom",
+		"selectRegion": "Selecciona una región de zoom para ajustar",
+		"deleteZoom": "Eliminar zoom"
+	},
+	"speed": {
+		"playbackSpeed": "Velocidad de reproducción",
+		"selectRegion": "Selecciona una región de velocidad para ajustar",
+		"deleteRegion": "Eliminar región de velocidad"
+	},
+	"trim": {
+		"deleteRegion": "Eliminar región de recorte"
+	},
+	"layout": {
+		"title": "Diseño",
+		"preset": "Predefinido",
+		"selectPreset": "Seleccionar predefinido",
+		"pictureInPicture": "Imagen en imagen",
+		"verticalStack": "Apilado vertical"
+	},
+	"effects": {
+		"title": "Efectos de video",
+		"blurBg": "Desenfocar fondo",
+		"motionBlur": "Desenfoque de movimiento",
+		"off": "desactivado",
+		"shadow": "Sombra",
+		"roundness": "Redondez",
+		"padding": "Relleno"
+	},
+	"background": {
+		"title": "Fondo",
+		"image": "Imagen",
+		"color": "Color",
+		"gradient": "Degradado",
+		"uploadCustom": "Subir personalizado",
+		"gradientLabel": "Degradado {{index}}"
+	},
+	"crop": {
+		"title": "Recortar",
+		"cropVideo": "Recortar video",
+		"dragInstruction": "Arrastra cada lado para ajustar el área de recorte",
+		"ratio": "Proporción",
+		"free": "Libre",
+		"done": "Listo",
+		"lockAspectRatio": "Bloquear relación de aspecto",
+		"unlockAspectRatio": "Desbloquear relación de aspecto"
+	},
+	"exportFormat": {
+		"mp4": "MP4",
+		"gif": "GIF",
+		"mp4Video": "Video MP4",
+		"mp4Description": "Archivo de video de alta calidad",
+		"gifAnimation": "Animación GIF",
+		"gifDescription": "Imagen animada para compartir"
+	},
+	"exportQuality": {
+		"title": "Calidad de exportación",
+		"low": "Baja",
+		"medium": "Media",
+		"high": "Alta"
+	},
+	"gifSettings": {
+		"frameRate": "Velocidad de cuadros del GIF",
+		"size": "Tamaño del GIF",
+		"loop": "Repetir GIF"
+	},
+	"project": {
+		"save": "Guardar proyecto",
+		"load": "Cargar proyecto"
+	},
+	"export": {
+		"videoButton": "Exportar video",
+		"gifButton": "Exportar GIF",
+		"chooseSaveLocation": "Elegir ubicación de guardado"
+	},
+	"links": {
+		"reportBug": "Reportar error",
+		"starOnGithub": "Dar estrella en GitHub"
+	},
+	"imageUpload": {
+		"invalidFileType": "Tipo de archivo no válido",
+		"jpgOnly": "Por favor sube un archivo de imagen JPG o JPEG.",
+		"uploadSuccess": "¡Imagen personalizada subida exitosamente!",
+		"failedToUpload": "Error al subir la imagen",
+		"errorReading": "Hubo un error al leer el archivo."
+	},
+	"annotation": {
+		"title": "Configuración de anotaciones",
+		"active": "Activo",
+		"typeText": "Texto",
+		"typeImage": "Imagen",
+		"typeArrow": "Flecha",
+		"textContent": "Contenido de texto",
+		"textPlaceholder": "Escribe tu texto...",
+		"fontStyle": "Estilo de fuente",
+		"selectStyle": "Seleccionar estilo",
+		"size": "Tamaño",
+		"customFonts": "Fuentes personalizadas",
+		"textColor": "Color de texto",
+		"background": "Fondo",
+		"none": "Ninguno",
+		"color": "Color",
+		"clearBackground": "Quitar fondo",
+		"uploadImage": "Subir imagen",
+		"supportedFormats": "Formatos compatibles: JPG, PNG, GIF, WebP",
+		"arrowDirection": "Dirección de la flecha",
+		"strokeWidth": "Grosor del trazo: {{width}}px",
+		"arrowColor": "Color de la flecha",
+		"deleteAnnotation": "Eliminar anotación",
+		"shortcutsAndTips": "Atajos y consejos",
+		"tipMovePlayhead": "Mueve el cabezal de reproducción a la sección de anotación superpuesta y selecciona un elemento.",
+		"tipTabCycle": "Usa Tab para recorrer los elementos superpuestos.",
+		"tipShiftTabCycle": "Usa Shift+Tab para recorrer hacia atrás.",
+		"invalidImageType": "Tipo de archivo no válido",
+		"imageFormatsOnly": "Por favor sube un archivo de imagen JPG, PNG, GIF o WebP.",
+		"imageUploadSuccess": "¡Imagen subida exitosamente!",
+		"failedImageUpload": "Error al subir la imagen"
+	},
+	"fontStyles": {
+		"classic": "Clásico",
+		"editor": "Editor",
+		"strong": "Fuerte",
+		"typewriter": "Máquina de escribir",
+		"deco": "Deco",
+		"simple": "Simple",
+		"modern": "Moderno",
+		"clean": "Limpio"
+	},
+	"customFont": {
+		"dialogTitle": "Agregar fuente de Google",
+		"urlLabel": "URL de importación de Google Fonts",
+		"urlPlaceholder": "https://fonts.googleapis.com/css2?family=Roboto&display=swap",
+		"urlHelp": "Obtén esto de Google Fonts: Selecciona una fuente → Haz clic en \"Get font\" → Copia la URL de @import",
+		"nameLabel": "Nombre para mostrar",
+		"namePlaceholder": "Mi fuente personalizada",
+		"nameHelp": "Así aparecerá la fuente en el selector de fuentes",
+		"addButton": "Agregar fuente",
+		"addingButton": "Agregando...",
+		"errorEmptyUrl": "Por favor ingresa una URL de importación de Google Fonts",
+		"errorInvalidUrl": "Por favor ingresa una URL válida de Google Fonts",
+		"errorEmptyName": "Por favor ingresa un nombre de fuente",
+		"errorExtractFailed": "No se pudo extraer la familia de fuentes de la URL",
+		"successMessage": "Fuente \"{{fontName}}\" agregada exitosamente",
+		"failedToAdd": "Error al agregar la fuente",
+		"errorTimeout": "La fuente tardó demasiado en cargarse. Por favor verifica la URL e intenta de nuevo.",
+		"errorLoadFailed": "No se pudo cargar la fuente. Por favor verifica que la URL de Google Fonts sea correcta."
+	},
+	"language": {
+		"title": "Idioma"
+	}
+}

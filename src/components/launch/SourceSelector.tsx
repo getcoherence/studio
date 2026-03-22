@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { MdCheck } from "react-icons/md";
+import { useScopedT } from "@/contexts/I18nContext";
 import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import styles from "./SourceSelector.module.css";
@@ -13,6 +14,8 @@ interface DesktopSource {
 }
 
 export function SourceSelector() {
+	const t = useScopedT("launch");
+	const tc = useScopedT("common");
 	const [sources, setSources] = useState<DesktopSource[]>([]);
 	const [selectedSource, setSelectedSource] = useState<DesktopSource | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -63,7 +66,7 @@ export function SourceSelector() {
 			>
 				<div className="text-center">
 					<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#34B27B] mx-auto mb-2" />
-					<p className="text-xs text-zinc-400">Loading sources...</p>
+					<p className="text-xs text-zinc-400">{t("sourceSelector.loading")}</p>
 				</div>
 			</div>
 		);
@@ -113,13 +116,13 @@ export function SourceSelector() {
 							value="screens"
 							className="data-[state=active]:bg-white/15 data-[state=active]:text-white text-zinc-400 rounded-full text-xs py-1 transition-all"
 						>
-							Screens ({screenSources.length})
+							{t("sourceSelector.screens", { count: String(screenSources.length) })}
 						</TabsTrigger>
 						<TabsTrigger
 							value="windows"
 							className="data-[state=active]:bg-white/15 data-[state=active]:text-white text-zinc-400 rounded-full text-xs py-1 transition-all"
 						>
-							Windows ({windowSources.length})
+							{t("sourceSelector.windows", { count: String(windowSources.length) })}
 						</TabsTrigger>
 					</TabsList>
 					<div className="flex-1 min-h-0">
@@ -146,14 +149,14 @@ export function SourceSelector() {
 					onClick={() => window.close()}
 					className="px-5 py-1 text-xs text-zinc-400 hover:text-white hover:bg-white/5 rounded-full"
 				>
-					Cancel
+					{tc("actions.cancel")}
 				</Button>
 				<Button
 					onClick={handleShare}
 					disabled={!selectedSource}
 					className="px-5 py-1 text-xs bg-[#34B27B] text-white hover:bg-[#34B27B]/80 disabled:opacity-30 disabled:bg-zinc-700 rounded-full"
 				>
-					Share
+					{tc("actions.share")}
 				</Button>
 			</div>
 		</div>

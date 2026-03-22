@@ -1,0 +1,35 @@
+{
+	"errors": {
+		"noVideoLoaded": "No hay video cargado",
+		"videoNotReady": "El video no está listo",
+		"unableToDetermineSourcePath": "No se pudo determinar la ruta del video de origen",
+		"failedToSaveGif": "Error al guardar el GIF",
+		"gifExportFailed": "La exportación de GIF falló",
+		"failedToSaveVideo": "Error al guardar el video",
+		"exportFailed": "La exportación falló",
+		"exportFailedWithError": "La exportación falló: {{error}}",
+		"failedToSaveExport": "Error al guardar la exportación",
+		"failedToSaveExportedVideo": "Error al guardar el video exportado",
+		"failedToRevealInFolder": "Error al mostrar en la carpeta: {{error}}"
+	},
+	"export": {
+		"canceled": "Exportación cancelada",
+		"exportedSuccessfully": "{{format}} exportado exitosamente"
+	},
+	"project": {
+		"saveCanceled": "Guardado de proyecto cancelado",
+		"failedToSave": "Error al guardar el proyecto",
+		"savedTo": "Proyecto guardado en {{path}}",
+		"failedToLoad": "Error al cargar el proyecto",
+		"invalidFormat": "Formato de archivo de proyecto no válido",
+		"loadedFrom": "Proyecto cargado desde {{path}}"
+	},
+	"recording": {
+		"failedCameraAccess": "Error al solicitar acceso a la cámara.",
+		"cameraBlocked": "El acceso a la cámara está bloqueado. Actívalo en la configuración del sistema para usar la cámara web.",
+		"systemAudioUnavailable": "Audio del sistema no disponible. Grabando sin audio del sistema.",
+		"microphoneDenied": "Acceso al micrófono denegado. La grabación continuará sin audio.",
+		"cameraDenied": "Acceso a la cámara denegado. La grabación continuará sin cámara web.",
+		"permissionDenied": "Permiso de grabación denegado. Por favor permite la grabación de pantalla."
+	}
+}

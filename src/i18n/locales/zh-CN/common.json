@@ -1,0 +1,27 @@
+{
+	"actions": {
+		"cancel": "取消",
+		"save": "保存",
+		"delete": "删除",
+		"close": "关闭",
+		"share": "分享",
+		"done": "完成",
+		"open": "打开",
+		"upload": "上传",
+		"export": "导出",
+		"file": "文件",
+		"edit": "编辑",
+		"view": "视图",
+		"window": "窗口",
+		"quit": "退出",
+		"stopRecording": "停止录制"
+	},
+	"playback": {
+		"play": "播放",
+		"pause": "暂停"
+	},
+	"locale": {
+		"name": "中文",
+		"short": "中文"
+	}
+}

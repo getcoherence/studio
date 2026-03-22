@@ -35,6 +35,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useScopedT } from "@/contexts/I18nContext";
 import { getAssetPath } from "@/lib/assetPath";
 import { WEBCAM_LAYOUT_PRESETS } from "@/lib/compositeLayout";
 import type { ExportFormat, ExportQuality, GifFrameRate, GifSizePreset } from "@/lib/exporter";
@@ -217,6 +218,7 @@ export function SettingsPanel({
 	webcamLayoutPreset = "picture-in-picture",
 	onWebcamLayoutPresetChange,
 }: SettingsPanelProps) {
+	const t = useScopedT("settings");
 	const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
 	const [customImages, setCustomImages] = useState<string[]>([]);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -382,8 +384,8 @@ export function SettingsPanel({
 		// Validate file type - only allow JPG/JPEG
 		const validTypes = ["image/jpeg", "image/jpg"];
 		if (!validTypes.includes(file.type)) {
-			toast.error("Invalid file type", {
-				description: "Please upload a JPG or JPEG image file.",
+			toast.error(t("imageUpload.invalidFileType"), {
+				description: t("imageUpload.jpgOnly"),
 			});
 			event.target.value = "";
 			return;
@@ -396,13 +398,13 @@ export function SettingsPanel({
 			if (dataUrl) {
 				setCustomImages((prev) => [...prev, dataUrl]);
 				onWallpaperChange(dataUrl);
-				toast.success("Custom image uploaded successfully!");
+				toast.success(t("imageUpload.uploadSuccess"));
 			}
 		};
 
 		reader.onerror = () => {
-			toast.error("Failed to upload image", {
-				description: "There was an error reading the file.",
+			toast.error(t("imageUpload.failedToUpload"), {
+				description: t("imageUpload.errorReading"),
 			});
 		};
 
@@ -468,7 +470,7 @@ export function SettingsPanel({
 			<div className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-0">
 				<div className="mb-4">
 					<div className="flex items-center justify-between mb-3">
-						<span className="text-sm font-medium text-slate-200">Zoom Level</span>
+						<span className="text-sm font-medium text-slate-200">{t("zoom.level")}</span>
 						<div className="flex items-center gap-2">
 							{zoomEnabled && selectedZoomDepth && (
 								<span className="text-[10px] uppercase tracking-wider font-medium text-[#34B27B] bg-[#34B27B]/10 px-2 py-0.5 rounded-full">
@@ -502,9 +504,7 @@ export function SettingsPanel({
 						})}
 					</div>
 					{!zoomEnabled && (
-						<p className="text-[10px] text-slate-500 mt-2 text-center">
-							Select a zoom region to adjust
-						</p>
+						<p className="text-[10px] text-slate-500 mt-2 text-center">{t("zoom.selectRegion")}</p>
 					)}
 					{zoomEnabled && (
 						<Button
@@ -514,7 +514,7 @@ export function SettingsPanel({
 							className="mt-2 w-full gap-2 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all h-8 text-xs"
 						>
 							<Trash2 className="w-3 h-3" />
-							Delete Zoom
+							{t("zoom.deleteZoom")}
 						</Button>
 					)}
 				</div>
@@ -528,14 +528,14 @@ export function SettingsPanel({
 							className="w-full gap-2 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all h-8 text-xs"
 						>
 							<Trash2 className="w-3 h-3" />
-							Delete Trim Region
+							{t("trim.deleteRegion")}
 						</Button>
 					</div>
 				)}
 
 				<div className="mb-4">
 					<div className="flex items-center justify-between mb-3">
-						<span className="text-sm font-medium text-slate-200">Playback Speed</span>
+						<span className="text-sm font-medium text-slate-200">{t("speed.playbackSpeed")}</span>
 						{selectedSpeedId && selectedSpeedValue && (
 							<span className="text-[10px] uppercase tracking-wider font-medium text-[#d97706] bg-[#d97706]/10 px-2 py-0.5 rounded-full">
 								{SPEED_OPTIONS.find((o) => o.speed === selectedSpeedValue)?.label ??
@@ -569,9 +569,7 @@ export function SettingsPanel({
 						})}
 					</div>
 					{!selectedSpeedId && (
-						<p className="text-[10px] text-slate-500 mt-2 text-center">
-							Select a speed region to adjust
-						</p>
+						<p className="text-[10px] text-slate-500 mt-2 text-center">{t("speed.selectRegion")}</p>
 					)}
 					{selectedSpeedId && (
 						<Button
@@ -581,7 +579,7 @@ export function SettingsPanel({
 							className="mt-2 w-full gap-2 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all h-8 text-xs"
 						>
 							<Trash2 className="w-3 h-3" />
-							Delete Speed Region
+							{t("speed.deleteRegion")}
 						</Button>
 					)}
 				</div>
@@ -599,12 +597,14 @@ export function SettingsPanel({
 							<AccordionTrigger className="py-2.5 hover:no-underline">
 								<div className="flex items-center gap-2">
 									<Sparkles className="w-4 h-4 text-[#34B27B]" />
-									<span className="text-xs font-medium">Layout</span>
+									<span className="text-xs font-medium">{t("layout.title")}</span>
 								</div>
 							</AccordionTrigger>
 							<AccordionContent className="pb-3">
 								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
-									<div className="text-[10px] font-medium text-slate-300 mb-1.5">Preset</div>
+									<div className="text-[10px] font-medium text-slate-300 mb-1.5">
+										{t("layout.preset")}
+									</div>
 									<Select
 										value={webcamLayoutPreset}
 										onValueChange={(value: WebcamLayoutPreset) =>
@@ -612,12 +612,14 @@ export function SettingsPanel({
 										}
 									>
 										<SelectTrigger className="h-8 bg-black/20 border-white/10 text-xs">
-											<SelectValue placeholder="Select preset" />
+											<SelectValue placeholder={t("layout.selectPreset")} />
 										</SelectTrigger>
 										<SelectContent>
 											{WEBCAM_LAYOUT_PRESETS.map((preset) => (
 												<SelectItem key={preset.value} value={preset.value} className="text-xs">
-													{preset.label}
+													{preset.value === "picture-in-picture"
+														? t("layout.pictureInPicture")
+														: t("layout.verticalStack")}
 												</SelectItem>
 											))}
 										</SelectContent>
@@ -631,13 +633,15 @@ export function SettingsPanel({
 						<AccordionTrigger className="py-2.5 hover:no-underline">
 							<div className="flex items-center gap-2">
 								<Sparkles className="w-4 h-4 text-[#34B27B]" />
-								<span className="text-xs font-medium">Video Effects</span>
+								<span className="text-xs font-medium">{t("effects.title")}</span>
 							</div>
 						</AccordionTrigger>
 						<AccordionContent className="pb-3">
 							<div className="grid grid-cols-2 gap-2 mb-3">
 								<div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
-									<div className="text-[10px] font-medium text-slate-300">Blur BG</div>
+									<div className="text-[10px] font-medium text-slate-300">
+										{t("effects.blurBg")}
+									</div>
 									<Switch
 										checked={showBlur}
 										onCheckedChange={onBlurChange}
@@ -649,9 +653,11 @@ export function SettingsPanel({
 							<div className="grid grid-cols-2 gap-2">
 								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
 									<div className="flex items-center justify-between mb-1">
-										<div className="text-[10px] font-medium text-slate-300">Motion Blur</div>
+										<div className="text-[10px] font-medium text-slate-300">
+											{t("effects.motionBlur")}
+										</div>
 										<span className="text-[10px] text-slate-500 font-mono">
-											{motionBlurAmount === 0 ? "off" : motionBlurAmount.toFixed(2)}
+											{motionBlurAmount === 0 ? t("effects.off") : motionBlurAmount.toFixed(2)}
 										</span>
 									</div>
 									<Slider
@@ -666,7 +672,9 @@ export function SettingsPanel({
 								</div>
 								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
 									<div className="flex items-center justify-between mb-1">
-										<div className="text-[10px] font-medium text-slate-300">Shadow</div>
+										<div className="text-[10px] font-medium text-slate-300">
+											{t("effects.shadow")}
+										</div>
 										<span className="text-[10px] text-slate-500 font-mono">
 											{Math.round(shadowIntensity * 100)}%
 										</span>
@@ -683,7 +691,9 @@ export function SettingsPanel({
 								</div>
 								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
 									<div className="flex items-center justify-between mb-1">
-										<div className="text-[10px] font-medium text-slate-300">Roundness</div>
+										<div className="text-[10px] font-medium text-slate-300">
+											{t("effects.roundness")}
+										</div>
 										<span className="text-[10px] text-slate-500 font-mono">{borderRadius}px</span>
 									</div>
 									<Slider
@@ -698,7 +708,9 @@ export function SettingsPanel({
 								</div>
 								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
 									<div className="flex items-center justify-between mb-1">
-										<div className="text-[10px] font-medium text-slate-300">Padding</div>
+										<div className="text-[10px] font-medium text-slate-300">
+											{t("effects.padding")}
+										</div>
 										<span className="text-[10px] text-slate-500 font-mono">{padding}%</span>
 									</div>
 									<Slider
@@ -719,7 +731,7 @@ export function SettingsPanel({
 								className="w-full mt-2 gap-1.5 bg-white/5 text-slate-200 border-white/10 hover:bg-white/10 hover:border-white/20 hover:text-white text-[10px] h-8 transition-all"
 							>
 								<Crop className="w-3 h-3" />
-								Crop Video
+								{t("crop.cropVideo")}
 							</Button>
 						</AccordionContent>
 					</AccordionItem>
@@ -731,7 +743,7 @@ export function SettingsPanel({
 						<AccordionTrigger className="py-2.5 hover:no-underline">
 							<div className="flex items-center gap-2">
 								<Palette className="w-4 h-4 text-[#34B27B]" />
-								<span className="text-xs font-medium">Background</span>
+								<span className="text-xs font-medium">{t("background.title")}</span>
 							</div>
 						</AccordionTrigger>
 						<AccordionContent className="pb-3">
@@ -741,19 +753,19 @@ export function SettingsPanel({
 										value="image"
 										className="data-[state=active]:bg-[#34B27B] data-[state=active]:text-white text-slate-400 text-[10px] py-1 rounded-md transition-all"
 									>
-										Image
+										{t("background.image")}
 									</TabsTrigger>
 									<TabsTrigger
 										value="color"
 										className="data-[state=active]:bg-[#34B27B] data-[state=active]:text-white text-slate-400 text-[10px] py-1 rounded-md transition-all"
 									>
-										Color
+										{t("background.color")}
 									</TabsTrigger>
 									<TabsTrigger
 										value="gradient"
 										className="data-[state=active]:bg-[#34B27B] data-[state=active]:text-white text-slate-400 text-[10px] py-1 rounded-md transition-all"
 									>
-										Gradient
+										{t("background.gradient")}
 									</TabsTrigger>
 								</TabsList>
 
@@ -772,7 +784,7 @@ export function SettingsPanel({
 											className="w-full gap-2 bg-white/5 text-slate-200 border-white/10 hover:bg-[#34B27B] hover:text-white hover:border-[#34B27B] transition-all h-7 text-[10px]"
 										>
 											<Upload className="w-3 h-3" />
-											Upload Custom
+											{t("background.uploadCustom")}
 										</Button>
 
 										<div className="grid grid-cols-7 gap-1.5">
@@ -873,7 +885,7 @@ export function SettingsPanel({
 															: "border-white/10 hover:border-[#34B27B]/40 opacity-80 hover:opacity-100 bg-white/5",
 													)}
 													style={{ background: g }}
-													aria-label={`Gradient ${idx + 1}`}
+													aria-label={t("background.gradientLabel", { index: idx + 1 })}
 													onClick={() => {
 														setGradient(g);
 														onWallpaperChange(g);
@@ -899,10 +911,8 @@ export function SettingsPanel({
 					<div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[60] bg-[#09090b] rounded-2xl shadow-2xl border border-white/10 p-8 w-[90vw] max-w-5xl max-h-[90vh] overflow-auto animate-in zoom-in-95 duration-200">
 						<div className="flex items-center justify-between mb-6">
 							<div>
-								<span className="text-xl font-bold text-slate-200">Crop Video</span>
-								<p className="text-sm text-slate-400 mt-2">
-									Drag on each side to adjust the crop area
-								</p>
+								<span className="text-xl font-bold text-slate-200">{t("crop.cropVideo")}</span>
+								<p className="text-sm text-slate-400 mt-2">{t("crop.dragInstruction")}</p>
 							</div>
 							<Button
 								variant="ghost"
@@ -944,7 +954,7 @@ export function SettingsPanel({
 
 								<div className="flex flex-col gap-1">
 									<label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-										Ratio
+										{t("crop.ratio")}
 									</label>
 									<div className="flex items-center gap-1.5">
 										<select
@@ -953,7 +963,7 @@ export function SettingsPanel({
 											className="h-8 rounded-md border border-white/10 bg-[#1a1a1f] px-2 text-xs text-slate-200 outline-none focus:border-[#34B27B]/50 cursor-pointer"
 										>
 											<option value="" className="bg-[#1a1a1f] text-slate-200">
-												Free
+												{t("crop.free")}
 											</option>
 											<option value="16:9" className="bg-[#1a1a1f] text-slate-200">
 												16:9
@@ -983,7 +993,9 @@ export function SettingsPanel({
 													? "border-[#34B27B]/50 bg-[#34B27B]/10 text-[#34B27B]"
 													: "border-white/10 bg-white/5 text-slate-400 hover:text-slate-200",
 											)}
-											title={cropAspectLocked ? "Unlock aspect ratio" : "Lock aspect ratio"}
+											title={
+												cropAspectLocked ? t("crop.unlockAspectRatio") : t("crop.lockAspectRatio")
+											}
 										>
 											{cropAspectLocked ? (
 												<Lock className="w-3.5 h-3.5" />
@@ -1005,7 +1017,7 @@ export function SettingsPanel({
 									size="lg"
 									className="bg-[#34B27B] hover:bg-[#34B27B]/90 text-white"
 								>
-									Done
+									{t("crop.done")}
 								</Button>
 							</div>
 						</div>
@@ -1025,7 +1037,7 @@ export function SettingsPanel({
 						)}
 					>
 						<Film className="w-3.5 h-3.5" />
-						MP4
+						{t("exportFormat.mp4")}
 					</button>
 					<button
 						data-testid={getTestId("gif-format-button")}
@@ -1038,7 +1050,7 @@ export function SettingsPanel({
 						)}
 					>
 						<Image className="w-3.5 h-3.5" />
-						GIF
+						{t("exportFormat.gif")}
 					</button>
 				</div>
 
@@ -1053,7 +1065,7 @@ export function SettingsPanel({
 									: "text-slate-400 hover:text-slate-200",
 							)}
 						>
-							Low
+							{t("exportQuality.low")}
 						</button>
 						<button
 							onClick={() => onExportQualityChange?.("good")}
@@ -1064,7 +1076,7 @@ export function SettingsPanel({
 									: "text-slate-400 hover:text-slate-200",
 							)}
 						>
-							Medium
+							{t("exportQuality.medium")}
 						</button>
 						<button
 							onClick={() => onExportQualityChange?.("source")}
@@ -1075,7 +1087,7 @@ export function SettingsPanel({
 									: "text-slate-400 hover:text-slate-200",
 							)}
 						>
-							High
+							{t("exportQuality.high")}
 						</button>
 					</div>
 				)}
@@ -1122,7 +1134,7 @@ export function SettingsPanel({
 								{gifOutputDimensions.width} × {gifOutputDimensions.height}px
 							</span>
 							<div className="flex items-center gap-2">
-								<span className="text-[10px] text-slate-400">Loop</span>
+								<span className="text-[10px] text-slate-400">{t("gifSettings.loop")}</span>
 								<Switch
 									checked={gifLoop}
 									onCheckedChange={onGifLoopChange}
@@ -1141,7 +1153,7 @@ export function SettingsPanel({
 						className="h-8 text-[10px] font-medium gap-1.5 bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
 					>
 						<FolderOpen className="w-3.5 h-3.5" />
-						Load Project
+						{t("project.load")}
 					</Button>
 					<Button
 						type="button"
@@ -1150,7 +1162,7 @@ export function SettingsPanel({
 						className="h-8 text-[10px] font-medium gap-1.5 bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
 					>
 						<Save className="w-3.5 h-3.5" />
-						Save Project
+						{t("project.save")}
 					</Button>
 				</div>
 
@@ -1162,7 +1174,7 @@ export function SettingsPanel({
 						className="w-full mb-2 py-5 text-sm font-semibold flex items-center justify-center gap-2 bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20 hover:bg-indigo-500/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
 					>
 						<Download className="w-4 h-4" />
-						Choose Save Location
+						{t("export.chooseSaveLocation")}
 					</Button>
 				)}
 				<Button
@@ -1173,7 +1185,7 @@ export function SettingsPanel({
 					className="w-full py-5 text-sm font-semibold flex items-center justify-center gap-2 bg-[#34B27B] text-white rounded-xl shadow-lg shadow-[#34B27B]/20 hover:bg-[#34B27B]/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
 				>
 					<Download className="w-4 h-4" />
-					Export {exportFormat === "gif" ? "GIF" : "Video"}
+					{exportFormat === "gif" ? t("export.gifButton") : t("export.videoButton")}
 				</Button>
 
 				<div className="flex gap-2 mt-3">
@@ -1187,7 +1199,7 @@ export function SettingsPanel({
 						className="flex-1 flex items-center justify-center gap-1.5 text-[10px] text-slate-500 hover:text-slate-300 py-1.5 transition-colors"
 					>
 						<Bug className="w-3 h-3 text-[#34B27B]" />
-						Report Bug
+						{t("links.reportBug")}
 					</button>
 					<button
 						type="button"
@@ -1197,7 +1209,7 @@ export function SettingsPanel({
 						className="flex-1 flex items-center justify-center gap-1.5 text-[10px] text-slate-500 hover:text-slate-300 py-1.5 transition-colors"
 					>
 						<Star className="w-3 h-3 text-yellow-400" />
-						Star on GitHub
+						{t("links.starOnGithub")}
 					</button>
 				</div>
 			</div>

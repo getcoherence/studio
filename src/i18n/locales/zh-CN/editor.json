@@ -1,0 +1,35 @@
+{
+	"errors": {
+		"noVideoLoaded": "未加载视频",
+		"videoNotReady": "视频未就绪",
+		"unableToDetermineSourcePath": "无法确定源视频路径",
+		"failedToSaveGif": "保存 GIF 失败",
+		"gifExportFailed": "GIF 导出失败",
+		"failedToSaveVideo": "保存视频失败",
+		"exportFailed": "导出失败",
+		"exportFailedWithError": "导出失败：{{error}}",
+		"failedToSaveExport": "保存导出文件失败",
+		"failedToSaveExportedVideo": "保存导出的视频失败",
+		"failedToRevealInFolder": "在文件夹中显示时出错：{{error}}"
+	},
+	"export": {
+		"canceled": "导出已取消",
+		"exportedSuccessfully": "{{format}} 导出成功"
+	},
+	"project": {
+		"saveCanceled": "项目保存已取消",
+		"failedToSave": "保存项目失败",
+		"savedTo": "项目已保存至 {{path}}",
+		"failedToLoad": "加载项目失败",
+		"invalidFormat": "无效的项目文件格式",
+		"loadedFrom": "项目已从 {{path}} 加载"
+	},
+	"recording": {
+		"failedCameraAccess": "请求摄像头权限失败。",
+		"cameraBlocked": "摄像头权限已被阻止。请在系统设置中启用以使用摄像头。",
+		"systemAudioUnavailable": "系统音频不可用。将在无系统音频的情况下录制。",
+		"microphoneDenied": "麦克风权限被拒绝。录制将继续，但不包含音频。",
+		"cameraDenied": "摄像头权限被拒绝。录制将继续，但不包含摄像头画面。",
+		"permissionDenied": "录屏权限被拒绝。请允许屏幕录制。"
+	}
+}

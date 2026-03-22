@@ -1,0 +1,27 @@
+{
+	"actions": {
+		"cancel": "Cancelar",
+		"save": "Guardar",
+		"delete": "Eliminar",
+		"close": "Cerrar",
+		"share": "Compartir",
+		"done": "Listo",
+		"open": "Abrir",
+		"upload": "Subir",
+		"export": "Exportar",
+		"file": "Archivo",
+		"edit": "Editar",
+		"view": "Vista",
+		"window": "Ventana",
+		"quit": "Salir",
+		"stopRecording": "Detener grabación"
+	},
+	"playback": {
+		"play": "Reproducir",
+		"pause": "Pausar"
+	},
+	"locale": {
+		"name": "Español",
+		"short": "ES"
+	}
+}

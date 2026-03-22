@@ -12,6 +12,7 @@ import {
 	systemPreferences,
 	Tray,
 } from "electron";
+import { mainT, setMainLocale } from "./i18n";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { createEditorWindow, createHudOverlayWindow, createSourceSelectorWindow } from "./windows";
 
@@ -130,20 +131,20 @@ function setupApplicationMenu() {
 
 	template.push(
 		{
-			label: "File",
+			label: mainT("common", "actions.file") || "File",
 			submenu: [
 				{
-					label: "Load Project…",
+					label: mainT("dialogs", "unsavedChanges.loadProject") || "Load Project…",
 					accelerator: "CmdOrCtrl+O",
 					click: () => sendEditorMenuAction("menu-load-project"),
 				},
 				{
-					label: "Save Project…",
+					label: mainT("dialogs", "unsavedChanges.saveProject") || "Save Project…",
 					accelerator: "CmdOrCtrl+S",
 					click: () => sendEditorMenuAction("menu-save-project"),
 				},
 				{
-					label: "Save Project As…",
+					label: mainT("dialogs", "unsavedChanges.saveProjectAs") || "Save Project As…",
 					accelerator: "CmdOrCtrl+Shift+S",
 					click: () => sendEditorMenuAction("menu-save-project-as"),
 				},
@@ -151,7 +152,7 @@ function setupApplicationMenu() {
 			],
 		},
 		{
-			label: "Edit",
+			label: mainT("common", "actions.edit") || "Edit",
 			submenu: [
 				{ role: "undo" },
 				{ role: "redo" },
@@ -163,7 +164,7 @@ function setupApplicationMenu() {
 			],
 		},
 		{
-			label: "View",
+			label: mainT("common", "actions.view") || "View",
 			submenu: [
 				{ role: "reload" },
 				{ role: "forceReload" },
@@ -177,7 +178,7 @@ function setupApplicationMenu() {
 			],
 		},
 		{
-			label: "Window",
+			label: mainT("common", "actions.window") || "Window",
 			submenu: isMac
 				? [{ role: "minimize" }, { role: "zoom" }, { type: "separator" }, { role: "front" }]
 				: [{ role: "minimize" }, { role: "close" }],
@@ -215,7 +216,7 @@ function updateTrayMenu(recording: boolean = false) {
 	const menuTemplate = recording
 		? [
 				{
-					label: "Stop Recording",
+					label: mainT("common", "actions.stopRecording") || "Stop Recording",
 					click: () => {
 						if (mainWindow && !mainWindow.isDestroyed()) {
 							mainWindow.webContents.send("stop-recording-from-tray");
@@ -225,13 +226,13 @@ function updateTrayMenu(recording: boolean = false) {
 			]
 		: [
 				{
-					label: "Open",
+					label: mainT("common", "actions.open") || "Open",
 					click: () => {
 						showMainWindow();
 					},
 				},
 				{
-					label: "Quit",
+					label: mainT("common", "actions.quit") || "Quit",
 					click: () => {
 						app.quit();
 					},
@@ -281,12 +282,16 @@ function createEditorWindowWrapper() {
 
 		const choice = dialog.showMessageBoxSync(mainWindow!, {
 			type: "warning",
-			buttons: ["Save & Close", "Discard & Close", "Cancel"],
+			buttons: [
+				mainT("dialogs", "unsavedChanges.saveAndClose"),
+				mainT("dialogs", "unsavedChanges.discardAndClose"),
+				mainT("common", "actions.cancel"),
+			],
 			defaultId: 0,
 			cancelId: 2,
-			title: "Unsaved Changes",
-			message: "You have unsaved changes.",
-			detail: "Do you want to save your project before closing?",
+			title: mainT("dialogs", "unsavedChanges.title"),
+			message: mainT("dialogs", "unsavedChanges.message"),
+			detail: mainT("dialogs", "unsavedChanges.detail"),
 		});
 
 		const windowToClose = mainWindow;
@@ -354,6 +359,12 @@ app.whenReady().then(async () => {
 	ipcMain.on("hud-overlay-close", () => {
 		app.quit();
 	});
+	ipcMain.handle("set-locale", (_, locale: string) => {
+		setMainLocale(locale);
+		setupApplicationMenu();
+		updateTrayMenu();
+	});
+
 	createTray();
 	updateTrayMenu();
 	setupApplicationMenu();

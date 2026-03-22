@@ -1,9 +1,13 @@
 import type { Span } from "dnd-timeline";
+import { Languages } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
+import { useI18n, useScopedT } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import { INITIAL_EDITOR_STATE, useEditorHistory } from "@/hooks/useEditorHistory";
+import { type Locale, SUPPORTED_LOCALES } from "@/i18n/config";
+import { getLocaleName } from "@/i18n/loader";
 import {
 	calculateOutputDimensions,
 	type ExportFormat,
@@ -117,6 +121,9 @@ export default function VideoEditor() {
 	const nextSpeedIdRef = useRef(1);
 
 	const { shortcuts, isMac } = useShortcuts();
+	const t = useScopedT("editor");
+	const { locale, setLocale } = useI18n();
+
 	const nextAnnotationIdRef = useRef(1);
 	const nextAnnotationZIndexRef = useRef(1);
 	const exporterRef = useRef<VideoExporter | null>(null);
@@ -338,12 +345,12 @@ export default function VideoEditor() {
 	const saveProject = useCallback(
 		async (forceSaveAs: boolean) => {
 			if (!videoPath) {
-				toast.error("No video loaded");
+				toast.error(t("errors.noVideoLoaded"));
 				return false;
 			}
 
 			if (!currentProjectMedia) {
-				toast.error("Unable to determine source video path");
+				toast.error(t("errors.unableToDetermineSourcePath"));
 				return false;
 			}
 
@@ -381,12 +388,12 @@ export default function VideoEditor() {
 			);
 
 			if (result.canceled) {
-				toast.info("Project save canceled");
+				toast.info(t("project.saveCanceled"));
 				return false;
 			}
 
 			if (!result.success) {
-				toast.error(result.message || "Failed to save project");
+				toast.error(result.message || t("project.failedToSave"));
 				return false;
 			}
 
@@ -395,7 +402,7 @@ export default function VideoEditor() {
 			}
 			setLastSavedSnapshot(projectSnapshot);
 
-			toast.success(`Project saved to ${result.path}`);
+			toast.success(t("project.savedTo", { path: result.path ?? "" }));
 			return true;
 		},
 		[
@@ -420,6 +427,7 @@ export default function VideoEditor() {
 			gifLoop,
 			gifSizePreset,
 			videoPath,
+			t,
 		],
 	);
 
@@ -1357,7 +1365,26 @@ export default function VideoEditor() {
 				className="h-10 flex-shrink-0 bg-[#09090b]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-6 z-50"
 				style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
 			>
-				<div className="flex-1" />
+				<div className="flex-1 flex items-center">
+					<div
+						className="flex items-center gap-1 px-2 py-1 ml-14 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150"
+						style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+					>
+						<Languages size={14} />
+						<select
+							value={locale}
+							onChange={(e) => setLocale(e.target.value as Locale)}
+							className="bg-transparent text-[11px] font-medium outline-none cursor-pointer appearance-none pr-1"
+							style={{ color: "inherit" }}
+						>
+							{SUPPORTED_LOCALES.map((loc) => (
+								<option key={loc} value={loc} className="bg-[#09090b] text-white">
+									{getLocaleName(loc)}
+								</option>
+							))}
+						</select>
+					</div>
+				</div>
 			</div>
 
 			<div className="flex-1 p-5 gap-4 flex min-h-0 relative">

@@ -1,0 +1,27 @@
+{
+	"actions": {
+		"cancel": "Cancel",
+		"save": "Save",
+		"delete": "Delete",
+		"close": "Close",
+		"share": "Share",
+		"done": "Done",
+		"open": "Open",
+		"upload": "Upload",
+		"export": "Export",
+		"file": "File",
+		"edit": "Edit",
+		"view": "View",
+		"window": "Window",
+		"quit": "Quit",
+		"stopRecording": "Stop Recording"
+	},
+	"playback": {
+		"play": "Play",
+		"pause": "Pause"
+	},
+	"locale": {
+		"name": "English",
+		"short": "EN"
+	}
+}

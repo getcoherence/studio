@@ -1,0 +1,35 @@
+{
+	"errors": {
+		"noVideoLoaded": "No video loaded",
+		"videoNotReady": "Video not ready",
+		"unableToDetermineSourcePath": "Unable to determine source video path",
+		"failedToSaveGif": "Failed to save GIF",
+		"gifExportFailed": "GIF export failed",
+		"failedToSaveVideo": "Failed to save video",
+		"exportFailed": "Export failed",
+		"exportFailedWithError": "Export failed: {{error}}",
+		"failedToSaveExport": "Failed to save export",
+		"failedToSaveExportedVideo": "Failed to save exported video",
+		"failedToRevealInFolder": "Error revealing in folder: {{error}}"
+	},
+	"export": {
+		"canceled": "Export canceled",
+		"exportedSuccessfully": "{{format}} exported successfully"
+	},
+	"project": {
+		"saveCanceled": "Project save canceled",
+		"failedToSave": "Failed to save project",
+		"savedTo": "Project saved to {{path}}",
+		"failedToLoad": "Failed to load project",
+		"invalidFormat": "Invalid project file format",
+		"loadedFrom": "Project loaded from {{path}}"
+	},
+	"recording": {
+		"failedCameraAccess": "Failed to request camera access.",
+		"cameraBlocked": "Camera access is blocked. Enable it in system settings to use the webcam.",
+		"systemAudioUnavailable": "System audio not available. Recording without system audio.",
+		"microphoneDenied": "Microphone access denied. Recording will continue without audio.",
+		"cameraDenied": "Camera access denied. Recording will continue without webcam.",
+		"permissionDenied": "Recording permission denied. Please allow screen recording."
+	}
+}

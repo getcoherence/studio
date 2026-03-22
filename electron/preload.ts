@@ -115,6 +115,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	saveShortcuts: (shortcuts: unknown) => {
 		return ipcRenderer.invoke("save-shortcuts", shortcuts);
 	},
+	setLocale: (locale: string) => {
+		return ipcRenderer.invoke("set-locale", locale);
+	},
 	setMicrophoneExpanded: (expanded: boolean) => {
 		ipcRenderer.send("hud:setMicrophoneExpanded", expanded);
 	},

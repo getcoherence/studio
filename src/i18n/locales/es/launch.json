@@ -1,0 +1,29 @@
+{
+	"tooltips": {
+		"hideHUD": "Ocultar HUD",
+		"closeApp": "Cerrar aplicación",
+		"restartRecording": "Reiniciar grabación",
+		"openVideoFile": "Abrir archivo de video",
+		"openProject": "Abrir proyecto"
+	},
+	"audio": {
+		"enableSystemAudio": "Activar audio del sistema",
+		"disableSystemAudio": "Desactivar audio del sistema",
+		"enableMicrophone": "Activar micrófono",
+		"disableMicrophone": "Desactivar micrófono"
+	},
+	"webcam": {
+		"enableWebcam": "Activar cámara web",
+		"disableWebcam": "Desactivar cámara web"
+	},
+	"sourceSelector": {
+		"loading": "Cargando fuentes...",
+		"screens": "Pantallas ({{count}})",
+		"windows": "Ventanas ({{count}})",
+		"defaultSourceName": "Pantalla"
+	},
+	"recording": {
+		"selectSource": "Por favor selecciona una fuente para grabar"
+	},
+	"language": "Idioma"
+}

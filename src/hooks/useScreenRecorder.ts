@@ -1,6 +1,7 @@
 import { fixWebmDuration } from "@fix-webm-duration/fix";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useScopedT } from "@/contexts/I18nContext";
 import { requestCameraAccess } from "@/lib/requestCameraAccess";
 
 const TARGET_FRAME_RATE = 60;
@@ -80,6 +81,7 @@ function createRecorderHandle(stream: MediaStream, options: MediaRecorderOptions
 }
 
 export function useScreenRecorder(): UseScreenRecorderReturn {
+	const t = useScopedT("editor");
 	const [recording, setRecording] = useState(false);
 	const [microphoneEnabled, setMicrophoneEnabled] = useState(false);
 	const [microphoneDeviceId, setMicrophoneDeviceId] = useState<string | undefined>(undefined);
@@ -152,26 +154,29 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		}
 	}, []);
 
-	const setWebcamEnabled = useCallback(async (enabled: boolean) => {
-		if (!enabled) {
-			setWebcamEnabledState(false);
+	const setWebcamEnabled = useCallback(
+		async (enabled: boolean) => {
+			if (!enabled) {
+				setWebcamEnabledState(false);
+				return true;
+			}
+
+			const accessResult = await requestCameraAccess();
+			if (!accessResult.success) {
+				toast.error(t("recording.failedCameraAccess"));
+				return false;
+			}
+
+			if (!accessResult.granted) {
+				toast.error(t("recording.cameraBlocked"));
+				return false;
+			}
+
+			setWebcamEnabledState(true);
 			return true;
-		}
-
-		const accessResult = await requestCameraAccess();
-		if (!accessResult.success) {
-			toast.error("Failed to request camera access.");
-			return false;
-		}
-
-		if (!accessResult.granted) {
-			toast.error("Camera access is blocked. Enable it in system settings to use the webcam.");
-			return false;
-		}
-
-		setWebcamEnabledState(true);
-		return true;
-	}, []);
+		},
+		[t],
+	);
 
 	const finalizeRecording = useCallback(
 		(
@@ -332,7 +337,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		try {
 			const selectedSource = await window.electronAPI.getSelectedSource();
 			if (!selectedSource) {
-				alert("Please select a source to record");
+				alert(t("recording.selectSource"));
 				return;
 			}
 
@@ -362,7 +367,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					} as unknown as MediaStreamConstraints);
 				} catch (audioErr) {
 					console.warn("System audio capture failed, falling back to video-only:", audioErr);
-					toast.error("System audio not available. Recording without system audio.");
+					toast.error(t("recording.systemAudioUnavailable"));
 					screenMediaStream = await navigator.mediaDevices.getUserMedia({
 						audio: false,
 						video: videoConstraints,
@@ -395,7 +400,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					});
 				} catch (audioError) {
 					console.warn("Failed to get microphone access:", audioError);
-					toast.error("Microphone access denied. Recording will continue without audio.");
+					toast.error(t("recording.microphoneDenied"));
 					setMicrophoneEnabled(false);
 				}
 			}
@@ -417,7 +422,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 						webcamStream.current = null;
 					}
 					setWebcamEnabledState(false);
-					toast.error("Camera access denied. Recording will continue without webcam.");
+					toast.error(t("recording.cameraDenied"));
 				}
 			}
 
@@ -532,7 +537,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			console.error("Failed to start recording:", error);
 			const errorMsg = error instanceof Error ? error.message : "Failed to start recording";
 			if (errorMsg.includes("Permission denied") || errorMsg.includes("NotAllowedError")) {
-				toast.error("Recording permission denied. Please allow screen recording.");
+				toast.error(t("recording.permissionDenied"));
 			} else {
 				toast.error(errorMsg);
 			}

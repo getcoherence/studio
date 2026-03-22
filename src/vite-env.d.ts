@@ -119,5 +119,6 @@ interface Window {
 		setMicrophoneExpanded: (expanded: boolean) => void;
 		setHasUnsavedChanges: (hasChanges: boolean) => void;
 		onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => () => void;
+		setLocale: (locale: string) => Promise<void>;
 	};
 }

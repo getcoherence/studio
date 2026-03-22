@@ -1,0 +1,50 @@
+{
+	"buttons": {
+		"addZoom": "添加缩放 (Z)",
+		"suggestZooms": "根据光标建议缩放",
+		"addTrim": "添加剪辑 (T)",
+		"addAnnotation": "添加标注 (A)",
+		"addSpeed": "添加速度 (S)"
+	},
+	"hints": {
+		"pressZoom": "按 Z 添加缩放",
+		"pressTrim": "按 T 添加剪辑",
+		"pressAnnotation": "按 A 添加标注",
+		"pressSpeed": "按 S 添加速度"
+	},
+	"labels": {
+		"pan": "平移",
+		"zoom": "缩放",
+		"zoomItem": "缩放 {{index}}",
+		"trimItem": "剪辑 {{index}}",
+		"speedItem": "速度 {{index}}",
+		"annotationItem": "标注",
+		"imageItem": "图片",
+		"emptyText": "空文本"
+	},
+	"emptyState": {
+		"noVideo": "未加载视频",
+		"dragAndDrop": "拖放视频以开始编辑"
+	},
+	"errors": {
+		"cannotPlaceZoom": "无法在此处放置缩放",
+		"zoomExistsAtLocation": "此位置已存在缩放或没有足够的空间。",
+		"zoomSuggestionUnavailable": "缩放建议处理器不可用",
+		"noCursorTelemetry": "无可用的光标遥测数据",
+		"noCursorTelemetryDescription": "请先录制一段屏幕录像以生成基于光标的建议。",
+		"noUsableTelemetry": "无可用的光标遥测数据",
+		"noUsableTelemetryDescription": "录制内容没有包含足够的光标移动数据。",
+		"noDwellMoments": "未找到明确的光标停留时刻",
+		"noDwellMomentsDescription": "请尝试在重要操作上进行较慢光标停留的录制。",
+		"noAutoZoomSlots": "无可用的自动缩放位置",
+		"noAutoZoomSlotsDescription": "检测到的停留点与现有缩放区域重叠。",
+		"cannotPlaceTrim": "无法在此处放置剪辑",
+		"trimExistsAtLocation": "此位置已存在剪辑或没有足够的空间。",
+		"cannotPlaceSpeed": "无法在此处放置速度",
+		"speedExistsAtLocation": "此位置已存在速度区域或没有足够的空间。"
+	},
+	"success": {
+		"addedZoomSuggestions": "已添加 {{count}} 个基于光标的缩放建议",
+		"addedZoomSuggestionsPlural": "已添加 {{count}} 个基于光标的缩放建议"
+	}
+}

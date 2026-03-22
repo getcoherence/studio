@@ -14,6 +14,7 @@
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
+		"i18n:check": "node scripts/i18n-check.mjs",
 		"preview": "vite preview",
 		"build:mac": "tsc && vite build && electron-builder --mac",
 		"build:win": "tsc && vite build && electron-builder --win",

@@ -1,4 +1,5 @@
 import { Film, Image } from "lucide-react";
+import { useScopedT } from "@/contexts/I18nContext";
 import type { ExportFormat } from "@/lib/exporter/types";
 import { cn } from "@/lib/utils";
 
@@ -8,26 +9,9 @@ interface FormatSelectorProps {
 	disabled?: boolean;
 }
 
-interface FormatOption {
-	value: ExportFormat;
-	label: string;
-	description: string;
-	icon: React.ReactNode;
-}
-
-const formatOptions: FormatOption[] = [
-	{
-		value: "mp4",
-		label: "MP4 Video",
-		description: "High quality video file",
-		icon: <Film className="w-5 h-5" />,
-	},
-	{
-		value: "gif",
-		label: "GIF Animation",
-		description: "Animated image for sharing",
-		icon: <Image className="w-5 h-5" />,
-	},
+const formatOptions: Array<{ value: ExportFormat; icon: React.ReactNode }> = [
+	{ value: "mp4", icon: <Film className="w-5 h-5" /> },
+	{ value: "gif", icon: <Image className="w-5 h-5" /> },
 ];
 
 export function FormatSelector({
@@ -35,10 +19,18 @@ export function FormatSelector({
 	onFormatChange,
 	disabled = false,
 }: FormatSelectorProps) {
+	const t = useScopedT("settings");
+
+	const formatLabels: Record<ExportFormat, { label: string; description: string }> = {
+		mp4: { label: t("exportFormat.mp4Video"), description: t("exportFormat.mp4Description") },
+		gif: { label: t("exportFormat.gifAnimation"), description: t("exportFormat.gifDescription") },
+	};
+
 	return (
 		<div className="grid grid-cols-2 gap-3">
 			{formatOptions.map((option) => {
 				const isSelected = selectedFormat === option.value;
+				const labels = formatLabels[option.value];
 				return (
 					<button
 						key={option.value}
@@ -63,8 +55,8 @@ export function FormatSelector({
 							{option.icon}
 						</div>
 						<div className="text-center">
-							<div className="font-medium text-sm">{option.label}</div>
-							<div className="text-xs text-slate-500 mt-0.5">{option.description}</div>
+							<div className="font-medium text-sm">{labels.label}</div>
+							<div className="text-xs text-slate-500 mt-0.5">{labels.description}</div>
 						</div>
 						{isSelected && (
 							<div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#34B27B]" />

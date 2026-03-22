@@ -1,0 +1,152 @@
+{
+	"zoom": {
+		"level": "Zoom Level",
+		"selectRegion": "Select a zoom region to adjust",
+		"deleteZoom": "Delete Zoom"
+	},
+	"speed": {
+		"playbackSpeed": "Playback Speed",
+		"selectRegion": "Select a speed region to adjust",
+		"deleteRegion": "Delete Speed Region"
+	},
+	"trim": {
+		"deleteRegion": "Delete Trim Region"
+	},
+	"layout": {
+		"title": "Layout",
+		"preset": "Preset",
+		"selectPreset": "Select preset",
+		"pictureInPicture": "Picture in Picture",
+		"verticalStack": "Vertical Stack"
+	},
+	"effects": {
+		"title": "Video Effects",
+		"blurBg": "Blur BG",
+		"motionBlur": "Motion Blur",
+		"off": "off",
+		"shadow": "Shadow",
+		"roundness": "Roundness",
+		"padding": "Padding"
+	},
+	"background": {
+		"title": "Background",
+		"image": "Image",
+		"color": "Color",
+		"gradient": "Gradient",
+		"uploadCustom": "Upload Custom",
+		"gradientLabel": "Gradient {{index}}"
+	},
+	"crop": {
+		"title": "Crop",
+		"cropVideo": "Crop Video",
+		"dragInstruction": "Drag on each side to adjust the crop area",
+		"ratio": "Ratio",
+		"free": "Free",
+		"done": "Done",
+		"lockAspectRatio": "Lock aspect ratio",
+		"unlockAspectRatio": "Unlock aspect ratio"
+	},
+	"exportFormat": {
+		"mp4": "MP4",
+		"gif": "GIF",
+		"mp4Video": "MP4 Video",
+		"mp4Description": "High quality video file",
+		"gifAnimation": "GIF Animation",
+		"gifDescription": "Animated image for sharing"
+	},
+	"exportQuality": {
+		"title": "Export Quality",
+		"low": "Low",
+		"medium": "Medium",
+		"high": "High"
+	},
+	"gifSettings": {
+		"frameRate": "GIF Frame Rate",
+		"size": "GIF Size",
+		"loop": "Loop GIF"
+	},
+	"project": {
+		"save": "Save Project",
+		"load": "Load Project"
+	},
+	"export": {
+		"videoButton": "Export Video",
+		"gifButton": "Export GIF",
+		"chooseSaveLocation": "Choose Save Location"
+	},
+	"links": {
+		"reportBug": "Report Bug",
+		"starOnGithub": "Star on GitHub"
+	},
+	"imageUpload": {
+		"invalidFileType": "Invalid file type",
+		"jpgOnly": "Please upload a JPG or JPEG image file.",
+		"uploadSuccess": "Custom image uploaded successfully!",
+		"failedToUpload": "Failed to upload image",
+		"errorReading": "There was an error reading the file."
+	},
+	"annotation": {
+		"title": "Annotation Settings",
+		"active": "Active",
+		"typeText": "Text",
+		"typeImage": "Image",
+		"typeArrow": "Arrow",
+		"textContent": "Text Content",
+		"textPlaceholder": "Enter your text...",
+		"fontStyle": "Font Style",
+		"selectStyle": "Select style",
+		"size": "Size",
+		"customFonts": "Custom Fonts",
+		"textColor": "Text Color",
+		"background": "Background",
+		"none": "None",
+		"color": "Color",
+		"clearBackground": "Clear Background",
+		"uploadImage": "Upload Image",
+		"supportedFormats": "Supported formats: JPG, PNG, GIF, WebP",
+		"arrowDirection": "Arrow Direction",
+		"strokeWidth": "Stroke Width: {{width}}px",
+		"arrowColor": "Arrow Color",
+		"deleteAnnotation": "Delete Annotation",
+		"shortcutsAndTips": "Shortcuts & Tips",
+		"tipMovePlayhead": "Move playhead to overlapping annotation section and select an item.",
+		"tipTabCycle": "Use Tab to cycle through overlapping items.",
+		"tipShiftTabCycle": "Use Shift+Tab to cycle backwards.",
+		"invalidImageType": "Invalid file type",
+		"imageFormatsOnly": "Please upload a JPG, PNG, GIF, or WebP image file.",
+		"imageUploadSuccess": "Image uploaded successfully!",
+		"failedImageUpload": "Failed to upload image"
+	},
+	"fontStyles": {
+		"classic": "Classic",
+		"editor": "Editor",
+		"strong": "Strong",
+		"typewriter": "Typewriter",
+		"deco": "Deco",
+		"simple": "Simple",
+		"modern": "Modern",
+		"clean": "Clean"
+	},
+	"customFont": {
+		"dialogTitle": "Add Google Font",
+		"urlLabel": "Google Fonts Import URL",
+		"urlPlaceholder": "https://fonts.googleapis.com/css2?family=Roboto&display=swap",
+		"urlHelp": "Get this from Google Fonts: Select a font → Click \"Get font\" → Copy the @import URL",
+		"nameLabel": "Display Name",
+		"namePlaceholder": "My Custom Font",
+		"nameHelp": "This is how the font will appear in the font selector",
+		"addButton": "Add Font",
+		"addingButton": "Adding...",
+		"errorEmptyUrl": "Please enter a Google Fonts import URL",
+		"errorInvalidUrl": "Please enter a valid Google Fonts URL",
+		"errorEmptyName": "Please enter a font name",
+		"errorExtractFailed": "Could not extract font family from URL",
+		"successMessage": "Font \"{{fontName}}\" added successfully",
+		"failedToAdd": "Failed to add font",
+		"errorTimeout": "Font took too long to load. Please check the URL and try again.",
+		"errorLoadFailed": "The font could not be loaded. Please verify the Google Fonts URL is correct."
+	},
+	"language": {
+		"title": "Language"
+	}
+}

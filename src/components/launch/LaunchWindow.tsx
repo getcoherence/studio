@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Languages } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BsRecordCircle } from "react-icons/bs";
 import { FaRegStopCircle } from "react-icons/fa";
@@ -16,6 +16,9 @@ import {
 	MdVolumeUp,
 } from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
+import { useI18n, useScopedT } from "@/contexts/I18nContext";
+import { type Locale, SUPPORTED_LOCALES } from "@/i18n/config";
+import { getLocaleName } from "@/i18n/loader";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
 import { useScreenRecorder } from "../../hooks/useScreenRecorder";
@@ -62,6 +65,9 @@ const windowBtnClasses =
 	"flex items-center justify-center p-2 rounded-full transition-all duration-150 cursor-pointer opacity-50 hover:opacity-90 hover:bg-white/[0.08]";
 
 export function LaunchWindow() {
+	const t = useScopedT("launch");
+	const { locale, setLocale } = useI18n();
+
 	const {
 		recording,
 		toggleRecording,
@@ -187,7 +193,26 @@ export function LaunchWindow() {
 	};
 
 	return (
-		<div className="w-full h-full flex items-end justify-center bg-transparent">
+		<div className="w-full h-full flex items-end justify-center bg-transparent relative">
+			{/* Language switcher — top-left, beside traffic lights */}
+			<div
+				className={`absolute top-2 left-[72px] flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 ${styles.electronNoDrag}`}
+			>
+				<Languages size={14} />
+				<select
+					value={locale}
+					onChange={(e) => setLocale(e.target.value as Locale)}
+					className="bg-transparent text-[11px] font-medium outline-none cursor-pointer appearance-none pr-1"
+					style={{ color: "inherit" }}
+				>
+					{SUPPORTED_LOCALES.map((loc) => (
+						<option key={loc} value={loc} className="bg-[#1c1c24] text-white">
+							{getLocaleName(loc)}
+						</option>
+					))}
+				</select>
+			</div>
+
 			<div className={`flex flex-col items-center gap-2 mx-auto ${styles.electronDrag}`}>
 				{/* Mic controls panel */}
 				{showMicControls && (
@@ -244,7 +269,9 @@ export function LaunchWindow() {
 							className={`${hudIconBtnClasses} ${systemAudioEnabled ? "drop-shadow-[0_0_4px_rgba(74,222,128,0.4)]" : ""}`}
 							onClick={() => !recording && setSystemAudioEnabled(!systemAudioEnabled)}
 							disabled={recording}
-							title={systemAudioEnabled ? "Disable system audio" : "Enable system audio"}
+							title={
+								systemAudioEnabled ? t("audio.disableSystemAudio") : t("audio.enableSystemAudio")
+							}
 						>
 							{systemAudioEnabled
 								? getIcon("volumeOn", "text-green-400")
@@ -254,7 +281,7 @@ export function LaunchWindow() {
 							className={`${hudIconBtnClasses} ${microphoneEnabled ? "drop-shadow-[0_0_4px_rgba(74,222,128,0.4)]" : ""}`}
 							onClick={toggleMicrophone}
 							disabled={recording}
-							title={microphoneEnabled ? "Disable microphone" : "Enable microphone"}
+							title={microphoneEnabled ? t("audio.disableMicrophone") : t("audio.enableMicrophone")}
 						>
 							{microphoneEnabled
 								? getIcon("micOn", "text-green-400")
@@ -265,7 +292,7 @@ export function LaunchWindow() {
 							onClick={async () => {
 								await setWebcamEnabled(!webcamEnabled);
 							}}
-							title={webcamEnabled ? "Disable webcam" : "Enable webcam"}
+							title={webcamEnabled ? t("webcam.disableWebcam") : t("webcam.enableWebcam")}
 						>
 							{webcamEnabled
 								? getIcon("webcamOn", "text-green-400")
@@ -296,7 +323,7 @@ export function LaunchWindow() {
 
 					{/* Restart recording */}
 					{recording && (
-						<Tooltip content="Restart recording">
+						<Tooltip content={t("tooltips.restartRecording")}>
 							<button
 								className={`${hudIconBtnClasses} ${styles.electronNoDrag}`}
 								onClick={restartRecording}
@@ -307,7 +334,7 @@ export function LaunchWindow() {
 					)}
 
 					{/* Open video file */}
-					<Tooltip content="Open video file">
+					<Tooltip content={t("tooltips.openVideoFile")}>
 						<button
 							className={`${hudIconBtnClasses} ${styles.electronNoDrag}`}
 							onClick={openVideoFile}
@@ -318,7 +345,7 @@ export function LaunchWindow() {
 					</Tooltip>
 
 					{/* Open project */}
-					<Tooltip content="Open project">
+					<Tooltip content={t("tooltips.openProject")}>
 						<button
 							className={`${hudIconBtnClasses} ${styles.electronNoDrag}`}
 							onClick={openProjectFile}
@@ -330,10 +357,18 @@ export function LaunchWindow() {
 
 					{/* Window controls */}
 					<div className={`flex items-center gap-0.5 ${styles.electronNoDrag}`}>
-						<button className={windowBtnClasses} title="Hide HUD" onClick={sendHudOverlayHide}>
+						<button
+							className={windowBtnClasses}
+							title={t("tooltips.hideHUD")}
+							onClick={sendHudOverlayHide}
+						>
 							{getIcon("minimize", "text-white")}
 						</button>
-						<button className={windowBtnClasses} title="Close App" onClick={sendHudOverlayClose}>
+						<button
+							className={windowBtnClasses}
+							title={t("tooltips.closeApp")}
+							onClick={sendHudOverlayClose}
+						>
 							{getIcon("close", "text-white")}
 						</button>
 					</div>

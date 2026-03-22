@@ -17,6 +17,7 @@ import {
 	type RecordingSession,
 	type StoreRecordedSessionInput,
 } from "../../src/lib/recordingSession";
+import { mainT } from "../i18n";
 import { RECORDINGS_DIR } from "../main";
 
 const PROJECT_FILE_EXTENSION = "openscreen";
@@ -472,11 +473,13 @@ export function registerIpcHandlers(
 			// Determine file type from extension
 			const isGif = fileName.toLowerCase().endsWith(".gif");
 			const filters = isGif
-				? [{ name: "GIF Image", extensions: ["gif"] }]
-				: [{ name: "MP4 Video", extensions: ["mp4"] }];
+				? [{ name: mainT("dialogs", "fileDialogs.gifImage"), extensions: ["gif"] }]
+				: [{ name: mainT("dialogs", "fileDialogs.mp4Video"), extensions: ["mp4"] }];
 
 			const result = await dialog.showSaveDialog({
-				title: isGif ? "Save Exported GIF" : "Save Exported Video",
+				title: isGif
+					? mainT("dialogs", "fileDialogs.saveGif")
+					: mainT("dialogs", "fileDialogs.saveVideo"),
 				defaultPath: path.join(app.getPath("downloads"), fileName),
 				filters,
 				properties: ["createDirectory", "showOverwriteConfirmation"],
@@ -510,11 +513,14 @@ export function registerIpcHandlers(
 	ipcMain.handle("open-video-file-picker", async () => {
 		try {
 			const result = await dialog.showOpenDialog({
-				title: "Select Video File",
+				title: mainT("dialogs", "fileDialogs.selectVideo"),
 				defaultPath: RECORDINGS_DIR,
 				filters: [
-					{ name: "Video Files", extensions: ["webm", "mp4", "mov", "avi", "mkv"] },
-					{ name: "All Files", extensions: ["*"] },
+					{
+						name: mainT("dialogs", "fileDialogs.videoFiles"),
+						extensions: ["webm", "mp4", "mov", "avi", "mkv"],
+					},
+					{ name: mainT("dialogs", "fileDialogs.allFiles"), extensions: ["*"] },
 				],
 				properties: ["openFile"],
 			});
@@ -590,10 +596,13 @@ export function registerIpcHandlers(
 					: `${safeName}.${PROJECT_FILE_EXTENSION}`;
 
 				const result = await dialog.showSaveDialog({
-					title: "Save OpenScreen Project",
+					title: mainT("dialogs", "fileDialogs.saveProject"),
 					defaultPath: path.join(RECORDINGS_DIR, defaultName),
 					filters: [
-						{ name: "OpenScreen Project", extensions: [PROJECT_FILE_EXTENSION] },
+						{
+							name: mainT("dialogs", "fileDialogs.openscreenProject"),
+							extensions: [PROJECT_FILE_EXTENSION],
+						},
 						{ name: "JSON", extensions: ["json"] },
 					],
 					properties: ["createDirectory", "showOverwriteConfirmation"],
@@ -629,12 +638,15 @@ export function registerIpcHandlers(
 	ipcMain.handle("load-project-file", async () => {
 		try {
 			const result = await dialog.showOpenDialog({
-				title: "Open OpenScreen Project",
+				title: mainT("dialogs", "fileDialogs.openProject"),
 				defaultPath: RECORDINGS_DIR,
 				filters: [
-					{ name: "OpenScreen Project", extensions: [PROJECT_FILE_EXTENSION] },
+					{
+						name: mainT("dialogs", "fileDialogs.openscreenProject"),
+						extensions: [PROJECT_FILE_EXTENSION],
+					},
 					{ name: "JSON", extensions: ["json"] },
-					{ name: "All Files", extensions: ["*"] },
+					{ name: mainT("dialogs", "fileDialogs.allFiles"), extensions: ["*"] },
 				],
 				properties: ["openFile"],
 			});
