@@ -8,6 +8,7 @@ import type {
 	WebcamLayoutPreset,
 	ZoomRegion,
 } from "@/components/video-editor/types";
+import type { CaptionStyle, CaptionTrack } from "@/lib/ai/types";
 import { AsyncVideoFrameQueue } from "./asyncVideoFrameQueue";
 import { FrameRenderer } from "./frameRenderer";
 import { StreamingVideoDecoder } from "./streamingDecoder";
@@ -46,6 +47,8 @@ interface GifExporterConfig {
 	annotationRegions?: AnnotationRegion[];
 	previewWidth?: number;
 	previewHeight?: number;
+	captionTrack?: CaptionTrack | null;
+	captionStyle?: CaptionStyle;
 	onProgress?: (progress: ExportProgress) => void;
 	// Cursor overlay settings
 	cursorTelemetry?: CursorTelemetryPoint[];
@@ -160,6 +163,8 @@ export class GifExporter {
 				cursorSmoothing: this.config.cursorSmoothing,
 				cursorSway: this.config.cursorSway,
 				showClickRings: this.config.showClickRings,
+				captionTrack: this.config.captionTrack,
+				captionStyle: this.config.captionStyle,
 			});
 			await this.renderer.initialize();
 

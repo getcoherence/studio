@@ -195,6 +195,27 @@ interface Window {
 		}>;
 		getSetting: (key: string) => Promise<string | null>;
 		setSetting: (key: string, value: string) => Promise<{ success: boolean }>;
+
+		// Whisper / Captions
+		whisperTranscribe: (
+			videoPath: string,
+			options?: { modelId?: string; language?: string; threads?: number },
+		) => Promise<{
+			success: boolean;
+			captionTrack?: import("../src/lib/ai/types").CaptionTrack;
+			error?: string;
+		}>;
+		whisperModelStatus: (
+			modelId: string,
+		) => Promise<import("../src/lib/ai/types").WhisperModelStatus>;
+		whisperModelDownload: (
+			modelId: string,
+		) => Promise<{ success: boolean; path?: string; error?: string }>;
+		whisperModelDelete: (modelId: string) => Promise<{ success: boolean; error?: string }>;
+		whisperAvailable: () => Promise<boolean>;
+		onWhisperModelDownloadProgress: (
+			callback: (progress: import("../src/lib/ai/types").ModelDownloadProgress) => void,
+		) => () => void;
 	};
 }
 

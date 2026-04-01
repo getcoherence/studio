@@ -13,6 +13,8 @@ import {
 	DEFAULT_WEBCAM_LAYOUT_PRESET,
 	DEFAULT_WEBCAM_POSITION,
 } from "@/components/video-editor/types";
+import type { CaptionStyle, CaptionTrack } from "@/lib/ai/types";
+import { DEFAULT_CAPTION_STYLE } from "@/lib/ai/types";
 import type { AspectRatio } from "@/utils/aspectRatioUtils";
 
 // Undoable state — selection IDs are intentionally excluded (undoing a
@@ -38,6 +40,8 @@ export interface EditorState {
 	cursorStyle: string;
 	showClickRings: boolean;
 	showCursor: boolean;
+	captionTrack: CaptionTrack | null;
+	captionStyle: CaptionStyle;
 }
 
 export const INITIAL_EDITOR_STATE: EditorState = {
@@ -60,6 +64,8 @@ export const INITIAL_EDITOR_STATE: EditorState = {
 	cursorStyle: "default",
 	showClickRings: true,
 	showCursor: true,
+	captionTrack: null,
+	captionStyle: DEFAULT_CAPTION_STYLE,
 };
 
 type StateUpdate = Partial<EditorState> | ((prev: EditorState) => Partial<EditorState>);

@@ -32,6 +32,7 @@ import {
 	createMotionBlurState,
 	type MotionBlurState,
 } from "@/components/video-editor/videoPlayback/zoomTransform";
+import type { CaptionStyle, CaptionTrack } from "@/lib/ai/types";
 import {
 	computeCompositeLayout,
 	getWebcamLayoutPresetDefinition,
@@ -44,6 +45,7 @@ import { getCursorStyle } from "@/lib/cursor/cursorStyles";
 import { CursorSwayInterpolator, computeCursorSway } from "@/lib/cursor/cursorSway";
 import { CursorSmoother, type SmoothedPosition } from "@/lib/cursor/motionSmoothing";
 import { renderAnnotations } from "./annotationRenderer";
+import { renderCaptions } from "./captionRenderer";
 import {
 	getLinearGradientPoints,
 	getRadialGradientShape,
@@ -79,6 +81,8 @@ interface FrameRenderConfig {
 	cursorSmoothing?: number;
 	cursorSway?: number;
 	showClickRings?: boolean;
+	captionTrack?: CaptionTrack | null;
+	captionStyle?: CaptionStyle;
 }
 
 interface AnimationState {
@@ -453,6 +457,18 @@ export class FrameRenderer {
 
 		// Render cursor overlay
 		this.renderCursorOverlay(timeMs);
+
+		// Render captions on top of everything
+		if (this.config.captionTrack && this.config.captionStyle && this.compositeCtx) {
+			renderCaptions(
+				this.compositeCtx,
+				this.config.captionTrack,
+				this.config.captionStyle,
+				timeMs,
+				this.config.width,
+				this.config.height,
+			);
+		}
 	}
 
 	private renderCursorOverlay(timeMs: number): void {
