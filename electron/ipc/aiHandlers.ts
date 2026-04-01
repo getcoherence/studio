@@ -18,12 +18,9 @@ export function registerAIHandlers(): void {
 		return analyze(prompt, context);
 	});
 
-	ipcMain.handle(
-		"ai-generate-json",
-		async (_event, prompt: string, context?: string, schema?: Record<string, unknown>) => {
-			return generateJSON(prompt, context, schema);
-		},
-	);
+	ipcMain.handle("ai-generate-json", async (_event, prompt: string, context?: string) => {
+		return generateJSON(prompt, context);
+	});
 
 	ipcMain.handle("ai-check-availability", async () => {
 		return checkAvailability();

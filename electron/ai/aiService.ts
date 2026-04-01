@@ -1,6 +1,6 @@
 /**
- * AI Service — supports multiple LLM providers (Ollama local, OpenAI cloud).
- * Used by the main process only; renderer calls via IPC.
+ * AI Service — supports multiple LLM providers.
+ * Ollama (local), OpenAI, Anthropic, Groq, MiniMax.
  */
 
 import fs from "node:fs/promises";
@@ -17,7 +17,7 @@ import type {
 const SETTINGS_FILE_NAME = "ai-settings.json";
 
 const DEFAULT_CONFIG: AIServiceConfig = {
-	provider: "local",
+	provider: "openai",
 	ollamaUrl: "http://localhost:11434",
 };
 
@@ -47,32 +47,46 @@ export async function saveAIConfig(config: Partial<AIServiceConfig>): Promise<vo
 	await fs.writeFile(getSettingsPath(), JSON.stringify(merged, null, 2), "utf-8");
 }
 
+// ── Provider endpoints ──
+
+const PROVIDER_ENDPOINTS: Record<string, string> = {
+	openai: "https://api.openai.com/v1/chat/completions",
+	anthropic: "https://api.anthropic.com/v1/messages",
+	groq: "https://api.groq.com/openai/v1/chat/completions",
+	minimax: "https://api.minimax.chat/v1/text/chatcompletion_v2",
+};
+
+const DEFAULT_MODELS: Record<string, string> = {
+	ollama: "llama3.2",
+	openai: "gpt-4o-mini",
+	anthropic: "claude-sonnet-4-6",
+	groq: "llama-3.3-70b-versatile",
+	minimax: "MiniMax-M1-80k",
+};
+
 // ── Provider communication ──
 
 async function ollamaGenerate(prompt: string, model: string, ollamaUrl: string): Promise<string> {
-	const url = `${ollamaUrl}/api/generate`;
-	const response = await fetch(url, {
+	const response = await fetch(`${ollamaUrl}/api/generate`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ model, prompt, stream: false }),
 		signal: AbortSignal.timeout(60_000),
 	});
-
 	if (!response.ok) {
 		throw new Error(`Ollama responded with ${response.status}: ${response.statusText}`);
 	}
-
 	const data = (await response.json()) as { response?: string };
 	return data.response ?? "";
 }
 
-async function openaiChatCompletion(
+async function openaiCompatibleChat(
 	prompt: string,
 	apiKey: string,
 	model: string,
+	endpoint: string,
 ): Promise<string> {
-	const url = "https://api.openai.com/v1/chat/completions";
-	const response = await fetch(url, {
+	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -85,18 +99,64 @@ async function openaiChatCompletion(
 		}),
 		signal: AbortSignal.timeout(60_000),
 	});
-
 	if (!response.ok) {
-		throw new Error(`OpenAI responded with ${response.status}: ${response.statusText}`);
+		throw new Error(`API responded with ${response.status}: ${response.statusText}`);
 	}
-
 	const data = (await response.json()) as {
 		choices?: Array<{ message?: { content?: string } }>;
 	};
 	return data.choices?.[0]?.message?.content ?? "";
 }
 
-// ── Public API ──
+async function anthropicChat(prompt: string, apiKey: string, model: string): Promise<string> {
+	const response = await fetch(PROVIDER_ENDPOINTS.anthropic, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"x-api-key": apiKey,
+			"anthropic-version": "2023-06-01",
+		},
+		body: JSON.stringify({
+			model,
+			max_tokens: 4096,
+			messages: [{ role: "user", content: prompt }],
+		}),
+		signal: AbortSignal.timeout(60_000),
+	});
+	if (!response.ok) {
+		throw new Error(`Anthropic responded with ${response.status}: ${response.statusText}`);
+	}
+	const data = (await response.json()) as {
+		content?: Array<{ text?: string }>;
+	};
+	return data.content?.[0]?.text ?? "";
+}
+
+async function callProvider(
+	provider: AIProvider,
+	prompt: string,
+	config: AIServiceConfig,
+): Promise<string> {
+	const model = config.model ?? DEFAULT_MODELS[provider] ?? "gpt-4o-mini";
+
+	if (provider === "ollama") {
+		const ollamaUrl = config.ollamaUrl ?? "http://localhost:11434";
+		return ollamaGenerate(prompt, model, ollamaUrl);
+	}
+
+	if (provider === "anthropic") {
+		if (!config.apiKey) throw new Error("Anthropic API key not configured");
+		return anthropicChat(prompt, config.apiKey, model);
+	}
+
+	// OpenAI, Groq, MiniMax all use OpenAI-compatible chat completions API
+	const endpoint = PROVIDER_ENDPOINTS[provider];
+	if (!endpoint) throw new Error(`Unknown provider: ${provider}`);
+	if (!config.apiKey) throw new Error(`${provider} API key not configured`);
+	return openaiCompatibleChat(prompt, config.apiKey, model, endpoint);
+}
+
+// ── Availability check ──
 
 async function isOllamaAvailable(ollamaUrl: string): Promise<boolean> {
 	try {
@@ -111,64 +171,53 @@ async function isOllamaAvailable(ollamaUrl: string): Promise<boolean> {
 
 export async function checkAvailability(): Promise<AIAvailability> {
 	const config = await loadAIConfig();
-	const ollamaUrl = config.ollamaUrl ?? DEFAULT_CONFIG.ollamaUrl!;
-	const localAvailable = await isOllamaAvailable(ollamaUrl);
-	const cloudAvailable = Boolean(config.apiKey && config.apiKey.length > 0);
+	const ollamaUrl = config.ollamaUrl ?? "http://localhost:11434";
+	const ollamaUp = await isOllamaAvailable(ollamaUrl);
 
+	const providers: AIAvailability["providers"] = [
+		{ id: "openai", available: Boolean(config.apiKey && config.provider === "openai") },
+		{ id: "anthropic", available: Boolean(config.apiKey && config.provider === "anthropic") },
+		{ id: "groq", available: Boolean(config.apiKey && config.provider === "groq") },
+		{ id: "minimax", available: Boolean(config.apiKey && config.provider === "minimax") },
+		{
+			id: "ollama",
+			available: ollamaUp,
+			reason: ollamaUp ? undefined : "Ollama not detected at localhost:11434",
+		},
+	];
+
+	// Active provider is whatever is configured + available
 	let activeProvider: AIProvider | null = null;
-	if (config.provider === "local" && localAvailable) {
-		activeProvider = "local";
-	} else if (config.provider === "cloud" && cloudAvailable) {
-		activeProvider = "cloud";
-	} else if (localAvailable) {
-		activeProvider = "local";
-	} else if (cloudAvailable) {
-		activeProvider = "cloud";
+	if (config.provider === "ollama" && ollamaUp) {
+		activeProvider = "ollama";
+	} else if (config.provider !== "ollama" && config.apiKey) {
+		activeProvider = config.provider;
 	}
 
-	return { localAvailable, cloudAvailable, activeProvider };
+	return { providers, activeProvider };
 }
+
+// ── Public API ──
 
 export async function analyze(prompt: string, context?: string): Promise<AIServiceResult> {
 	const config = await loadAIConfig();
 	const fullPrompt = context ? `${context}\n\n${prompt}` : prompt;
 
-	// Try preferred provider first, then fallback
-	const providers: AIProvider[] =
-		config.provider === "local" ? ["local", "cloud"] : ["cloud", "local"];
-
-	for (const provider of providers) {
-		try {
-			if (provider === "local") {
-				const ollamaUrl = config.ollamaUrl ?? DEFAULT_CONFIG.ollamaUrl!;
-				if (!(await isOllamaAvailable(ollamaUrl))) continue;
-				const model = config.model ?? "llama3.2";
-				const text = await ollamaGenerate(fullPrompt, model, ollamaUrl);
-				return { success: true, text };
-			}
-
-			if (provider === "cloud") {
-				if (!config.apiKey) continue;
-				const model = config.model ?? "gpt-4o-mini";
-				const text = await openaiChatCompletion(fullPrompt, config.apiKey, model);
-				return { success: true, text };
-			}
-		} catch (err) {
-			console.warn(`AI provider "${provider}" failed:`, err);
-			continue;
-		}
+	try {
+		const text = await callProvider(config.provider, fullPrompt, config);
+		return { success: true, text };
+	} catch (err) {
+		console.warn(`AI provider "${config.provider}" failed:`, err);
+		return {
+			success: false,
+			error: err instanceof Error ? err.message : String(err),
+		};
 	}
-
-	return {
-		success: false,
-		error: "No AI provider available. Install Ollama locally or configure an OpenAI API key.",
-	};
 }
 
 export async function generateJSON<T>(
 	prompt: string,
 	context?: string,
-	_schema?: Record<string, unknown>,
 ): Promise<{ success: boolean; data?: T; error?: string }> {
 	const jsonPrompt = `${prompt}\n\nRespond with ONLY valid JSON. No markdown, no explanation.`;
 	const result = await analyze(jsonPrompt, context);
@@ -178,7 +227,6 @@ export async function generateJSON<T>(
 	}
 
 	try {
-		// Try to extract JSON from the response (handle markdown code blocks)
 		let jsonText = result.text.trim();
 		const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
 		if (jsonMatch) {

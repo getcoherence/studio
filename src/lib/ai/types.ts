@@ -176,16 +176,72 @@ export interface ExtractedClip {
 
 // ── AI service types ──
 
-export type AIProvider = "local" | "cloud" | "openai" | "anthropic";
+export type AIProvider = "ollama" | "openai" | "anthropic" | "groq" | "minimax";
 
 export interface AIServiceConfig {
 	provider: AIProvider;
-	modelId?: string;
 	model?: string;
 	apiKey?: string;
-	baseUrl?: string;
 	ollamaUrl?: string;
 }
+
+export interface AIProviderInfo {
+	id: AIProvider;
+	name: string;
+	description: string;
+	requiresApiKey: boolean;
+	defaultModel: string;
+	models: string[];
+	hasTTS: boolean;
+}
+
+export const AI_PROVIDERS: AIProviderInfo[] = [
+	{
+		id: "openai",
+		name: "OpenAI",
+		description: "GPT-4o, GPT-4o-mini. Best all-in-one with TTS.",
+		requiresApiKey: true,
+		defaultModel: "gpt-4o-mini",
+		models: ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1-nano"],
+		hasTTS: true,
+	},
+	{
+		id: "anthropic",
+		name: "Anthropic",
+		description: "Claude Sonnet, Haiku. Excellent for narration scripts.",
+		requiresApiKey: true,
+		defaultModel: "claude-sonnet-4-6",
+		models: ["claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
+		hasTTS: false,
+	},
+	{
+		id: "groq",
+		name: "Groq",
+		description: "Extremely fast inference. Free tier available.",
+		requiresApiKey: true,
+		defaultModel: "llama-3.3-70b-versatile",
+		models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"],
+		hasTTS: false,
+	},
+	{
+		id: "minimax",
+		name: "MiniMax",
+		description: "MiniMax M2.7. Competitive quality, affordable. Has TTS.",
+		requiresApiKey: true,
+		defaultModel: "MiniMax-M1-80k",
+		models: ["MiniMax-M1-80k", "MiniMax-M1-40k"],
+		hasTTS: true,
+	},
+	{
+		id: "ollama",
+		name: "Ollama (Local)",
+		description: "Run models locally. Free and private. Requires Ollama installed.",
+		requiresApiKey: false,
+		defaultModel: "llama3.2",
+		models: ["llama3.2", "llama3.1", "mistral", "phi3"],
+		hasTTS: false,
+	},
+];
 
 export interface AIServiceResult {
 	success: boolean;
@@ -194,8 +250,7 @@ export interface AIServiceResult {
 }
 
 export interface AIAvailability {
-	localAvailable: boolean;
-	cloudAvailable: boolean;
+	providers: Array<{ id: AIProvider; available: boolean; reason?: string }>;
 	activeProvider: AIProvider | null;
 }
 

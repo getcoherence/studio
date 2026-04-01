@@ -87,7 +87,7 @@ export function AIPanelSidebar({
 			.aiCheckAvailability()
 			.then(setAvailability)
 			.catch(() => {
-				setAvailability({ localAvailable: false, cloudAvailable: false, activeProvider: null });
+				setAvailability({ providers: [], activeProvider: null });
 			});
 	}, []);
 
@@ -166,7 +166,7 @@ export function AIPanelSidebar({
 	}, [cursorTelemetry, videoDurationMs]);
 
 	// ── AI Settings ──
-	const [provider, setProvider] = useState<AIProvider>("local");
+	const [provider, setProvider] = useState<AIProvider>("openai");
 	const [apiKey, setApiKey] = useState("");
 	const [isSavingSettings, setIsSavingSettings] = useState(false);
 
@@ -218,9 +218,7 @@ export function AIPanelSidebar({
 								: "bg-white/10 text-white/40"
 						}`}
 					>
-						{availability.activeProvider
-							? `${availability.activeProvider === "local" ? "Ollama" : "Cloud"}`
-							: "Offline"}
+						{availability.activeProvider ? availability.activeProvider : "Offline"}
 					</span>
 				)}
 			</div>
@@ -365,12 +363,23 @@ export function AIPanelSidebar({
 								onChange={(e) => setProvider(e.target.value as AIProvider)}
 								className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/80 focus:outline-none focus:border-[#2563eb]/40"
 							>
-								<option value="local" className="bg-[#09090b]">
-									Local (Ollama)
+								<option value="openai" className="bg-[#09090b]">
+									OpenAI
 								</option>
-								<option value="cloud" className="bg-[#09090b]">
-									Cloud (OpenAI)
+								<option value="anthropic" className="bg-[#09090b]">
+									Anthropic
 								</option>
+								<option value="groq" className="bg-[#09090b]">
+									Groq
+								</option>
+								<option value="minimax" className="bg-[#09090b]">
+									MiniMax
+								</option>
+								{availability?.providers.find((p) => p.id === "ollama" && p.available) && (
+									<option value="ollama" className="bg-[#09090b]">
+										Ollama (Local)
+									</option>
+								)}
 							</select>
 						</div>
 
@@ -399,18 +408,17 @@ export function AIPanelSidebar({
 
 						{availability && (
 							<div className="text-[9px] text-white/40 space-y-0.5">
-								<div>
-									Ollama:{" "}
-									<span className={availability.localAvailable ? "text-green-400" : "text-red-400"}>
-										{availability.localAvailable ? "Connected" : "Not found"}
-									</span>
-								</div>
-								<div>
-									Cloud:{" "}
-									<span className={availability.cloudAvailable ? "text-green-400" : "text-red-400"}>
-										{availability.cloudAvailable ? "Key configured" : "No API key"}
-									</span>
-								</div>
+								{availability.providers.map((p) => (
+									<div key={p.id}>
+										{p.id}:{" "}
+										<span className={p.available ? "text-green-400" : "text-red-400"}>
+											{p.available ? "Available" : p.reason || "Not configured"}
+										</span>
+									</div>
+								))}
+								{availability.activeProvider && (
+									<div className="text-white/60 mt-1">Active: {availability.activeProvider}</div>
+								)}
 							</div>
 						)}
 					</div>
