@@ -1,6 +1,6 @@
-# Contribution Guidelines
+# Contributing to Lucid Studio
 
-Thank you for considering contributing to this project! By contributing, you help make this project better for everyone. Please take a moment to review these guidelines to ensure a smooth contribution process.
+Thank you for considering contributing to Lucid Studio! By contributing, you help make this project better for everyone.
 
 ## How to Contribute
 
@@ -8,16 +8,14 @@ Thank you for considering contributing to this project! By contributing, you hel
    - Click the "Fork" button at the top right of this repository to create your own copy.
 
 2. **Clone Your Fork**
-   - Clone your forked repository to your local machine:
-     ```bash
-     git clone https://github.com/your-username/openscreen.git
-     ```
+   ```bash
+   git clone https://github.com/your-username/lucid.git
+   ```
 
 3. **Create a New Branch**
-   - Create a branch for your feature or bug fix:
-     ```bash
-     git checkout -b feature/your-feature-name
-     ```
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
 
 4. **Make Changes**
    - Make your changes.
@@ -26,24 +24,22 @@ Thank you for considering contributing to this project! By contributing, you hel
    - Test your changes thoroughly to ensure they work as expected and do not break existing functionality.
 
 6. **Commit Your Changes**
-   - Commit your changes with a clear and concise commit message:
-     ```bash
-     git add .
-     git commit -m "Add a brief description of your changes"
-     ```
+   ```bash
+   git add .
+   git commit -m "Add a brief description of your changes"
+   ```
 
 7. **Push Your Changes**
-   - Push your branch to your forked repository:
-     ```bash
-     git push origin feature/your-feature-name
-     ```
+   ```bash
+   git push origin feature/your-feature-name
+   ```
 
 8. **Open a Pull Request**
    - Go to the original repository and open a pull request from your branch. Provide a clear description of your changes and the problem they solve.
 
 ## Reporting Issues
 
-If you encounter a bug or have a feature request, please open an issue in the [Issues](https://github.com/siddharthvaddem/openscreen/issues) section of this repository. Provide as much detail as possible to help us address the issue effectively.
+If you encounter a bug or have a feature request, please open an issue in the [Issues](https://github.com/getcoherence/lucid/issues) section of this repository.
 
 ## Style Guide
 

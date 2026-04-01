@@ -1,9 +1,9 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "com.siddharthvaddem.openscreen",
+  "appId": "studio.getlucid.app",
   "asar": true,
-  "productName": "Openscreen",
+  "productName": "Lucid Studio",
   "npmRebuild": true,
   "buildDependenciesFromSource": true,
   "compression": "normal",
@@ -24,6 +24,11 @@
     {
       "from": "public/wallpapers",
       "to": "assets/wallpapers"
+    },
+    {
+      "from": "native/bin/${os}",
+      "to": "ffmpeg",
+      "filter": ["ffmpeg*"]
     }
   ],
 
@@ -38,9 +43,9 @@
     "icon": "icons/icons/mac/icon.icns",
     "artifactName": "${productName}-Mac-${arch}-${version}-Installer.${ext}",
     "extendInfo": {
-      "NSAudioCaptureUsageDescription": "OpenScreen needs audio capture permission to record system audio.",
-      "NSMicrophoneUsageDescription": "OpenScreen needs microphone access to record voice audio.",
-      "NSCameraUsageDescription": "OpenScreen needs camera access to record webcam video.",
+      "NSAudioCaptureUsageDescription": "Lucid Studio needs audio capture permission to record system audio.",
+      "NSMicrophoneUsageDescription": "Lucid Studio needs microphone access to record voice audio.",
+      "NSCameraUsageDescription": "Lucid Studio needs camera access to record webcam video.",
       "NSCameraUseContinuityCameraDeviceType": true,
       "com.apple.security.device.audio-input": true
     }

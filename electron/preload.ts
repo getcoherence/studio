@@ -124,6 +124,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	setHasUnsavedChanges: (hasChanges: boolean) => {
 		ipcRenderer.send("set-has-unsaved-changes", hasChanges);
 	},
+
+	// Settings
+	getSettings: () => {
+		return ipcRenderer.invoke("get-settings");
+	},
+	getSetting: (key: string) => {
+		return ipcRenderer.invoke("get-setting", key);
+	},
+	setSetting: (key: string, value: unknown) => {
+		return ipcRenderer.invoke("set-setting", key, value);
+	},
+
+	// FFmpeg
+	getFfmpegPath: () => {
+		return ipcRenderer.invoke("get-ffmpeg-path");
+	},
+
 	onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => {
 		const listener = async () => {
 			try {
