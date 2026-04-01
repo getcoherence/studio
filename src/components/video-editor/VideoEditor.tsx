@@ -1900,332 +1900,345 @@ export default function VideoEditor() {
 				</div>
 			)}
 
-			<div className="flex-1 p-5 gap-4 flex min-h-0 relative">
-				{/* Left Column - Video & Timeline */}
-				<div className="flex-[7] flex flex-col gap-3 min-w-0 h-full">
-					<PanelGroup direction="vertical" className="gap-3">
-						{/* Top section: video preview and controls */}
-						<Panel defaultSize={70} maxSize={70} minSize={40}>
-							<div
-								ref={playerContainerRef}
-								className={
-									isFullscreen
-										? "fixed inset-0 z-[99999] w-full h-full flex flex-col items-center justify-center bg-[#09090b]"
-										: "w-full h-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden relative"
-								}
-							>
-								{/* Video preview */}
-								<div className="w-full flex justify-center items-center flex-auto mt-1.5">
+			<div className="flex-1 min-h-0 relative p-3">
+				<PanelGroup direction="horizontal" className="h-full gap-1">
+					{/* Left Column - Video & Timeline */}
+					<Panel defaultSize={60} minSize={35}>
+						<div className="flex flex-col gap-3 min-w-0 h-full">
+							<PanelGroup direction="vertical" className="gap-3">
+								{/* Top section: video preview and controls */}
+								<Panel defaultSize={70} maxSize={70} minSize={40}>
 									<div
-										ref={cursorContainerRef}
-										className="relative flex justify-center items-center w-auto h-full max-w-full box-border"
-										style={{
-											aspectRatio:
-												aspectRatio === "native"
-													? getNativeAspectRatioValue(
-															videoPlaybackRef.current?.video?.videoWidth || 1920,
-															videoPlaybackRef.current?.video?.videoHeight || 1080,
-															cropRegion,
-														)
-													: getAspectRatioValue(aspectRatio),
-										}}
+										ref={playerContainerRef}
+										className={
+											isFullscreen
+												? "fixed inset-0 z-[99999] w-full h-full flex flex-col items-center justify-center bg-[#09090b]"
+												: "w-full h-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden relative"
+										}
 									>
-										<VideoPlayback
-											key={`${videoPath || "no-video"}:${webcamVideoPath || "no-webcam"}`}
-											aspectRatio={aspectRatio}
-											ref={videoPlaybackRef}
-											videoPath={videoPath || ""}
-											webcamVideoPath={webcamVideoPath || undefined}
-											webcamLayoutPreset={webcamLayoutPreset}
-											webcamPosition={webcamPosition}
-											onWebcamPositionChange={(pos) => updateState({ webcamPosition: pos })}
-											onWebcamPositionDragEnd={commitState}
-											onDurationChange={setDuration}
-											onTimeUpdate={setCurrentTime}
+										{/* Video preview */}
+										<div className="w-full flex justify-center items-center flex-auto mt-1.5">
+											<div
+												ref={cursorContainerRef}
+												className="relative flex justify-center items-center w-auto h-full max-w-full box-border"
+												style={{
+													aspectRatio:
+														aspectRatio === "native"
+															? getNativeAspectRatioValue(
+																	videoPlaybackRef.current?.video?.videoWidth || 1920,
+																	videoPlaybackRef.current?.video?.videoHeight || 1080,
+																	cropRegion,
+																)
+															: getAspectRatioValue(aspectRatio),
+												}}
+											>
+												<VideoPlayback
+													key={`${videoPath || "no-video"}:${webcamVideoPath || "no-webcam"}`}
+													aspectRatio={aspectRatio}
+													ref={videoPlaybackRef}
+													videoPath={videoPath || ""}
+													webcamVideoPath={webcamVideoPath || undefined}
+													webcamLayoutPreset={webcamLayoutPreset}
+													webcamPosition={webcamPosition}
+													onWebcamPositionChange={(pos) => updateState({ webcamPosition: pos })}
+													onWebcamPositionDragEnd={commitState}
+													onDurationChange={setDuration}
+													onTimeUpdate={setCurrentTime}
+													currentTime={currentTime}
+													onPlayStateChange={setIsPlaying}
+													onError={setError}
+													wallpaper={wallpaper}
+													zoomRegions={zoomRegions}
+													selectedZoomId={selectedZoomId}
+													onSelectZoom={handleSelectZoom}
+													onZoomFocusChange={handleZoomFocusChange}
+													onZoomFocusDragEnd={commitState}
+													isPlaying={isPlaying}
+													showShadow={shadowIntensity > 0}
+													shadowIntensity={shadowIntensity}
+													showBlur={showBlur}
+													motionBlurAmount={motionBlurAmount}
+													borderRadius={borderRadius}
+													padding={padding}
+													cropRegion={cropRegion}
+													trimRegions={trimRegions}
+													speedRegions={speedRegions}
+													annotationRegions={annotationRegions}
+													selectedAnnotationId={selectedAnnotationId}
+													onSelectAnnotation={handleSelectAnnotation}
+													onAnnotationPositionChange={handleAnnotationPositionChange}
+													onAnnotationSizeChange={handleAnnotationSizeChange}
+													captionTrack={captionTrack}
+													captionStyle={captionStyle}
+												/>
+												{showCursor && cursorTelemetry.length > 0 && (
+													<CursorOverlay
+														cursorTelemetry={cursorTelemetry}
+														currentTimeS={currentTime}
+														isPlaying={isPlaying}
+														containerWidth={cursorContainerSize.width}
+														containerHeight={cursorContainerSize.height}
+														cursorSmoothing={cursorSmoothing}
+														cursorSway={cursorSway}
+														cursorStyle={cursorStyle}
+														showClickRings={showClickRings}
+														showCursor={showCursor}
+													/>
+												)}
+											</div>
+										</div>
+										{/* Playback controls */}
+										<div className="w-full flex justify-center items-center h-12 flex-shrink-0 px-3 py-1.5 my-1.5">
+											<div className="w-full max-w-[700px]">
+												<PlaybackControls
+													isPlaying={isPlaying}
+													currentTime={currentTime}
+													duration={duration}
+													isFullscreen={isFullscreen}
+													onToggleFullscreen={toggleFullscreen}
+													onTogglePlayPause={togglePlayPause}
+													onSeek={handleSeek}
+												/>
+											</div>
+										</div>
+									</div>
+								</Panel>
+
+								<PanelResizeHandle className="bg-[#09090b]/80 hover:bg-[#09090b] transition-colors rounded-full flex items-center justify-center">
+									<div className="w-8 h-1 bg-white/20 rounded-full"></div>
+								</PanelResizeHandle>
+
+								{/* Timeline section */}
+								<Panel defaultSize={30} maxSize={60} minSize={30}>
+									<div className="h-full bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden flex flex-col">
+										<TimelineEditor
+											videoDuration={duration}
 											currentTime={currentTime}
-											onPlayStateChange={setIsPlaying}
-											onError={setError}
-											wallpaper={wallpaper}
+											onSeek={handleSeek}
+											cursorTelemetry={cursorTelemetry}
 											zoomRegions={zoomRegions}
+											onZoomAdded={handleZoomAdded}
+											onZoomSuggested={handleZoomSuggested}
+											onZoomSpanChange={handleZoomSpanChange}
+											onZoomDelete={handleZoomDelete}
 											selectedZoomId={selectedZoomId}
 											onSelectZoom={handleSelectZoom}
-											onZoomFocusChange={handleZoomFocusChange}
-											onZoomFocusDragEnd={commitState}
-											isPlaying={isPlaying}
-											showShadow={shadowIntensity > 0}
-											shadowIntensity={shadowIntensity}
-											showBlur={showBlur}
-											motionBlurAmount={motionBlurAmount}
-											borderRadius={borderRadius}
-											padding={padding}
-											cropRegion={cropRegion}
 											trimRegions={trimRegions}
+											onTrimAdded={handleTrimAdded}
+											onTrimSpanChange={handleTrimSpanChange}
+											onTrimDelete={handleTrimDelete}
+											selectedTrimId={selectedTrimId}
+											onSelectTrim={handleSelectTrim}
 											speedRegions={speedRegions}
+											onSpeedAdded={handleSpeedAdded}
+											onSpeedSpanChange={handleSpeedSpanChange}
+											onSpeedDelete={handleSpeedDelete}
+											selectedSpeedId={selectedSpeedId}
+											onSelectSpeed={handleSelectSpeed}
 											annotationRegions={annotationRegions}
+											onAnnotationAdded={handleAnnotationAdded}
+											onAnnotationSpanChange={handleAnnotationSpanChange}
+											onAnnotationDelete={handleAnnotationDelete}
 											selectedAnnotationId={selectedAnnotationId}
 											onSelectAnnotation={handleSelectAnnotation}
-											onAnnotationPositionChange={handleAnnotationPositionChange}
-											onAnnotationSizeChange={handleAnnotationSizeChange}
+											aspectRatio={aspectRatio}
+											onAspectRatioChange={(ar) =>
+												pushState({
+													aspectRatio: ar,
+													webcamLayoutPreset:
+														!isPortraitAspectRatio(ar) && webcamLayoutPreset === "vertical-stack"
+															? "picture-in-picture"
+															: webcamLayoutPreset,
+												})
+											}
 											captionTrack={captionTrack}
-											captionStyle={captionStyle}
+											onAutoCaption={handleAutoCaption}
+											isTranscribing={isTranscribing}
 										/>
-										{showCursor && cursorTelemetry.length > 0 && (
-											<CursorOverlay
+									</div>
+								</Panel>
+							</PanelGroup>
+						</div>
+					</Panel>
+
+					<PanelResizeHandle className="w-1 rounded-full bg-white/5 hover:bg-[#2563eb]/40 transition-colors" />
+
+					{/* Right section: settings panel */}
+					<Panel defaultSize={22} minSize={15} maxSize={35}>
+						<div className="h-full overflow-y-auto">
+							<SettingsPanel
+								selected={wallpaper}
+								onWallpaperChange={(w) => pushState({ wallpaper: w })}
+								selectedZoomDepth={
+									selectedZoomId ? zoomRegions.find((z) => z.id === selectedZoomId)?.depth : null
+								}
+								onZoomDepthChange={(depth) => selectedZoomId && handleZoomDepthChange(depth)}
+								selectedZoomId={selectedZoomId}
+								onZoomDelete={handleZoomDelete}
+								selectedTrimId={selectedTrimId}
+								onTrimDelete={handleTrimDelete}
+								shadowIntensity={shadowIntensity}
+								onShadowChange={(v) => updateState({ shadowIntensity: v })}
+								onShadowCommit={commitState}
+								showBlur={showBlur}
+								onBlurChange={(v) => pushState({ showBlur: v })}
+								motionBlurAmount={motionBlurAmount}
+								onMotionBlurChange={(v) => updateState({ motionBlurAmount: v })}
+								onMotionBlurCommit={commitState}
+								borderRadius={borderRadius}
+								onBorderRadiusChange={(v) => updateState({ borderRadius: v })}
+								onBorderRadiusCommit={commitState}
+								padding={padding}
+								onPaddingChange={(v) => updateState({ padding: v })}
+								onPaddingCommit={commitState}
+								cropRegion={cropRegion}
+								onCropChange={(r) => pushState({ cropRegion: r })}
+								aspectRatio={aspectRatio}
+								hasWebcam={Boolean(webcamVideoPath)}
+								webcamLayoutPreset={webcamLayoutPreset}
+								onWebcamLayoutPresetChange={(preset) =>
+									pushState({
+										webcamLayoutPreset: preset,
+										webcamPosition: preset === "vertical-stack" ? null : webcamPosition,
+									})
+								}
+								videoElement={videoPlaybackRef.current?.video || null}
+								exportQuality={exportQuality}
+								onExportQualityChange={setExportQuality}
+								exportFormat={exportFormat}
+								onExportFormatChange={setExportFormat}
+								gifFrameRate={gifFrameRate}
+								onGifFrameRateChange={setGifFrameRate}
+								gifLoop={gifLoop}
+								onGifLoopChange={setGifLoop}
+								gifSizePreset={gifSizePreset}
+								onGifSizePresetChange={setGifSizePreset}
+								gifOutputDimensions={calculateOutputDimensions(
+									videoPlaybackRef.current?.video?.videoWidth || 1920,
+									videoPlaybackRef.current?.video?.videoHeight || 1080,
+									gifSizePreset,
+									GIF_SIZE_PRESETS,
+									aspectRatio === "native"
+										? getNativeAspectRatioValue(
+												videoPlaybackRef.current?.video?.videoWidth || 1920,
+												videoPlaybackRef.current?.video?.videoHeight || 1080,
+												cropRegion,
+											)
+										: getAspectRatioValue(aspectRatio),
+								)}
+								onExport={handleOpenExportDialog}
+								selectedAnnotationId={selectedAnnotationId}
+								annotationRegions={annotationRegions}
+								onAnnotationContentChange={handleAnnotationContentChange}
+								onAnnotationTypeChange={handleAnnotationTypeChange}
+								onAnnotationStyleChange={handleAnnotationStyleChange}
+								onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
+								onAnnotationDelete={handleAnnotationDelete}
+								selectedSpeedId={selectedSpeedId}
+								selectedSpeedValue={
+									selectedSpeedId
+										? (speedRegions.find((r) => r.id === selectedSpeedId)?.speed ?? null)
+										: null
+								}
+								onSpeedChange={handleSpeedChange}
+								onSpeedDelete={handleSpeedDelete}
+								unsavedExport={unsavedExport}
+								onSaveUnsavedExport={handleSaveUnsavedExport}
+								showCursor={showCursor}
+								onShowCursorChange={(v) => pushState({ showCursor: v })}
+								cursorStyle={cursorStyle}
+								onCursorStyleChange={(v) => pushState({ cursorStyle: v })}
+								cursorSmoothing={cursorSmoothing}
+								onCursorSmoothingChange={(v) => updateState({ cursorSmoothing: v })}
+								onCursorSmoothingCommit={commitState}
+								cursorSway={cursorSway}
+								onCursorSwayChange={(v) => updateState({ cursorSway: v })}
+								onCursorSwayCommit={commitState}
+								showClickRings={showClickRings}
+								onShowClickRingsChange={(v) => pushState({ showClickRings: v })}
+								captionTrack={captionTrack}
+								captionStyle={captionStyle}
+								onCaptionStyleChange={handleCaptionStyleChange}
+								onCaptionTrackChange={handleCaptionTrackChange}
+								videoPath={videoSourcePath || videoPath}
+							/>
+						</div>
+					</Panel>
+
+					{/* AI Panel sidebar */}
+					{showAIPanel && (
+						<>
+							<PanelResizeHandle className="w-1 rounded-full bg-white/5 hover:bg-[#2563eb]/40 transition-colors" />
+							<Panel defaultSize={18} minSize={14} maxSize={30}>
+								<div className="h-full flex flex-col">
+									{/* Tab switcher */}
+									<div className="flex bg-[#09090b] rounded-t-2xl border border-b-0 border-white/5 overflow-hidden">
+										<button
+											type="button"
+											onClick={() => setAIPanelMode("chat")}
+											className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[10px] font-medium transition-colors ${
+												aiPanelMode === "chat"
+													? "text-[#2563eb] bg-[#2563eb]/10 border-b-2 border-[#2563eb]"
+													: "text-white/40 hover:text-white/70 border-b-2 border-transparent"
+											}`}
+										>
+											<MessageSquare size={12} />
+											Chat
+										</button>
+										<button
+											type="button"
+											onClick={() => setAIPanelMode("tools")}
+											className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[10px] font-medium transition-colors ${
+												aiPanelMode === "tools"
+													? "text-[#2563eb] bg-[#2563eb]/10 border-b-2 border-[#2563eb]"
+													: "text-white/40 hover:text-white/70 border-b-2 border-transparent"
+											}`}
+										>
+											<Sparkles size={12} />
+											Tools
+										</button>
+									</div>
+
+									{/* Panel content */}
+									<div className="flex-1 min-h-0">
+										{aiPanelMode === "chat" ? (
+											<AIChatSidebar
 												cursorTelemetry={cursorTelemetry}
-												currentTimeS={currentTime}
-												isPlaying={isPlaying}
-												containerWidth={cursorContainerSize.width}
-												containerHeight={cursorContainerSize.height}
-												cursorSmoothing={cursorSmoothing}
-												cursorSway={cursorSway}
-												cursorStyle={cursorStyle}
-												showClickRings={showClickRings}
-												showCursor={showCursor}
+												videoDurationMs={duration * 1000}
+												editorState={editorState}
+												onApplyEdits={handleAIApplyEdits}
+												onSeek={(timeMs) => {
+													const timeSec = timeMs / 1000;
+													setCurrentTime(timeSec);
+													if (videoPlaybackRef.current?.video) {
+														videoPlaybackRef.current.video.currentTime = timeSec;
+													}
+												}}
+												captionTrack={captionTrack}
+												videoPath={videoSourcePath || videoPath}
+											/>
+										) : (
+											<AIPanelSidebar
+												cursorTelemetry={cursorTelemetry}
+												videoDurationMs={duration * 1000}
+												editorState={editorState}
+												onApplyEdits={handleAIApplyEdits}
+												onAcceptTrimSuggestions={handleAcceptTrimSuggestions}
+												onSeek={(timeMs) => {
+													const timeSec = timeMs / 1000;
+													setCurrentTime(timeSec);
+													if (videoPlaybackRef.current?.video) {
+														videoPlaybackRef.current.video.currentTime = timeSec;
+													}
+												}}
 											/>
 										)}
 									</div>
 								</div>
-								{/* Playback controls */}
-								<div className="w-full flex justify-center items-center h-12 flex-shrink-0 px-3 py-1.5 my-1.5">
-									<div className="w-full max-w-[700px]">
-										<PlaybackControls
-											isPlaying={isPlaying}
-											currentTime={currentTime}
-											duration={duration}
-											isFullscreen={isFullscreen}
-											onToggleFullscreen={toggleFullscreen}
-											onTogglePlayPause={togglePlayPause}
-											onSeek={handleSeek}
-										/>
-									</div>
-								</div>
-							</div>
-						</Panel>
-
-						<PanelResizeHandle className="bg-[#09090b]/80 hover:bg-[#09090b] transition-colors rounded-full flex items-center justify-center">
-							<div className="w-8 h-1 bg-white/20 rounded-full"></div>
-						</PanelResizeHandle>
-
-						{/* Timeline section */}
-						<Panel defaultSize={30} maxSize={60} minSize={30}>
-							<div className="h-full bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden flex flex-col">
-								<TimelineEditor
-									videoDuration={duration}
-									currentTime={currentTime}
-									onSeek={handleSeek}
-									cursorTelemetry={cursorTelemetry}
-									zoomRegions={zoomRegions}
-									onZoomAdded={handleZoomAdded}
-									onZoomSuggested={handleZoomSuggested}
-									onZoomSpanChange={handleZoomSpanChange}
-									onZoomDelete={handleZoomDelete}
-									selectedZoomId={selectedZoomId}
-									onSelectZoom={handleSelectZoom}
-									trimRegions={trimRegions}
-									onTrimAdded={handleTrimAdded}
-									onTrimSpanChange={handleTrimSpanChange}
-									onTrimDelete={handleTrimDelete}
-									selectedTrimId={selectedTrimId}
-									onSelectTrim={handleSelectTrim}
-									speedRegions={speedRegions}
-									onSpeedAdded={handleSpeedAdded}
-									onSpeedSpanChange={handleSpeedSpanChange}
-									onSpeedDelete={handleSpeedDelete}
-									selectedSpeedId={selectedSpeedId}
-									onSelectSpeed={handleSelectSpeed}
-									annotationRegions={annotationRegions}
-									onAnnotationAdded={handleAnnotationAdded}
-									onAnnotationSpanChange={handleAnnotationSpanChange}
-									onAnnotationDelete={handleAnnotationDelete}
-									selectedAnnotationId={selectedAnnotationId}
-									onSelectAnnotation={handleSelectAnnotation}
-									aspectRatio={aspectRatio}
-									onAspectRatioChange={(ar) =>
-										pushState({
-											aspectRatio: ar,
-											webcamLayoutPreset:
-												!isPortraitAspectRatio(ar) && webcamLayoutPreset === "vertical-stack"
-													? "picture-in-picture"
-													: webcamLayoutPreset,
-										})
-									}
-									captionTrack={captionTrack}
-									onAutoCaption={handleAutoCaption}
-									isTranscribing={isTranscribing}
-								/>
-							</div>
-						</Panel>
-					</PanelGroup>
-				</div>
-
-				{/* Right section: settings panel */}
-				<div className="flex-[3] min-w-[280px] max-w-[420px] h-full">
-					<SettingsPanel
-						selected={wallpaper}
-						onWallpaperChange={(w) => pushState({ wallpaper: w })}
-						selectedZoomDepth={
-							selectedZoomId ? zoomRegions.find((z) => z.id === selectedZoomId)?.depth : null
-						}
-						onZoomDepthChange={(depth) => selectedZoomId && handleZoomDepthChange(depth)}
-						selectedZoomId={selectedZoomId}
-						onZoomDelete={handleZoomDelete}
-						selectedTrimId={selectedTrimId}
-						onTrimDelete={handleTrimDelete}
-						shadowIntensity={shadowIntensity}
-						onShadowChange={(v) => updateState({ shadowIntensity: v })}
-						onShadowCommit={commitState}
-						showBlur={showBlur}
-						onBlurChange={(v) => pushState({ showBlur: v })}
-						motionBlurAmount={motionBlurAmount}
-						onMotionBlurChange={(v) => updateState({ motionBlurAmount: v })}
-						onMotionBlurCommit={commitState}
-						borderRadius={borderRadius}
-						onBorderRadiusChange={(v) => updateState({ borderRadius: v })}
-						onBorderRadiusCommit={commitState}
-						padding={padding}
-						onPaddingChange={(v) => updateState({ padding: v })}
-						onPaddingCommit={commitState}
-						cropRegion={cropRegion}
-						onCropChange={(r) => pushState({ cropRegion: r })}
-						aspectRatio={aspectRatio}
-						hasWebcam={Boolean(webcamVideoPath)}
-						webcamLayoutPreset={webcamLayoutPreset}
-						onWebcamLayoutPresetChange={(preset) =>
-							pushState({
-								webcamLayoutPreset: preset,
-								webcamPosition: preset === "vertical-stack" ? null : webcamPosition,
-							})
-						}
-						videoElement={videoPlaybackRef.current?.video || null}
-						exportQuality={exportQuality}
-						onExportQualityChange={setExportQuality}
-						exportFormat={exportFormat}
-						onExportFormatChange={setExportFormat}
-						gifFrameRate={gifFrameRate}
-						onGifFrameRateChange={setGifFrameRate}
-						gifLoop={gifLoop}
-						onGifLoopChange={setGifLoop}
-						gifSizePreset={gifSizePreset}
-						onGifSizePresetChange={setGifSizePreset}
-						gifOutputDimensions={calculateOutputDimensions(
-							videoPlaybackRef.current?.video?.videoWidth || 1920,
-							videoPlaybackRef.current?.video?.videoHeight || 1080,
-							gifSizePreset,
-							GIF_SIZE_PRESETS,
-							aspectRatio === "native"
-								? getNativeAspectRatioValue(
-										videoPlaybackRef.current?.video?.videoWidth || 1920,
-										videoPlaybackRef.current?.video?.videoHeight || 1080,
-										cropRegion,
-									)
-								: getAspectRatioValue(aspectRatio),
-						)}
-						onExport={handleOpenExportDialog}
-						selectedAnnotationId={selectedAnnotationId}
-						annotationRegions={annotationRegions}
-						onAnnotationContentChange={handleAnnotationContentChange}
-						onAnnotationTypeChange={handleAnnotationTypeChange}
-						onAnnotationStyleChange={handleAnnotationStyleChange}
-						onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
-						onAnnotationDelete={handleAnnotationDelete}
-						selectedSpeedId={selectedSpeedId}
-						selectedSpeedValue={
-							selectedSpeedId
-								? (speedRegions.find((r) => r.id === selectedSpeedId)?.speed ?? null)
-								: null
-						}
-						onSpeedChange={handleSpeedChange}
-						onSpeedDelete={handleSpeedDelete}
-						unsavedExport={unsavedExport}
-						onSaveUnsavedExport={handleSaveUnsavedExport}
-						showCursor={showCursor}
-						onShowCursorChange={(v) => pushState({ showCursor: v })}
-						cursorStyle={cursorStyle}
-						onCursorStyleChange={(v) => pushState({ cursorStyle: v })}
-						cursorSmoothing={cursorSmoothing}
-						onCursorSmoothingChange={(v) => updateState({ cursorSmoothing: v })}
-						onCursorSmoothingCommit={commitState}
-						cursorSway={cursorSway}
-						onCursorSwayChange={(v) => updateState({ cursorSway: v })}
-						onCursorSwayCommit={commitState}
-						showClickRings={showClickRings}
-						onShowClickRingsChange={(v) => pushState({ showClickRings: v })}
-						captionTrack={captionTrack}
-						captionStyle={captionStyle}
-						onCaptionStyleChange={handleCaptionStyleChange}
-						onCaptionTrackChange={handleCaptionTrackChange}
-						videoPath={videoSourcePath || videoPath}
-					/>
-				</div>
-
-				{/* AI Panel sidebar */}
-				{showAIPanel && (
-					<div className="w-[300px] min-w-[260px] max-w-[340px] h-full flex-shrink-0 flex flex-col">
-						{/* Tab switcher */}
-						<div className="flex bg-[#09090b] rounded-t-2xl border border-b-0 border-white/5 overflow-hidden">
-							<button
-								type="button"
-								onClick={() => setAIPanelMode("chat")}
-								className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[10px] font-medium transition-colors ${
-									aiPanelMode === "chat"
-										? "text-[#2563eb] bg-[#2563eb]/10 border-b-2 border-[#2563eb]"
-										: "text-white/40 hover:text-white/70 border-b-2 border-transparent"
-								}`}
-							>
-								<MessageSquare size={12} />
-								Chat
-							</button>
-							<button
-								type="button"
-								onClick={() => setAIPanelMode("tools")}
-								className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[10px] font-medium transition-colors ${
-									aiPanelMode === "tools"
-										? "text-[#2563eb] bg-[#2563eb]/10 border-b-2 border-[#2563eb]"
-										: "text-white/40 hover:text-white/70 border-b-2 border-transparent"
-								}`}
-							>
-								<Sparkles size={12} />
-								Tools
-							</button>
-						</div>
-
-						{/* Panel content */}
-						<div className="flex-1 min-h-0">
-							{aiPanelMode === "chat" ? (
-								<AIChatSidebar
-									cursorTelemetry={cursorTelemetry}
-									videoDurationMs={duration * 1000}
-									editorState={editorState}
-									onApplyEdits={handleAIApplyEdits}
-									onSeek={(timeMs) => {
-										const timeSec = timeMs / 1000;
-										setCurrentTime(timeSec);
-										if (videoPlaybackRef.current?.video) {
-											videoPlaybackRef.current.video.currentTime = timeSec;
-										}
-									}}
-									captionTrack={captionTrack}
-									videoPath={videoSourcePath || videoPath}
-								/>
-							) : (
-								<AIPanelSidebar
-									cursorTelemetry={cursorTelemetry}
-									videoDurationMs={duration * 1000}
-									editorState={editorState}
-									onApplyEdits={handleAIApplyEdits}
-									onAcceptTrimSuggestions={handleAcceptTrimSuggestions}
-									onSeek={(timeMs) => {
-										const timeSec = timeMs / 1000;
-										setCurrentTime(timeSec);
-										if (videoPlaybackRef.current?.video) {
-											videoPlaybackRef.current.video.currentTime = timeSec;
-										}
-									}}
-								/>
-							)}
-						</div>
-					</div>
-				)}
+							</Panel>
+						</>
+					)}
+				</PanelGroup>
 			</div>
 
 			<ExportDialog
