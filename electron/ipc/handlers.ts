@@ -840,6 +840,30 @@ export function registerIpcHandlers(
 		return { success: true };
 	});
 
+	ipcMain.handle("load-project-by-path", async (_, filePath: string) => {
+		try {
+			const content = await fs.readFile(filePath, "utf-8");
+			const project = JSON.parse(content);
+			currentProjectPath = filePath;
+			if (project && typeof project === "object") {
+				const rawProject = project as { media?: unknown; videoPath?: unknown };
+				const media =
+					normalizeProjectMedia(rawProject.media) ??
+					(typeof rawProject.videoPath === "string"
+						? {
+								screenVideoPath:
+									normalizeVideoSourcePath(rawProject.videoPath) ?? rawProject.videoPath,
+							}
+						: null);
+				setCurrentRecordingSessionState(media ? { ...media, createdAt: Date.now() } : null);
+			}
+			return { success: true, path: filePath, project };
+		} catch (error) {
+			console.error("Failed to load project by path:", error);
+			return { success: false, message: String(error) };
+		}
+	});
+
 	ipcMain.handle("get-current-video-path", () => {
 		return currentRecordingSession?.screenVideoPath
 			? { success: true, path: currentRecordingSession.screenVideoPath }

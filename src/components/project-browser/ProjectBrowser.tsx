@@ -72,7 +72,12 @@ export function ProjectBrowser({ open, onOpenChange, onProjectOpened }: ProjectB
 
 	const handleOpen = useCallback(
 		async (filePath: string) => {
-			await window.electronAPI.setCurrentVideoPath?.(filePath);
+			// Load project file by path — sets it as current project in the main process
+			const result = await window.electronAPI.loadProjectByPath(filePath);
+			if (!result?.success) {
+				// Fallback for raw video files
+				await window.electronAPI.setCurrentVideoPath?.(filePath);
+			}
 			onOpenChange(false);
 			onProjectOpened?.();
 		},
