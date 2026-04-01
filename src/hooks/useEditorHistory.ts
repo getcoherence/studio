@@ -13,7 +13,7 @@ import {
 	DEFAULT_WEBCAM_LAYOUT_PRESET,
 	DEFAULT_WEBCAM_POSITION,
 } from "@/components/video-editor/types";
-import type { CaptionStyle, CaptionTrack } from "@/lib/ai/types";
+import type { CaptionStyle, CaptionTrack, NarrationTrack } from "@/lib/ai/types";
 import { DEFAULT_CAPTION_STYLE } from "@/lib/ai/types";
 import type { AspectRatio } from "@/utils/aspectRatioUtils";
 
@@ -42,6 +42,7 @@ export interface EditorState {
 	showCursor: boolean;
 	captionTrack: CaptionTrack | null;
 	captionStyle: CaptionStyle;
+	narrationTrack: NarrationTrack | null;
 }
 
 export const INITIAL_EDITOR_STATE: EditorState = {
@@ -66,6 +67,7 @@ export const INITIAL_EDITOR_STATE: EditorState = {
 	showCursor: true,
 	captionTrack: null,
 	captionStyle: DEFAULT_CAPTION_STYLE,
+	narrationTrack: null,
 };
 
 type StateUpdate = Partial<EditorState> | ((prev: EditorState) => Partial<EditorState>);

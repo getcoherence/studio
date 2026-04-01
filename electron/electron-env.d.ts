@@ -131,6 +131,26 @@ interface Window {
 		) => Promise<{ success: boolean; error?: string; message?: string }>;
 		getShortcuts: () => Promise<Record<string, unknown> | null>;
 		saveShortcuts: (shortcuts: unknown) => Promise<{ success: boolean; error?: string }>;
+		// AI features
+		aiAnalyze: (
+			prompt: string,
+			context?: string,
+		) => Promise<import("../src/lib/ai/types").AIServiceResult>;
+		aiGenerateJSON: (
+			prompt: string,
+			context?: string,
+			schema?: Record<string, unknown>,
+		) => Promise<{ success: boolean; data?: unknown; error?: string }>;
+		aiCheckAvailability: () => Promise<import("../src/lib/ai/types").AIAvailability>;
+		aiGetConfig: () => Promise<import("../src/lib/ai/types").AIServiceConfig>;
+		aiSaveConfig: (
+			config: Partial<import("../src/lib/ai/types").AIServiceConfig>,
+		) => Promise<{ success: boolean }>;
+		aiTtsSynthesize: (
+			text: string,
+			voice?: string,
+		) => Promise<{ success: boolean; audioPath?: string; error?: string }>;
+
 		hudOverlayHide: () => void;
 		hudOverlayClose: () => void;
 		setMicrophoneExpanded: (expanded: boolean) => void;
