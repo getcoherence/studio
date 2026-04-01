@@ -6,6 +6,7 @@ import {
 	Film,
 	Image,
 	Lock,
+	MousePointer2,
 	Palette,
 	Sparkles,
 	Star,
@@ -36,6 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useScopedT } from "@/contexts/I18nContext";
 import { getAssetPath } from "@/lib/assetPath";
 import { WEBCAM_LAYOUT_PRESETS } from "@/lib/compositeLayout";
+import { CURSOR_STYLES } from "@/lib/cursor/cursorStyles";
 import type { ExportFormat, ExportQuality, GifFrameRate, GifSizePreset } from "@/lib/exporter";
 import { GIF_FRAME_RATES, GIF_SIZE_PRESETS } from "@/lib/exporter";
 import { cn } from "@/lib/utils";
@@ -143,6 +145,19 @@ interface SettingsPanelProps {
 	hasWebcam?: boolean;
 	webcamLayoutPreset?: WebcamLayoutPreset;
 	onWebcamLayoutPresetChange?: (preset: WebcamLayoutPreset) => void;
+	// Cursor settings
+	showCursor?: boolean;
+	onShowCursorChange?: (show: boolean) => void;
+	cursorStyle?: string;
+	onCursorStyleChange?: (style: string) => void;
+	cursorSmoothing?: number;
+	onCursorSmoothingChange?: (value: number) => void;
+	onCursorSmoothingCommit?: () => void;
+	cursorSway?: number;
+	onCursorSwayChange?: (value: number) => void;
+	onCursorSwayCommit?: () => void;
+	showClickRings?: boolean;
+	onShowClickRingsChange?: (show: boolean) => void;
 }
 
 export default SettingsPanel;
@@ -211,6 +226,18 @@ export function SettingsPanel({
 	hasWebcam = false,
 	webcamLayoutPreset = "picture-in-picture",
 	onWebcamLayoutPresetChange,
+	showCursor = true,
+	onShowCursorChange,
+	cursorStyle = "default",
+	onCursorStyleChange,
+	cursorSmoothing = 0.5,
+	onCursorSmoothingChange,
+	onCursorSmoothingCommit,
+	cursorSway = 0.3,
+	onCursorSwayChange,
+	onCursorSwayCommit,
+	showClickRings = true,
+	onShowClickRingsChange,
 }: SettingsPanelProps) {
 	const t = useScopedT("settings");
 	const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
@@ -580,7 +607,11 @@ export function SettingsPanel({
 
 				<Accordion
 					type="multiple"
-					defaultValue={hasWebcam ? ["layout", "effects", "background"] : ["effects", "background"]}
+					defaultValue={
+						hasWebcam
+							? ["layout", "effects", "cursor", "background"]
+							: ["effects", "cursor", "background"]
+					}
 					className="space-y-1"
 				>
 					{hasWebcam && (
@@ -736,6 +767,99 @@ export function SettingsPanel({
 								<Crop className="w-3 h-3" />
 								{t("crop.cropVideo")}
 							</Button>
+						</AccordionContent>
+					</AccordionItem>
+
+					<AccordionItem value="cursor" className="border-white/5 rounded-xl bg-white/[0.02] px-3">
+						<AccordionTrigger className="py-2.5 hover:no-underline">
+							<div className="flex items-center gap-2">
+								<MousePointer2 className="w-4 h-4 text-[#34B27B]" />
+								<span className="text-xs font-medium">{t("cursor.title")}</span>
+							</div>
+						</AccordionTrigger>
+						<AccordionContent className="pb-3">
+							<div className="grid grid-cols-2 gap-2 mb-3">
+								<div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
+									<div className="text-[10px] font-medium text-slate-300">
+										{t("cursor.showCursor")}
+									</div>
+									<Switch
+										checked={showCursor}
+										onCheckedChange={onShowCursorChange}
+										className="data-[state=checked]:bg-[#34B27B] scale-90"
+									/>
+								</div>
+								<div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
+									<div className="text-[10px] font-medium text-slate-300">
+										{t("cursor.clickRings")}
+									</div>
+									<Switch
+										checked={showClickRings}
+										onCheckedChange={onShowClickRingsChange}
+										className="data-[state=checked]:bg-[#34B27B] scale-90"
+									/>
+								</div>
+							</div>
+
+							<div className="p-2 rounded-lg bg-white/5 border border-white/5 mb-2">
+								<div className="text-[10px] font-medium text-slate-300 mb-1.5">
+									{t("cursor.style")}
+								</div>
+								<Select
+									value={cursorStyle}
+									onValueChange={(value: string) => onCursorStyleChange?.(value)}
+								>
+									<SelectTrigger className="h-8 bg-black/20 border-white/10 text-xs">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{CURSOR_STYLES.map((s) => (
+											<SelectItem key={s.name} value={s.name} className="text-xs capitalize">
+												{s.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+
+							<div className="grid grid-cols-2 gap-2">
+								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+									<div className="flex items-center justify-between mb-1">
+										<div className="text-[10px] font-medium text-slate-300">
+											{t("cursor.smoothing")}
+										</div>
+										<span className="text-[10px] text-slate-500 font-mono">
+											{Math.round(cursorSmoothing * 100)}%
+										</span>
+									</div>
+									<Slider
+										value={[cursorSmoothing]}
+										onValueChange={(values) => onCursorSmoothingChange?.(values[0])}
+										onValueCommit={() => onCursorSmoothingCommit?.()}
+										min={0}
+										max={1}
+										step={0.01}
+										className="w-full [&_[role=slider]]:bg-[#34B27B] [&_[role=slider]]:border-[#34B27B] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
+									/>
+								</div>
+								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+									<div className="flex items-center justify-between mb-1">
+										<div className="text-[10px] font-medium text-slate-300">{t("cursor.sway")}</div>
+										<span className="text-[10px] text-slate-500 font-mono">
+											{Math.round(cursorSway * 100)}%
+										</span>
+									</div>
+									<Slider
+										value={[cursorSway]}
+										onValueChange={(values) => onCursorSwayChange?.(values[0])}
+										onValueCommit={() => onCursorSwayCommit?.()}
+										min={0}
+										max={1}
+										step={0.01}
+										className="w-full [&_[role=slider]]:bg-[#34B27B] [&_[role=slider]]:border-[#34B27B] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
+									/>
+								</div>
+							</div>
 						</AccordionContent>
 					</AccordionItem>
 

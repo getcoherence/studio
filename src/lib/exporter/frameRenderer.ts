@@ -11,6 +11,7 @@ import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import type {
 	AnnotationRegion,
 	CropRegion,
+	CursorTelemetryPoint,
 	SpeedRegion,
 	WebcamLayoutPreset,
 	ZoomDepth,
@@ -37,6 +38,11 @@ import {
 	type Size,
 	type StyledRenderRect,
 } from "@/lib/compositeLayout";
+import { ClickRingPool } from "@/lib/cursor/clickRing";
+import { loadCursorImage, renderCursor } from "@/lib/cursor/cursorRenderer";
+import { getCursorStyle } from "@/lib/cursor/cursorStyles";
+import { CursorSwayInterpolator, computeCursorSway } from "@/lib/cursor/cursorSway";
+import { CursorSmoother, type SmoothedPosition } from "@/lib/cursor/motionSmoothing";
 import { renderAnnotations } from "./annotationRenderer";
 import {
 	getLinearGradientPoints,
@@ -66,6 +72,13 @@ interface FrameRenderConfig {
 	speedRegions?: SpeedRegion[];
 	previewWidth?: number;
 	previewHeight?: number;
+	// Cursor overlay config
+	cursorTelemetry?: CursorTelemetryPoint[];
+	showCursor?: boolean;
+	cursorStyle?: string;
+	cursorSmoothing?: number;
+	cursorSway?: number;
+	showClickRings?: boolean;
 }
 
 interface AnimationState {
@@ -107,6 +120,13 @@ export class FrameRenderer {
 	private layoutCache: LayoutCache | null = null;
 	private currentVideoTime = 0;
 	private motionBlurState: MotionBlurState = createMotionBlurState();
+	// Cursor rendering state
+	private cursorSmoother: CursorSmoother | null = null;
+	private cursorSwayInterp: CursorSwayInterpolator | null = null;
+	private cursorClickPool: ClickRingPool | null = null;
+	private cursorImage: HTMLImageElement | null = null;
+	private prevCursorPos: SmoothedPosition | null = null;
+	private lastCursorClickIdx = -1;
 
 	constructor(config: FrameRenderConfig) {
 		this.config = config;
@@ -196,6 +216,28 @@ export class FrameRenderer {
 		this.maskGraphics = new Graphics();
 		this.videoContainer.addChild(this.maskGraphics);
 		this.videoContainer.mask = this.maskGraphics;
+
+		// Setup cursor rendering helpers
+		if (
+			this.config.showCursor &&
+			this.config.cursorTelemetry &&
+			this.config.cursorTelemetry.length > 0
+		) {
+			const smoothing = this.config.cursorSmoothing ?? 0.5;
+			this.cursorSmoother = new CursorSmoother(
+				0.5,
+				0.5,
+				1 - smoothing * 0.8,
+				0.6 + smoothing * 0.3,
+			);
+			this.cursorSwayInterp = new CursorSwayInterpolator();
+			this.cursorClickPool = new ClickRingPool();
+			try {
+				this.cursorImage = await loadCursorImage(this.config.cursorStyle ?? "default");
+			} catch {
+				this.cursorImage = null;
+			}
+		}
 	}
 
 	private async setupBackground(): Promise<void> {
@@ -408,6 +450,101 @@ export class FrameRenderer {
 				scaleFactor,
 			);
 		}
+
+		// Render cursor overlay
+		this.renderCursorOverlay(timeMs);
+	}
+
+	private renderCursorOverlay(timeMs: number): void {
+		const telemetry = this.config.cursorTelemetry;
+		if (!this.config.showCursor || !telemetry || telemetry.length === 0 || !this.compositeCtx) {
+			return;
+		}
+
+		const w = this.config.width;
+		const h = this.config.height;
+		const dt = 1 / 30; // assume ~30 fps export
+
+		// Binary search for nearest sample
+		let lo = 0;
+		let hi = telemetry.length - 1;
+		while (lo < hi) {
+			const mid = (lo + hi) >> 1;
+			if (telemetry[mid].timeMs < timeMs) lo = mid + 1;
+			else hi = mid;
+		}
+		const idx = lo;
+		if (idx < 0) return;
+
+		// Interpolate raw position
+		let cx: number;
+		let cy: number;
+		if (idx === 0 || idx >= telemetry.length) {
+			const s = telemetry[Math.min(idx, telemetry.length - 1)];
+			cx = s.cx;
+			cy = s.cy;
+		} else {
+			const a = telemetry[idx - 1];
+			const b = telemetry[idx];
+			const span = b.timeMs - a.timeMs;
+			const t = span > 0 ? Math.max(0, Math.min(1, (timeMs - a.timeMs) / span)) : 1;
+			cx = a.cx + (b.cx - a.cx) * t;
+			cy = a.cy + (b.cy - a.cy) * t;
+		}
+
+		// Apply smoothing
+		let posX = cx;
+		let posY = cy;
+		if (this.cursorSmoother && (this.config.cursorSmoothing ?? 0) > 0) {
+			const smoothed = this.cursorSmoother.update(cx, cy, dt);
+			posX = smoothed.x;
+			posY = smoothed.y;
+		}
+
+		// Compute sway
+		let rotation = 0;
+		const swayIntensity = this.config.cursorSway ?? 0;
+		if (swayIntensity > 0 && this.cursorSwayInterp) {
+			const prev = this.prevCursorPos ?? { x: posX, y: posY };
+			const dx = posX - prev.x;
+			const dy = posY - prev.y;
+			const targetAngle = computeCursorSway(dx, dy, swayIntensity);
+			rotation = this.cursorSwayInterp.update(targetAngle, dt);
+		}
+		this.prevCursorPos = { x: posX, y: posY };
+
+		// Click rings
+		if (this.config.showClickRings !== false && this.cursorClickPool) {
+			const sample = telemetry[Math.min(idx, telemetry.length - 1)];
+			if (
+				sample.clickType &&
+				idx !== this.lastCursorClickIdx &&
+				Math.abs(sample.timeMs - timeMs) < 200
+			) {
+				const styleDef = getCursorStyle(this.config.cursorStyle ?? "default");
+				this.cursorClickPool.trigger(sample.cx, sample.cy, sample.clickType, styleDef.size);
+				this.lastCursorClickIdx = idx;
+			}
+			this.cursorClickPool.update(dt);
+		}
+
+		// Map click ring positions to pixel space
+		const clickRings = this.cursorClickPool
+			? this.cursorClickPool.getActiveStates().map((ring) => ({
+					...ring,
+					x: ring.x * w,
+					y: ring.y * h,
+				}))
+			: [];
+
+		renderCursor(this.compositeCtx, {
+			x: posX * w,
+			y: posY * h,
+			rotation,
+			style: this.config.cursorStyle ?? "default",
+			clickRings,
+			cursorImage: this.cursorImage,
+		});
 	}
 
 	private updateLayout(webcamFrame?: VideoFrame | null): void {

@@ -18,6 +18,7 @@ import {
 	type StoreRecordedSessionInput,
 } from "../../src/lib/recordingSession";
 import { mainT } from "../i18n";
+import { InputMonitor } from "../input/inputMonitor";
 import { RECORDINGS_DIR } from "../main";
 
 const PROJECT_FILE_EXTENSION = "openscreen";
@@ -160,7 +161,7 @@ async function storeRecordedSessionFiles(payload: StoreRecordedSessionInput) {
 	};
 }
 
-const CURSOR_TELEMETRY_VERSION = 1;
+const CURSOR_TELEMETRY_VERSION = 2;
 const CURSOR_SAMPLE_INTERVAL_MS = 100;
 const MAX_CURSOR_SAMPLES = 60 * 60 * 10; // 1 hour @ 10Hz
 
@@ -168,12 +169,15 @@ interface CursorTelemetryPoint {
 	timeMs: number;
 	cx: number;
 	cy: number;
+	clickType?: "left" | "right" | "double" | "middle";
+	cursorType?: "arrow" | "text" | "pointer" | "crosshair" | "hand" | "resize";
 }
 
 let cursorCaptureInterval: NodeJS.Timeout | null = null;
 let cursorCaptureStartTimeMs = 0;
 let activeCursorSamples: CursorTelemetryPoint[] = [];
 let pendingCursorSamples: CursorTelemetryPoint[] = [];
+const inputMonitor = new InputMonitor();
 
 function clamp(value: number, min: number, max: number) {
 	return Math.min(max, Math.max(min, value));
@@ -376,9 +380,11 @@ export function registerIpcHandlers(
 			cursorCaptureStartTimeMs = Date.now();
 			sampleCursorPoint();
 			cursorCaptureInterval = setInterval(sampleCursorPoint, CURSOR_SAMPLE_INTERVAL_MS);
+			inputMonitor.start();
 		} else {
 			stopCursorCapture();
-			pendingCursorSamples = [...activeCursorSamples];
+			inputMonitor.stop();
+			pendingCursorSamples = inputMonitor.processSamples([...activeCursorSamples]);
 			activeCursorSamples = [];
 		}
 
@@ -406,24 +412,47 @@ export function registerIpcHandlers(
 					? parsed.samples
 					: [];
 
+			const VALID_CLICK_TYPES = ["left", "right", "double", "middle"] as const;
+			const VALID_CURSOR_TYPES = [
+				"arrow",
+				"text",
+				"pointer",
+				"crosshair",
+				"hand",
+				"resize",
+			] as const;
+
 			const samples: CursorTelemetryPoint[] = rawSamples
 				.filter((sample: unknown) => Boolean(sample && typeof sample === "object"))
 				.map((sample: unknown) => {
-					const point = sample as Partial<CursorTelemetryPoint>;
-					return {
+					const point = sample as Record<string, unknown>;
+					const result: CursorTelemetryPoint = {
 						timeMs:
 							typeof point.timeMs === "number" && Number.isFinite(point.timeMs)
 								? Math.max(0, point.timeMs)
 								: 0,
 						cx:
 							typeof point.cx === "number" && Number.isFinite(point.cx)
-								? clamp(point.cx, 0, 1)
+								? clamp(point.cx as number, 0, 1)
 								: 0.5,
 						cy:
 							typeof point.cy === "number" && Number.isFinite(point.cy)
-								? clamp(point.cy, 0, 1)
+								? clamp(point.cy as number, 0, 1)
 								: 0.5,
 					};
+					if (
+						typeof point.clickType === "string" &&
+						(VALID_CLICK_TYPES as readonly string[]).includes(point.clickType)
+					) {
+						result.clickType = point.clickType as CursorTelemetryPoint["clickType"];
+					}
+					if (
+						typeof point.cursorType === "string" &&
+						(VALID_CURSOR_TYPES as readonly string[]).includes(point.cursorType)
+					) {
+						result.cursorType = point.cursorType as CursorTelemetryPoint["cursorType"];
+					}
+					return result;
 				})
 				.sort((a: CursorTelemetryPoint, b: CursorTelemetryPoint) => a.timeMs - b.timeMs);
 

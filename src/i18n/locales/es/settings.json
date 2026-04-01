@@ -28,6 +28,14 @@
 		"roundness": "Redondez",
 		"padding": "Relleno"
 	},
+	"cursor": {
+		"title": "Cursor",
+		"showCursor": "Mostrar",
+		"clickRings": "Anillos de clic",
+		"style": "Estilo",
+		"smoothing": "Suavizado",
+		"sway": "Balanceo"
+	},
 	"background": {
 		"title": "Fondo",
 		"image": "Imagen",
