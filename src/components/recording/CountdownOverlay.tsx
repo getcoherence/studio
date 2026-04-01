@@ -68,7 +68,7 @@ export function CountdownOverlay({ onComplete, onCancel }: CountdownOverlayProps
 								{currentValue}
 							</span>
 						) : (
-							<span className="text-[#34B27B] text-[64px] font-bold leading-none select-none tracking-tight drop-shadow-lg">
+							<span className="text-[#2563eb] text-[64px] font-bold leading-none select-none tracking-tight drop-shadow-lg">
 								Go!
 							</span>
 						)}

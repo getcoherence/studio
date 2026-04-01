@@ -10,14 +10,14 @@ export function WelcomeScreen({ onNewRecording, onOpenVideo, onOpenProject }: We
 	return (
 		<div className="flex flex-col items-center justify-center h-screen gap-8 bg-[#09090b]">
 			<div className="flex flex-col items-center gap-2">
-				<Video className="w-16 h-16 text-[#34B27B]/60" />
+				<Video className="w-16 h-16 text-[#2563eb]/60" />
 				<h1 className="text-2xl font-semibold text-white">Lucid Studio</h1>
 				<p className="text-sm text-white/40">AI-powered screen recording and editing</p>
 			</div>
 			<div className="flex flex-col gap-3 w-64">
 				<button
 					onClick={onNewRecording}
-					className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#34B27B] hover:bg-[#34B27B]/90 text-white font-medium transition-colors"
+					className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#2563eb] hover:bg-[#2563eb]/90 text-white font-medium transition-colors"
 				>
 					<PlayCircle size={18} />
 					New Recording

@@ -73,7 +73,7 @@ export const DEFAULT_CAPTION_STYLE: CaptionStyle = {
 	backgroundOpacity: 0.7,
 	position: "bottom",
 	animation: "word-highlight",
-	activeWordColor: "#34B27B",
+	activeWordColor: "#2563eb",
 };
 
 /** Supported Whisper model definitions */

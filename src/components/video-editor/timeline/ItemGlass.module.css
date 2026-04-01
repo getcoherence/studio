@@ -2,9 +2,9 @@
 	position: relative;
 	border-radius: 8px;
 	-corner-smoothing: antialiased;
-	background: rgba(52, 178, 123, 0.15);
-	border: 1px solid rgba(52, 178, 123, 0.3);
-	box-shadow: 0 2px 12px 0 rgba(52, 178, 123, 0.1) inset;
+	background: rgba(37, 99, 235, 0.15);
+	border: 1px solid rgba(37, 99, 235, 0.3);
+	box-shadow: 0 2px 12px 0 rgba(37, 99, 235, 0.1) inset;
 	margin: 2px 0;
 	backdrop-filter: blur(4px);
 	-webkit-backdrop-filter: blur(4px);
@@ -12,17 +12,17 @@
 }
 
 .glassGreen:hover {
-	background: rgba(52, 178, 123, 0.25);
-	border-color: rgba(52, 178, 123, 0.5);
-	box-shadow: 0 4px 20px 0 rgba(52, 178, 123, 0.2) inset;
+	background: rgba(37, 99, 235, 0.25);
+	border-color: rgba(37, 99, 235, 0.5);
+	box-shadow: 0 4px 20px 0 rgba(37, 99, 235, 0.2) inset;
 }
 
 .glassGreen.selected {
-	background: rgba(52, 178, 123, 0.35);
-	border-color: #34b27b;
+	background: rgba(37, 99, 235, 0.35);
+	border-color: #2563eb;
 	box-shadow:
-		0 0 0 1px #34b27b,
-		0 4px 20px 0 rgba(52, 178, 123, 0.3) inset;
+		0 0 0 1px #2563eb,
+		0 4px 20px 0 rgba(37, 99, 235, 0.3) inset;
 	z-index: 10;
 }
 

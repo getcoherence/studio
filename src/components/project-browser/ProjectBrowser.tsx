@@ -108,7 +108,7 @@ export function ProjectBrowser({ open, onOpenChange, onProjectOpened }: ProjectB
 			<DialogContent className="bg-[#09090b] border-white/10 text-white max-w-[480px] max-h-[70vh] flex flex-col">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2 text-sm">
-						<FolderOpen className="w-4 h-4 text-[#34B27B]" />
+						<FolderOpen className="w-4 h-4 text-[#2563eb]" />
 						Recent Projects
 					</DialogTitle>
 				</DialogHeader>
@@ -123,7 +123,7 @@ export function ProjectBrowser({ open, onOpenChange, onProjectOpened }: ProjectB
 							<p className="text-slate-500 text-xs mb-4">Open a project file to get started</p>
 							<Button
 								size="sm"
-								className="bg-[#34B27B] hover:bg-[#2d9e6c] text-white"
+								className="bg-[#2563eb] hover:bg-[#2d9e6c] text-white"
 								onClick={handleOpenFile}
 							>
 								<FolderOpen className="w-3.5 h-3.5 mr-1.5" />

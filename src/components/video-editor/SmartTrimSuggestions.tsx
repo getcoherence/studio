@@ -104,7 +104,7 @@ export function SmartTrimSuggestions({
 						<button
 							type="button"
 							onClick={handleAcceptAll}
-							className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-[#34B27B]/20 hover:bg-[#34B27B]/30 text-[#34B27B] transition-colors"
+							className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-[#2563eb]/20 hover:bg-[#2563eb]/30 text-[#2563eb] transition-colors"
 						>
 							<Check size={10} />
 							Accept All
@@ -150,7 +150,7 @@ export function SmartTrimSuggestions({
 									<button
 										type="button"
 										onClick={() => handleAcceptOne(suggestion)}
-										className="p-1 rounded hover:bg-[#34B27B]/20 text-[#34B27B]/70 hover:text-[#34B27B] transition-colors"
+										className="p-1 rounded hover:bg-[#2563eb]/20 text-[#2563eb]/70 hover:text-[#2563eb] transition-colors"
 										title="Accept"
 									>
 										<Check size={12} />
