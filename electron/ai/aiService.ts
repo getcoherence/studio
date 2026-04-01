@@ -53,7 +53,7 @@ const PROVIDER_ENDPOINTS: Record<string, string> = {
 	openai: "https://api.openai.com/v1/chat/completions",
 	anthropic: "https://api.anthropic.com/v1/messages",
 	groq: "https://api.groq.com/openai/v1/chat/completions",
-	minimax: "https://api.minimaxi.chat/v1/text/chatcompletion_v2",
+	minimax: "https://api.minimax.io/v1/text/chatcompletion_v2",
 };
 
 const DEFAULT_MODELS: Record<string, string> = {
