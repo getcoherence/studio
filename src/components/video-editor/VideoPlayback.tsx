@@ -75,6 +75,7 @@ interface VideoPlaybackProps {
 	onPlayStateChange: (playing: boolean) => void;
 	onError: (error: string) => void;
 	wallpaper?: string;
+	animatedBgSpeed?: number;
 	zoomRegions: ZoomRegion[];
 	selectedZoomId: string | null;
 	onSelectZoom: (id: string | null) => void;
@@ -125,6 +126,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			onPlayStateChange,
 			onError,
 			wallpaper,
+			animatedBgSpeed = 1,
 			zoomRegions,
 			selectedZoomId,
 			onSelectZoom,
@@ -1133,7 +1135,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					const ctx = canvas.getContext("2d");
 					if (ctx) {
 						// Use wall-clock time so animated backgrounds animate even when paused
-						const timeMs = performance.now() - startTime;
+						const timeMs = (performance.now() - startTime) * animatedBgSpeed;
 						bg.render(ctx, canvas.width, canvas.height, timeMs);
 					}
 				}

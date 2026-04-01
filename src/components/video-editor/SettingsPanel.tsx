@@ -266,6 +266,9 @@ interface SettingsPanelProps {
 	backgroundMusicVolume?: number;
 	onBackgroundMusicVolumeChange?: (volume: number) => void;
 	onBackgroundMusicVolumeCommit?: () => void;
+	animatedBgSpeed?: number;
+	onAnimatedBgSpeedChange?: (speed: number) => void;
+	onAnimatedBgSpeedCommit?: () => void;
 }
 
 export default SettingsPanel;
@@ -358,6 +361,9 @@ export function SettingsPanel({
 	backgroundMusicVolume = 50,
 	onBackgroundMusicVolumeChange,
 	onBackgroundMusicVolumeCommit,
+	animatedBgSpeed = 1,
+	onAnimatedBgSpeedChange,
+	onAnimatedBgSpeedCommit,
 }: SettingsPanelProps) {
 	const t = useScopedT("settings");
 	const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
@@ -1171,6 +1177,21 @@ export function SettingsPanel({
 											onHover={onWallpaperHover}
 											onHoverEnd={onWallpaperHoverEnd}
 										/>
+										<div className="mt-3 flex items-center gap-2">
+											<span className="text-[10px] text-slate-400 w-10">Speed</span>
+											<Slider
+												value={[animatedBgSpeed ?? 1]}
+												onValueChange={([v]) => onAnimatedBgSpeedChange?.(v)}
+												onPointerUp={() => onAnimatedBgSpeedCommit?.()}
+												min={0.1}
+												max={5}
+												step={0.1}
+												className="flex-1"
+											/>
+											<span className="text-[10px] text-slate-400 w-8 text-right tabular-nums">
+												{(animatedBgSpeed ?? 1).toFixed(1)}x
+											</span>
+										</div>
 									</TabsContent>
 								</div>
 							</Tabs>
