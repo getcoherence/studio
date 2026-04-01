@@ -7,6 +7,7 @@ interface SceneCanvasProps {
 	currentTimeMs: number;
 	isPlaying: boolean;
 	selectedLayerId: string | null;
+	aspectRatio?: string;
 	onSelectLayer: (layerId: string | null) => void;
 	onTimeUpdate?: (timeMs: number) => void;
 	onSceneComplete?: () => void;
@@ -30,6 +31,7 @@ export function SceneCanvas({
 	onSceneComplete,
 	onLayerMove,
 	onLayerResize,
+	aspectRatio = "16/9",
 }: SceneCanvasProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -329,7 +331,7 @@ export function SceneCanvas({
 				onMouseDown={handleMouseDown}
 				onMouseMove={handleMouseMoveCanvas}
 				className="max-w-full max-h-full"
-				style={{ aspectRatio: "16/9" }}
+				style={{ aspectRatio }}
 			/>
 		</div>
 	);
