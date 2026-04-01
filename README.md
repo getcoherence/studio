@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/lucid.png" alt="Lucid Studio Logo" width="64" />
+  <img src="public/lucidstudio-logo.svg" alt="Lucid Studio Logo" width="80" />
 </p>
 
 # <p align="center">Lucid Studio</p>

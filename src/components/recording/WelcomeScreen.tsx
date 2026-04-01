@@ -1,4 +1,4 @@
-import { FolderOpen, PlayCircle, Video } from "lucide-react";
+import { Film, FolderOpen, PlayCircle } from "lucide-react";
 
 interface WelcomeScreenProps {
 	onNewRecording: () => void;
@@ -9,8 +9,8 @@ interface WelcomeScreenProps {
 export function WelcomeScreen({ onNewRecording, onOpenVideo, onOpenProject }: WelcomeScreenProps) {
 	return (
 		<div className="relative flex flex-col items-center justify-center h-screen gap-8 bg-[#09090b]">
-			<div className="flex flex-col items-center gap-2">
-				<Video className="w-16 h-16 text-[#2563eb]/60" />
+			<div className="flex flex-col items-center gap-3">
+				<img src="/lucidstudio-logo.svg" alt="Lucid Studio" className="w-24 h-24" />
 				<h1 className="text-2xl font-semibold text-white">Lucid Studio</h1>
 				<p className="text-sm text-white/40">AI-powered screen recording and editing</p>
 			</div>
@@ -26,7 +26,7 @@ export function WelcomeScreen({ onNewRecording, onOpenVideo, onOpenProject }: We
 					onClick={onOpenVideo}
 					className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 font-medium transition-colors border border-white/10"
 				>
-					<Video size={18} />
+					<Film size={18} />
 					Open Video File
 				</button>
 				<button

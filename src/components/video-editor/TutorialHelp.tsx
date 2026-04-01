@@ -87,7 +87,7 @@ export function TutorialHelp() {
 							<ArrowRight className="w-4 h-4 text-slate-600 rotate-90" />
 						</div>
 						{/* Result */}
-						<div className="relative h-12 bg-[#000] rounded-lg border border-white/10 flex items-center justify-center gap-1 px-4 select-none">
+						<div className="h-12 bg-[#000] rounded-lg border border-white/10 flex items-center justify-center gap-1 px-4 select-none">
 							<div
 								className="h-8 bg-slate-700 rounded flex items-center justify-center opacity-80"
 								style={{ width: "30%" }}
@@ -106,9 +106,6 @@ export function TutorialHelp() {
 							>
 								<span className="text-[10px] text-white font-medium">{t("tutorial.part3")}</span>
 							</div>
-							<span className="absolute right-4 text-xs text-slate-400">
-								{t("tutorial.finalVideo")}
-							</span>
 						</div>
 					</div>
 					{/* Steps */}
