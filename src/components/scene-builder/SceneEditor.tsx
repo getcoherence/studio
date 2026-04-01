@@ -52,6 +52,7 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 	const [currentTimeMs, setCurrentTimeMs] = useState(0);
 	const [isExporting, setIsExporting] = useState(false);
 	const [exportProgress, setExportProgress] = useState<SceneExportProgress | null>(null);
+	const [aspectRatio, setAspectRatio] = useState("16/9");
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const currentScene = project.scenes[selectedSceneIndex];
@@ -468,7 +469,12 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 								].map((preset) => (
 									<button
 										key={preset.label}
-										className="px-2.5 py-1 rounded text-[10px] font-medium text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
+										onClick={() => setAspectRatio(preset.ratio)}
+										className={`px-2.5 py-1 rounded text-[10px] font-medium transition-colors ${
+											aspectRatio === preset.ratio
+												? "text-[#2563eb] bg-[#2563eb]/10"
+												: "text-white/40 hover:text-white/70 hover:bg-white/10"
+										}`}
 										title={preset.ratio}
 									>
 										{preset.label}
@@ -482,6 +488,7 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 									currentTimeMs={currentTimeMs}
 									isPlaying={isPlaying}
 									selectedLayerId={selectedLayerId}
+									aspectRatio={aspectRatio}
 									onSelectLayer={setSelectedLayerId}
 									onTimeUpdate={handleTimeUpdate}
 									onSceneComplete={handleSceneComplete}
