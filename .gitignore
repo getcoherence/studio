@@ -29,4 +29,5 @@ release/**
 
 # Playwright
 test-results
-playwright-report/
+playwright-report/.claude/worktrees/
+.claude/worktrees/

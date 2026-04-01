@@ -6,7 +6,29 @@ export const SHORTCUT_ACTIONS = [
 	"addKeyframe",
 	"deleteSelected",
 	"playPause",
+	"export",
+	"togglePlay",
+	"toggleCaptions",
+	"toggleCursor",
+	"zoomIn",
+	"zoomOut",
 ] as const;
+
+export type ShortcutCategory = "editor" | "playback" | "export" | "view";
+
+export const SHORTCUT_CATEGORIES: Record<ShortcutCategory, ShortcutAction[]> = {
+	editor: ["addZoom", "addTrim", "addSpeed", "addAnnotation", "addKeyframe", "deleteSelected"],
+	playback: ["playPause", "togglePlay"],
+	export: ["export"],
+	view: ["toggleCaptions", "toggleCursor", "zoomIn", "zoomOut"],
+};
+
+export const CATEGORY_LABELS: Record<ShortcutCategory, string> = {
+	editor: "Editor",
+	playback: "Playback",
+	export: "Export",
+	view: "View",
+};
 
 export type ShortcutAction = (typeof SHORTCUT_ACTIONS)[number];
 
@@ -90,6 +112,12 @@ export const DEFAULT_SHORTCUTS: ShortcutsConfig = {
 	addKeyframe: { key: "f" },
 	deleteSelected: { key: "d", ctrl: true },
 	playPause: { key: " " },
+	export: { key: "e", ctrl: true, shift: true },
+	togglePlay: { key: "k" },
+	toggleCaptions: { key: "c", ctrl: true },
+	toggleCursor: { key: "u", ctrl: true },
+	zoomIn: { key: "=", ctrl: true },
+	zoomOut: { key: "-", ctrl: true },
 };
 
 export const SHORTCUT_LABELS: Record<ShortcutAction, string> = {
@@ -100,6 +128,12 @@ export const SHORTCUT_LABELS: Record<ShortcutAction, string> = {
 	addKeyframe: "Add Keyframe",
 	deleteSelected: "Delete Selected",
 	playPause: "Play / Pause",
+	export: "Export",
+	togglePlay: "Toggle Play",
+	toggleCaptions: "Toggle Captions",
+	toggleCursor: "Toggle Cursor",
+	zoomIn: "Zoom In",
+	zoomOut: "Zoom Out",
 };
 
 export function matchesShortcut(

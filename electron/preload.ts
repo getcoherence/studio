@@ -153,4 +153,49 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		ipcRenderer.on("request-save-before-close", listener);
 		return () => ipcRenderer.removeListener("request-save-before-close", listener);
 	},
+
+	// Countdown
+	showCountdown: () => {
+		return ipcRenderer.invoke("show-countdown");
+	},
+	cancelCountdown: () => {
+		return ipcRenderer.invoke("cancel-countdown");
+	},
+	countdownComplete: () => {
+		return ipcRenderer.invoke("countdown-complete");
+	},
+	onCountdownFinished: (callback: () => void) => {
+		const listener = () => callback();
+		ipcRenderer.on("countdown-finished", listener);
+		return () => ipcRenderer.removeListener("countdown-finished", listener);
+	},
+
+	// Updater
+	checkForUpdates: () => {
+		return ipcRenderer.invoke("check-for-updates");
+	},
+	getUpdateStatus: () => {
+		return ipcRenderer.invoke("get-update-status");
+	},
+	dismissUpdate: () => {
+		return ipcRenderer.invoke("dismiss-update");
+	},
+	onUpdateAvailable: (callback: (version: string) => void) => {
+		const listener = (_: unknown, version: string) => callback(version);
+		ipcRenderer.on("update-available", listener);
+		return () => ipcRenderer.removeListener("update-available", listener);
+	},
+
+	// Project browser
+	getRecentProjects: () => {
+		return ipcRenderer.invoke("get-recent-projects");
+	},
+	removeRecentProject: (filePath: string) => {
+		return ipcRenderer.invoke("remove-recent-project", filePath);
+	},
+	onMenuRecentProjects: (callback: () => void) => {
+		const listener = () => callback();
+		ipcRenderer.on("menu-recent-projects", listener);
+		return () => ipcRenderer.removeListener("menu-recent-projects", listener);
+	},
 });

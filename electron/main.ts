@@ -13,9 +13,12 @@ import {
 	Tray,
 } from "electron";
 import { mainT, setMainLocale } from "./i18n";
+import { registerCountdownHandlers } from "./ipc/countdownHandlers";
 import { registerFfmpegHandlers } from "./ipc/ffmpegHandlers";
 import { registerIpcHandlers } from "./ipc/handlers";
+import { registerProjectHandlers } from "./ipc/projectHandlers";
 import { registerSettingsHandlers } from "./ipc/settingsHandlers";
+import { registerUpdaterHandlers } from "./ipc/updaterHandlers";
 import { createEditorWindow, createHudOverlayWindow, createSourceSelectorWindow } from "./windows";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -140,6 +143,16 @@ function setupApplicationMenu() {
 					accelerator: "CmdOrCtrl+O",
 					click: () => sendEditorMenuAction("menu-load-project"),
 				},
+				{
+					label: "Recent Projects…",
+					click: () => {
+						const targetWindow = BrowserWindow.getFocusedWindow() ?? mainWindow;
+						if (targetWindow && !targetWindow.isDestroyed()) {
+							targetWindow.webContents.send("menu-recent-projects");
+						}
+					},
+				},
+				{ type: "separator" },
 				{
 					label: mainT("dialogs", "unsavedChanges.saveProject") || "Save Project…",
 					accelerator: "CmdOrCtrl+S",
@@ -389,5 +402,8 @@ app.whenReady().then(async () => {
 	);
 	registerSettingsHandlers();
 	registerFfmpegHandlers();
+	registerCountdownHandlers();
+	registerUpdaterHandlers();
+	registerProjectHandlers();
 	createWindow();
 });

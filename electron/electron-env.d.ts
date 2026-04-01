@@ -137,7 +137,42 @@ interface Window {
 		setHasUnsavedChanges: (hasChanges: boolean) => void;
 		onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => () => void;
 		setLocale: (locale: string) => Promise<void>;
+
+		// Countdown
+		showCountdown: () => Promise<{ success: boolean }>;
+		cancelCountdown: () => Promise<{ success: boolean }>;
+		countdownComplete: () => Promise<{ success: boolean }>;
+		onCountdownFinished: (callback: () => void) => () => void;
+
+		// Updater
+		checkForUpdates: () => Promise<{
+			success: boolean;
+			state: string;
+			latestVersion?: string;
+			currentVersion?: string;
+			downloadUrl?: string;
+		}>;
+		getUpdateStatus: () => Promise<{
+			state: string;
+			latestVersion?: string;
+			currentVersion?: string;
+			downloadUrl?: string;
+		}>;
+		dismissUpdate: () => Promise<{ success: boolean }>;
+		onUpdateAvailable: (callback: (version: string) => void) => () => void;
+
+		// Project browser
+		getRecentProjects: () => Promise<RecentProject[]>;
+		removeRecentProject: (filePath: string) => Promise<{ success: boolean }>;
+		onMenuRecentProjects: (callback: () => void) => () => void;
 	};
+}
+
+interface RecentProject {
+	filePath: string;
+	fileName: string;
+	lastModified: number;
+	fileSize: number;
 }
 
 interface ProcessedDesktopSource {
