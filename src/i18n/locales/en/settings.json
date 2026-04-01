@@ -28,6 +28,14 @@
 		"roundness": "Roundness",
 		"padding": "Padding"
 	},
+	"cursor": {
+		"title": "Cursor",
+		"showCursor": "Show",
+		"clickRings": "Click Rings",
+		"style": "Style",
+		"smoothing": "Smoothing",
+		"sway": "Sway"
+	},
 	"background": {
 		"title": "Background",
 		"image": "Image",

@@ -28,6 +28,14 @@
 		"roundness": "圆角",
 		"padding": "内边距"
 	},
+	"cursor": {
+		"title": "光标",
+		"showCursor": "显示",
+		"clickRings": "点击环",
+		"style": "样式",
+		"smoothing": "平滑",
+		"sway": "摆动"
+	},
 	"background": {
 		"title": "背景",
 		"image": "图片",

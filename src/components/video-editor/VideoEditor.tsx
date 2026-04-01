@@ -27,6 +27,7 @@ import {
 	getNativeAspectRatioValue,
 	isPortraitAspectRatio,
 } from "@/utils/aspectRatioUtils";
+import { CursorOverlay } from "./CursorOverlay";
 import { ExportDialog } from "./ExportDialog";
 import PlaybackControls from "./PlaybackControls";
 import {
@@ -85,6 +86,11 @@ export default function VideoEditor() {
 		aspectRatio,
 		webcamLayoutPreset,
 		webcamPosition,
+		cursorSmoothing,
+		cursorSway,
+		cursorStyle,
+		showClickRings,
+		showCursor,
 	} = editorState;
 
 	// ── Non-undoable state
@@ -123,6 +129,8 @@ export default function VideoEditor() {
 
 	const playerContainerRef = useRef<HTMLDivElement>(null);
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
+	const cursorContainerRef = useRef<HTMLDivElement>(null);
+	const [cursorContainerSize, setCursorContainerSize] = useState({ width: 0, height: 0 });
 
 	const nextZoomIdRef = useRef(1);
 	const nextTrimIdRef = useRef(1);
@@ -196,6 +204,11 @@ export default function VideoEditor() {
 				aspectRatio: normalizedEditor.aspectRatio,
 				webcamLayoutPreset: normalizedEditor.webcamLayoutPreset,
 				webcamPosition: normalizedEditor.webcamPosition,
+				cursorSmoothing: normalizedEditor.cursorSmoothing ?? 0.5,
+				cursorSway: normalizedEditor.cursorSway ?? 0.3,
+				cursorStyle: normalizedEditor.cursorStyle ?? "default",
+				showClickRings: normalizedEditor.showClickRings ?? true,
+				showCursor: normalizedEditor.showCursor ?? true,
 			});
 			setExportQuality(normalizedEditor.exportQuality);
 			setExportFormat(normalizedEditor.exportFormat);
@@ -270,6 +283,11 @@ export default function VideoEditor() {
 				gifFrameRate,
 				gifLoop,
 				gifSizePreset,
+				cursorSmoothing,
+				cursorSway,
+				cursorStyle,
+				showClickRings,
+				showCursor,
 			}),
 		);
 	}, [
@@ -293,6 +311,11 @@ export default function VideoEditor() {
 		gifFrameRate,
 		gifLoop,
 		gifSizePreset,
+		cursorSmoothing,
+		cursorSway,
+		cursorStyle,
+		showClickRings,
+		showCursor,
 	]);
 
 	const hasUnsavedChanges = Boolean(
@@ -386,6 +409,11 @@ export default function VideoEditor() {
 				gifFrameRate,
 				gifLoop,
 				gifSizePreset,
+				cursorSmoothing,
+				cursorSway,
+				cursorStyle,
+				showClickRings,
+				showCursor,
 			});
 
 			const fileNameBase =
@@ -440,6 +468,11 @@ export default function VideoEditor() {
 			gifFrameRate,
 			gifLoop,
 			gifSizePreset,
+			cursorSmoothing,
+			cursorSway,
+			cursorStyle,
+			showClickRings,
+			showCursor,
 			videoPath,
 			t,
 		],
@@ -529,6 +562,20 @@ export default function VideoEditor() {
 			mounted = false;
 		};
 	}, [currentProjectMedia]);
+
+	// Track cursor overlay container dimensions
+	useEffect(() => {
+		const el = cursorContainerRef.current;
+		if (!el) return;
+		const ro = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				const { width, height } = entry.contentRect;
+				setCursorContainerSize({ width, height });
+			}
+		});
+		ro.observe(el);
+		return () => ro.disconnect();
+	}, []);
 
 	function togglePlayPause() {
 		const playback = videoPlaybackRef.current;
@@ -1093,6 +1140,12 @@ export default function VideoEditor() {
 						webcamPosition,
 						previewWidth,
 						previewHeight,
+						cursorTelemetry,
+						showCursor,
+						cursorStyle,
+						cursorSmoothing,
+						cursorSway,
+						showClickRings,
 						onProgress: (progress: ExportProgress) => {
 							setExportProgress(progress);
 						},
@@ -1224,6 +1277,12 @@ export default function VideoEditor() {
 						webcamPosition,
 						previewWidth,
 						previewHeight,
+						cursorTelemetry,
+						showCursor,
+						cursorStyle,
+						cursorSmoothing,
+						cursorSway,
+						showClickRings,
 						onProgress: (progress: ExportProgress) => {
 							setExportProgress(progress);
 						},
@@ -1291,6 +1350,12 @@ export default function VideoEditor() {
 			webcamLayoutPreset,
 			webcamPosition,
 			exportQuality,
+			cursorTelemetry,
+			showCursor,
+			cursorStyle,
+			cursorSmoothing,
+			cursorSway,
+			showClickRings,
 			handleExportSaved,
 		],
 	);
@@ -1454,6 +1519,7 @@ export default function VideoEditor() {
 								{/* Video preview */}
 								<div className="w-full flex justify-center items-center flex-auto mt-1.5">
 									<div
+										ref={cursorContainerRef}
 										className="relative flex justify-center items-center w-auto h-full max-w-full box-border"
 										style={{
 											aspectRatio:
@@ -1503,6 +1569,20 @@ export default function VideoEditor() {
 											onAnnotationPositionChange={handleAnnotationPositionChange}
 											onAnnotationSizeChange={handleAnnotationSizeChange}
 										/>
+										{showCursor && cursorTelemetry.length > 0 && (
+											<CursorOverlay
+												cursorTelemetry={cursorTelemetry}
+												currentTimeS={currentTime}
+												isPlaying={isPlaying}
+												containerWidth={cursorContainerSize.width}
+												containerHeight={cursorContainerSize.height}
+												cursorSmoothing={cursorSmoothing}
+												cursorSway={cursorSway}
+												cursorStyle={cursorStyle}
+												showClickRings={showClickRings}
+												showCursor={showCursor}
+											/>
+										)}
 									</div>
 								</div>
 								{/* Playback controls */}
@@ -1655,6 +1735,18 @@ export default function VideoEditor() {
 						onSpeedDelete={handleSpeedDelete}
 						unsavedExport={unsavedExport}
 						onSaveUnsavedExport={handleSaveUnsavedExport}
+						showCursor={showCursor}
+						onShowCursorChange={(v) => pushState({ showCursor: v })}
+						cursorStyle={cursorStyle}
+						onCursorStyleChange={(v) => pushState({ cursorStyle: v })}
+						cursorSmoothing={cursorSmoothing}
+						onCursorSmoothingChange={(v) => updateState({ cursorSmoothing: v })}
+						onCursorSmoothingCommit={commitState}
+						cursorSway={cursorSway}
+						onCursorSwayChange={(v) => updateState({ cursorSway: v })}
+						onCursorSwayCommit={commitState}
+						showClickRings={showClickRings}
+						onShowClickRingsChange={(v) => pushState({ showClickRings: v })}
 					/>
 				</div>
 			</div>

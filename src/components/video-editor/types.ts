@@ -29,6 +29,8 @@ export interface CursorTelemetryPoint {
 	timeMs: number;
 	cx: number;
 	cy: number;
+	clickType?: "left" | "right" | "double" | "middle";
+	cursorType?: "arrow" | "text" | "pointer" | "crosshair" | "hand" | "resize";
 }
 
 export interface TrimRegion {
