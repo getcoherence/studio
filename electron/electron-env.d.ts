@@ -105,6 +105,12 @@ interface Window {
 			canceled?: boolean;
 			error?: string;
 		}>;
+		loadProjectByPath: (filePath: string) => Promise<{
+			success: boolean;
+			path?: string;
+			project?: unknown;
+			message?: string;
+		}>;
 		loadProjectFile: () => Promise<{
 			success: boolean;
 			path?: string;
