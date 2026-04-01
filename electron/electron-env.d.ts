@@ -165,6 +165,36 @@ interface Window {
 		getRecentProjects: () => Promise<RecentProject[]>;
 		removeRecentProject: (filePath: string) => Promise<{ success: boolean }>;
 		onMenuRecentProjects: (callback: () => void) => () => void;
+
+		// Native Capture
+		nativeGetSources: () => Promise<{
+			success: boolean;
+			sources: import("../src/lib/native/types").CaptureSource[];
+			error?: string;
+		}>;
+		nativeStartCapture: (
+			options: import("../src/lib/native/types").CaptureOptions,
+		) => Promise<{ success: boolean; error?: string }>;
+		nativeStopCapture: () => Promise<{
+			success: boolean;
+			outputPath?: string;
+			error?: string;
+		}>;
+		nativePauseCapture: () => Promise<{ success: boolean; error?: string }>;
+		nativeResumeCapture: () => Promise<{ success: boolean; error?: string }>;
+		nativeGetCaptureStatus: () => Promise<{
+			success: boolean;
+			status?: import("../src/lib/native/types").CaptureStatus;
+			error?: string;
+		}>;
+		nativeGetBackend: () => Promise<{
+			success: boolean;
+			backend: import("../src/lib/native/types").CaptureBackendId;
+			hasNative: boolean;
+			error?: string;
+		}>;
+		getSetting: (key: string) => Promise<string | null>;
+		setSetting: (key: string, value: string) => Promise<{ success: boolean }>;
 	};
 }
 
