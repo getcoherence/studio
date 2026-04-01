@@ -20,6 +20,7 @@ import {
 	RecordingSetupDialog,
 } from "@/components/recording/RecordingSetupDialog";
 import { WelcomeScreen } from "@/components/recording/WelcomeScreen";
+import { SceneEditor } from "@/components/scene-builder/SceneEditor";
 import { useI18n, useScopedT } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import type { EditorState } from "@/hooks/useEditorHistory";
@@ -165,6 +166,7 @@ export default function VideoEditor() {
 	);
 	const [reloadTrigger, setReloadTrigger] = useState(0);
 	const [previewWallpaper, setPreviewWallpaper] = useState<string | null>(null);
+	const [showSceneEditor, setShowSceneEditor] = useState(false);
 
 	const playerContainerRef = useRef<HTMLDivElement>(null);
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
@@ -1799,6 +1801,9 @@ export default function VideoEditor() {
 			/>
 		);
 	}
+	if (showSceneEditor) {
+		return <SceneEditor onBack={() => setShowSceneEditor(false)} />;
+	}
 	if (error || !videoPath) {
 		return (
 			<>
@@ -1806,6 +1811,7 @@ export default function VideoEditor() {
 					onNewRecording={handleWelcomeNewRecording}
 					onOpenVideo={handleWelcomeOpenVideo}
 					onOpenProject={() => setShowProjectBrowser(true)}
+					onCreateVideo={() => setShowSceneEditor(true)}
 				/>
 				<RecordingSetupDialog
 					open={showRecordingSetup}
