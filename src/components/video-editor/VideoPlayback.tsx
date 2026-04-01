@@ -1124,6 +1124,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			if (!bg) return;
 
 			let running = true;
+			const startTime = performance.now();
 
 			const draw = () => {
 				if (!running) return;
@@ -1131,8 +1132,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				if (canvas) {
 					const ctx = canvas.getContext("2d");
 					if (ctx) {
-						// Use the current video time for synchronization, converted to ms
-						const timeMs = currentTimeRef.current * 1000;
+						// Use wall-clock time so animated backgrounds animate even when paused
+						const timeMs = performance.now() - startTime;
 						bg.render(ctx, canvas.width, canvas.height, timeMs);
 					}
 				}

@@ -164,6 +164,7 @@ export default function VideoEditor() {
 		null,
 	);
 	const [reloadTrigger, setReloadTrigger] = useState(0);
+	const [previewWallpaper, setPreviewWallpaper] = useState<string | null>(null);
 
 	const playerContainerRef = useRef<HTMLDivElement>(null);
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
@@ -1998,7 +1999,7 @@ export default function VideoEditor() {
 													currentTime={currentTime}
 													onPlayStateChange={setIsPlaying}
 													onError={setError}
-													wallpaper={wallpaper}
+													wallpaper={previewWallpaper ?? wallpaper}
 													zoomRegions={zoomRegions}
 													selectedZoomId={selectedZoomId}
 													onSelectZoom={handleSelectZoom}
@@ -2119,7 +2120,12 @@ export default function VideoEditor() {
 						<div className="h-full overflow-y-auto">
 							<SettingsPanel
 								selected={wallpaper}
-								onWallpaperChange={(w) => pushState({ wallpaper: w })}
+								onWallpaperChange={(w) => {
+									setPreviewWallpaper(null);
+									pushState({ wallpaper: w });
+								}}
+								onWallpaperHover={setPreviewWallpaper}
+								onWallpaperHoverEnd={() => setPreviewWallpaper(null)}
 								selectedZoomDepth={
 									selectedZoomId ? zoomRegions.find((z) => z.id === selectedZoomId)?.depth : null
 								}
