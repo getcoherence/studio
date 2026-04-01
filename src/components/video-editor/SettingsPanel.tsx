@@ -1,6 +1,7 @@
 import Block from "@uiw/react-color-block";
 import {
 	Bug,
+	Captions,
 	Crop,
 	Download,
 	Film,
@@ -121,27 +122,33 @@ function CaptureBackendSection() {
 	if (!loaded) return null;
 
 	return (
-		<div className="mb-4">
-			<div className="flex items-center gap-2 mb-2">
-				<Monitor className="w-4 h-4 text-slate-400" />
-				<span className="text-sm font-medium text-slate-200">Capture Backend</span>
-			</div>
-			<Select value={preference} onValueChange={handleChange}>
-				<SelectTrigger className="w-full bg-white/5 border-white/10 text-slate-200 h-8 text-xs">
-					<SelectValue />
-				</SelectTrigger>
-				<SelectContent>
-					{CAPTURE_BACKEND_OPTIONS.map((opt) => (
-						<SelectItem key={opt.value} value={opt.value}>
-							{opt.label}
-						</SelectItem>
-					))}
-				</SelectContent>
-			</Select>
-			<p className="text-[10px] text-slate-500 mt-1.5">
-				Active: {BACKEND_DISPLAY_NAMES[activeBackend]}
-			</p>
-		</div>
+		<AccordionItem value="capture" className="border-white/5 rounded-xl bg-white/[0.02] px-3">
+			<AccordionTrigger className="py-2.5 hover:no-underline">
+				<span className="text-sm font-medium text-slate-200 flex items-center gap-2">
+					<Monitor size={16} className="text-[#2563eb]" />
+					Capture Backend
+				</span>
+			</AccordionTrigger>
+			<AccordionContent>
+				<div className="pb-3">
+					<Select value={preference} onValueChange={handleChange}>
+						<SelectTrigger className="w-full bg-white/5 border-white/10 text-slate-200 h-8 text-xs">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{CAPTURE_BACKEND_OPTIONS.map((opt) => (
+								<SelectItem key={opt.value} value={opt.value}>
+									{opt.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					<p className="text-[10px] text-slate-500 mt-1.5">
+						Active: {BACKEND_DISPLAY_NAMES[activeBackend]}
+					</p>
+				</div>
+			</AccordionContent>
+		</AccordionItem>
 	);
 }
 
@@ -598,9 +605,6 @@ export function SettingsPanel({
 	return (
 		<div className="flex-[2] min-w-0 bg-[#09090b] border border-white/5 rounded-2xl flex flex-col shadow-xl h-full overflow-hidden">
 			<div className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-0">
-				{/* Capture Backend */}
-				<CaptureBackendSection />
-
 				<div className="mb-4">
 					<div className="flex items-center justify-between mb-3">
 						<span className="text-sm font-medium text-slate-200">{t("zoom.level")}</span>
@@ -726,6 +730,7 @@ export function SettingsPanel({
 					}
 					className="space-y-1"
 				>
+					<CaptureBackendSection />
 					{hasWebcam && (
 						<AccordionItem
 							value="layout"
@@ -1147,6 +1152,7 @@ export function SettingsPanel({
 						>
 							<AccordionTrigger className="py-2.5 hover:no-underline">
 								<span className="text-sm font-medium text-slate-200 flex items-center gap-2">
+									<Captions size={16} className="text-[#2563eb]" />
 									Captions
 									{captionTrack && (
 										<span className="text-[10px] uppercase tracking-wider font-medium text-[#2563eb] bg-[#2563eb]/10 px-2 py-0.5 rounded-full">
