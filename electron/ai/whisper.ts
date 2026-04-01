@@ -160,13 +160,18 @@ export async function transcribe(
 		throw new Error(`Whisper model "${modelId}" not found. Please download it first.`);
 	}
 
+	// Use explicit output path to avoid whisper's filename guessing
+	const outputBase = audioPath.replace(/\.[^.]+$/, "");
+	const outputJsonPath = `${outputBase}.json`;
+
 	const args = [
 		"-m",
 		modelPath,
 		"-f",
 		audioPath,
-		"--output-json", // JSON output with word-level timestamps
-		"--word-timestamps", // Enable word-level timestamps
+		"--output-json-full", // Full JSON with word-level timestamps
+		"-of",
+		outputBase, // Explicit output path (whisper adds .json)
 		"--no-prints", // Suppress progress output
 		"-t",
 		String(options.threads || 4),
@@ -175,9 +180,6 @@ export async function transcribe(
 	if (options.language) {
 		args.push("-l", options.language);
 	}
-
-	// whisper.cpp writes output to {input}.json when using --output-json
-	const outputJsonPath = `${audioPath}.json`;
 
 	return new Promise<{ words: CaptionWord[]; language: string }>((resolve, reject) => {
 		execFile(

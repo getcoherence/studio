@@ -129,17 +129,60 @@ export function AIPanelSidebar({
 	const [narrationText, setNarrationText] = useState("");
 	const [isGeneratingNarration, setIsGeneratingNarration] = useState(false);
 
-	const handleGenerateNarration = useCallback(() => {
+	const handleGenerateNarration = useCallback(async () => {
 		if (cursorTelemetry.length === 0 || videoDurationMs <= 0) return;
 		setIsGeneratingNarration(true);
 
-		requestAnimationFrame(() => {
+		try {
+			const profile = analyzeRecording(cursorTelemetry, videoDurationMs);
+
+			// Try AI-powered narration first
+			const profileSummary =
+				`Recording duration: ${Math.round(videoDurationMs / 1000)}s. ` +
+				`Active segments: ${profile.activeSegments.length}. ` +
+				`Click clusters: ${profile.clickClusters.length}. ` +
+				`Idle segments: ${profile.idleSegments.length}.` +
+				(profile.activeSegments.length > 0
+					? ` Key activity at: ${profile.activeSegments
+							.slice(0, 5)
+							.map((s) => `${Math.round(s.startMs / 1000)}s-${Math.round(s.endMs / 1000)}s`)
+							.join(", ")}.`
+					: "");
+
+			const aiResult = await window.electronAPI?.aiAnalyze?.(
+				"Write a professional, concise voiceover narration script for a screen recording demo. " +
+					"Each paragraph should describe what's happening at that point in the recording. " +
+					"Use natural, conversational language. Keep it under 200 words total.\n\n" +
+					`Recording analysis:\n${profileSummary}`,
+			);
+
+			if (aiResult?.success && aiResult.text) {
+				const lines = aiResult.text.split("\n\n").filter((l: string) => l.trim());
+				const duration = videoDurationMs / 1000;
+				const segmentDuration = duration / Math.max(lines.length, 1);
+				const segments = lines.map((text: string, i: number) => ({
+					id: `narr-${i}`,
+					text: text.trim(),
+					startMs: Math.round(i * segmentDuration * 1000),
+					endMs: Math.round((i + 1) * segmentDuration * 1000),
+				}));
+				setNarrationSegments(segments);
+				setNarrationText(segments.map((s) => s.text).join("\n\n"));
+			} else {
+				// Fallback to heuristic
+				const segments = generateNarrationScript(profile);
+				setNarrationSegments(segments);
+				setNarrationText(segments.map((s) => s.text).join("\n\n"));
+			}
+		} catch {
+			// Fallback to heuristic
 			const profile = analyzeRecording(cursorTelemetry, videoDurationMs);
 			const segments = generateNarrationScript(profile);
 			setNarrationSegments(segments);
 			setNarrationText(segments.map((s) => s.text).join("\n\n"));
+		} finally {
 			setIsGeneratingNarration(false);
-		});
+		}
 	}, [cursorTelemetry, videoDurationMs]);
 
 	const handleApplyNarration = useCallback(() => {
@@ -153,16 +196,44 @@ export function AIPanelSidebar({
 	const [clips, setClips] = useState<ExtractedClip[]>([]);
 	const [isExtractingClips, setIsExtractingClips] = useState(false);
 
-	const handleExtractClips = useCallback(() => {
+	const handleExtractClips = useCallback(async () => {
 		if (cursorTelemetry.length === 0 || videoDurationMs <= 0) return;
 		setIsExtractingClips(true);
 
-		requestAnimationFrame(() => {
+		try {
 			const profile = analyzeRecording(cursorTelemetry, videoDurationMs);
-			const extracted = extractClips(profile, videoDurationMs, 3);
-			setClips(extracted);
+			const heuristicClips = extractClips(profile, videoDurationMs, 3);
+
+			// Try to get AI-generated titles for the clips
+			if (heuristicClips.length > 0) {
+				const clipDescriptions = heuristicClips
+					.map(
+						(c) =>
+							`Clip at ${Math.round(c.startMs / 1000)}s-${Math.round(c.endMs / 1000)}s (score: ${Math.round(c.score * 100)}%)`,
+					)
+					.join("\n");
+
+				const aiResult = await window.electronAPI?.aiAnalyze?.(
+					"For each clip timestamp below from a screen recording, suggest a short descriptive title (3-6 words). " +
+						"Return one title per line, matching the order of clips.\n\n" +
+						clipDescriptions,
+				);
+
+				if (aiResult?.success && aiResult.text) {
+					const titles = aiResult.text.split("\n").filter((l: string) => l.trim());
+					for (let i = 0; i < Math.min(titles.length, heuristicClips.length); i++) {
+						heuristicClips[i].title = titles[i].replace(/^\d+[.)]\s*/, "").trim();
+					}
+				}
+			}
+
+			setClips(heuristicClips);
+		} catch {
+			const profile = analyzeRecording(cursorTelemetry, videoDurationMs);
+			setClips(extractClips(profile, videoDurationMs, 3));
+		} finally {
 			setIsExtractingClips(false);
-		});
+		}
 	}, [cursorTelemetry, videoDurationMs]);
 
 	// ── AI Settings ──
