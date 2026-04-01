@@ -97,12 +97,16 @@ export function SceneCanvas({
 			const ctx = canvas.getContext("2d");
 			if (!ctx) return;
 
+			// When paused, ensure all layers are past their entrance animations
+			// so content is always visible while editing
 			let renderTime = timeMs;
-			if (!isPlaying && timeMs === 0 && scene.layers.length > 0) {
+			if (!isPlaying && scene.layers.length > 0) {
 				const maxEntrance = Math.max(
-					...scene.layers.map((l) => l.entrance.delay + l.entrance.durationMs),
+					...scene.layers.map((l) => l.startMs + l.entrance.delay + l.entrance.durationMs),
 				);
-				renderTime = maxEntrance + 1;
+				if (renderTime < maxEntrance) {
+					renderTime = maxEntrance + 1;
+				}
 			}
 
 			renderScene(ctx, scene, renderTime, INTERNAL_WIDTH, INTERNAL_HEIGHT);
