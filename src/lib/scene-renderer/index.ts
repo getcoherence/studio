@@ -1,4 +1,5 @@
 export { applyEasing, computeAnimation, identityTransform } from "./animations";
+export { exportSceneProject, type SceneExportProgress } from "./sceneExporter";
 export { hitTestLayers, renderScene } from "./sceneRenderer";
 export {
 	ALL_ANIMATION_TYPES,

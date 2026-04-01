@@ -1,7 +1,9 @@
 import {
 	ArrowLeft,
 	Clock,
+	Download,
 	ImagePlus,
+	Loader2,
 	Palette,
 	Pause,
 	Play,
@@ -11,6 +13,8 @@ import {
 	Type,
 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { AnimatedBackgroundPicker } from "@/components/video-editor/AnimatedBackgroundPicker";
@@ -24,9 +28,17 @@ import {
 	type SceneLayer,
 	type SceneProject,
 } from "@/lib/scene-renderer";
+import { exportSceneProject, type SceneExportProgress } from "@/lib/scene-renderer/sceneExporter";
 import { LayerPanel } from "./LayerPanel";
 import { SceneCanvas } from "./SceneCanvas";
 import { SceneTimeline } from "./SceneTimeline";
+
+function formatTime(ms: number): string {
+	const totalSeconds = Math.floor(ms / 1000);
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+	return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
 
 interface SceneEditorProps {
 	onBack: () => void;
@@ -38,6 +50,8 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 	const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [currentTimeMs, setCurrentTimeMs] = useState(0);
+	const [isExporting, setIsExporting] = useState(false);
+	const [exportProgress, setExportProgress] = useState<SceneExportProgress | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const currentScene = project.scenes[selectedSceneIndex];
@@ -173,30 +187,80 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 		if (isPlaying) {
 			setIsPlaying(false);
 		} else {
-			// If at end, restart
-			if (currentTimeMs >= currentScene.durationMs) {
+			// If at end of last scene, restart from beginning
+			if (
+				selectedSceneIndex === project.scenes.length - 1 &&
+				currentTimeMs >= currentScene.durationMs
+			) {
+				setSelectedSceneIndex(0);
+				setCurrentTimeMs(0);
+			} else if (currentTimeMs >= currentScene.durationMs) {
+				// At end of a non-last scene, reset time in current scene
 				setCurrentTimeMs(0);
 			}
 			setIsPlaying(true);
 		}
-	}, [isPlaying, currentTimeMs, currentScene.durationMs]);
+	}, [
+		isPlaying,
+		currentTimeMs,
+		currentScene.durationMs,
+		selectedSceneIndex,
+		project.scenes.length,
+	]);
 
-	const handleTimeUpdate = useCallback(
-		(timeMs: number) => {
-			if (timeMs >= currentScene.durationMs) {
-				setIsPlaying(false);
-				setCurrentTimeMs(currentScene.durationMs);
-			} else {
-				setCurrentTimeMs(timeMs);
-			}
-		},
-		[currentScene.durationMs],
-	);
+	const handleSceneComplete = useCallback(() => {
+		if (selectedSceneIndex < project.scenes.length - 1) {
+			setSelectedSceneIndex((prev) => prev + 1);
+			setCurrentTimeMs(0);
+			// isPlaying stays true so next scene auto-plays
+		} else {
+			setIsPlaying(false);
+			setCurrentTimeMs(project.scenes[selectedSceneIndex].durationMs);
+		}
+	}, [selectedSceneIndex, project.scenes]);
+
+	const handleTimeUpdate = useCallback((timeMs: number) => {
+		setCurrentTimeMs(timeMs);
+	}, []);
 
 	const resetPlayback = useCallback(() => {
+		setSelectedSceneIndex(0);
 		setCurrentTimeMs(0);
 		setIsPlaying(false);
 	}, []);
+
+	// ── Export ──────────────────────────────────────────────────────────
+
+	const handleExport = useCallback(async () => {
+		if (isExporting) return;
+		setIsExporting(true);
+		setExportProgress(null);
+		setIsPlaying(false);
+
+		try {
+			const blob = await exportSceneProject(project, {
+				fps: project.fps || 30,
+				quality: "high",
+				onProgress: setExportProgress,
+			});
+
+			const arrayBuffer = await blob.arrayBuffer();
+			const fileName = `${project.name || "scene-export"}.webm`;
+			const result = await window.electronAPI.saveExportedVideo(arrayBuffer, fileName);
+
+			if (result.success) {
+				toast.success("Video exported successfully");
+			} else if (!result.canceled) {
+				toast.error(result.message || "Failed to save video");
+			}
+		} catch (err) {
+			console.error("Export failed:", err);
+			toast.error(`Export failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+		} finally {
+			setIsExporting(false);
+			setExportProgress(null);
+		}
+	}, [isExporting, project]);
 
 	// ── Background ─────────────────────────────────────────────────────
 
@@ -367,97 +431,126 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 						Delete Layer
 					</button>
 				)}
+
+				{/* Export button */}
+				<button
+					onClick={handleExport}
+					disabled={isExporting}
+					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+				>
+					{isExporting ? (
+						<>
+							<Loader2 size={14} className="animate-spin" />
+							{exportProgress ? `${Math.round(exportProgress.progress * 100)}%` : "Exporting..."}
+						</>
+					) : (
+						<>
+							<Download size={14} />
+							Export
+						</>
+					)}
+				</button>
 			</div>
 
 			{/* ── Main Content Area ────────────────────────────────────── */}
 			<div className="flex-1 flex overflow-hidden min-h-0">
-				{/* Center: Canvas + playback controls */}
-				<div className="flex-1 flex flex-col min-w-0 min-h-0">
-					{/* Responsive size toolbar */}
-					<div className="flex-shrink-0 flex items-center justify-center gap-1 px-4 py-1.5 border-b border-white/5">
-						{[
-							{ label: "16:9", ratio: "16/9" },
-							{ label: "9:16", ratio: "9/16" },
-							{ label: "1:1", ratio: "1/1" },
-							{ label: "4:3", ratio: "4/3" },
-						].map((preset) => (
-							<button
-								key={preset.label}
-								className="px-2.5 py-1 rounded text-[10px] font-medium text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
-								title={preset.ratio}
-							>
-								{preset.label}
-							</button>
-						))}
-					</div>
-					{/* Canvas */}
-					<div className="flex-1 p-4 flex flex-col min-h-0 overflow-hidden">
-						<SceneCanvas
-							scene={currentScene}
-							currentTimeMs={currentTimeMs}
-							isPlaying={isPlaying}
-							selectedLayerId={selectedLayerId}
-							onSelectLayer={setSelectedLayerId}
-							onTimeUpdate={handleTimeUpdate}
-							onLayerMove={(layerId, x, y) => {
-								updateCurrentScene({
-									layers: currentScene.layers.map((l) =>
-										l.id === layerId ? { ...l, position: { x, y } } : l,
-									),
-								});
-							}}
-							onLayerResize={(layerId, width, height) => {
-								updateCurrentScene({
-									layers: currentScene.layers.map((l) =>
-										l.id === layerId ? { ...l, size: { width, height } } : l,
-									),
-								});
-							}}
-						/>
-					</div>
+				<PanelGroup direction="horizontal">
+					{/* Center: Canvas + playback controls */}
+					<Panel defaultSize={75} minSize={40}>
+						<div className="flex flex-col h-full min-w-0 min-h-0">
+							{/* Responsive size toolbar */}
+							<div className="flex-shrink-0 flex items-center justify-center gap-1 px-4 py-1.5 border-b border-white/5">
+								{[
+									{ label: "16:9", ratio: "16/9" },
+									{ label: "9:16", ratio: "9/16" },
+									{ label: "1:1", ratio: "1/1" },
+									{ label: "4:3", ratio: "4/3" },
+								].map((preset) => (
+									<button
+										key={preset.label}
+										className="px-2.5 py-1 rounded text-[10px] font-medium text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
+										title={preset.ratio}
+									>
+										{preset.label}
+									</button>
+								))}
+							</div>
+							{/* Canvas */}
+							<div className="flex-1 p-4 flex flex-col min-h-0 overflow-hidden">
+								<SceneCanvas
+									scene={currentScene}
+									currentTimeMs={currentTimeMs}
+									isPlaying={isPlaying}
+									selectedLayerId={selectedLayerId}
+									onSelectLayer={setSelectedLayerId}
+									onTimeUpdate={handleTimeUpdate}
+									onSceneComplete={handleSceneComplete}
+									onLayerMove={(layerId, x, y) => {
+										updateCurrentScene({
+											layers: currentScene.layers.map((l) =>
+												l.id === layerId ? { ...l, position: { x, y } } : l,
+											),
+										});
+									}}
+									onLayerResize={(layerId, width, height) => {
+										updateCurrentScene({
+											layers: currentScene.layers.map((l) =>
+												l.id === layerId ? { ...l, size: { width, height } } : l,
+											),
+										});
+									}}
+								/>
+							</div>
 
-					{/* Playback controls bar */}
-					<div className="flex-shrink-0 flex items-center justify-center gap-4 px-4 py-2 border-t border-white/5">
-						<button
-							onClick={resetPlayback}
-							className="p-1.5 rounded text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
-						>
-							<RotateCcw size={14} />
-						</button>
-						<button
-							onClick={togglePlayback}
-							className="p-2 rounded-full bg-[#2563eb] hover:bg-[#2563eb]/80 text-white transition-colors"
-						>
-							{isPlaying ? <Pause size={16} /> : <Play size={16} />}
-						</button>
-						{/* Time scrubber */}
-						<div className="flex items-center gap-2 flex-1 max-w-md">
-							<Slider
-								value={[currentTimeMs]}
-								onValueChange={([v]) => {
-									setCurrentTimeMs(v);
-									setIsPlaying(false);
-								}}
-								min={0}
-								max={currentScene.durationMs}
-								step={16}
-							/>
-							<span className="text-[10px] text-white/50 w-16 text-right font-mono">
-								{(currentTimeMs / 1000).toFixed(2)}s / {(currentScene.durationMs / 1000).toFixed(1)}
-								s
-							</span>
+							{/* Playback controls bar */}
+							<div className="flex-shrink-0 flex items-center justify-center gap-4 px-4 py-2 border-t border-white/5">
+								<button
+									onClick={resetPlayback}
+									className="p-1.5 rounded text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
+								>
+									<RotateCcw size={14} />
+								</button>
+								<button
+									onClick={togglePlayback}
+									className="p-2 rounded-full bg-[#2563eb] hover:bg-[#2563eb]/80 text-white transition-colors"
+								>
+									{isPlaying ? <Pause size={16} /> : <Play size={16} />}
+								</button>
+								{/* Time scrubber */}
+								<div className="flex items-center gap-2 flex-1 max-w-md">
+									<Slider
+										value={[currentTimeMs]}
+										onValueChange={([v]) => {
+											setCurrentTimeMs(v);
+											setIsPlaying(false);
+										}}
+										min={0}
+										max={currentScene.durationMs}
+										step={16}
+									/>
+									<span className="text-[10px] text-white/50 w-44 text-right font-mono">
+										Scene {selectedSceneIndex + 1}/{project.scenes.length}
+										{" · "}
+										{formatTime(currentTimeMs)} / {formatTime(currentScene.durationMs)}
+									</span>
+								</div>
+							</div>
 						</div>
-					</div>
-				</div>
+					</Panel>
 
-				{/* Right sidebar: Layer properties */}
-				<LayerPanel
-					layer={selectedLayer}
-					sceneDurationMs={currentScene.durationMs}
-					allLayers={currentScene.layers}
-					onUpdateLayer={updateLayer}
-					onSelectLayer={setSelectedLayerId}
-				/>
+					<PanelResizeHandle className="w-1 rounded-full bg-white/5 hover:bg-[#2563eb]/40 transition-colors" />
+
+					{/* Right sidebar: Layer properties */}
+					<Panel defaultSize={25} minSize={15} maxSize={40}>
+						<LayerPanel
+							layer={selectedLayer}
+							sceneDurationMs={currentScene.durationMs}
+							allLayers={currentScene.layers}
+							onUpdateLayer={updateLayer}
+							onSelectLayer={setSelectedLayerId}
+						/>
+					</Panel>
+				</PanelGroup>
 			</div>
 
 			{/* ── Bottom: Scene Timeline ────────────────────────────────── */}

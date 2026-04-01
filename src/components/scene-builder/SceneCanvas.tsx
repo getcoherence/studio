@@ -9,6 +9,7 @@ interface SceneCanvasProps {
 	selectedLayerId: string | null;
 	onSelectLayer: (layerId: string | null) => void;
 	onTimeUpdate?: (timeMs: number) => void;
+	onSceneComplete?: () => void;
 	onLayerMove?: (layerId: string, x: number, y: number) => void;
 	onLayerResize?: (layerId: string, width: number, height: number) => void;
 }
@@ -26,6 +27,7 @@ export function SceneCanvas({
 	selectedLayerId,
 	onSelectLayer,
 	onTimeUpdate,
+	onSceneComplete,
 	onLayerMove,
 	onLayerResize,
 }: SceneCanvasProps) {
@@ -151,8 +153,9 @@ export function SceneCanvas({
 			const timeMs = startOffsetRef.current + elapsed;
 
 			if (timeMs >= scene.durationMs) {
-				onTimeUpdate?.(scene.durationMs);
 				drawFrame(scene.durationMs);
+				onTimeUpdate?.(scene.durationMs);
+				onSceneComplete?.();
 				return;
 			}
 
@@ -166,7 +169,7 @@ export function SceneCanvas({
 		return () => {
 			if (rafRef.current) cancelAnimationFrame(rafRef.current);
 		};
-	}, [isPlaying, currentTimeMs, scene, drawFrame, onTimeUpdate]);
+	}, [isPlaying, currentTimeMs, scene, drawFrame, onTimeUpdate, onSceneComplete]);
 
 	// Redraw when scene changes while paused
 	useEffect(() => {
