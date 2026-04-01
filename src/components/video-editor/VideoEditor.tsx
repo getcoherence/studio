@@ -567,12 +567,22 @@ export default function VideoEditor() {
 			setShowRecordingSetup(true);
 		});
 		const removeLoadListener = window.electronAPI.onMenuLoadProject(handleLoadProject);
+		const removeOpenVideo = window.electronAPI.onMenuOpenVideo?.(async () => {
+			const result = await window.electronAPI.openVideoFilePicker();
+			if (result.canceled) return;
+			if (result.success && result.path) {
+				await window.electronAPI.setCurrentVideoPath(result.path);
+				setError(null);
+				setReloadTrigger((prev) => prev + 1);
+			}
+		});
 		const removeSaveListener = window.electronAPI.onMenuSaveProject(handleSaveProject);
 		const removeSaveAsListener = window.electronAPI.onMenuSaveProjectAs(handleSaveProjectAs);
 
 		return () => {
 			removeNewRecording?.();
 			removeLoadListener?.();
+			removeOpenVideo?.();
 			removeSaveListener?.();
 			removeSaveAsListener?.();
 		};

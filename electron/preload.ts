@@ -93,6 +93,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	loadProjectByPath: (filePath: string) => {
 		return ipcRenderer.invoke("load-project-by-path", filePath);
 	},
+	onMenuOpenVideo: (callback: () => void) => {
+		const listener = () => callback();
+		ipcRenderer.on("menu-open-video", listener);
+		return () => ipcRenderer.removeListener("menu-open-video", listener);
+	},
 	onMenuLoadProject: (callback: () => void) => {
 		const listener = () => callback();
 		ipcRenderer.on("menu-load-project", listener);
