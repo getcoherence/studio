@@ -152,12 +152,15 @@ export function AIPanelSidebar({
 					: "");
 
 			const aiResult = await window.electronAPI?.aiAnalyze?.(
-				"Write a professional, concise voiceover narration script for a screen recording demo. " +
-					"Each paragraph should describe what's happening at that point in the recording. " +
-					"Use natural, conversational language. Keep it under 200 words total.\n\n" +
-					`Recording analysis:\n${profileSummary}`,
+				"Write a professional voiceover narration script for a screen recording demo. " +
+					"You only have cursor activity data (not visual content), so DO NOT invent specific UI elements, " +
+					"button names, or features you cannot see. Instead, write timing-based narration like: " +
+					"'Here we begin the demo...', 'Notice the activity in this area...', 'The workflow picks up pace here...'. " +
+					"Keep it natural and under 150 words. One paragraph per key moment.\n\n" +
+					`Cursor activity data:\n${profileSummary}`,
 			);
 
+			console.log("[AI Narrate] Result:", aiResult);
 			if (aiResult?.success && aiResult.text) {
 				const lines = aiResult.text.split("\n\n").filter((l: string) => l.trim());
 				const duration = videoDurationMs / 1000;
@@ -171,12 +174,14 @@ export function AIPanelSidebar({
 				setNarrationSegments(segments);
 				setNarrationText(segments.map((s) => s.text).join("\n\n"));
 			} else {
+				console.warn("[AI Narrate] Failed, falling back:", aiResult?.error);
 				// Fallback to heuristic
 				const segments = generateNarrationScript(profile);
 				setNarrationSegments(segments);
 				setNarrationText(segments.map((s) => s.text).join("\n\n"));
 			}
-		} catch {
+		} catch (err) {
+			console.error("[AI Narrate] Exception:", err);
 			// Fallback to heuristic
 			const profile = analyzeRecording(cursorTelemetry, videoDurationMs);
 			const segments = generateNarrationScript(profile);
