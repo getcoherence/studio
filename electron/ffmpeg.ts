@@ -33,9 +33,16 @@ function getBundledFfmpegPath(): string | null {
 	const platform = process.platform;
 	const binaryName = platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
 
-	// In development
+	// In development — check native/bin/{platform}/
 	if (!app.isPackaged) {
-		return null; // Rely on system FFmpeg during development
+		const devPath = path.join(
+			app.getAppPath(),
+			"native",
+			"bin",
+			platform === "win32" ? "win32" : platform === "darwin" ? "darwin" : "linux",
+			binaryName,
+		);
+		return devPath;
 	}
 
 	// In packaged app — extraResources

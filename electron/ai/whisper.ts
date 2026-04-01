@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { app } from "electron";
@@ -38,23 +39,35 @@ export interface TranscribeOptions {
 }
 
 /**
+ * Candidate binary names for whisper.cpp.
+ * Recent releases (v1.6+) renamed the binary from "main" to "whisper-cli".
+ * We also check "whisper" for custom-named builds.
+ */
+const WHISPER_BINARY_NAMES = ["whisper-cli", "whisper", "main"];
+
+/**
  * Locate the whisper.cpp binary. Checks development and packaged locations.
+ * Searches for multiple candidate binary names (whisper-cli, whisper, main)
+ * since the project renamed the binary over time.
  * Returns null if not found (user needs to install it).
  */
 function findWhisperBinary(): string | null {
 	const platform = process.platform;
 	const ext = platform === "win32" ? ".exe" : "";
-	const binaryName = `whisper${ext}`;
 
-	// Check bundled location inside packaged app
-	if (app.isPackaged) {
-		const bundled = path.join(process.resourcesPath, "bin", binaryName);
-		return bundled;
+	for (const name of WHISPER_BINARY_NAMES) {
+		const binaryName = `${name}${ext}`;
+
+		if (app.isPackaged) {
+			const bundled = path.join(process.resourcesPath, "bin", binaryName);
+			if (existsSync(bundled)) return bundled;
+		} else {
+			const devBin = path.join(app.getAppPath(), "native", "bin", platform, binaryName);
+			if (existsSync(devBin)) return devBin;
+		}
 	}
 
-	// Check native/bin/{platform}/ during development
-	const devBin = path.join(app.getAppPath(), "native", "bin", platform, binaryName);
-	return devBin;
+	return null;
 }
 
 /**
