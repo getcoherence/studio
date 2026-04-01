@@ -1802,7 +1802,11 @@ export default function VideoEditor() {
 						<Save size={14} />
 						{ts("project.save")}
 					</button>
-					<div className="w-px h-4 bg-white/10 mx-1" />
+				</div>
+				<div
+					className="flex items-center gap-1"
+					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+				>
 					<button
 						type="button"
 						onClick={handleMagicPolish}
