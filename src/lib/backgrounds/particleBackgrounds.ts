@@ -65,13 +65,13 @@ function renderParticles(
 
 		// Horizontal position wrapping
 		const baseX = r1;
-		const horizSpeed = (seededRandom(seed * 7) - 0.5) * config.speed * 0.00004;
+		const horizSpeed = (seededRandom(seed * 7) - 0.5) * config.speed * 0.0003;
 		const px = (((baseX + t * horizSpeed) % 1) + 1) % 1;
 
 		// Vertical position wrapping
 		const baseY = r2;
 		const vertSpeed =
-			config.driftDirection * config.speed * 0.00006 * (0.5 + seededRandom(seed * 11) * 0.5);
+			config.driftDirection * config.speed * 0.0005 * (0.5 + seededRandom(seed * 11) * 0.5);
 		const py = (((baseY + t * vertSpeed) % 1) + 1) % 1;
 
 		const x = px * w;
@@ -79,7 +79,7 @@ function renderParticles(
 
 		// Opacity with gentle pulsing
 		const pulsePhase = seededRandom(seed * 13) * Math.PI * 2;
-		const pulseSpeed = 0.006 + seededRandom(seed * 17) * 0.012;
+		const pulseSpeed = 0.05 + seededRandom(seed * 17) * 0.1;
 		const pulse = (Math.sin(t * pulseSpeed + pulsePhase) + 1) / 2;
 		const opacity = config.minOpacity + pulse * (config.maxOpacity - config.minOpacity);
 
@@ -208,7 +208,7 @@ const stars: AnimatedBackground = {
 
 			// Twinkling
 			const phase = seededRandom(i * 5 + 3) * Math.PI * 2;
-			const speed = 0.01 + seededRandom(i * 5 + 4) * 0.025;
+			const speed = 0.08 + seededRandom(i * 5 + 4) * 0.2;
 			const twinkle = (Math.sin(t * speed + phase) + 1) / 2;
 			const opacity = 0.2 + twinkle * 0.8;
 
