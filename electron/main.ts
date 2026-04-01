@@ -8,6 +8,8 @@ import {
 	ipcMain,
 	Menu,
 	nativeImage,
+	net,
+	protocol,
 	session,
 	shell,
 	systemPreferences,
@@ -412,8 +414,29 @@ app.on("activate", () => {
 	}
 });
 
+// Register lucid:// protocol for secure local file access (replaces webSecurity: false)
+protocol.registerSchemesAsPrivileged([
+	{
+		scheme: "lucid",
+		privileges: {
+			standard: true,
+			secure: true,
+			supportFetchAPI: true,
+			stream: true,
+			bypassCSP: true,
+		},
+	},
+]);
+
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
+	// Handle lucid:// protocol — serves local files securely
+	protocol.handle("lucid", (request) => {
+		// lucid://file/C:/path/to/file.webm → file:///C:/path/to/file.webm
+		const url = request.url.replace("lucid://file/", "file:///");
+		return net.fetch(url);
+	});
+
 	// Allow microphone/media permission checks
 	session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
 		const allowed = ["media", "audioCapture", "microphone", "videoCapture", "camera"];
