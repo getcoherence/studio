@@ -20,6 +20,7 @@ import {
 } from "react";
 import type { CaptionStyle, CaptionTrack } from "@/lib/ai/types";
 import { getAssetPath } from "@/lib/assetPath";
+import { getAnimatedBackground, isAnimatedBackground } from "@/lib/backgrounds";
 import {
 	getWebcamLayoutCssBoxShadow,
 	type Size,
@@ -986,6 +987,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		};
 
 		const [resolvedWallpaper, setResolvedWallpaper] = useState<string | null>(null);
+		const animatedBgCanvasRef = useRef<HTMLCanvasElement | null>(null);
+		const animatedBgRafRef = useRef<number | null>(null);
+		const isAnimatedWallpaper = Boolean(wallpaper && isAnimatedBackground(wallpaper));
 		const webcamCssBoxShadow = useMemo(
 			() => getWebcamLayoutCssBoxShadow(webcamLayoutPreset),
 			[webcamLayoutPreset],
@@ -1105,6 +1109,47 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			};
 		}, [wallpaper]);
 
+		// Drive animated background canvas when an animated wallpaper is selected
+		useEffect(() => {
+			if (!isAnimatedWallpaper || !wallpaper) {
+				// Cancel any running loop when switching away
+				if (animatedBgRafRef.current) {
+					cancelAnimationFrame(animatedBgRafRef.current);
+					animatedBgRafRef.current = null;
+				}
+				return;
+			}
+
+			const bg = getAnimatedBackground(wallpaper);
+			if (!bg) return;
+
+			let running = true;
+
+			const draw = () => {
+				if (!running) return;
+				const canvas = animatedBgCanvasRef.current;
+				if (canvas) {
+					const ctx = canvas.getContext("2d");
+					if (ctx) {
+						// Use the current video time for synchronization, converted to ms
+						const timeMs = currentTimeRef.current * 1000;
+						bg.render(ctx, canvas.width, canvas.height, timeMs);
+					}
+				}
+				animatedBgRafRef.current = requestAnimationFrame(draw);
+			};
+
+			draw();
+
+			return () => {
+				running = false;
+				if (animatedBgRafRef.current) {
+					cancelAnimationFrame(animatedBgRafRef.current);
+					animatedBgRafRef.current = null;
+				}
+			};
+		}, [isAnimatedWallpaper, wallpaper]);
+
 		useEffect(() => {
 			return () => {
 				if (videoReadyRafRef.current) {
@@ -1142,14 +1187,24 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					),
 				}}
 			>
-				{/* Background layer - always render as DOM element with blur */}
-				<div
-					className="absolute inset-0 bg-cover bg-center"
-					style={{
-						...backgroundStyle,
-						filter: showBlur ? "blur(2px)" : "none",
-					}}
-				/>
+				{/* Background layer - animated canvas or static CSS */}
+				{isAnimatedWallpaper ? (
+					<canvas
+						ref={animatedBgCanvasRef}
+						width={1920}
+						height={1080}
+						className="absolute inset-0 w-full h-full"
+						style={{ filter: showBlur ? "blur(2px)" : "none" }}
+					/>
+				) : (
+					<div
+						className="absolute inset-0 bg-cover bg-center"
+						style={{
+							...backgroundStyle,
+							filter: showBlur ? "blur(2px)" : "none",
+						}}
+					/>
+				)}
 				<div
 					ref={containerRef}
 					className="absolute inset-0"
