@@ -50,6 +50,12 @@ export interface ProjectEditorState {
 	gifFrameRate: GifFrameRate;
 	gifLoop: boolean;
 	gifSizePreset: GifSizePreset;
+	// Cursor overlay settings
+	cursorSmoothing?: number;
+	cursorSway?: number;
+	cursorStyle?: string;
+	showClickRings?: boolean;
+	showCursor?: boolean;
 }
 
 export interface EditorProjectData {
@@ -381,6 +387,16 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			editor.gifSizePreset === "original"
 				? editor.gifSizePreset
 				: "medium",
+		cursorSmoothing: isFiniteNumber(editor.cursorSmoothing)
+			? clamp(editor.cursorSmoothing, 0, 1)
+			: 0.5,
+		cursorSway: isFiniteNumber(editor.cursorSway) ? clamp(editor.cursorSway, 0, 1) : 0.3,
+		cursorStyle:
+			typeof editor.cursorStyle === "string" && editor.cursorStyle.length > 0
+				? editor.cursorStyle
+				: "default",
+		showClickRings: typeof editor.showClickRings === "boolean" ? editor.showClickRings : true,
+		showCursor: typeof editor.showCursor === "boolean" ? editor.showCursor : true,
 	};
 }
 
