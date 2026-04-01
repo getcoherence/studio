@@ -402,6 +402,79 @@ export function AIChatSidebar({
 						return { tool, args, success: true };
 					}
 
+					case "addTextAnnotation": {
+						const ann = {
+							id: `ann-${crypto.randomUUID().slice(0, 8)}`,
+							startMs: Math.round(((args.startSec as number) || 0) * 1000),
+							endMs: Math.round(((args.endSec as number) || 5) * 1000),
+							type: "text" as const,
+							content: (args.text as string) || "Text",
+							textContent: (args.text as string) || "Text",
+							position: { x: (args.x as number) ?? 50, y: (args.y as number) ?? 20 },
+							size: { width: 40, height: 15 },
+							style: {
+								color: (args.color as string) || "#ffffff",
+								backgroundColor: "rgba(0,0,0,0.6)",
+								fontSize: (args.fontSize as number) || 32,
+								fontFamily: "Inter, sans-serif",
+								fontWeight: "bold" as const,
+								fontStyle: "normal" as const,
+								textDecoration: "none" as const,
+								textAlign: "center" as const,
+							},
+							zIndex: (editorState.annotationRegions?.length || 0) + 1,
+						};
+						onApplyEdits({
+							annotationRegions: [...(editorState.annotationRegions || []), ann],
+						});
+						return { tool, args, success: true };
+					}
+
+					case "addArrowAnnotation": {
+						const arrow = {
+							id: `ann-${crypto.randomUUID().slice(0, 8)}`,
+							startMs: Math.round(((args.startSec as number) || 0) * 1000),
+							endMs: Math.round(((args.endSec as number) || 5) * 1000),
+							type: "figure" as const,
+							content: "",
+							position: { x: (args.x as number) ?? 50, y: (args.y as number) ?? 50 },
+							size: { width: 10, height: 15 },
+							style: {
+								color: "#ffffff",
+								backgroundColor: "transparent",
+								fontSize: 32,
+								fontFamily: "Inter, sans-serif",
+								fontWeight: "normal" as const,
+								fontStyle: "normal" as const,
+								textDecoration: "none" as const,
+								textAlign: "center" as const,
+							},
+							zIndex: (editorState.annotationRegions?.length || 0) + 1,
+							figureData: {
+								arrowDirection: ((args.direction as string) || "down") as
+									| "up"
+									| "down"
+									| "left"
+									| "right"
+									| "up-right"
+									| "up-left"
+									| "down-right"
+									| "down-left",
+								color: (args.color as string) || "#ef4444",
+								strokeWidth: 3,
+							},
+						};
+						onApplyEdits({
+							annotationRegions: [...(editorState.annotationRegions || []), arrow],
+						});
+						return { tool, args, success: true };
+					}
+
+					case "clearAnnotations": {
+						onApplyEdits({ annotationRegions: [] });
+						return { tool, args, success: true };
+					}
+
 					default:
 						return {
 							tool,

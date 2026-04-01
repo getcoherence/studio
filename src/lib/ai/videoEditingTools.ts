@@ -115,4 +115,40 @@ export const VIDEO_EDITING_TOOLS: VideoEditTool[] = [
 			timeSec: { type: "number", description: "Time in seconds to seek to" },
 		},
 	},
+	{
+		name: "addTextAnnotation",
+		description:
+			"Add a text overlay/annotation on the video at a specific time range. Position x/y are percentages (0-100).",
+		parameters: {
+			startSec: { type: "number", description: "Start time in seconds" },
+			endSec: { type: "number", description: "End time in seconds" },
+			text: { type: "string", description: "Text content to display" },
+			x: { type: "number", description: "Horizontal position 0-100% (default 50)" },
+			y: { type: "number", description: "Vertical position 0-100% (default 20)" },
+			fontSize: { type: "number", description: "Font size in pixels (default 32)" },
+			color: { type: "string", description: "Text color hex (default #ffffff)" },
+		},
+	},
+	{
+		name: "addArrowAnnotation",
+		description:
+			"Add an arrow annotation pointing in a direction. Position x/y are percentages (0-100).",
+		parameters: {
+			startSec: { type: "number", description: "Start time in seconds" },
+			endSec: { type: "number", description: "End time in seconds" },
+			direction: {
+				type: "string",
+				description:
+					"Arrow direction: up, down, left, right, up-right, up-left, down-right, down-left",
+			},
+			x: { type: "number", description: "Horizontal position 0-100% (default 50)" },
+			y: { type: "number", description: "Vertical position 0-100% (default 50)" },
+			color: { type: "string", description: "Arrow color hex (default #ef4444)" },
+		},
+	},
+	{
+		name: "clearAnnotations",
+		description: "Remove all annotations from the video.",
+		parameters: {},
+	},
 ];
