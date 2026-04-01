@@ -126,19 +126,41 @@ export interface ModelDownloadProgress {
 	percent: number;
 }
 
-// ── Narration types ──
+// ── Recording analysis types ──
 
-export interface NarrationSegment {
-	text: string;
-	startMs: number;
-	endMs: number;
-	audioPath?: string;
+export interface RecordingProfile {
+	silentSegments: TimeSegment[];
+	idleSegments: TimeSegment[];
+	activeSegments: TimeSegment[];
+	clickClusters: ClickCluster[];
 }
 
-export interface NarrationTrack {
-	segments: NarrationSegment[];
-	voiceId: string;
-	language: string;
+export interface TimeSegment {
+	startMs: number;
+	endMs: number;
+	/** Optional metadata describing why this segment was flagged */
+	reason?: string;
+}
+
+export interface ClickCluster {
+	startMs: number;
+	endMs: number;
+	cx: number;
+	cy: number;
+	clickCount: number;
+}
+
+// ── Smart trim types ──
+
+export type TrimReason = "idle-cursor" | "dead-air" | "low-activity" | "loading-screen";
+
+export interface TrimSuggestion {
+	id: string;
+	startMs: number;
+	endMs: number;
+	reason: TrimReason;
+	confidence: number;
+	description?: string;
 }
 
 // ── Clip extraction ──
@@ -148,25 +170,59 @@ export interface ExtractedClip {
 	startMs: number;
 	endMs: number;
 	score: number;
-	reason: string;
+	reason?: string;
 	title: string;
 }
 
-// ── Smart trim suggestion ──
+// ── AI service types ──
 
-export interface TrimSuggestion {
-	id: string;
-	startMs: number;
-	endMs: number;
-	reason: "dead-air" | "loading-screen" | "idle-cursor" | "low-activity";
-	confidence: number;
-}
-
-// ── AI service config ──
+export type AIProvider = "local" | "cloud" | "openai" | "anthropic";
 
 export interface AIServiceConfig {
-	provider: "local" | "openai" | "anthropic";
+	provider: AIProvider;
 	modelId?: string;
+	model?: string;
 	apiKey?: string;
 	baseUrl?: string;
+	ollamaUrl?: string;
+}
+
+export interface AIServiceResult {
+	success: boolean;
+	text?: string;
+	error?: string;
+}
+
+export interface AIAvailability {
+	localAvailable: boolean;
+	cloudAvailable: boolean;
+	activeProvider: AIProvider | null;
+}
+
+// ── Narration types ──
+
+export interface NarrationSegment {
+	id?: string;
+	text: string;
+	startMs: number;
+	endMs: number;
+	audioPath?: string;
+}
+
+export interface NarrationTrack {
+	segments: NarrationSegment[];
+	voiceId?: string;
+	language?: string;
+	audioPath?: string | null;
+}
+
+// ── Polish types ──
+
+export interface PolishPreview {
+	zoomCount: number;
+	trimCount: number;
+	speedRampCount: number;
+	wallpaperChanged: boolean;
+	borderRadiusChanged: boolean;
+	paddingChanged: boolean;
 }

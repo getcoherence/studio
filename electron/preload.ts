@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { CaptionTrack, ModelDownloadProgress, WhisperModelStatus } from "../src/lib/ai/types";
+import type {
+	AIServiceConfig,
+	CaptionTrack,
+	ModelDownloadProgress,
+	WhisperModelStatus,
+} from "../src/lib/ai/types";
 import type { RecordingSession, StoreRecordedSessionInput } from "../src/lib/recordingSession";
 
 contextBridge.exposeInMainWorld("electronAPI", {
@@ -119,6 +124,26 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	setLocale: (locale: string) => {
 		return ipcRenderer.invoke("set-locale", locale);
 	},
+	// ── AI features ──
+	aiAnalyze: (prompt: string, context?: string) => {
+		return ipcRenderer.invoke("ai-analyze", prompt, context);
+	},
+	aiGenerateJSON: (prompt: string, context?: string, schema?: Record<string, unknown>) => {
+		return ipcRenderer.invoke("ai-generate-json", prompt, context, schema);
+	},
+	aiCheckAvailability: () => {
+		return ipcRenderer.invoke("ai-check-availability");
+	},
+	aiGetConfig: () => {
+		return ipcRenderer.invoke("ai-get-config");
+	},
+	aiSaveConfig: (config: Partial<AIServiceConfig>) => {
+		return ipcRenderer.invoke("ai-save-config", config);
+	},
+	aiTtsSynthesize: (text: string, voice?: string) => {
+		return ipcRenderer.invoke("ai-tts-synthesize", text, voice);
+	},
+
 	setMicrophoneExpanded: (expanded: boolean) => {
 		ipcRenderer.send("hud:setMicrophoneExpanded", expanded);
 	},
