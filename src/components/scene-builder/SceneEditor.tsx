@@ -382,6 +382,20 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 							selectedLayerId={selectedLayerId}
 							onSelectLayer={setSelectedLayerId}
 							onTimeUpdate={handleTimeUpdate}
+							onLayerMove={(layerId, x, y) => {
+								updateCurrentScene({
+									layers: currentScene.layers.map((l) =>
+										l.id === layerId ? { ...l, position: { x, y } } : l,
+									),
+								});
+							}}
+							onLayerResize={(layerId, width, height) => {
+								updateCurrentScene({
+									layers: currentScene.layers.map((l) =>
+										l.id === layerId ? { ...l, size: { width, height } } : l,
+									),
+								});
+							}}
 						/>
 					</div>
 
