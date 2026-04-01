@@ -73,10 +73,10 @@ function SmallSelect({
 		<select
 			value={value}
 			onChange={(e) => onChange(e.target.value)}
-			className="w-full h-7 px-2 text-xs rounded bg-white/5 border border-white/10 text-white/90 outline-none focus:border-[#2563eb]/50 appearance-none cursor-pointer"
+			className="w-full h-7 px-2 text-xs rounded bg-[#18181b] border border-white/10 text-white/90 outline-none focus:border-[#2563eb]/50 cursor-pointer"
 		>
 			{options.map((opt) => (
-				<option key={opt.value} value={opt.value}>
+				<option key={opt.value} value={opt.value} className="bg-[#18181b] text-white">
 					{opt.label}
 				</option>
 			))}
