@@ -36,7 +36,17 @@ export function SceneCanvas({
 			const ctx = canvas.getContext("2d");
 			if (!ctx) return;
 
-			renderScene(ctx, scene, timeMs, INTERNAL_WIDTH, INTERNAL_HEIGHT);
+			// When paused at the very start, show layers at their fully-entered state
+			// so users can see their content while editing (animations play on Play)
+			let renderTime = timeMs;
+			if (!isPlaying && timeMs === 0 && scene.layers.length > 0) {
+				const maxEntrance = Math.max(
+					...scene.layers.map((l) => l.entrance.delay + l.entrance.durationMs),
+				);
+				renderTime = maxEntrance + 1;
+			}
+
+			renderScene(ctx, scene, renderTime, INTERNAL_WIDTH, INTERNAL_HEIGHT);
 
 			// Draw selection outline for selected layer
 			if (selectedLayerId) {

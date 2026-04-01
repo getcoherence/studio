@@ -152,6 +152,15 @@ function setupApplicationMenu() {
 						}
 					},
 				},
+				{
+					label: "Create Video",
+					accelerator: "CmdOrCtrl+Shift+N",
+					click: () => {
+						if (mainWindow && !mainWindow.isDestroyed()) {
+							mainWindow.webContents.send("menu-create-video");
+						}
+					},
+				},
 				{ type: "separator" },
 				{
 					label: "Open Video File…",
