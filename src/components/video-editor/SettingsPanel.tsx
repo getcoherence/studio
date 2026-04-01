@@ -1184,7 +1184,7 @@ export function SettingsPanel({
 												onValueChange={([v]) => onAnimatedBgSpeedChange?.(v)}
 												onPointerUp={() => onAnimatedBgSpeedCommit?.()}
 												min={0.1}
-												max={5}
+												max={50}
 												step={0.1}
 												className="flex-1"
 											/>

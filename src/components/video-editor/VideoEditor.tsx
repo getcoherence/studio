@@ -1612,7 +1612,13 @@ export default function VideoEditor() {
 			`lucid-screenshot-${timestamp}.png`,
 		);
 		if (result.success) {
-			toast.success("Screenshot saved", { description: result.path });
+			toast.success("Screenshot saved", {
+				description: result.path,
+				action: {
+					label: "Open",
+					onClick: () => window.electronAPI?.revealInFolder(result.path!),
+				},
+			});
 		} else if (!result.canceled) {
 			toast.error("Failed to save screenshot", { description: result.error });
 		}
