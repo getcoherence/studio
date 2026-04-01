@@ -1,12 +1,18 @@
-import { Film, FolderOpen, PlayCircle } from "lucide-react";
+import { Clapperboard, Film, FolderOpen, PlayCircle } from "lucide-react";
 
 interface WelcomeScreenProps {
 	onNewRecording: () => void;
 	onOpenVideo: () => void;
 	onOpenProject: () => void;
+	onCreateVideo?: () => void;
 }
 
-export function WelcomeScreen({ onNewRecording, onOpenVideo, onOpenProject }: WelcomeScreenProps) {
+export function WelcomeScreen({
+	onNewRecording,
+	onOpenVideo,
+	onOpenProject,
+	onCreateVideo,
+}: WelcomeScreenProps) {
 	return (
 		<div className="relative flex flex-col items-center justify-center h-screen gap-8 bg-[#09090b]">
 			<div className="flex flex-col items-center gap-3">
@@ -22,6 +28,15 @@ export function WelcomeScreen({ onNewRecording, onOpenVideo, onOpenProject }: We
 					<PlayCircle size={18} />
 					New Recording
 				</button>
+				{onCreateVideo && (
+					<button
+						onClick={onCreateVideo}
+						className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 font-medium transition-colors border border-[#2563eb]/30 hover:border-[#2563eb]/50"
+					>
+						<Clapperboard size={18} />
+						Create Video
+					</button>
+				)}
 				<button
 					onClick={onOpenVideo}
 					className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 font-medium transition-colors border border-white/10"
