@@ -13,6 +13,7 @@ import {
 	Tray,
 } from "electron";
 import { mainT, setMainLocale } from "./i18n";
+import { registerCaptureHandlers } from "./ipc/captureHandlers";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { createEditorWindow, createHudOverlayWindow, createSourceSelectorWindow } from "./windows";
 
@@ -370,6 +371,9 @@ app.whenReady().then(async () => {
 	setupApplicationMenu();
 	// Ensure recordings directory exists
 	await ensureRecordingsDir();
+
+	// Register native capture IPC handlers
+	registerCaptureHandlers();
 
 	registerIpcHandlers(
 		createEditorWindowWrapper,
