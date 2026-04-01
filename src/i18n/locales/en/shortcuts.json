@@ -20,7 +20,19 @@
 		"addAnnotation": "Add Annotation",
 		"addKeyframe": "Add Keyframe",
 		"deleteSelected": "Delete Selected",
-		"playPause": "Play / Pause"
+		"playPause": "Play / Pause",
+		"export": "Export",
+		"togglePlay": "Toggle Play",
+		"toggleCaptions": "Toggle Captions",
+		"toggleCursor": "Toggle Cursor",
+		"zoomIn": "Zoom In",
+		"zoomOut": "Zoom Out"
+	},
+	"categories": {
+		"editor": "Editor",
+		"playback": "Playback",
+		"export": "Export",
+		"view": "View"
 	},
 	"fixedActions": {
 		"undo": "Undo",

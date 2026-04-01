@@ -120,6 +120,45 @@ export function createEditorWindow(): BrowserWindow {
 	return win;
 }
 
+export function createCountdownWindow(): BrowserWindow {
+	const primaryDisplay = screen.getPrimaryDisplay();
+	const { workArea } = primaryDisplay;
+
+	const windowSize = 300;
+	const x = Math.floor(workArea.x + (workArea.width - windowSize) / 2);
+	const y = Math.floor(workArea.y + (workArea.height - windowSize) / 2);
+
+	const win = new BrowserWindow({
+		width: windowSize,
+		height: windowSize,
+		x,
+		y,
+		frame: false,
+		transparent: true,
+		resizable: false,
+		alwaysOnTop: true,
+		skipTaskbar: true,
+		hasShadow: false,
+		focusable: true,
+		show: !HEADLESS,
+		webPreferences: {
+			preload: path.join(__dirname, "preload.mjs"),
+			nodeIntegration: false,
+			contextIsolation: true,
+		},
+	});
+
+	if (VITE_DEV_SERVER_URL) {
+		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=countdown");
+	} else {
+		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+			query: { windowType: "countdown" },
+		});
+	}
+
+	return win;
+}
+
 export function createSourceSelectorWindow(): BrowserWindow {
 	const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 

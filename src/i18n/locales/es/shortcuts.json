@@ -20,7 +20,19 @@
 		"addAnnotation": "Agregar anotación",
 		"addKeyframe": "Agregar fotograma clave",
 		"deleteSelected": "Eliminar seleccionado",
-		"playPause": "Reproducir / Pausar"
+		"playPause": "Reproducir / Pausar",
+		"export": "Exportar",
+		"togglePlay": "Alternar reproducción",
+		"toggleCaptions": "Alternar subtítulos",
+		"toggleCursor": "Alternar cursor",
+		"zoomIn": "Acercar",
+		"zoomOut": "Alejar"
+	},
+	"categories": {
+		"editor": "Editor",
+		"playback": "Reproducción",
+		"export": "Exportar",
+		"view": "Vista"
 	},
 	"fixedActions": {
 		"undo": "Deshacer",

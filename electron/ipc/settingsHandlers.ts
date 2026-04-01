@@ -1,5 +1,5 @@
 import { ipcMain } from "electron";
-import { type LucidSettings, getSetting, loadSettings, setSetting } from "../settings";
+import { getSetting, type LucidSettings, loadSettings, setSetting } from "../settings";
 
 export function registerSettingsHandlers() {
 	ipcMain.handle("get-settings", async () => {
