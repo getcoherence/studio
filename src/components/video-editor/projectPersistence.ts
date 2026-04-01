@@ -74,7 +74,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function isFileUrl(value: string): boolean {
-	return /^file:\/\//i.test(value);
+	return /^(file|lucid):\/\//i.test(value);
 }
 
 function encodePathSegments(pathname: string, keepWindowsDrive = false): string {
@@ -93,26 +93,39 @@ function encodePathSegments(pathname: string, keepWindowsDrive = false): string 
 export function toFileUrl(filePath: string): string {
 	const normalized = filePath.replace(/\\/g, "/");
 
+	// Use lucid:// custom protocol for secure local file access
+	// lucid://file/C:/path/to/file → handled by protocol.handle in main.ts
+
 	// Windows drive path: C:/Users/...
 	if (/^[a-zA-Z]:\//.test(normalized)) {
-		return `file://${encodePathSegments(`/${normalized}`, true)}`;
+		return `lucid://file/${encodePathSegments(normalized, true)}`;
 	}
 
 	// UNC path: //server/share/...
 	if (normalized.startsWith("//")) {
 		const [host, ...pathParts] = normalized.replace(/^\/+/, "").split("/");
 		const encodedPath = pathParts.map((part) => encodeURIComponent(part)).join("/");
-		return encodedPath ? `file://${host}/${encodedPath}` : `file://${host}/`;
+		return encodedPath ? `lucid://file/${host}/${encodedPath}` : `lucid://file/${host}/`;
 	}
 
 	const absolutePath = normalized.startsWith("/") ? normalized : `/${normalized}`;
-	return `file://${encodePathSegments(absolutePath)}`;
+	return `lucid://file${encodePathSegments(absolutePath)}`;
 }
 
 export function fromFileUrl(fileUrl: string): string {
 	const value = fileUrl.trim();
 	if (!isFileUrl(value)) {
 		return fileUrl;
+	}
+
+	// Handle lucid://file/C:/path → C:/path
+	if (/^lucid:\/\/file\//i.test(value)) {
+		const raw = value.replace(/^lucid:\/\/file\//i, "");
+		try {
+			return decodeURIComponent(raw);
+		} catch {
+			return raw;
+		}
 	}
 
 	try {
@@ -129,7 +142,7 @@ export function fromFileUrl(fileUrl: string): string {
 
 		return pathname;
 	} catch {
-		const rawFallbackPath = value.replace(/^file:\/\//i, "");
+		const rawFallbackPath = value.replace(/^(file|lucid):\/\/(file\/)?\/?/i, "");
 		let fallbackPath = rawFallbackPath;
 		try {
 			fallbackPath = decodeURIComponent(rawFallbackPath);
