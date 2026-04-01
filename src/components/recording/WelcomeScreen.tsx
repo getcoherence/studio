@@ -8,7 +8,7 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onNewRecording, onOpenVideo, onOpenProject }: WelcomeScreenProps) {
 	return (
-		<div className="flex flex-col items-center justify-center h-full gap-8 bg-[#09090b]">
+		<div className="flex flex-col items-center justify-center h-screen gap-8 bg-[#09090b]">
 			<div className="flex flex-col items-center gap-2">
 				<Video className="w-16 h-16 text-[#34B27B]/60" />
 				<h1 className="text-2xl font-semibold text-white">Lucid Studio</h1>

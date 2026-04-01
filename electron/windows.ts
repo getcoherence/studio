@@ -56,26 +56,31 @@ export function createEditorWindow(): BrowserWindow {
 }
 
 export function createRecordingBarWindow(): BrowserWindow {
-	const { width } = screen.getPrimaryDisplay().workAreaSize;
-	const barWidth = 420;
-	const barHeight = 48;
+	const { width, y: workAreaY } = screen.getPrimaryDisplay().workArea;
+	const barWidth = 220;
+	const barHeight = 44;
 	const win = new BrowserWindow({
 		width: barWidth,
 		height: barHeight,
 		x: Math.round((width - barWidth) / 2),
-		y: 0,
+		y: workAreaY + 8,
 		frame: false,
-		transparent: true,
+		transparent: false,
+		backgroundColor: "#121216",
 		resizable: false,
 		alwaysOnTop: true,
 		skipTaskbar: true,
-		focusable: false,
-		hasShadow: false,
+		hasShadow: true,
+		show: false,
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),
 			nodeIntegration: false,
 			contextIsolation: true,
 		},
+	});
+	win.setContentProtection(true);
+	win.webContents.on("did-finish-load", () => {
+		win.show();
 	});
 	if (VITE_DEV_SERVER_URL) {
 		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=recording-bar");
