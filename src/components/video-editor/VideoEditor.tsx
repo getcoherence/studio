@@ -2102,6 +2102,13 @@ export default function VideoEditor() {
 							editorState={editorState}
 							onApplyEdits={handleAIApplyEdits}
 							onAcceptTrimSuggestions={handleAcceptTrimSuggestions}
+							onSeek={(timeMs) => {
+								const timeSec = timeMs / 1000;
+								setCurrentTime(timeSec);
+								if (videoPlaybackRef.current?.video) {
+									videoPlaybackRef.current.video.currentTime = timeSec;
+								}
+							}}
 						/>
 					</div>
 				)}

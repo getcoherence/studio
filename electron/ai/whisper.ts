@@ -207,6 +207,8 @@ export async function transcribe(
 							for (const token of segment.tokens) {
 								const text = token.text.trim();
 								if (!text) continue;
+								// Filter out whisper special tokens like [_TT_550], [BLANK_AUDIO], etc.
+								if (/^\[.*\]$/.test(text)) continue;
 
 								words.push({
 									text,

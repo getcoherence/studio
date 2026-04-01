@@ -70,6 +70,7 @@ interface AIPanelSidebarProps {
 	editorState: EditorState;
 	onApplyEdits: (edits: Partial<EditorState>) => void;
 	onAcceptTrimSuggestions: (trims: TrimRegion[]) => void;
+	onSeek?: (timeMs: number) => void;
 }
 
 export function AIPanelSidebar({
@@ -78,6 +79,7 @@ export function AIPanelSidebar({
 	editorState,
 	onApplyEdits,
 	onAcceptTrimSuggestions,
+	onSeek,
 }: AIPanelSidebarProps) {
 	// ── AI availability ──
 	const [availability, setAvailability] = useState<AIAvailability | null>(null);
@@ -404,9 +406,12 @@ export function AIPanelSidebar({
 						{clips.length > 0 && (
 							<div className="flex flex-col gap-1">
 								{clips.map((clip) => (
-									<div
+									<button
+										type="button"
 										key={clip.id}
-										className="flex items-center gap-2 px-2 py-1.5 rounded bg-white/5 border border-white/10"
+										className="flex items-center gap-2 px-2 py-1.5 rounded bg-white/5 border border-white/10 hover:bg-white/10 hover:border-[#2563eb]/30 transition-colors cursor-pointer text-left w-full"
+										onClick={() => onSeek?.(clip.startMs)}
+										title="Click to jump to this clip"
 									>
 										<div className="flex-1 min-w-0">
 											<div className="text-[10px] text-white/80 font-medium truncate">
@@ -417,7 +422,7 @@ export function AIPanelSidebar({
 												{Math.round(clip.score * 100)}%
 											</div>
 										</div>
-									</div>
+									</button>
 								))}
 							</div>
 						)}
