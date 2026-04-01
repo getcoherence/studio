@@ -228,8 +228,8 @@ export const AI_PROVIDERS: AIProviderInfo[] = [
 		name: "MiniMax",
 		description: "MiniMax M2.7. Competitive quality, affordable. Has TTS.",
 		requiresApiKey: true,
-		defaultModel: "MiniMax-M1-80k",
-		models: ["MiniMax-M1-80k", "MiniMax-M1-40k"],
+		defaultModel: "MiniMax-M2.7",
+		models: ["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M2.5", "MiniMax-M2.5-highspeed"],
 		hasTTS: true,
 	},
 	{

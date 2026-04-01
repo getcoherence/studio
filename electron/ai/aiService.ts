@@ -61,7 +61,7 @@ const DEFAULT_MODELS: Record<string, string> = {
 	openai: "gpt-4o-mini",
 	anthropic: "claude-sonnet-4-6",
 	groq: "llama-3.3-70b-versatile",
-	minimax: "MiniMax-M1-80k",
+	minimax: "MiniMax-M2.7",
 };
 
 // ── Provider communication ──
@@ -116,10 +116,12 @@ async function openaiCompatibleChat(
 		);
 	}
 
-	const text = data.choices?.[0]?.message?.content ?? "";
+	let text = data.choices?.[0]?.message?.content ?? "";
 	if (!text) {
 		throw new Error("API returned empty response");
 	}
+	// Strip MiniMax thinking tags (<think>...</think>)
+	text = text.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
 	return text;
 }
 
