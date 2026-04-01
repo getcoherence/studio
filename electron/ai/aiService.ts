@@ -99,13 +99,28 @@ async function openaiCompatibleChat(
 		}),
 		signal: AbortSignal.timeout(60_000),
 	});
-	if (!response.ok) {
-		throw new Error(`API responded with ${response.status}: ${response.statusText}`);
-	}
 	const data = (await response.json()) as {
 		choices?: Array<{ message?: { content?: string } }>;
+		base_resp?: { status_code?: number; status_msg?: string };
+		error?: { message?: string };
 	};
-	return data.choices?.[0]?.message?.content ?? "";
+
+	// Handle MiniMax-style errors (returns 200 with base_resp.status_code)
+	if (data.base_resp && data.base_resp.status_code !== 0) {
+		throw new Error(`API error: ${data.base_resp.status_msg || "Unknown error"}`);
+	}
+	// Handle OpenAI-style errors
+	if (!response.ok) {
+		throw new Error(
+			`API responded with ${response.status}: ${data.error?.message || response.statusText}`,
+		);
+	}
+
+	const text = data.choices?.[0]?.message?.content ?? "";
+	if (!text) {
+		throw new Error("API returned empty response");
+	}
+	return text;
 }
 
 async function anthropicChat(prompt: string, apiKey: string, model: string): Promise<string> {
