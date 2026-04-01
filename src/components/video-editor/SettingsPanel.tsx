@@ -1029,7 +1029,7 @@ export function SettingsPanel({
 									</TabsTrigger>
 								</TabsList>
 
-								<div className="max-h-[min(200px,25vh)] overflow-y-auto custom-scrollbar">
+								<div>
 									<TabsContent value="image" className="mt-0 space-y-2">
 										<input
 											type="file"
