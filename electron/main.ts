@@ -9,6 +9,7 @@ import {
 	Menu,
 	nativeImage,
 	session,
+	shell,
 	systemPreferences,
 	Tray,
 } from "electron";
@@ -218,6 +219,47 @@ function setupApplicationMenu() {
 			submenu: isMac
 				? [{ role: "minimize" }, { role: "zoom" }, { type: "separator" }, { role: "front" }]
 				: [{ role: "minimize" }, { role: "close" }],
+		},
+		{
+			label: "Help",
+			submenu: [
+				{
+					label: "About Lucid Studio",
+					click: () => {
+						dialog
+							.showMessageBox({
+								type: "info",
+								title: "About Lucid Studio",
+								message: "Lucid Studio",
+								detail:
+									"AI-powered screen recording and editing.\n\n" +
+									"Built by the team at Coherence — the AI-native work platform " +
+									"for modern teams.\n\n" +
+									"Originally forked from OpenScreen by Siddharth Vaddem.\n\n" +
+									"Version 0.1.0\n" +
+									"https://getcoherence.io\n" +
+									"https://getlucid.studio",
+								buttons: ["OK", "Visit Coherence", "View on GitHub"],
+								defaultId: 0,
+							})
+							.then((result) => {
+								if (result.response === 1) {
+									shell.openExternal("https://getcoherence.io");
+								} else if (result.response === 2) {
+									shell.openExternal("https://github.com/getcoherence/lucid");
+								}
+							});
+					},
+				},
+				{
+					label: "Coherence Website",
+					click: () => shell.openExternal("https://getcoherence.io"),
+				},
+				{
+					label: "Report a Bug",
+					click: () => shell.openExternal("https://github.com/getcoherence/lucid/issues"),
+				},
+			],
 		},
 	);
 
