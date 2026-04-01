@@ -32,6 +32,12 @@ export interface EditorState {
 	aspectRatio: AspectRatio;
 	webcamLayoutPreset: WebcamLayoutPreset;
 	webcamPosition: WebcamPosition | null;
+	// Cursor overlay settings
+	cursorSmoothing: number;
+	cursorSway: number;
+	cursorStyle: string;
+	showClickRings: boolean;
+	showCursor: boolean;
 }
 
 export const INITIAL_EDITOR_STATE: EditorState = {
@@ -49,6 +55,11 @@ export const INITIAL_EDITOR_STATE: EditorState = {
 	aspectRatio: "16:9",
 	webcamLayoutPreset: DEFAULT_WEBCAM_LAYOUT_PRESET,
 	webcamPosition: DEFAULT_WEBCAM_POSITION,
+	cursorSmoothing: 0.5,
+	cursorSway: 0.3,
+	cursorStyle: "default",
+	showClickRings: true,
+	showCursor: true,
 };
 
 type StateUpdate = Partial<EditorState> | ((prev: EditorState) => Partial<EditorState>);
