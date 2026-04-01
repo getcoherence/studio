@@ -560,7 +560,7 @@ export function LayerPanel({
 	);
 
 	return (
-		<div className="w-64 flex-shrink-0 border-l border-white/5 bg-[#09090b]/80 backdrop-blur-sm overflow-y-auto px-3 py-3 space-y-4">
+		<div className="h-full border-l border-white/5 bg-[#09090b]/80 backdrop-blur-sm overflow-y-auto px-3 py-3 space-y-4">
 			{/* Layer list always visible */}
 			<LayerList
 				layers={allLayers}
