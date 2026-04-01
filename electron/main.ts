@@ -13,6 +13,7 @@ import {
 	Tray,
 } from "electron";
 import { mainT, setMainLocale } from "./i18n";
+import { registerAIHandlers } from "./ipc/aiHandlers";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { createEditorWindow, createHudOverlayWindow, createSourceSelectorWindow } from "./windows";
 
@@ -371,6 +372,7 @@ app.whenReady().then(async () => {
 	// Ensure recordings directory exists
 	await ensureRecordingsDir();
 
+	registerAIHandlers();
 	registerIpcHandlers(
 		createEditorWindowWrapper,
 		createSourceSelectorWindowWrapper,

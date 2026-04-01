@@ -145,38 +145,49 @@ export function computeCompositeLayout(params: {
 	}
 
 	if (preset.transform.type === "stack") {
+		const { gap } = preset.transform;
+
 		if (!webcamWidth || !webcamHeight || webcamWidth <= 0 || webcamHeight <= 0) {
-			// No webcam — screen fills the entire canvas (cover mode)
-			return {
-				screenRect: { x: 0, y: 0, width: canvasWidth, height: canvasHeight },
-				webcamRect: null,
-				screenCover: true,
-			};
+			// No webcam — center screen within maxContentSize
+			const screenRect = centerRect({
+				canvasSize,
+				size: screenSize,
+				maxSize: maxContentSize,
+			});
+			return { screenRect, webcamRect: null };
 		}
 
-		// Webcam: full width at the bottom, maintaining its aspect ratio
+		// Both screen and webcam stacked vertically, constrained by maxContentSize
+		const screenAspect = screenWidth / screenHeight;
 		const webcamAspect = webcamWidth / webcamHeight;
-		const resolvedWebcamWidth = canvasWidth;
-		const resolvedWebcamHeight = Math.round(canvasWidth / webcamAspect);
+		const { width: maxW, height: maxH } = maxContentSize;
 
-		// Screen: fills remaining space at the top (cover mode — may crop sides)
-		const screenRectHeight = canvasHeight - resolvedWebcamHeight;
+		// Find the widest width W such that both rects fit within maxContentSize
+		// W/screenAspect + W/webcamAspect + gap <= maxH  and  W <= maxW
+		const maxByHeight = (maxH - gap) / (1 / screenAspect + 1 / webcamAspect);
+		const resolvedWidth = Math.round(Math.min(maxW, maxByHeight));
+		const resolvedScreenHeight = Math.round(resolvedWidth / screenAspect);
+		const resolvedWebcamHeight = Math.round(resolvedWidth / webcamAspect);
+		const totalHeight = resolvedScreenHeight + gap + resolvedWebcamHeight;
+
+		// Center the combined block in the canvas
+		const offsetX = Math.max(0, Math.floor((canvasWidth - resolvedWidth) / 2));
+		const offsetY = Math.max(0, Math.floor((canvasHeight - totalHeight) / 2));
 
 		return {
 			screenRect: {
-				x: 0,
-				y: 0,
-				width: canvasWidth,
-				height: Math.max(0, screenRectHeight),
+				x: offsetX,
+				y: offsetY,
+				width: resolvedWidth,
+				height: resolvedScreenHeight,
 			},
 			webcamRect: {
-				x: 0,
-				y: Math.max(0, screenRectHeight),
-				width: resolvedWebcamWidth,
+				x: offsetX,
+				y: offsetY + resolvedScreenHeight + gap,
+				width: resolvedWidth,
 				height: resolvedWebcamHeight,
 				borderRadius: 0,
 			},
-			screenCover: true,
 		};
 	}
 

@@ -1,13 +1,16 @@
 import type { Span } from "dnd-timeline";
-import { FolderOpen, Languages, Save } from "lucide-react";
+import { FolderOpen, Languages, Save, Sparkles, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
 import { useI18n, useScopedT } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
+import type { EditorState } from "@/hooks/useEditorHistory";
 import { INITIAL_EDITOR_STATE, useEditorHistory } from "@/hooks/useEditorHistory";
 import { type Locale, SUPPORTED_LOCALES } from "@/i18n/config";
 import { getLocaleName } from "@/i18n/loader";
+import { generatePolishEdits } from "@/lib/ai/oneClickPolish";
+import type { PolishPreview } from "@/lib/ai/types";
 import {
 	calculateOutputDimensions,
 	type ExportFormat,
@@ -27,6 +30,7 @@ import {
 	getNativeAspectRatioValue,
 	isPortraitAspectRatio,
 } from "@/utils/aspectRatioUtils";
+import { AIPanelSidebar } from "./AIPanelSidebar";
 import { ExportDialog } from "./ExportDialog";
 import PlaybackControls from "./PlaybackControls";
 import {
@@ -120,6 +124,10 @@ export default function VideoEditor() {
 		format: string;
 	} | null>(null);
 	const [isFullscreen, setIsFullscreen] = useState(false);
+	const [showAIPanel, setShowAIPanel] = useState(false);
+	const [polishPreview, setPolishPreview] = useState<PolishPreview | null>(null);
+	const [polishEdits, setPolishEdits] = useState<Partial<EditorState> | null>(null);
+	const [showPolishDialog, setShowPolishDialog] = useState(false);
 
 	const playerContainerRef = useRef<HTMLDivElement>(null);
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
@@ -1367,6 +1375,57 @@ export default function VideoEditor() {
 		}
 	}, []);
 
+	// ── AI Feature handlers ──
+
+	const handleMagicPolish = useCallback(() => {
+		if (cursorTelemetry.length === 0 || duration <= 0) return;
+
+		const result = generatePolishEdits({
+			cursorTelemetry,
+			videoDurationMs: duration * 1000,
+			currentState: editorState,
+		});
+
+		setPolishPreview(result.preview);
+		setPolishEdits(result.edits);
+		setShowPolishDialog(true);
+	}, [cursorTelemetry, duration, editorState]);
+
+	const handleApplyPolish = useCallback(() => {
+		if (!polishEdits) return;
+		pushState(polishEdits);
+		setShowPolishDialog(false);
+		setPolishPreview(null);
+		setPolishEdits(null);
+		toast.success("Magic Polish applied!");
+	}, [polishEdits, pushState]);
+
+	const handleCancelPolish = useCallback(() => {
+		setShowPolishDialog(false);
+		setPolishPreview(null);
+		setPolishEdits(null);
+	}, []);
+
+	const handleAIApplyEdits = useCallback(
+		(edits: Partial<EditorState>) => {
+			pushState(edits);
+		},
+		[pushState],
+	);
+
+	const handleAcceptTrimSuggestions = useCallback(
+		(trims: { id: string; startMs: number; endMs: number }[]) => {
+			pushState((prev) => ({
+				trimRegions: [...prev.trimRegions, ...trims],
+			}));
+		},
+		[pushState],
+	);
+
+	const toggleAIPanel = useCallback(() => {
+		setShowAIPanel((prev) => !prev);
+	}, []);
+
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center h-screen bg-background">
@@ -1434,8 +1493,90 @@ export default function VideoEditor() {
 						<Save size={14} />
 						{ts("project.save")}
 					</button>
+					<div className="w-px h-4 bg-white/10 mx-1" />
+					<button
+						type="button"
+						onClick={handleMagicPolish}
+						disabled={cursorTelemetry.length === 0 || duration <= 0}
+						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 text-[11px] font-medium disabled:opacity-30 disabled:cursor-not-allowed"
+						title="Magic Polish — auto-enhance your recording"
+					>
+						<Wand2 size={14} />
+						Magic Polish
+					</button>
+					<button
+						type="button"
+						onClick={toggleAIPanel}
+						className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-150 text-[11px] font-medium ${
+							showAIPanel
+								? "text-[#34B27B] bg-[#34B27B]/10"
+								: "text-white/50 hover:text-white/90 hover:bg-white/10"
+						}`}
+						title="Toggle AI features panel"
+					>
+						<Sparkles size={14} />
+						AI
+					</button>
 				</div>
 			</div>
+
+			{/* Magic Polish confirmation dialog */}
+			{showPolishDialog && polishPreview && (
+				<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+					<div className="bg-[#18181b] rounded-xl border border-white/10 shadow-2xl p-6 max-w-sm w-full mx-4">
+						<div className="flex items-center gap-2 mb-4">
+							<Wand2 size={18} className="text-[#34B27B]" />
+							<h3 className="text-sm font-semibold text-white">Magic Polish Preview</h3>
+						</div>
+						<div className="space-y-1.5 mb-5 text-xs text-white/70">
+							{polishPreview.zoomCount > 0 && (
+								<div>
+									+ {polishPreview.zoomCount} auto-zoom region
+									{polishPreview.zoomCount !== 1 ? "s" : ""}
+								</div>
+							)}
+							{polishPreview.trimCount > 0 && (
+								<div>
+									+ {polishPreview.trimCount} auto-trim{polishPreview.trimCount !== 1 ? "s" : ""}
+								</div>
+							)}
+							{polishPreview.speedRampCount > 0 && (
+								<div>
+									+ {polishPreview.speedRampCount} speed ramp
+									{polishPreview.speedRampCount !== 1 ? "s" : ""}
+								</div>
+							)}
+							{polishPreview.wallpaperChanged && <div>+ Set default wallpaper</div>}
+							{polishPreview.borderRadiusChanged && <div>+ Border radius: 12px</div>}
+							{polishPreview.paddingChanged && <div>+ Padding: 8px</div>}
+							{!polishPreview.zoomCount &&
+								!polishPreview.trimCount &&
+								!polishPreview.speedRampCount &&
+								!polishPreview.wallpaperChanged &&
+								!polishPreview.borderRadiusChanged &&
+								!polishPreview.paddingChanged && (
+									<div className="text-white/40">No changes needed — recording looks good!</div>
+								)}
+						</div>
+						<div className="flex gap-2">
+							<button
+								type="button"
+								onClick={handleApplyPolish}
+								className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#34B27B] hover:bg-[#34B27B]/90 text-white transition-colors"
+							>
+								Apply Changes
+							</button>
+							<button
+								type="button"
+								onClick={handleCancelPolish}
+								className="px-3 py-2 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white/70 transition-colors"
+							>
+								Cancel
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 
 			<div className="flex-1 p-5 gap-4 flex min-h-0 relative">
 				{/* Left Column - Video & Timeline */}
@@ -1657,6 +1798,19 @@ export default function VideoEditor() {
 						onSaveUnsavedExport={handleSaveUnsavedExport}
 					/>
 				</div>
+
+				{/* AI Panel sidebar */}
+				{showAIPanel && (
+					<div className="w-[280px] min-w-[240px] max-w-[320px] h-full flex-shrink-0">
+						<AIPanelSidebar
+							cursorTelemetry={cursorTelemetry}
+							videoDurationMs={duration * 1000}
+							editorState={editorState}
+							onApplyEdits={handleAIApplyEdits}
+							onAcceptTrimSuggestions={handleAcceptTrimSuggestions}
+						/>
+					</div>
+				)}
 			</div>
 
 			<ExportDialog
