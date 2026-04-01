@@ -1,4 +1,3 @@
-import Block from "@uiw/react-color-block";
 import {
 	Bug,
 	Captions,
@@ -188,6 +187,8 @@ const GRADIENTS = [
 interface SettingsPanelProps {
 	selected: string;
 	onWallpaperChange: (path: string) => void;
+	onWallpaperHover?: (wallpaper: string) => void;
+	onWallpaperHoverEnd?: () => void;
 	selectedZoomDepth?: ZoomDepth | null;
 	onZoomDepthChange?: (depth: ZoomDepth) => void;
 	selectedZoomId?: string | null;
@@ -281,6 +282,8 @@ const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
 export function SettingsPanel({
 	selected,
 	onWallpaperChange,
+	onWallpaperHover,
+	onWallpaperHoverEnd,
 	selectedZoomDepth,
 	onZoomDepthChange,
 	selectedZoomId,
@@ -1056,6 +1059,8 @@ export function SettingsPanel({
 															backgroundPosition: "center",
 														}}
 														onClick={() => onWallpaperChange(imageUrl)}
+														onMouseEnter={() => onWallpaperHover?.(imageUrl)}
+														onMouseLeave={() => onWallpaperHoverEnd?.()}
 														role="button"
 													>
 														<button
@@ -1100,6 +1105,8 @@ export function SettingsPanel({
 															backgroundPosition: "center",
 														}}
 														onClick={() => onWallpaperChange(path)}
+														onMouseEnter={() => onWallpaperHover?.(path)}
+														onMouseLeave={() => onWallpaperHoverEnd?.()}
 														role="button"
 													/>
 												);
@@ -1108,19 +1115,27 @@ export function SettingsPanel({
 									</TabsContent>
 
 									<TabsContent value="color" className="mt-0">
-										<div className="p-1">
-											<Block
-												color={selectedColor}
-												colors={colorPalette}
-												onChange={(color) => {
-													setSelectedColor(color.hex);
-													onWallpaperChange(color.hex);
-												}}
-												style={{
-													width: "100%",
-													borderRadius: "8px",
-												}}
-											/>
+										<div className="grid grid-cols-7 gap-1.5 p-1">
+											{colorPalette.map((color) => (
+												<div
+													key={color}
+													className={cn(
+														"aspect-square w-9 h-9 rounded-md border-2 cursor-pointer transition-all duration-200 shadow-sm",
+														selectedColor === color
+															? "border-[#2563eb] ring-1 ring-[#2563eb]/30"
+															: "border-white/10 hover:border-[#2563eb]/40 opacity-80 hover:opacity-100",
+													)}
+													style={{ backgroundColor: color }}
+													onClick={() => {
+														setSelectedColor(color);
+														onWallpaperChange(color);
+													}}
+													onMouseEnter={() => onWallpaperHover?.(color)}
+													onMouseLeave={() => onWallpaperHoverEnd?.()}
+													role="button"
+													aria-label={color}
+												/>
+											))}
 										</div>
 									</TabsContent>
 
@@ -1141,6 +1156,8 @@ export function SettingsPanel({
 														setGradient(g);
 														onWallpaperChange(g);
 													}}
+													onMouseEnter={() => onWallpaperHover?.(g)}
+													onMouseLeave={() => onWallpaperHoverEnd?.()}
 													role="button"
 												/>
 											))}
@@ -1151,6 +1168,8 @@ export function SettingsPanel({
 										<AnimatedBackgroundPicker
 											selected={selected}
 											onSelect={(id) => onWallpaperChange(id)}
+											onHover={onWallpaperHover}
+											onHoverEnd={onWallpaperHoverEnd}
 										/>
 									</TabsContent>
 								</div>

@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 interface AnimatedBackgroundPickerProps {
 	selected: string;
 	onSelect: (id: string) => void;
+	onHover?: (id: string) => void;
+	onHoverEnd?: () => void;
 }
 
 /** Small canvas thumbnail that renders an animated background at low FPS for preview. */
@@ -12,10 +14,14 @@ function AnimatedThumbnail({
 	bg,
 	isSelected,
 	onClick,
+	onMouseEnter,
+	onMouseLeave,
 }: {
 	bg: AnimatedBackground;
 	isSelected: boolean;
 	onClick: () => void;
+	onMouseEnter?: () => void;
+	onMouseLeave?: () => void;
 }) {
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const rafRef = useRef<number | null>(null);
@@ -64,6 +70,10 @@ function AnimatedThumbnail({
 			onClick={() => {
 				if (bg.available) onClick();
 			}}
+			onMouseEnter={() => {
+				if (bg.available) onMouseEnter?.();
+			}}
+			onMouseLeave={() => onMouseLeave?.()}
 			role="button"
 			aria-label={bg.name}
 		>
@@ -81,7 +91,12 @@ function AnimatedThumbnail({
 	);
 }
 
-export function AnimatedBackgroundPicker({ selected, onSelect }: AnimatedBackgroundPickerProps) {
+export function AnimatedBackgroundPicker({
+	selected,
+	onSelect,
+	onHover,
+	onHoverEnd,
+}: AnimatedBackgroundPickerProps) {
 	// Group by category
 	const grouped = new Map<string, AnimatedBackground[]>();
 	for (const bg of ANIMATED_BACKGROUNDS) {
@@ -102,6 +117,8 @@ export function AnimatedBackgroundPicker({ selected, onSelect }: AnimatedBackgro
 								bg={bg}
 								isSelected={selected === bg.id}
 								onClick={() => onSelect(bg.id)}
+								onMouseEnter={() => onHover?.(bg.id)}
+								onMouseLeave={() => onHoverEnd?.()}
 							/>
 						))}
 					</div>
