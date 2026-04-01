@@ -8,6 +8,7 @@ import { useShortcuts } from "@/contexts/ShortcutsContext";
 import { INITIAL_EDITOR_STATE, useEditorHistory } from "@/hooks/useEditorHistory";
 import { type Locale, SUPPORTED_LOCALES } from "@/i18n/config";
 import { getLocaleName } from "@/i18n/loader";
+import type { CaptionStyle, CaptionTrack } from "@/lib/ai/types";
 import {
 	calculateOutputDimensions,
 	type ExportFormat,
@@ -85,6 +86,8 @@ export default function VideoEditor() {
 		aspectRatio,
 		webcamLayoutPreset,
 		webcamPosition,
+		captionTrack,
+		captionStyle,
 	} = editorState;
 
 	// ── Non-undoable state
@@ -120,6 +123,7 @@ export default function VideoEditor() {
 		format: string;
 	} | null>(null);
 	const [isFullscreen, setIsFullscreen] = useState(false);
+	const [isTranscribing, setIsTranscribing] = useState(false);
 
 	const playerContainerRef = useRef<HTMLDivElement>(null);
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
@@ -908,6 +912,46 @@ export default function VideoEditor() {
 		[pushState],
 	);
 
+	// ── Caption handlers ──
+	const handleCaptionStyleChange = useCallback(
+		(styleUpdate: Partial<CaptionStyle>) => {
+			pushState((prev) => ({
+				captionStyle: { ...prev.captionStyle, ...styleUpdate },
+			}));
+		},
+		[pushState],
+	);
+
+	const handleCaptionTrackChange = useCallback(
+		(track: CaptionTrack | null) => {
+			pushState({ captionTrack: track });
+		},
+		[pushState],
+	);
+
+	const handleAutoCaption = useCallback(async () => {
+		const sourcePath = videoSourcePath ?? (videoPath ? videoPath.replace(/^file:\/\//, "") : null);
+		if (!sourcePath) {
+			toast.error("No video loaded");
+			return;
+		}
+
+		setIsTranscribing(true);
+		try {
+			const result = await window.electronAPI.whisperTranscribe(sourcePath, { modelId: "base" });
+			if (result.success && result.captionTrack) {
+				pushState({ captionTrack: result.captionTrack });
+				toast.success(`Auto-captioned: ${result.captionTrack.lines.length} lines detected`);
+			} else {
+				toast.error(result.error || "Transcription failed");
+			}
+		} catch (err) {
+			toast.error(`Transcription error: ${err instanceof Error ? err.message : String(err)}`);
+		} finally {
+			setIsTranscribing(false);
+		}
+	}, [videoSourcePath, videoPath, pushState]);
+
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			const mod = e.ctrlKey || e.metaKey;
@@ -1093,6 +1137,8 @@ export default function VideoEditor() {
 						webcamPosition,
 						previewWidth,
 						previewHeight,
+						captionTrack,
+						captionStyle,
 						onProgress: (progress: ExportProgress) => {
 							setExportProgress(progress);
 						},
@@ -1224,6 +1270,8 @@ export default function VideoEditor() {
 						webcamPosition,
 						previewWidth,
 						previewHeight,
+						captionTrack,
+						captionStyle,
 						onProgress: (progress: ExportProgress) => {
 							setExportProgress(progress);
 						},
@@ -1292,6 +1340,8 @@ export default function VideoEditor() {
 			webcamPosition,
 			exportQuality,
 			handleExportSaved,
+			captionTrack,
+			captionStyle,
 		],
 	);
 
@@ -1502,6 +1552,8 @@ export default function VideoEditor() {
 											onSelectAnnotation={handleSelectAnnotation}
 											onAnnotationPositionChange={handleAnnotationPositionChange}
 											onAnnotationSizeChange={handleAnnotationSizeChange}
+											captionTrack={captionTrack}
+											captionStyle={captionStyle}
 										/>
 									</div>
 								</div>
@@ -1569,6 +1621,9 @@ export default function VideoEditor() {
 													: webcamLayoutPreset,
 										})
 									}
+									captionTrack={captionTrack}
+									onAutoCaption={handleAutoCaption}
+									isTranscribing={isTranscribing}
 								/>
 							</div>
 						</Panel>
@@ -1655,6 +1710,11 @@ export default function VideoEditor() {
 						onSpeedDelete={handleSpeedDelete}
 						unsavedExport={unsavedExport}
 						onSaveUnsavedExport={handleSaveUnsavedExport}
+						captionTrack={captionTrack}
+						captionStyle={captionStyle}
+						onCaptionStyleChange={handleCaptionStyleChange}
+						onCaptionTrackChange={handleCaptionTrackChange}
+						videoPath={videoSourcePath || videoPath}
 					/>
 				</div>
 			</div>

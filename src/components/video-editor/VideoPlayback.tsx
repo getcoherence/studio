@@ -18,6 +18,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { CaptionStyle, CaptionTrack } from "@/lib/ai/types";
 import { getAssetPath } from "@/lib/assetPath";
 import {
 	getWebcamLayoutCssBoxShadow,
@@ -31,6 +32,7 @@ import {
 	getNativeAspectRatioValue,
 } from "@/utils/aspectRatioUtils";
 import { AnnotationOverlay } from "./AnnotationOverlay";
+import { CaptionOverlay } from "./CaptionOverlay";
 import {
 	type AnnotationRegion,
 	type SpeedRegion,
@@ -93,6 +95,8 @@ interface VideoPlaybackProps {
 	onSelectAnnotation?: (id: string | null) => void;
 	onAnnotationPositionChange?: (id: string, position: { x: number; y: number }) => void;
 	onAnnotationSizeChange?: (id: string, size: { width: number; height: number }) => void;
+	captionTrack?: CaptionTrack | null;
+	captionStyle?: CaptionStyle;
 }
 
 export interface VideoPlaybackRef {
@@ -141,6 +145,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			onSelectAnnotation,
 			onAnnotationPositionChange,
 			onAnnotationSizeChange,
+			captionTrack,
+			captionStyle,
 		},
 		ref,
 	) => {
@@ -1240,6 +1246,15 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 								/>
 							));
 						})()}
+						{captionTrack && captionStyle && (
+							<CaptionOverlay
+								captionTrack={captionTrack}
+								captionStyle={captionStyle}
+								currentTime={currentTime}
+								containerWidth={overlayRef.current?.clientWidth || 800}
+								containerHeight={overlayRef.current?.clientHeight || 600}
+							/>
+						)}
 					</div>
 				)}
 				<video

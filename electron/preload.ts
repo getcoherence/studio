@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { CaptionTrack, ModelDownloadProgress, WhisperModelStatus } from "../src/lib/ai/types";
 import type { RecordingSession, StoreRecordedSessionInput } from "../src/lib/recordingSession";
 
 contextBridge.exposeInMainWorld("electronAPI", {
@@ -135,5 +136,32 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		};
 		ipcRenderer.on("request-save-before-close", listener);
 		return () => ipcRenderer.removeListener("request-save-before-close", listener);
+	},
+
+	// Whisper / Captions
+	whisperTranscribe: (
+		videoPath: string,
+		options?: { modelId?: string; language?: string; threads?: number },
+	): Promise<{ success: boolean; captionTrack?: CaptionTrack; error?: string }> => {
+		return ipcRenderer.invoke("whisper-transcribe", videoPath, options);
+	},
+	whisperModelStatus: (modelId: string): Promise<WhisperModelStatus> => {
+		return ipcRenderer.invoke("whisper-model-status", modelId);
+	},
+	whisperModelDownload: (
+		modelId: string,
+	): Promise<{ success: boolean; path?: string; error?: string }> => {
+		return ipcRenderer.invoke("whisper-model-download", modelId);
+	},
+	whisperModelDelete: (modelId: string): Promise<{ success: boolean; error?: string }> => {
+		return ipcRenderer.invoke("whisper-model-delete", modelId);
+	},
+	whisperAvailable: (): Promise<boolean> => {
+		return ipcRenderer.invoke("whisper-available");
+	},
+	onWhisperModelDownloadProgress: (callback: (progress: ModelDownloadProgress) => void) => {
+		const listener = (_: unknown, progress: ModelDownloadProgress) => callback(progress);
+		ipcRenderer.on("whisper-model-download-progress", listener);
+		return () => ipcRenderer.removeListener("whisper-model-download-progress", listener);
 	},
 });
