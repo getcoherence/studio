@@ -10,7 +10,7 @@ export function WelcomeScreen({ onNewRecording, onOpenVideo, onOpenProject }: We
 	return (
 		<div className="relative flex flex-col items-center justify-center h-screen gap-8 bg-[#09090b]">
 			<div className="flex flex-col items-center gap-3">
-				<img src="/lucidstudio-logo.svg" alt="Lucid Studio" className="w-24 h-24" />
+				<img src="/lucidstudio-logo-noborder.png" alt="Lucid Studio" className="w-20 h-20" />
 				<h1 className="text-2xl font-semibold text-white">Lucid Studio</h1>
 				<p className="text-sm text-white/40">AI-powered screen recording and editing</p>
 			</div>

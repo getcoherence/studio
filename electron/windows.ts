@@ -12,6 +12,8 @@ const HEADLESS = process.env["HEADLESS"] === "true";
 export function createEditorWindow(): BrowserWindow {
 	const isMac = process.platform === "darwin";
 
+	const iconPath = path.join(APP_ROOT, "icons", "icons", "win", "icon.ico");
+
 	const win = new BrowserWindow({
 		width: 1200,
 		height: 800,
@@ -21,6 +23,7 @@ export function createEditorWindow(): BrowserWindow {
 			titleBarStyle: "hiddenInset",
 			trafficLightPosition: { x: 12, y: 12 },
 		}),
+		...(!isMac && { icon: iconPath }),
 		transparent: false,
 		resizable: true,
 		alwaysOnTop: false,
