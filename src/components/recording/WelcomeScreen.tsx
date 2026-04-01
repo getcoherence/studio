@@ -45,7 +45,7 @@ export function WelcomeScreen({ onNewRecording, onOpenVideo, onOpenProject }: We
 					e.preventDefault();
 					window.electronAPI?.openExternalUrl("https://getcoherence.io");
 				}}
-				className="absolute bottom-6 right-6 text-[10px] text-white/20 hover:text-white/40 transition-colors"
+				className="absolute bottom-6 right-6 px-3 py-1 text-[10px] text-white/50 hover:text-white/70 border border-[#2563eb]/30 hover:border-[#2563eb]/50 rounded-full transition-colors"
 			>
 				Made by Coherence
 			</a>
