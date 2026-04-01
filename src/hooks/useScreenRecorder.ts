@@ -110,7 +110,9 @@ async function resolveCaptureMode(): Promise<CaptureMode> {
 	return "browser";
 }
 
-export function useScreenRecorder(): UseScreenRecorderReturn {
+export function useScreenRecorder(options?: {
+	onRecordingFinalized?: () => void;
+}): UseScreenRecorderReturn {
 	const t = useScopedT("editor");
 	const [recording, setRecording] = useState(false);
 	const [captureMode, setCaptureMode] = useState<CaptureMode>("browser");
@@ -279,7 +281,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 						await window.electronAPI.setCurrentVideoPath(result.path);
 					}
 
-					await window.electronAPI.switchToEditor();
+					await window.electronAPI?.restoreEditor();
+					options?.onRecordingFinalized?.();
 				} catch (error) {
 					console.error("Error saving recording:", error);
 				} finally {
@@ -639,12 +642,13 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				return;
 			}
 
-			// The native backend writes an MP4 directly — set the path and open editor
+			// The native backend writes an MP4 directly — set the path and restore editor
 			await window.electronAPI.setCurrentRecordingSession({
 				screenVideoPath: result.outputPath,
 				createdAt: recordingId.current,
 			});
-			await window.electronAPI.switchToEditor();
+			await window.electronAPI?.restoreEditor();
+			options?.onRecordingFinalized?.();
 		} catch (error) {
 			console.error("Error stopping native recording:", error);
 			nativeRecordingActive.current = false;

@@ -8,12 +8,6 @@ import type {
 import type { RecordingSession, StoreRecordedSessionInput } from "../src/lib/recordingSession";
 
 contextBridge.exposeInMainWorld("electronAPI", {
-	hudOverlayHide: () => {
-		ipcRenderer.send("hud-overlay-hide");
-	},
-	hudOverlayClose: () => {
-		ipcRenderer.send("hud-overlay-close");
-	},
 	getAssetBasePath: async () => {
 		// ask main process for the correct base path (production vs dev)
 		return await ipcRenderer.invoke("get-asset-base-path");
@@ -23,12 +17,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	switchToEditor: () => {
 		return ipcRenderer.invoke("switch-to-editor");
-	},
-	switchToRecorder: () => {
-		return ipcRenderer.invoke("switch-to-recorder");
-	},
-	openSourceSelector: () => {
-		return ipcRenderer.invoke("open-source-selector");
 	},
 	selectSource: (source: ProcessedDesktopSource) => {
 		return ipcRenderer.invoke("select-source", source);
@@ -188,20 +176,26 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		return () => ipcRenderer.removeListener("request-save-before-close", listener);
 	},
 
-	// Countdown
-	showCountdown: () => {
-		return ipcRenderer.invoke("show-countdown");
+	// Recording bar
+	showRecordingBar: () => {
+		return ipcRenderer.invoke("show-recording-bar");
 	},
-	cancelCountdown: () => {
-		return ipcRenderer.invoke("cancel-countdown");
+	hideRecordingBar: () => {
+		return ipcRenderer.invoke("hide-recording-bar");
 	},
-	countdownComplete: () => {
-		return ipcRenderer.invoke("countdown-complete");
+	stopRecordingFromBar: () => {
+		return ipcRenderer.invoke("stop-recording-from-bar");
 	},
-	onCountdownFinished: (callback: () => void) => {
+	minimizeEditor: () => {
+		return ipcRenderer.invoke("minimize-editor");
+	},
+	restoreEditor: () => {
+		return ipcRenderer.invoke("restore-editor");
+	},
+	onStopRecordingFromBar: (callback: () => void) => {
 		const listener = () => callback();
-		ipcRenderer.on("countdown-finished", listener);
-		return () => ipcRenderer.removeListener("countdown-finished", listener);
+		ipcRenderer.on("stop-recording-from-bar", listener);
+		return () => ipcRenderer.removeListener("stop-recording-from-bar", listener);
 	},
 
 	// Updater

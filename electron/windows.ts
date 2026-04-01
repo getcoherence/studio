@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BrowserWindow, ipcMain, screen } from "electron";
+import { BrowserWindow, screen } from "electron";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -8,72 +8,6 @@ const APP_ROOT = path.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const RENDERER_DIST = path.join(APP_ROOT, "dist");
 const HEADLESS = process.env["HEADLESS"] === "true";
-
-let hudOverlayWindow: BrowserWindow | null = null;
-
-ipcMain.on("hud-overlay-hide", () => {
-	if (hudOverlayWindow && !hudOverlayWindow.isDestroyed()) {
-		hudOverlayWindow.minimize();
-	}
-});
-
-export function createHudOverlayWindow(): BrowserWindow {
-	const primaryDisplay = screen.getPrimaryDisplay();
-	const { workArea } = primaryDisplay;
-
-	const windowWidth = 500;
-	const windowHeight = 60;
-
-	const x = Math.floor(workArea.x + (workArea.width - windowWidth) / 2);
-	const y = Math.floor(workArea.y + workArea.height - windowHeight - 10);
-
-	const win = new BrowserWindow({
-		width: windowWidth,
-		height: windowHeight,
-		minWidth: 500,
-		maxWidth: 500,
-		minHeight: 60,
-		maxHeight: 60,
-		x: x,
-		y: y,
-		title: "Lucid Studio",
-		frame: false,
-		transparent: true,
-		resizable: false,
-		alwaysOnTop: true,
-		skipTaskbar: false,
-		hasShadow: false,
-		show: !HEADLESS,
-		webPreferences: {
-			preload: path.join(__dirname, "preload.mjs"),
-			nodeIntegration: false,
-			contextIsolation: true,
-			backgroundThrottling: false,
-		},
-	});
-
-	win.webContents.on("did-finish-load", () => {
-		win?.webContents.send("main-process-message", new Date().toLocaleString());
-	});
-
-	hudOverlayWindow = win;
-
-	win.on("closed", () => {
-		if (hudOverlayWindow === win) {
-			hudOverlayWindow = null;
-		}
-	});
-
-	if (VITE_DEV_SERVER_URL) {
-		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=hud-overlay");
-	} else {
-		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
-			query: { windowType: "hud-overlay" },
-		});
-	}
-
-	return win;
-}
 
 export function createEditorWindow(): BrowserWindow {
 	const isMac = process.platform === "darwin";
@@ -121,42 +55,35 @@ export function createEditorWindow(): BrowserWindow {
 	return win;
 }
 
-export function createCountdownWindow(): BrowserWindow {
-	const primaryDisplay = screen.getPrimaryDisplay();
-	const { workArea } = primaryDisplay;
-
-	const windowSize = 300;
-	const x = Math.floor(workArea.x + (workArea.width - windowSize) / 2);
-	const y = Math.floor(workArea.y + (workArea.height - windowSize) / 2);
-
+export function createRecordingBarWindow(): BrowserWindow {
+	const { width } = screen.getPrimaryDisplay().workAreaSize;
+	const barWidth = 420;
+	const barHeight = 48;
 	const win = new BrowserWindow({
-		width: windowSize,
-		height: windowSize,
-		x,
-		y,
+		width: barWidth,
+		height: barHeight,
+		x: Math.round((width - barWidth) / 2),
+		y: 0,
 		frame: false,
 		transparent: true,
 		resizable: false,
 		alwaysOnTop: true,
 		skipTaskbar: true,
+		focusable: false,
 		hasShadow: false,
-		focusable: true,
-		show: !HEADLESS,
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),
 			nodeIntegration: false,
 			contextIsolation: true,
 		},
 	});
-
 	if (VITE_DEV_SERVER_URL) {
-		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=countdown");
+		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=recording-bar");
 	} else {
 		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
-			query: { windowType: "countdown" },
+			query: { windowType: "recording-bar" },
 		});
 	}
-
 	return win;
 }
 

@@ -26,8 +26,6 @@ interface Window {
 	electronAPI: {
 		getSources: (opts: Electron.SourcesOptions) => Promise<ProcessedDesktopSource[]>;
 		switchToEditor: () => Promise<void>;
-		switchToRecorder: () => Promise<void>;
-		openSourceSelector: () => Promise<void>;
 		selectSource: (source: ProcessedDesktopSource) => Promise<ProcessedDesktopSource | null>;
 		getSelectedSource: () => Promise<ProcessedDesktopSource | null>;
 		requestCameraAccess: () => Promise<{
@@ -153,18 +151,18 @@ interface Window {
 			voice?: string,
 		) => Promise<{ success: boolean; audioPath?: string; error?: string }>;
 
-		hudOverlayHide: () => void;
-		hudOverlayClose: () => void;
 		setMicrophoneExpanded: (expanded: boolean) => void;
 		setHasUnsavedChanges: (hasChanges: boolean) => void;
 		onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => () => void;
 		setLocale: (locale: string) => Promise<void>;
 
-		// Countdown
-		showCountdown: () => Promise<{ success: boolean }>;
-		cancelCountdown: () => Promise<{ success: boolean }>;
-		countdownComplete: () => Promise<{ success: boolean }>;
-		onCountdownFinished: (callback: () => void) => () => void;
+		// Recording bar
+		showRecordingBar: () => Promise<{ success: boolean }>;
+		hideRecordingBar: () => Promise<{ success: boolean }>;
+		stopRecordingFromBar: () => Promise<{ success: boolean }>;
+		minimizeEditor: () => Promise<{ success: boolean }>;
+		restoreEditor: () => Promise<{ success: boolean }>;
+		onStopRecordingFromBar: (callback: () => void) => () => void;
 
 		// Updater
 		checkForUpdates: () => Promise<{

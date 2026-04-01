@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import { CountdownWindow } from "./components/countdown/CountdownWindow";
-import { LaunchWindow } from "./components/launch/LaunchWindow";
-import { SourceSelector } from "./components/launch/SourceSelector";
+import { RecordingBar } from "./components/recording/RecordingBar";
 import { Toaster } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { UpdateToast } from "./components/ui/UpdateToast";
@@ -17,7 +15,7 @@ export default function App() {
 		const params = new URLSearchParams(window.location.search);
 		const type = params.get("windowType") || "";
 		setWindowType(type);
-		if (type === "hud-overlay" || type === "source-selector" || type === "countdown") {
+		if (type === "recording-bar") {
 			document.body.style.background = "transparent";
 			document.documentElement.style.background = "transparent";
 			document.getElementById("root")?.style.setProperty("background", "transparent");
@@ -31,24 +29,15 @@ export default function App() {
 
 	const content = (() => {
 		switch (windowType) {
-			case "hud-overlay":
-				return <LaunchWindow />;
-			case "source-selector":
-				return <SourceSelector />;
-			case "countdown":
-				return <CountdownWindow />;
+			case "recording-bar":
+				return <RecordingBar />;
 			case "editor":
+			default:
 				return (
 					<ShortcutsProvider>
 						<VideoEditor />
 						<ShortcutsConfigDialog />
 					</ShortcutsProvider>
-				);
-			default:
-				return (
-					<div className="w-full h-full bg-background text-foreground">
-						<h1>Lucid Studio</h1>
-					</div>
 				);
 		}
 	})();
@@ -56,7 +45,7 @@ export default function App() {
 	return (
 		<TooltipProvider>
 			{content}
-			<UpdateToast />
+			{windowType !== "recording-bar" && <UpdateToast />}
 			<Toaster theme="dark" className="pointer-events-auto" />
 		</TooltipProvider>
 	);

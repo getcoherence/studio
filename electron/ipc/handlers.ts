@@ -20,6 +20,7 @@ import {
 import { mainT } from "../i18n";
 import { InputMonitor } from "../input/inputMonitor";
 import { RECORDINGS_DIR } from "../main";
+import { createRecordingBarWindow } from "../windows";
 import { addRecentProject } from "./projectHandlers";
 
 const PROJECT_FILE_EXTENSION = "lucid";
@@ -32,6 +33,7 @@ type SelectedSource = {
 };
 
 let selectedSource: SelectedSource | null = null;
+let recordingBarWindow: BrowserWindow | null = null;
 let currentProjectPath: string | null = null;
 let currentRecordingSession: RecordingSession | null = null;
 
@@ -217,8 +219,8 @@ function sampleCursorPoint() {
 }
 
 export function registerIpcHandlers(
-	createEditorWindow: () => void,
-	createSourceSelectorWindow: () => BrowserWindow,
+	_createEditorWindow: () => void,
+	_createSourceSelectorWindow: () => BrowserWindow,
 	getMainWindow: () => BrowserWindow | null,
 	getSourceSelectorWindow: () => BrowserWindow | null,
 	onRecordingStateChange?: (recording: boolean, sourceName: string) => void,
@@ -279,42 +281,78 @@ export function registerIpcHandlers(
 		}
 	});
 
-	ipcMain.handle("open-source-selector", () => {
-		const sourceSelectorWin = getSourceSelectorWindow();
-		if (sourceSelectorWin) {
-			sourceSelectorWin.focus();
-			return;
-		}
-		createSourceSelectorWindow();
-	});
-
 	ipcMain.handle("switch-to-editor", () => {
-		const mainWin = getMainWindow();
-		if (mainWin) {
-			mainWin.close();
+		// Close recording bar if open
+		if (recordingBarWindow && !recordingBarWindow.isDestroyed()) {
+			recordingBarWindow.close();
+			recordingBarWindow = null;
 		}
-		createEditorWindow();
+		// Restore/show/focus the main editor window
+		const mainWin = getMainWindow();
+		if (mainWin && !mainWin.isDestroyed()) {
+			if (mainWin.isMinimized()) {
+				mainWin.restore();
+			}
+			mainWin.show();
+			mainWin.focus();
+		}
 	});
 
-	ipcMain.handle("switch-to-recorder", () => {
-		const mainWin = getMainWindow();
-		if (mainWin) {
-			// Navigate the current window back to the HUD overlay
-			const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-			if (VITE_DEV_SERVER_URL) {
-				mainWin.loadURL(`${VITE_DEV_SERVER_URL}?windowType=hud-overlay`);
-			} else {
-				const RENDERER_DIST = path.join(path.resolve(__dirname, ".."), "dist");
-				mainWin.loadFile(path.join(RENDERER_DIST, "index.html"), {
-					query: { windowType: "hud-overlay" },
-				});
-			}
-			// Resize to HUD dimensions
-			mainWin.setSize(500, 155);
-			mainWin.setResizable(false);
-			mainWin.setAlwaysOnTop(true);
-			mainWin.center();
+	ipcMain.handle("show-recording-bar", () => {
+		if (recordingBarWindow && !recordingBarWindow.isDestroyed()) {
+			recordingBarWindow.close();
 		}
+		recordingBarWindow = createRecordingBarWindow();
+		recordingBarWindow.on("closed", () => {
+			recordingBarWindow = null;
+		});
+		// Minimize the editor
+		const mainWin = getMainWindow();
+		if (mainWin && !mainWin.isDestroyed()) {
+			mainWin.minimize();
+		}
+		return { success: true };
+	});
+
+	ipcMain.handle("hide-recording-bar", () => {
+		if (recordingBarWindow && !recordingBarWindow.isDestroyed()) {
+			recordingBarWindow.close();
+			recordingBarWindow = null;
+		}
+		return { success: true };
+	});
+
+	ipcMain.handle("stop-recording-from-bar", () => {
+		const mainWin = getMainWindow();
+		if (mainWin && !mainWin.isDestroyed()) {
+			mainWin.webContents.send("stop-recording-from-bar");
+		}
+		return { success: true };
+	});
+
+	ipcMain.handle("minimize-editor", () => {
+		const mainWin = getMainWindow();
+		if (mainWin && !mainWin.isDestroyed()) {
+			mainWin.minimize();
+		}
+		return { success: true };
+	});
+
+	ipcMain.handle("restore-editor", () => {
+		// Close recording bar if open
+		if (recordingBarWindow && !recordingBarWindow.isDestroyed()) {
+			recordingBarWindow.close();
+			recordingBarWindow = null;
+		}
+		const mainWin = getMainWindow();
+		if (mainWin && !mainWin.isDestroyed()) {
+			if (mainWin.isMinimized()) {
+				mainWin.restore();
+			}
+			mainWin.show();
+			mainWin.focus();
+		}
+		return { success: true };
 	});
 
 	ipcMain.handle("store-recorded-session", async (_, payload: StoreRecordedSessionInput) => {

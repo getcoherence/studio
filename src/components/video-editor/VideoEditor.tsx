@@ -3,10 +3,17 @@ import { FolderOpen, Languages, Save, Sparkles, Video, Wand2 } from "lucide-reac
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
+import { CountdownOverlay } from "@/components/recording/CountdownOverlay";
+import {
+	type RecordingConfig,
+	RecordingSetupDialog,
+} from "@/components/recording/RecordingSetupDialog";
+import { WelcomeScreen } from "@/components/recording/WelcomeScreen";
 import { useI18n, useScopedT } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import type { EditorState } from "@/hooks/useEditorHistory";
 import { INITIAL_EDITOR_STATE, useEditorHistory } from "@/hooks/useEditorHistory";
+import { useScreenRecorder } from "@/hooks/useScreenRecorder";
 import { type Locale, SUPPORTED_LOCALES } from "@/i18n/config";
 import { getLocaleName } from "@/i18n/loader";
 import { generatePolishEdits } from "@/lib/ai/oneClickPolish";
@@ -137,6 +144,12 @@ export default function VideoEditor() {
 	const [polishPreview, setPolishPreview] = useState<PolishPreview | null>(null);
 	const [polishEdits, setPolishEdits] = useState<Partial<EditorState> | null>(null);
 	const [showPolishDialog, setShowPolishDialog] = useState(false);
+	const [showRecordingSetup, setShowRecordingSetup] = useState(false);
+	const [showCountdown, setShowCountdown] = useState(false);
+	const [pendingRecordingConfig, setPendingRecordingConfig] = useState<RecordingConfig | null>(
+		null,
+	);
+	const [reloadTrigger, setReloadTrigger] = useState(0);
 
 	const playerContainerRef = useRef<HTMLDivElement>(null);
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
@@ -151,6 +164,18 @@ export default function VideoEditor() {
 	const t = useScopedT("editor");
 	const ts = useScopedT("settings");
 	const { locale, setLocale } = useI18n();
+
+	const {
+		recording,
+		toggleRecording,
+		setMicrophoneEnabled,
+		setSystemAudioEnabled,
+		setWebcamEnabled,
+	} = useScreenRecorder({
+		onRecordingFinalized: () => {
+			setReloadTrigger((prev) => prev + 1);
+		},
+	});
 
 	const nextAnnotationIdRef = useRef(1);
 	const nextAnnotationZIndexRef = useRef(1);
@@ -386,7 +411,8 @@ export default function VideoEditor() {
 		}
 
 		loadInitialData();
-	}, [applyLoadedProject]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [applyLoadedProject, reloadTrigger]);
 
 	const saveProject = useCallback(
 		async (forceSaveAs: boolean) => {
@@ -531,7 +557,7 @@ export default function VideoEditor() {
 
 	useEffect(() => {
 		const removeNewRecording = window.electronAPI.onMenuNewRecording?.(() => {
-			window.electronAPI?.switchToRecorder?.();
+			setShowRecordingSetup(true);
 		});
 		const removeLoadListener = window.electronAPI.onMenuLoadProject(handleLoadProject);
 		const removeSaveListener = window.electronAPI.onMenuSaveProject(handleSaveProject);
@@ -544,6 +570,73 @@ export default function VideoEditor() {
 			removeSaveAsListener?.();
 		};
 	}, [handleLoadProject, handleSaveProject, handleSaveProjectAs]);
+
+	// Listen for stop-recording-from-bar event
+	useEffect(() => {
+		if (!window.electronAPI?.onStopRecordingFromBar) return;
+		const cleanup = window.electronAPI.onStopRecordingFromBar(() => {
+			if (recording) {
+				toggleRecording();
+			}
+		});
+		return cleanup;
+	}, [recording, toggleRecording]);
+
+	// Recording setup handlers
+	const handleStartRecording = useCallback((config: RecordingConfig) => {
+		setPendingRecordingConfig(config);
+		setShowRecordingSetup(false);
+		setShowCountdown(true);
+	}, []);
+
+	const handleCountdownComplete = useCallback(async () => {
+		setShowCountdown(false);
+		if (!pendingRecordingConfig) return;
+
+		// Select the source via IPC
+		await window.electronAPI.selectSource(pendingRecordingConfig.source);
+
+		// Set mic/audio/webcam state
+		setMicrophoneEnabled(pendingRecordingConfig.microphoneEnabled);
+		setSystemAudioEnabled(pendingRecordingConfig.systemAudioEnabled);
+		await setWebcamEnabled(pendingRecordingConfig.webcamEnabled);
+
+		// Start recording
+		toggleRecording();
+
+		// Show the recording bar and minimize editor
+		await window.electronAPI?.showRecordingBar();
+
+		setPendingRecordingConfig(null);
+	}, [
+		pendingRecordingConfig,
+		setMicrophoneEnabled,
+		setSystemAudioEnabled,
+		setWebcamEnabled,
+		toggleRecording,
+	]);
+
+	const handleCountdownCancel = useCallback(() => {
+		setShowCountdown(false);
+		setPendingRecordingConfig(null);
+	}, []);
+
+	const handleWelcomeNewRecording = useCallback(() => {
+		setShowRecordingSetup(true);
+	}, []);
+
+	const handleWelcomeOpenVideo = useCallback(async () => {
+		const result = await window.electronAPI.openVideoFilePicker();
+		if (result.canceled) return;
+		if (result.success && result.path) {
+			await window.electronAPI.setCurrentVideoPath(result.path);
+			setReloadTrigger((prev) => prev + 1);
+		}
+	}, []);
+
+	const handleWelcomeOpenProject = useCallback(async () => {
+		await handleLoadProject();
+	}, [handleLoadProject]);
 
 	useEffect(() => {
 		let mounted = true;
@@ -1551,20 +1644,23 @@ export default function VideoEditor() {
 			</div>
 		);
 	}
-	if (error) {
+	if (error || !videoPath) {
 		return (
-			<div className="flex items-center justify-center h-screen bg-background">
-				<div className="flex flex-col items-center gap-3">
-					<div className="text-destructive">{error}</div>
-					<button
-						type="button"
-						onClick={handleLoadProject}
-						className="px-3 py-1.5 rounded-md bg-[#34B27B] text-white text-sm hover:bg-[#34B27B]/90"
-					>
-						Load Project File
-					</button>
-				</div>
-			</div>
+			<>
+				<WelcomeScreen
+					onNewRecording={handleWelcomeNewRecording}
+					onOpenVideo={handleWelcomeOpenVideo}
+					onOpenProject={handleWelcomeOpenProject}
+				/>
+				<RecordingSetupDialog
+					open={showRecordingSetup}
+					onOpenChange={setShowRecordingSetup}
+					onStartRecording={handleStartRecording}
+				/>
+				{showCountdown && (
+					<CountdownOverlay onComplete={handleCountdownComplete} onCancel={handleCountdownCancel} />
+				)}
+			</>
 		);
 	}
 
@@ -1597,7 +1693,7 @@ export default function VideoEditor() {
 					</div>
 					<button
 						type="button"
-						onClick={() => window.electronAPI?.switchToRecorder?.()}
+						onClick={() => setShowRecordingSetup(true)}
 						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 text-[11px] font-medium"
 						title="Start a new recording"
 					>
@@ -1990,6 +2086,15 @@ export default function VideoEditor() {
 					exportedFilePath ? () => void handleShowExportedFile(exportedFilePath) : undefined
 				}
 			/>
+
+			<RecordingSetupDialog
+				open={showRecordingSetup}
+				onOpenChange={setShowRecordingSetup}
+				onStartRecording={handleStartRecording}
+			/>
+			{showCountdown && (
+				<CountdownOverlay onComplete={handleCountdownComplete} onCancel={handleCountdownCancel} />
+			)}
 		</div>
 	);
 }

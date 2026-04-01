@@ -21,7 +21,6 @@ interface Window {
 	electronAPI: {
 		getSources: (opts: Electron.SourcesOptions) => Promise<ProcessedDesktopSource[]>;
 		switchToEditor: () => Promise<void>;
-		openSourceSelector: () => Promise<void>;
 		selectSource: (source: ProcessedDesktopSource) => Promise<ProcessedDesktopSource | null>;
 		getSelectedSource: () => Promise<ProcessedDesktopSource | null>;
 		requestCameraAccess: () => Promise<{
@@ -122,6 +121,15 @@ interface Window {
 		setHasUnsavedChanges: (hasChanges: boolean) => void;
 		onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => () => void;
 		setLocale: (locale: string) => Promise<void>;
+
+		// Recording bar
+		showRecordingBar: () => Promise<{ success: boolean }>;
+		hideRecordingBar: () => Promise<{ success: boolean }>;
+		stopRecordingFromBar: () => Promise<{ success: boolean }>;
+		minimizeEditor: () => Promise<{ success: boolean }>;
+		restoreEditor: () => Promise<{ success: boolean }>;
+		onStopRecordingFromBar: (callback: () => void) => () => void;
+		onMenuNewRecording: (callback: () => void) => () => void;
 
 		// Whisper / Captions
 		whisperTranscribe: (
