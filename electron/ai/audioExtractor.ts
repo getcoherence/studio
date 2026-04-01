@@ -31,13 +31,35 @@ function findFfmpegBinary(): string {
  * @returns          Absolute path to the temporary WAV file
  */
 export async function extractAudio(videoPath: string): Promise<string> {
-	const tmpDir = path.join(os.tmpdir(), "openscreen-whisper");
+	const tmpDir = path.join(os.tmpdir(), "lucid-whisper");
 	await fs.mkdir(tmpDir, { recursive: true });
 
 	const baseName = path.parse(videoPath).name;
 	const wavPath = path.join(tmpDir, `${baseName}-${Date.now()}.wav`);
 
 	const ffmpegBin = findFfmpegBinary();
+
+	// First check if the video has an audio stream
+	await new Promise<void>((resolve, reject) => {
+		execFile(
+			ffmpegBin,
+			["-i", videoPath, "-hide_banner"],
+			{ timeout: 10_000 },
+			(_error, _stdout, stderr) => {
+				// ffmpeg -i always exits with error (no output file), but stderr has stream info
+				const output = stderr || "";
+				if (!output.includes("Audio:")) {
+					reject(
+						new Error(
+							"No audio found in this recording. Record with microphone or system audio enabled to use auto-captions.",
+						),
+					);
+					return;
+				}
+				resolve();
+			},
+		);
+	});
 
 	const args = [
 		"-i",
@@ -55,9 +77,8 @@ export async function extractAudio(videoPath: string): Promise<string> {
 	await new Promise<void>((resolve, reject) => {
 		execFile(ffmpegBin, args, { timeout: 120_000 }, (error, _stdout, stderr) => {
 			if (error) {
-				// ffmpeg often writes progress info to stderr; only reject on real errors
 				const msg = stderr?.trim() || error.message;
-				reject(new Error(`ffmpeg audio extraction failed: ${msg}`));
+				reject(new Error(`Audio extraction failed: ${msg}`));
 				return;
 			}
 			resolve();
