@@ -8,6 +8,7 @@ import {
 	Lock,
 	Monitor,
 	MousePointer2,
+	Music,
 	Palette,
 	Sparkles,
 	Star,
@@ -38,6 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useScopedT } from "@/contexts/I18nContext";
 import type { CaptionStyle, CaptionTrack } from "@/lib/ai/types";
 import { getAssetPath } from "@/lib/assetPath";
+import { MUSIC_LIBRARY } from "@/lib/audio/musicLibrary";
 import { WEBCAM_LAYOUT_PRESETS } from "@/lib/compositeLayout";
 import { CURSOR_STYLES } from "@/lib/cursor/cursorStyles";
 import type { ExportFormat, ExportQuality, GifFrameRate, GifSizePreset } from "@/lib/exporter";
@@ -249,6 +251,12 @@ interface SettingsPanelProps {
 	onCaptionStyleChange?: (style: Partial<CaptionStyle>) => void;
 	onCaptionTrackChange?: (track: CaptionTrack | null) => void;
 	videoPath?: string | null;
+	// Background music
+	backgroundMusic?: string;
+	onBackgroundMusicChange?: (trackId: string) => void;
+	backgroundMusicVolume?: number;
+	onBackgroundMusicVolumeChange?: (volume: number) => void;
+	onBackgroundMusicVolumeCommit?: () => void;
 }
 
 export default SettingsPanel;
@@ -334,6 +342,11 @@ export function SettingsPanel({
 	onCaptionStyleChange,
 	onCaptionTrackChange,
 	videoPath,
+	backgroundMusic = "none",
+	onBackgroundMusicChange,
+	backgroundMusicVolume = 50,
+	onBackgroundMusicVolumeChange,
+	onBackgroundMusicVolumeCommit,
 }: SettingsPanelProps) {
 	const t = useScopedT("settings");
 	const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
@@ -708,8 +721,8 @@ export function SettingsPanel({
 					type="multiple"
 					defaultValue={
 						hasWebcam
-							? ["layout", "effects", "cursor", "background"]
-							: ["effects", "cursor", "background"]
+							? ["layout", "effects", "cursor", "background", "music"]
+							: ["effects", "cursor", "background", "music"]
 					}
 					className="space-y-1"
 				>
@@ -1153,6 +1166,78 @@ export function SettingsPanel({
 							</AccordionContent>
 						</AccordionItem>
 					)}
+
+					{/* Background Music */}
+					<AccordionItem value="music" className="border-white/5 rounded-xl bg-white/[0.02] px-3">
+						<AccordionTrigger className="py-2.5 hover:no-underline">
+							<div className="flex items-center gap-2">
+								<Music className="w-4 h-4 text-[#2563eb]" />
+								<span className="text-xs font-medium">Background Music</span>
+							</div>
+						</AccordionTrigger>
+						<AccordionContent className="pb-3">
+							<div className="space-y-3">
+								{/* Track selector */}
+								<div>
+									<label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider block mb-1.5">
+										Track
+									</label>
+									<Select
+										value={backgroundMusic}
+										onValueChange={(value) => onBackgroundMusicChange?.(value)}
+									>
+										<SelectTrigger className="w-full bg-white/5 border-white/10 text-slate-200 h-8 text-xs">
+											<SelectValue placeholder="Select a track" />
+										</SelectTrigger>
+										<SelectContent>
+											{MUSIC_LIBRARY.map((track) => (
+												<SelectItem key={track.id} value={track.id} disabled={!track.available}>
+													{track.name}
+													{track.mood ? ` — ${track.mood}` : ""}
+													{!track.available ? " (Coming Soon)" : ""}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+
+								{/* Volume slider */}
+								<div>
+									<div className="flex items-center justify-between mb-1.5">
+										<label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+											Volume
+										</label>
+										<span className="text-[10px] text-slate-500">{backgroundMusicVolume}%</span>
+									</div>
+									<Slider
+										value={[backgroundMusicVolume]}
+										min={0}
+										max={100}
+										step={1}
+										onValueChange={([v]) => onBackgroundMusicVolumeChange?.(v)}
+										onValueCommit={() => onBackgroundMusicVolumeCommit?.()}
+										className="w-full"
+									/>
+								</div>
+
+								{/* Generate Custom Music (coming soon) */}
+								<div className="relative group">
+									<Button
+										variant="outline"
+										size="sm"
+										disabled
+										className="w-full gap-2 border-white/10 text-slate-400 h-8 text-xs"
+									>
+										<Sparkles className="w-3 h-3" />
+										Generate Custom Music
+									</Button>
+									<div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded bg-black/90 border border-white/10 text-[10px] text-slate-300 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
+										Coming soon — AI-generated background music
+									</div>
+								</div>
+							</div>
+						</AccordionContent>
+					</AccordionItem>
 				</Accordion>
 			</div>
 

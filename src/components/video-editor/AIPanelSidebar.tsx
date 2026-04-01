@@ -16,6 +16,7 @@ import {
 	X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { EditorState } from "@/hooks/useEditorHistory";
 import { generateNarrationScript } from "@/lib/ai/autoNarration";
 import { extractClips } from "@/lib/ai/clipExtractor";
@@ -198,6 +199,28 @@ export function AIPanelSidebar({
 			narrationTrack: { segments: narrationSegments, audioPath: null },
 		});
 	}, [narrationSegments, onApplyEdits]);
+
+	// ── TTS Generate Audio ──
+	const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+
+	const handleGenerateAudio = useCallback(async () => {
+		if (!narrationText.trim()) return;
+		setIsGeneratingAudio(true);
+		try {
+			const result = await window.electronAPI.aiTtsSynthesize(narrationText);
+			if (result.success && result.audioPath) {
+				toast.success("Narration audio generated", {
+					description: result.audioPath,
+				});
+			} else {
+				toast.error(result.error || "Failed to generate audio");
+			}
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : "Failed to generate audio");
+		} finally {
+			setIsGeneratingAudio(false);
+		}
+	}, [narrationText]);
 
 	// ── Extract Clips ──
 	const [clips, setClips] = useState<ExtractedClip[]>([]);
@@ -389,6 +412,15 @@ export function AIPanelSidebar({
 								>
 									<Check size={10} />
 									Save to Project
+								</button>
+								<button
+									type="button"
+									onClick={handleGenerateAudio}
+									disabled={isGeneratingAudio}
+									className="flex items-center justify-center gap-1.5 w-full px-2 py-1.5 rounded text-[10px] font-medium bg-white/10 hover:bg-white/15 text-white/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+								>
+									<AudioLines size={12} />
+									{isGeneratingAudio ? "Generating audio..." : "Generate Audio"}
 								</button>
 							</>
 						)}

@@ -43,6 +43,8 @@ export interface EditorState {
 	captionTrack: CaptionTrack | null;
 	captionStyle: CaptionStyle;
 	narrationTrack: NarrationTrack | null;
+	backgroundMusic: string;
+	backgroundMusicVolume: number;
 }
 
 export const INITIAL_EDITOR_STATE: EditorState = {
@@ -68,6 +70,8 @@ export const INITIAL_EDITOR_STATE: EditorState = {
 	captionTrack: null,
 	captionStyle: DEFAULT_CAPTION_STYLE,
 	narrationTrack: null,
+	backgroundMusic: "none",
+	backgroundMusicVolume: 50,
 };
 
 type StateUpdate = Partial<EditorState> | ((prev: EditorState) => Partial<EditorState>);
