@@ -1591,15 +1591,37 @@ export default function VideoEditor() {
 	);
 
 	const handleScreenshot = useCallback(async () => {
-		const canvas = videoPlaybackRef.current?.app?.canvas;
-		if (!canvas) {
-			toast.error("No canvas available for screenshot");
+		const app = videoPlaybackRef.current?.app;
+		if (!app) {
+			toast.error("No renderer available for screenshot");
 			return;
 		}
 
-		const blob = await new Promise<Blob | null>((resolve) => {
-			(canvas as HTMLCanvasElement).toBlob(resolve, "image/png");
-		});
+		// Use PixiJS extract to get pixels from the WebGL renderer
+		let blob: Blob | null = null;
+		try {
+			// PixiJS v8: extract the stage to a canvas, then convert to blob
+			const extractCanvas = app.renderer.extract.canvas(app.stage) as HTMLCanvasElement;
+			blob = await new Promise<Blob | null>((resolve) => {
+				extractCanvas.toBlob(resolve, "image/png");
+			});
+		} catch {
+			// Fallback: try the video element directly
+			const video = videoPlaybackRef.current?.video;
+			if (video) {
+				const offscreen = document.createElement("canvas");
+				offscreen.width = video.videoWidth;
+				offscreen.height = video.videoHeight;
+				const ctx = offscreen.getContext("2d");
+				if (ctx) {
+					ctx.drawImage(video, 0, 0);
+					blob = await new Promise<Blob | null>((resolve) => {
+						offscreen.toBlob(resolve, "image/png");
+					});
+				}
+			}
+		}
+
 		if (!blob) {
 			toast.error("Failed to capture screenshot");
 			return;
