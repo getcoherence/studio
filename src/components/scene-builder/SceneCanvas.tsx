@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Scene } from "@/lib/scene-renderer";
 import { hitTestLayers, renderScene } from "@/lib/scene-renderer";
 
@@ -15,9 +15,15 @@ interface SceneCanvasProps {
 	onLayerResize?: (layerId: string, width: number, height: number) => void;
 }
 
-const INTERNAL_WIDTH = 1920;
-const INTERNAL_HEIGHT = 1080;
+const BASE_SIZE = 1920;
 const HANDLE_SIZE = 12;
+
+function getResolution(ratio: string): { width: number; height: number } {
+	const [w, h] = ratio.split("/").map(Number);
+	if (!w || !h) return { width: 1920, height: 1080 };
+	if (w >= h) return { width: BASE_SIZE, height: Math.round(BASE_SIZE * (h / w)) };
+	return { width: Math.round(BASE_SIZE * (w / h)), height: BASE_SIZE };
+}
 
 type DragMode = "move" | "resize-tl" | "resize-tr" | "resize-bl" | "resize-br" | null;
 
@@ -33,6 +39,10 @@ export function SceneCanvas({
 	onLayerResize,
 	aspectRatio = "16/9",
 }: SceneCanvasProps) {
+	const resolution = useMemo(() => getResolution(aspectRatio), [aspectRatio]);
+	const INTERNAL_WIDTH = resolution.width;
+	const INTERNAL_HEIGHT = resolution.height;
+
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const rafRef = useRef<number>(0);
