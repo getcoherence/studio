@@ -2000,6 +2000,7 @@ export default function VideoEditor() {
 													onPlayStateChange={setIsPlaying}
 													onError={setError}
 													wallpaper={previewWallpaper ?? wallpaper}
+													animatedBgSpeed={editorState.animatedBgSpeed}
 													zoomRegions={zoomRegions}
 													selectedZoomId={selectedZoomId}
 													onSelectZoom={handleSelectZoom}
@@ -2218,6 +2219,9 @@ export default function VideoEditor() {
 								onCaptionStyleChange={handleCaptionStyleChange}
 								onCaptionTrackChange={handleCaptionTrackChange}
 								videoPath={videoSourcePath || videoPath}
+								animatedBgSpeed={editorState.animatedBgSpeed}
+								onAnimatedBgSpeedChange={(v) => updateState({ animatedBgSpeed: v })}
+								onAnimatedBgSpeedCommit={commitState}
 							/>
 						</div>
 					</Panel>

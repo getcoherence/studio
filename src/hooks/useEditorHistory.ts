@@ -45,6 +45,7 @@ export interface EditorState {
 	narrationTrack: NarrationTrack | null;
 	backgroundMusic: string;
 	backgroundMusicVolume: number;
+	animatedBgSpeed: number;
 }
 
 export const INITIAL_EDITOR_STATE: EditorState = {
@@ -72,6 +73,7 @@ export const INITIAL_EDITOR_STATE: EditorState = {
 	narrationTrack: null,
 	backgroundMusic: "none",
 	backgroundMusicVolume: 50,
+	animatedBgSpeed: 1,
 };
 
 type StateUpdate = Partial<EditorState> | ((prev: EditorState) => Partial<EditorState>);
