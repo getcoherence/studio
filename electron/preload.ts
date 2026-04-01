@@ -24,6 +24,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	switchToEditor: () => {
 		return ipcRenderer.invoke("switch-to-editor");
 	},
+	switchToRecorder: () => {
+		return ipcRenderer.invoke("switch-to-recorder");
+	},
 	openSourceSelector: () => {
 		return ipcRenderer.invoke("open-source-selector");
 	},
@@ -93,6 +96,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	loadCurrentProjectFile: () => {
 		return ipcRenderer.invoke("load-current-project-file");
+	},
+	onMenuNewRecording: (callback: () => void) => {
+		const listener = () => callback();
+		ipcRenderer.on("menu-new-recording", listener);
+		return () => ipcRenderer.removeListener("menu-new-recording", listener);
 	},
 	onMenuLoadProject: (callback: () => void) => {
 		const listener = () => callback();

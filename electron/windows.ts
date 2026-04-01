@@ -22,25 +22,26 @@ export function createHudOverlayWindow(): BrowserWindow {
 	const { workArea } = primaryDisplay;
 
 	const windowWidth = 500;
-	const windowHeight = 155;
+	const windowHeight = 60;
 
 	const x = Math.floor(workArea.x + (workArea.width - windowWidth) / 2);
-	const y = Math.floor(workArea.y + workArea.height - windowHeight - 5);
+	const y = Math.floor(workArea.y + workArea.height - windowHeight - 10);
 
 	const win = new BrowserWindow({
 		width: windowWidth,
 		height: windowHeight,
 		minWidth: 500,
 		maxWidth: 500,
-		minHeight: 155,
-		maxHeight: 155,
+		minHeight: 60,
+		maxHeight: 60,
 		x: x,
 		y: y,
+		title: "Lucid Studio",
 		frame: false,
 		transparent: true,
 		resizable: false,
 		alwaysOnTop: true,
-		skipTaskbar: true,
+		skipTaskbar: false,
 		hasShadow: false,
 		show: !HEADLESS,
 		webPreferences: {

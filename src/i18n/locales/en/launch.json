@@ -2,6 +2,9 @@
 	"tooltips": {
 		"hideHUD": "Hide HUD",
 		"closeApp": "Close App",
+		"startRecording": "Start recording",
+		"stopRecording": "Stop recording",
+		"selectSource": "Select a screen to record",
 		"restartRecording": "Restart recording",
 		"openVideoFile": "Open video file",
 		"openProject": "Open project"

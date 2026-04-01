@@ -139,10 +139,20 @@ function setupApplicationMenu() {
 
 	template.push(
 		{
-			label: mainT("common", "actions.file") || "File",
+			label: "File",
 			submenu: [
 				{
-					label: mainT("dialogs", "unsavedChanges.loadProject") || "Load Project…",
+					label: "New Recording",
+					accelerator: "CmdOrCtrl+N",
+					click: () => {
+						if (mainWindow && !mainWindow.isDestroyed()) {
+							mainWindow.webContents.send("menu-new-recording");
+						}
+					},
+				},
+				{ type: "separator" },
+				{
+					label: "Load Project…",
 					accelerator: "CmdOrCtrl+O",
 					click: () => sendEditorMenuAction("menu-load-project"),
 				},
@@ -157,12 +167,12 @@ function setupApplicationMenu() {
 				},
 				{ type: "separator" },
 				{
-					label: mainT("dialogs", "unsavedChanges.saveProject") || "Save Project…",
+					label: "Save Project…",
 					accelerator: "CmdOrCtrl+S",
 					click: () => sendEditorMenuAction("menu-save-project"),
 				},
 				{
-					label: mainT("dialogs", "unsavedChanges.saveProjectAs") || "Save Project As…",
+					label: "Save Project As…",
 					accelerator: "CmdOrCtrl+Shift+S",
 					click: () => sendEditorMenuAction("menu-save-project-as"),
 				},
@@ -170,7 +180,7 @@ function setupApplicationMenu() {
 			],
 		},
 		{
-			label: mainT("common", "actions.edit") || "Edit",
+			label: "Edit",
 			submenu: [
 				{ role: "undo" },
 				{ role: "redo" },
@@ -182,7 +192,7 @@ function setupApplicationMenu() {
 			],
 		},
 		{
-			label: mainT("common", "actions.view") || "View",
+			label: "View",
 			submenu: [
 				{ role: "reload" },
 				{ role: "forceReload" },
@@ -196,7 +206,7 @@ function setupApplicationMenu() {
 			],
 		},
 		{
-			label: mainT("common", "actions.window") || "Window",
+			label: "Window",
 			submenu: isMac
 				? [{ role: "minimize" }, { role: "zoom" }, { type: "separator" }, { role: "front" }]
 				: [{ role: "minimize" }, { role: "close" }],
