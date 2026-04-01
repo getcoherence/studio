@@ -1,5 +1,5 @@
 import type { Span } from "dnd-timeline";
-import { FolderOpen, Languages, Save, Sparkles, Video, Wand2 } from "lucide-react";
+import { FolderOpen, Languages, Save, Sparkles, Square, Video, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
@@ -363,6 +363,8 @@ export default function VideoEditor() {
 
 	useEffect(() => {
 		async function loadInitialData() {
+			setLoading(true);
+			setError(null);
 			try {
 				const currentProjectResult = await window.electronAPI.loadCurrentProjectFile();
 				if (currentProjectResult.success && currentProjectResult.project) {
@@ -1641,6 +1643,22 @@ export default function VideoEditor() {
 		return (
 			<div className="flex items-center justify-center h-screen bg-background">
 				<div className="text-foreground">Loading video...</div>
+			</div>
+		);
+	}
+	if (recording) {
+		return (
+			<div className="flex flex-col items-center justify-center h-screen gap-6 bg-[#09090b]">
+				<div className="w-4 h-4 rounded-full bg-red-500 animate-pulse" />
+				<h1 className="text-xl font-semibold text-white">Recording in progress...</h1>
+				<p className="text-sm text-white/40">Your screen is being captured</p>
+				<button
+					onClick={() => toggleRecording()}
+					className="flex items-center gap-2 px-6 py-3 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 font-medium transition-colors border border-red-500/20"
+				>
+					<Square size={14} fill="currentColor" />
+					Stop Recording
+				</button>
 			</div>
 		);
 	}

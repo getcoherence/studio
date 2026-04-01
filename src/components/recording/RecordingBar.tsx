@@ -28,10 +28,10 @@ export function RecordingBar() {
 
 	return (
 		<div
-			className="w-full h-full flex items-center justify-center bg-transparent"
+			className="w-full h-full flex items-center justify-center bg-[#121216] rounded-lg"
 			style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
 		>
-			<div className="flex items-center gap-3 px-4 py-2 rounded-full bg-[rgba(18,18,22,0.95)] border border-white/10 shadow-lg backdrop-blur-xl">
+			<div className="flex items-center gap-3 px-4 py-2">
 				{/* Recording indicator */}
 				<div className="flex items-center gap-2">
 					<div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
