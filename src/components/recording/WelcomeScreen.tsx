@@ -8,7 +8,7 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onNewRecording, onOpenVideo, onOpenProject }: WelcomeScreenProps) {
 	return (
-		<div className="flex flex-col items-center justify-center h-screen gap-8 bg-[#09090b]">
+		<div className="relative flex flex-col items-center justify-center h-screen gap-8 bg-[#09090b]">
 			<div className="flex flex-col items-center gap-2">
 				<Video className="w-16 h-16 text-[#2563eb]/60" />
 				<h1 className="text-2xl font-semibold text-white">Lucid Studio</h1>
@@ -37,6 +37,18 @@ export function WelcomeScreen({ onNewRecording, onOpenVideo, onOpenProject }: We
 					Open Project
 				</button>
 			</div>
+
+			{/* Attribution */}
+			<a
+				href="#"
+				onClick={(e) => {
+					e.preventDefault();
+					window.electronAPI?.openExternalUrl("https://getcoherence.io");
+				}}
+				className="absolute bottom-6 right-6 text-[10px] text-white/20 hover:text-white/40 transition-colors"
+			>
+				Made by Coherence
+			</a>
 		</div>
 	);
 }

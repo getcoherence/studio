@@ -1676,7 +1676,10 @@ export default function VideoEditor() {
 				<ProjectBrowser
 					open={showProjectBrowser}
 					onOpenChange={setShowProjectBrowser}
-					onProjectOpened={() => setReloadTrigger((prev) => prev + 1)}
+					onProjectOpened={() => {
+						setError(null);
+						setReloadTrigger((prev) => prev + 1);
+					}}
 				/>
 				{showCountdown && (
 					<CountdownOverlay onComplete={handleCountdownComplete} onCancel={handleCountdownCancel} />
@@ -2116,7 +2119,10 @@ export default function VideoEditor() {
 			<ProjectBrowser
 				open={showProjectBrowser}
 				onOpenChange={setShowProjectBrowser}
-				onProjectOpened={() => setReloadTrigger((prev) => prev + 1)}
+				onProjectOpened={() => {
+					setError(null);
+					setReloadTrigger((prev) => prev + 1);
+				}}
 			/>
 			{showCountdown && (
 				<CountdownOverlay onComplete={handleCountdownComplete} onCancel={handleCountdownCancel} />
