@@ -24,6 +24,9 @@ dist-ssr
 *.sln
 *.sw?
 release/**
+
+# Native binaries (whisper.cpp, etc.) — downloaded, not committed
+native/bin/
 *.kiro/
 # npx electron-builder --mac --win
 

@@ -3,6 +3,7 @@ import { FolderOpen, Languages, Save, Sparkles, Square, Video, Wand2 } from "luc
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
+import { ProjectBrowser } from "@/components/project-browser/ProjectBrowser";
 import { CountdownOverlay } from "@/components/recording/CountdownOverlay";
 import {
 	type RecordingConfig,
@@ -145,6 +146,7 @@ export default function VideoEditor() {
 	const [polishEdits, setPolishEdits] = useState<Partial<EditorState> | null>(null);
 	const [showPolishDialog, setShowPolishDialog] = useState(false);
 	const [showRecordingSetup, setShowRecordingSetup] = useState(false);
+	const [showProjectBrowser, setShowProjectBrowser] = useState(false);
 	const [showCountdown, setShowCountdown] = useState(false);
 	const [pendingRecordingConfig, setPendingRecordingConfig] = useState<RecordingConfig | null>(
 		null,
@@ -635,10 +637,6 @@ export default function VideoEditor() {
 			setReloadTrigger((prev) => prev + 1);
 		}
 	}, []);
-
-	const handleWelcomeOpenProject = useCallback(async () => {
-		await handleLoadProject();
-	}, [handleLoadProject]);
 
 	useEffect(() => {
 		let mounted = true;
@@ -1668,12 +1666,17 @@ export default function VideoEditor() {
 				<WelcomeScreen
 					onNewRecording={handleWelcomeNewRecording}
 					onOpenVideo={handleWelcomeOpenVideo}
-					onOpenProject={handleWelcomeOpenProject}
+					onOpenProject={() => setShowProjectBrowser(true)}
 				/>
 				<RecordingSetupDialog
 					open={showRecordingSetup}
 					onOpenChange={setShowRecordingSetup}
 					onStartRecording={handleStartRecording}
+				/>
+				<ProjectBrowser
+					open={showProjectBrowser}
+					onOpenChange={setShowProjectBrowser}
+					onProjectOpened={() => setReloadTrigger((prev) => prev + 1)}
 				/>
 				{showCountdown && (
 					<CountdownOverlay onComplete={handleCountdownComplete} onCancel={handleCountdownCancel} />
@@ -1720,7 +1723,7 @@ export default function VideoEditor() {
 					</button>
 					<button
 						type="button"
-						onClick={handleLoadProject}
+						onClick={() => setShowProjectBrowser(true)}
 						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 text-[11px] font-medium"
 					>
 						<FolderOpen size={14} />
@@ -2109,6 +2112,11 @@ export default function VideoEditor() {
 				open={showRecordingSetup}
 				onOpenChange={setShowRecordingSetup}
 				onStartRecording={handleStartRecording}
+			/>
+			<ProjectBrowser
+				open={showProjectBrowser}
+				onOpenChange={setShowProjectBrowser}
+				onProjectOpened={() => setReloadTrigger((prev) => prev + 1)}
 			/>
 			{showCountdown && (
 				<CountdownOverlay onComplete={handleCountdownComplete} onCancel={handleCountdownCancel} />
