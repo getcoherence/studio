@@ -19,6 +19,7 @@ import {
 } from "../../src/lib/recordingSession";
 import { mainT } from "../i18n";
 import { RECORDINGS_DIR } from "../main";
+import { addRecentProject } from "./projectHandlers";
 
 const PROJECT_FILE_EXTENSION = "openscreen";
 const SHORTCUTS_FILE = path.join(app.getPath("userData"), "shortcuts.json");
@@ -583,6 +584,7 @@ export function registerIpcHandlers(
 						"utf-8",
 					);
 					currentProjectPath = trustedExistingProjectPath;
+					addRecentProject(trustedExistingProjectPath).catch(() => {});
 					return {
 						success: true,
 						path: trustedExistingProjectPath,
@@ -618,6 +620,7 @@ export function registerIpcHandlers(
 
 				await fs.writeFile(result.filePath, JSON.stringify(projectData, null, 2), "utf-8");
 				currentProjectPath = result.filePath;
+				addRecentProject(result.filePath).catch(() => {});
 
 				return {
 					success: true,
@@ -659,6 +662,7 @@ export function registerIpcHandlers(
 			const content = await fs.readFile(filePath, "utf-8");
 			const project = JSON.parse(content);
 			currentProjectPath = filePath;
+			addRecentProject(filePath).catch(() => {});
 			if (project && typeof project === "object") {
 				const rawProject = project as { media?: unknown; videoPath?: unknown };
 				const media =

@@ -20,7 +20,19 @@
 		"addAnnotation": "添加标注",
 		"addKeyframe": "添加关键帧",
 		"deleteSelected": "删除所选",
-		"playPause": "播放 / 暂停"
+		"playPause": "播放 / 暂停",
+		"export": "导出",
+		"togglePlay": "切换播放",
+		"toggleCaptions": "切换字幕",
+		"toggleCursor": "切换光标",
+		"zoomIn": "放大",
+		"zoomOut": "缩小"
+	},
+	"categories": {
+		"editor": "编辑器",
+		"playback": "播放",
+		"export": "导出",
+		"view": "视图"
 	},
 	"fixedActions": {
 		"undo": "撤销",
