@@ -49,6 +49,7 @@ import type { CaptureBackendId, CaptureBackendPreference } from "@/lib/native/ty
 import { cn } from "@/lib/utils";
 import { type AspectRatio, isPortraitAspectRatio } from "@/utils/aspectRatioUtils";
 import { getTestId } from "@/utils/getTestId";
+import { AnimatedBackgroundPicker } from "./AnimatedBackgroundPicker";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import { CaptionStyleEditor } from "./CaptionStyleEditor";
 import { CropControl } from "./CropControl";
@@ -992,7 +993,7 @@ export function SettingsPanel({
 						</AccordionTrigger>
 						<AccordionContent className="pb-3">
 							<Tabs defaultValue="image" className="w-full">
-								<TabsList className="mb-2 bg-white/5 border border-white/5 p-0.5 w-full grid grid-cols-3 h-7 rounded-lg">
+								<TabsList className="mb-2 bg-white/5 border border-white/5 p-0.5 w-full grid grid-cols-4 h-7 rounded-lg">
 									<TabsTrigger
 										value="image"
 										className="data-[state=active]:bg-[#2563eb] data-[state=active]:text-white text-slate-400 text-[10px] py-1 rounded-md transition-all"
@@ -1010,6 +1011,12 @@ export function SettingsPanel({
 										className="data-[state=active]:bg-[#2563eb] data-[state=active]:text-white text-slate-400 text-[10px] py-1 rounded-md transition-all"
 									>
 										{t("background.gradient")}
+									</TabsTrigger>
+									<TabsTrigger
+										value="animated"
+										className="data-[state=active]:bg-[#2563eb] data-[state=active]:text-white text-slate-400 text-[10px] py-1 rounded-md transition-all"
+									>
+										Animated
 									</TabsTrigger>
 								</TabsList>
 
@@ -1138,6 +1145,13 @@ export function SettingsPanel({
 												/>
 											))}
 										</div>
+									</TabsContent>
+
+									<TabsContent value="animated" className="mt-0">
+										<AnimatedBackgroundPicker
+											selected={selected}
+											onSelect={(id) => onWallpaperChange(id)}
+										/>
 									</TabsContent>
 								</div>
 							</Tabs>

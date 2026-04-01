@@ -33,6 +33,7 @@ import {
 	type MotionBlurState,
 } from "@/components/video-editor/videoPlayback/zoomTransform";
 import type { CaptionStyle, CaptionTrack } from "@/lib/ai/types";
+import { getAnimatedBackground, isAnimatedBackground } from "@/lib/backgrounds";
 import {
 	computeCompositeLayout,
 	getWebcamLayoutPresetDefinition,
@@ -112,6 +113,9 @@ export class FrameRenderer {
 	private videoContainer: Container | null = null;
 	private videoSprite: Sprite | null = null;
 	private backgroundSprite: HTMLCanvasElement | null = null;
+	private animatedBgId: string | null = null;
+	private animatedBgCanvas: HTMLCanvasElement | null = null;
+	private animatedBgCtx: CanvasRenderingContext2D | null = null;
 	private maskGraphics: Graphics | null = null;
 	private blurFilter: BlurFilter | null = null;
 	private motionBlurFilter: MotionBlurFilter | null = null;
@@ -246,6 +250,17 @@ export class FrameRenderer {
 
 	private async setupBackground(): Promise<void> {
 		const wallpaper = this.config.wallpaper;
+
+		// Check for animated background — rendered per-frame, not here
+		if (isAnimatedBackground(wallpaper)) {
+			this.animatedBgId = wallpaper;
+			this.animatedBgCanvas = document.createElement("canvas");
+			this.animatedBgCanvas.width = this.config.width;
+			this.animatedBgCanvas.height = this.config.height;
+			this.animatedBgCtx = this.animatedBgCanvas.getContext("2d")!;
+			// backgroundSprite left null — compositeWithShadows uses animatedBgCanvas
+			return;
+		}
 
 		// Create background canvas for separate rendering (not affected by zoom)
 		const bgCanvas = document.createElement("canvas");
@@ -774,7 +789,21 @@ export class FrameRenderer {
 		ctx.clearRect(0, 0, w, h);
 
 		// Step 1: Draw background layer (with optional blur, not affected by zoom)
-		if (this.backgroundSprite) {
+		if (this.animatedBgId && this.animatedBgCanvas && this.animatedBgCtx) {
+			// Animated background: render at current frame time
+			const bg = getAnimatedBackground(this.animatedBgId);
+			if (bg) {
+				bg.render(this.animatedBgCtx, w, h, this.currentVideoTime * 1000);
+			}
+			if (this.config.showBlur) {
+				ctx.save();
+				ctx.filter = "blur(6px)";
+				ctx.drawImage(this.animatedBgCanvas, 0, 0, w, h);
+				ctx.restore();
+			} else {
+				ctx.drawImage(this.animatedBgCanvas, 0, 0, w, h);
+			}
+		} else if (this.backgroundSprite) {
 			const bgCanvas = this.backgroundSprite;
 
 			if (this.config.showBlur) {
@@ -864,6 +893,9 @@ export class FrameRenderer {
 			this.videoSprite = null;
 		}
 		this.backgroundSprite = null;
+		this.animatedBgId = null;
+		this.animatedBgCanvas = null;
+		this.animatedBgCtx = null;
 		if (this.app) {
 			this.app.destroy(true, {
 				children: true,
