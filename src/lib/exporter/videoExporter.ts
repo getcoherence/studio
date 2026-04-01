@@ -6,6 +6,7 @@ import type {
 	WebcamLayoutPreset,
 	ZoomRegion,
 } from "@/components/video-editor/types";
+import type { CaptionStyle, CaptionTrack } from "@/lib/ai/types";
 import { AsyncVideoFrameQueue } from "./asyncVideoFrameQueue";
 import { AudioProcessor } from "./audioEncoder";
 import { FrameRenderer } from "./frameRenderer";
@@ -36,6 +37,8 @@ interface VideoExporterConfig extends ExportConfig {
 	annotationRegions?: AnnotationRegion[];
 	previewWidth?: number;
 	previewHeight?: number;
+	captionTrack?: CaptionTrack | null;
+	captionStyle?: CaptionStyle;
 	onProgress?: (progress: ExportProgress) => void;
 }
 
@@ -139,6 +142,8 @@ export class VideoExporter {
 				speedRegions: this.config.speedRegions,
 				previewWidth: this.config.previewWidth,
 				previewHeight: this.config.previewHeight,
+				captionTrack: this.config.captionTrack,
+				captionStyle: this.config.captionStyle,
 			});
 			this.renderer = renderer;
 			await renderer.initialize();

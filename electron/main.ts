@@ -14,6 +14,7 @@ import {
 } from "electron";
 import { mainT, setMainLocale } from "./i18n";
 import { registerIpcHandlers } from "./ipc/handlers";
+import { registerWhisperHandlers } from "./ipc/whisperHandlers";
 import { createEditorWindow, createHudOverlayWindow, createSourceSelectorWindow } from "./windows";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -385,5 +386,9 @@ app.whenReady().then(async () => {
 			}
 		},
 	);
+
+	// Register Whisper / caption IPC handlers
+	registerWhisperHandlers(() => mainWindow);
+
 	createWindow();
 });

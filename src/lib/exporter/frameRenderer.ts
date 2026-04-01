@@ -31,6 +31,7 @@ import {
 	createMotionBlurState,
 	type MotionBlurState,
 } from "@/components/video-editor/videoPlayback/zoomTransform";
+import type { CaptionStyle, CaptionTrack } from "@/lib/ai/types";
 import {
 	computeCompositeLayout,
 	getWebcamLayoutPresetDefinition,
@@ -38,6 +39,7 @@ import {
 	type StyledRenderRect,
 } from "@/lib/compositeLayout";
 import { renderAnnotations } from "./annotationRenderer";
+import { renderCaptions } from "./captionRenderer";
 import {
 	getLinearGradientPoints,
 	getRadialGradientShape,
@@ -66,6 +68,8 @@ interface FrameRenderConfig {
 	speedRegions?: SpeedRegion[];
 	previewWidth?: number;
 	previewHeight?: number;
+	captionTrack?: CaptionTrack | null;
+	captionStyle?: CaptionStyle;
 }
 
 interface AnimationState {
@@ -406,6 +410,18 @@ export class FrameRenderer {
 				this.config.height,
 				timeMs,
 				scaleFactor,
+			);
+		}
+
+		// Render captions on top of everything
+		if (this.config.captionTrack && this.config.captionStyle && this.compositeCtx) {
+			renderCaptions(
+				this.compositeCtx,
+				this.config.captionTrack,
+				this.config.captionStyle,
+				timeMs,
+				this.config.width,
+				this.config.height,
 			);
 		}
 	}

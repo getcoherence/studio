@@ -1,3 +1,4 @@
+export { renderCaptions } from "./captionRenderer";
 export { FrameRenderer } from "./frameRenderer";
 export { calculateOutputDimensions, GifExporter } from "./gifExporter";
 export { VideoMuxer } from "./muxer";
