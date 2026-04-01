@@ -15,14 +15,13 @@ import {
 import { mainT, setMainLocale } from "./i18n";
 import { registerAIHandlers } from "./ipc/aiHandlers";
 import { registerCaptureHandlers } from "./ipc/captureHandlers";
-import { registerCountdownHandlers } from "./ipc/countdownHandlers";
 import { registerFfmpegHandlers } from "./ipc/ffmpegHandlers";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { registerProjectHandlers } from "./ipc/projectHandlers";
 import { registerSettingsHandlers } from "./ipc/settingsHandlers";
 import { registerUpdaterHandlers } from "./ipc/updaterHandlers";
 import { registerWhisperHandlers } from "./ipc/whisperHandlers";
-import { createEditorWindow, createHudOverlayWindow, createSourceSelectorWindow } from "./windows";
+import { createEditorWindow, createSourceSelectorWindow } from "./windows";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -76,7 +75,7 @@ const defaultTrayIcon = getTrayIcon("lucid.png");
 const recordingTrayIcon = getTrayIcon("rec-button.png");
 
 function createWindow() {
-	mainWindow = createHudOverlayWindow();
+	createEditorWindowWrapper();
 }
 
 function showMainWindow() {
@@ -89,7 +88,7 @@ function showMainWindow() {
 		return;
 	}
 
-	createWindow();
+	createEditorWindowWrapper();
 }
 
 function isEditorWindow(window: BrowserWindow) {
@@ -383,10 +382,6 @@ app.whenReady().then(async () => {
 		}
 	}
 
-	// Listen for HUD overlay quit event (macOS only)
-	ipcMain.on("hud-overlay-close", () => {
-		app.quit();
-	});
 	ipcMain.handle("set-locale", (_, locale: string) => {
 		setMainLocale(locale);
 		setupApplicationMenu();
@@ -419,7 +414,6 @@ app.whenReady().then(async () => {
 	);
 	registerSettingsHandlers();
 	registerFfmpegHandlers();
-	registerCountdownHandlers();
 	registerUpdaterHandlers();
 	registerProjectHandlers();
 

@@ -4,15 +4,20 @@ import { useCallback, useEffect, useState } from "react";
 const COUNTDOWN_STEPS = [3, 2, 1, 0] as const;
 const STEP_DURATION_MS = 900;
 
-export function CountdownWindow() {
+interface CountdownOverlayProps {
+	onComplete: () => void;
+	onCancel: () => void;
+}
+
+export function CountdownOverlay({ onComplete, onCancel }: CountdownOverlayProps) {
 	const [step, setStep] = useState(0);
 	const [cancelled, setCancelled] = useState(false);
 	const currentValue = COUNTDOWN_STEPS[step];
 
 	const cancel = useCallback(() => {
 		setCancelled(true);
-		window.electronAPI.cancelCountdown?.();
-	}, []);
+		onCancel();
+	}, [onCancel]);
 
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
@@ -31,9 +36,8 @@ export function CountdownWindow() {
 		if (step >= COUNTDOWN_STEPS.length) return;
 
 		if (currentValue === 0) {
-			// "Go" step -- send completion after a brief display
 			const timer = setTimeout(() => {
-				window.electronAPI.countdownComplete?.();
+				onComplete();
 			}, 400);
 			return () => clearTimeout(timer);
 		}
@@ -43,12 +47,12 @@ export function CountdownWindow() {
 		}, STEP_DURATION_MS);
 
 		return () => clearTimeout(timer);
-	}, [step, currentValue, cancelled]);
+	}, [step, currentValue, cancelled, onComplete]);
 
 	if (cancelled) return null;
 
 	return (
-		<div className="w-full h-full flex items-center justify-center bg-transparent">
+		<div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
 			<div className="w-[280px] h-[280px] rounded-3xl bg-black/70 backdrop-blur-xl flex items-center justify-center relative overflow-hidden">
 				<AnimatePresence mode="wait">
 					<motion.div
