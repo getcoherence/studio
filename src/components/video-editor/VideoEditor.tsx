@@ -1,5 +1,5 @@
 import type { Span } from "dnd-timeline";
-import { FolderOpen, Languages, Save, Sparkles, Video, Wand2 } from "lucide-react";
+import { FolderOpen, Languages, MessageSquare, Save, Sparkles, Video, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
@@ -39,6 +39,7 @@ import {
 	getNativeAspectRatioValue,
 	isPortraitAspectRatio,
 } from "@/utils/aspectRatioUtils";
+import { AIChatSidebar } from "./AIChatSidebar";
 import { AIPanelSidebar } from "./AIPanelSidebar";
 import { CursorOverlay } from "./CursorOverlay";
 import { ExportDialog } from "./ExportDialog";
@@ -143,6 +144,7 @@ export default function VideoEditor() {
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const [isTranscribing, setIsTranscribing] = useState(false);
 	const [showAIPanel, setShowAIPanel] = useState(false);
+	const [aiPanelMode, setAIPanelMode] = useState<"chat" | "tools">("chat");
 	const [polishPreview, setPolishPreview] = useState<PolishPreview | null>(null);
 	const [polishEdits, setPolishEdits] = useState<Partial<EditorState> | null>(null);
 	const [showPolishDialog, setShowPolishDialog] = useState(false);
@@ -1701,10 +1703,6 @@ export default function VideoEditor() {
 		[pushState],
 	);
 
-	const toggleAIPanel = useCallback(() => {
-		setShowAIPanel((prev) => !prev);
-	}, []);
-
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center h-screen bg-background">
@@ -1817,16 +1815,29 @@ export default function VideoEditor() {
 					</button>
 					<button
 						type="button"
-						onClick={toggleAIPanel}
+						onClick={() => {
+							if (!showAIPanel) {
+								setShowAIPanel(true);
+								setAIPanelMode("chat");
+							} else if (aiPanelMode === "chat") {
+								setAIPanelMode("tools");
+							} else {
+								setShowAIPanel(false);
+							}
+						}}
 						className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-150 text-[11px] font-medium ${
 							showAIPanel
 								? "text-[#2563eb] bg-[#2563eb]/10"
 								: "text-white/50 hover:text-white/90 hover:bg-white/10"
 						}`}
-						title="Toggle AI features panel"
+						title="Toggle AI panel (Chat / Tools)"
 					>
-						<Sparkles size={14} />
-						AI
+						{showAIPanel && aiPanelMode === "chat" ? (
+							<MessageSquare size={14} />
+						) : (
+							<Sparkles size={14} />
+						)}
+						AI{showAIPanel ? (aiPanelMode === "chat" ? " Chat" : " Tools") : ""}
 					</button>
 				</div>
 			</div>
@@ -2149,21 +2160,70 @@ export default function VideoEditor() {
 
 				{/* AI Panel sidebar */}
 				{showAIPanel && (
-					<div className="w-[280px] min-w-[240px] max-w-[320px] h-full flex-shrink-0">
-						<AIPanelSidebar
-							cursorTelemetry={cursorTelemetry}
-							videoDurationMs={duration * 1000}
-							editorState={editorState}
-							onApplyEdits={handleAIApplyEdits}
-							onAcceptTrimSuggestions={handleAcceptTrimSuggestions}
-							onSeek={(timeMs) => {
-								const timeSec = timeMs / 1000;
-								setCurrentTime(timeSec);
-								if (videoPlaybackRef.current?.video) {
-									videoPlaybackRef.current.video.currentTime = timeSec;
-								}
-							}}
-						/>
+					<div className="w-[300px] min-w-[260px] max-w-[340px] h-full flex-shrink-0 flex flex-col">
+						{/* Tab switcher */}
+						<div className="flex bg-[#09090b] rounded-t-2xl border border-b-0 border-white/5 overflow-hidden">
+							<button
+								type="button"
+								onClick={() => setAIPanelMode("chat")}
+								className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[10px] font-medium transition-colors ${
+									aiPanelMode === "chat"
+										? "text-[#2563eb] bg-[#2563eb]/10 border-b-2 border-[#2563eb]"
+										: "text-white/40 hover:text-white/70 border-b-2 border-transparent"
+								}`}
+							>
+								<MessageSquare size={12} />
+								Chat
+							</button>
+							<button
+								type="button"
+								onClick={() => setAIPanelMode("tools")}
+								className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[10px] font-medium transition-colors ${
+									aiPanelMode === "tools"
+										? "text-[#2563eb] bg-[#2563eb]/10 border-b-2 border-[#2563eb]"
+										: "text-white/40 hover:text-white/70 border-b-2 border-transparent"
+								}`}
+							>
+								<Sparkles size={12} />
+								Tools
+							</button>
+						</div>
+
+						{/* Panel content */}
+						<div className="flex-1 min-h-0">
+							{aiPanelMode === "chat" ? (
+								<AIChatSidebar
+									cursorTelemetry={cursorTelemetry}
+									videoDurationMs={duration * 1000}
+									editorState={editorState}
+									onApplyEdits={handleAIApplyEdits}
+									onSeek={(timeMs) => {
+										const timeSec = timeMs / 1000;
+										setCurrentTime(timeSec);
+										if (videoPlaybackRef.current?.video) {
+											videoPlaybackRef.current.video.currentTime = timeSec;
+										}
+									}}
+									captionTrack={captionTrack}
+									videoPath={videoSourcePath || videoPath}
+								/>
+							) : (
+								<AIPanelSidebar
+									cursorTelemetry={cursorTelemetry}
+									videoDurationMs={duration * 1000}
+									editorState={editorState}
+									onApplyEdits={handleAIApplyEdits}
+									onAcceptTrimSuggestions={handleAcceptTrimSuggestions}
+									onSeek={(timeMs) => {
+										const timeSec = timeMs / 1000;
+										setCurrentTime(timeSec);
+										if (videoPlaybackRef.current?.video) {
+											videoPlaybackRef.current.video.currentTime = timeSec;
+										}
+									}}
+								/>
+							)}
+						</div>
 					</div>
 				)}
 			</div>
