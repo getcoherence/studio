@@ -586,6 +586,9 @@ export default function VideoEditor() {
 		const removeNewRecording = window.electronAPI.onMenuNewRecording?.(() => {
 			setShowRecordingSetup(true);
 		});
+		const removeCreateVideo = window.electronAPI.onMenuCreateVideo?.(() => {
+			setShowSceneEditor(true);
+		});
 		const removeLoadListener = window.electronAPI.onMenuLoadProject(handleLoadProject);
 		const removeOpenVideo = window.electronAPI.onMenuOpenVideo?.(async () => {
 			const result = await window.electronAPI.openVideoFilePicker();
@@ -601,6 +604,7 @@ export default function VideoEditor() {
 
 		return () => {
 			removeNewRecording?.();
+			removeCreateVideo?.();
 			removeLoadListener?.();
 			removeOpenVideo?.();
 			removeSaveListener?.();

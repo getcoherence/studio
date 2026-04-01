@@ -93,6 +93,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		ipcRenderer.on("menu-new-recording", listener);
 		return () => ipcRenderer.removeListener("menu-new-recording", listener);
 	},
+	onMenuCreateVideo: (callback: () => void) => {
+		const listener = () => callback();
+		ipcRenderer.on("menu-create-video", listener);
+		return () => ipcRenderer.removeListener("menu-create-video", listener);
+	},
 	loadProjectByPath: (filePath: string) => {
 		return ipcRenderer.invoke("load-project-by-path", filePath);
 	},

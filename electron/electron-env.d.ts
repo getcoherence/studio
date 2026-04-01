@@ -132,6 +132,7 @@ interface Window {
 			error?: string;
 		}>;
 		onMenuNewRecording: (callback: () => void) => () => void;
+		onMenuCreateVideo: (callback: () => void) => () => void;
 		onMenuOpenVideo: (callback: () => void) => () => void;
 		onMenuLoadProject: (callback: () => void) => () => void;
 		onMenuSaveProject: (callback: () => void) => () => void;
