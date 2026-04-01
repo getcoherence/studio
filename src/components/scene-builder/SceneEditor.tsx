@@ -370,11 +370,28 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 			</div>
 
 			{/* ── Main Content Area ────────────────────────────────────── */}
-			<div className="flex-1 flex overflow-hidden">
+			<div className="flex-1 flex overflow-hidden min-h-0">
 				{/* Center: Canvas + playback controls */}
-				<div className="flex-1 flex flex-col min-w-0">
+				<div className="flex-1 flex flex-col min-w-0 min-h-0">
+					{/* Responsive size toolbar */}
+					<div className="flex-shrink-0 flex items-center justify-center gap-1 px-4 py-1.5 border-b border-white/5">
+						{[
+							{ label: "16:9", ratio: "16/9" },
+							{ label: "9:16", ratio: "9/16" },
+							{ label: "1:1", ratio: "1/1" },
+							{ label: "4:3", ratio: "4/3" },
+						].map((preset) => (
+							<button
+								key={preset.label}
+								className="px-2.5 py-1 rounded text-[10px] font-medium text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
+								title={preset.ratio}
+							>
+								{preset.label}
+							</button>
+						))}
+					</div>
 					{/* Canvas */}
-					<div className="flex-1 p-4 flex flex-col">
+					<div className="flex-1 p-4 flex flex-col min-h-0 overflow-hidden">
 						<SceneCanvas
 							scene={currentScene}
 							currentTimeMs={currentTimeMs}
