@@ -6,6 +6,7 @@ import {
 	Film,
 	Image,
 	Lock,
+	Monitor,
 	Palette,
 	Sparkles,
 	Star,
@@ -38,6 +39,7 @@ import { getAssetPath } from "@/lib/assetPath";
 import { WEBCAM_LAYOUT_PRESETS } from "@/lib/compositeLayout";
 import type { ExportFormat, ExportQuality, GifFrameRate, GifSizePreset } from "@/lib/exporter";
 import { GIF_FRAME_RATES, GIF_SIZE_PRESETS } from "@/lib/exporter";
+import type { CaptureBackendId, CaptureBackendPreference } from "@/lib/native/types";
 import { cn } from "@/lib/utils";
 import { type AspectRatio, isPortraitAspectRatio } from "@/utils/aspectRatioUtils";
 import { getTestId } from "@/utils/getTestId";
@@ -54,6 +56,88 @@ import type {
 	ZoomDepth,
 } from "./types";
 import { SPEED_OPTIONS } from "./types";
+
+const CAPTURE_BACKEND_OPTIONS: Array<{ value: CaptureBackendPreference; label: string }> = [
+	{ value: "auto", label: "Auto (recommended)" },
+	{ value: "native", label: "Native" },
+	{ value: "browser", label: "Browser (legacy)" },
+];
+
+const BACKEND_DISPLAY_NAMES: Record<CaptureBackendId, string> = {
+	screencapturekit: "ScreenCaptureKit",
+	wgc: "Windows Graphics Capture",
+	ffmpeg: "FFmpeg",
+	browser: "Browser (MediaRecorder)",
+};
+
+/** Self-contained section that manages the capture backend preference. */
+function CaptureBackendSection() {
+	const [preference, setPreference] = useState<CaptureBackendPreference>("auto");
+	const [activeBackend, setActiveBackend] = useState<CaptureBackendId>("browser");
+	const [loaded, setLoaded] = useState(false);
+
+	useEffect(() => {
+		let mounted = true;
+		(async () => {
+			try {
+				const [pref, backendInfo] = await Promise.all([
+					window.electronAPI?.getSetting?.("captureBackend"),
+					window.electronAPI?.nativeGetBackend?.(),
+				]);
+				if (!mounted) return;
+				if (pref === "native" || pref === "browser" || pref === "auto") {
+					setPreference(pref as CaptureBackendPreference);
+				}
+				if (backendInfo?.success) {
+					setActiveBackend(backendInfo.backend);
+				}
+			} catch {
+				// Silently fall back to defaults
+			} finally {
+				if (mounted) setLoaded(true);
+			}
+		})();
+		return () => {
+			mounted = false;
+		};
+	}, []);
+
+	const handleChange = async (value: string) => {
+		const pref = value as CaptureBackendPreference;
+		setPreference(pref);
+		try {
+			await window.electronAPI?.setSetting?.("captureBackend", pref);
+		} catch {
+			// Setting write failed — preference still updated locally
+		}
+	};
+
+	if (!loaded) return null;
+
+	return (
+		<div className="mb-4">
+			<div className="flex items-center gap-2 mb-2">
+				<Monitor className="w-4 h-4 text-slate-400" />
+				<span className="text-sm font-medium text-slate-200">Capture Backend</span>
+			</div>
+			<Select value={preference} onValueChange={handleChange}>
+				<SelectTrigger className="w-full bg-white/5 border-white/10 text-slate-200 h-8 text-xs">
+					<SelectValue />
+				</SelectTrigger>
+				<SelectContent>
+					{CAPTURE_BACKEND_OPTIONS.map((opt) => (
+						<SelectItem key={opt.value} value={opt.value}>
+							{opt.label}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+			<p className="text-[10px] text-slate-500 mt-1.5">
+				Active: {BACKEND_DISPLAY_NAMES[activeBackend]}
+			</p>
+		</div>
+	);
+}
 
 const WALLPAPER_COUNT = 18;
 const WALLPAPER_RELATIVE = Array.from(
@@ -462,6 +546,9 @@ export function SettingsPanel({
 	return (
 		<div className="flex-[2] min-w-0 bg-[#09090b] border border-white/5 rounded-2xl flex flex-col shadow-xl h-full overflow-hidden">
 			<div className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-0">
+				{/* Capture Backend */}
+				<CaptureBackendSection />
+
 				<div className="mb-4">
 					<div className="flex items-center justify-between mb-3">
 						<span className="text-sm font-medium text-slate-200">{t("zoom.level")}</span>

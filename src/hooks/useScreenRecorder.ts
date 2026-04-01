@@ -2,6 +2,7 @@ import { fixWebmDuration } from "@fix-webm-duration/fix";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useScopedT } from "@/contexts/I18nContext";
+import type { CaptureBackendPreference } from "@/lib/native/types";
 import { requestCameraAccess } from "@/lib/requestCameraAccess";
 
 const TARGET_FRAME_RATE = 60;
@@ -39,6 +40,9 @@ const WEBCAM_TARGET_WIDTH = 1280;
 const WEBCAM_TARGET_HEIGHT = 720;
 const WEBCAM_TARGET_FRAME_RATE = 30;
 
+/** The active capture mode for the current session. */
+type CaptureMode = "browser" | "native";
+
 type UseScreenRecorderReturn = {
 	recording: boolean;
 	toggleRecording: () => void;
@@ -51,6 +55,8 @@ type UseScreenRecorderReturn = {
 	setSystemAudioEnabled: (enabled: boolean) => void;
 	webcamEnabled: boolean;
 	setWebcamEnabled: (enabled: boolean) => Promise<boolean>;
+	/** Which capture mode is currently in use. */
+	captureMode: CaptureMode;
 };
 
 type RecorderHandle = {
@@ -80,9 +86,34 @@ function createRecorderHandle(stream: MediaStream, options: MediaRecorderOptions
 	return { recorder, recordedBlobPromise };
 }
 
+/**
+ * Resolve which capture mode to use based on user preference and backend
+ * availability. Returns "native" only if the user opted in (via "native"
+ * or "auto" preference) AND a native backend is actually available.
+ */
+async function resolveCaptureMode(): Promise<CaptureMode> {
+	try {
+		const pref: CaptureBackendPreference =
+			((await window.electronAPI?.getSetting?.("captureBackend")) as CaptureBackendPreference) ??
+			"auto";
+
+		if (pref === "browser") return "browser";
+
+		// Check if a native backend is available
+		const backendInfo = await window.electronAPI?.nativeGetBackend?.();
+		if (backendInfo?.success && backendInfo.hasNative) {
+			return "native";
+		}
+	} catch {
+		// If anything goes wrong, fall back to browser
+	}
+	return "browser";
+}
+
 export function useScreenRecorder(): UseScreenRecorderReturn {
 	const t = useScopedT("editor");
 	const [recording, setRecording] = useState(false);
+	const [captureMode, setCaptureMode] = useState<CaptureMode>("browser");
 	const [microphoneEnabled, setMicrophoneEnabled] = useState(false);
 	const [microphoneDeviceId, setMicrophoneDeviceId] = useState<string | undefined>(undefined);
 	const [systemAudioEnabled, setSystemAudioEnabled] = useState(false);
@@ -100,6 +131,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const allowAutoFinalize = useRef(false);
 	const discardRecordingId = useRef<number | null>(null);
 	const restarting = useRef(false);
+	const nativeRecordingActive = useRef(false);
 
 	const selectMimeType = () => {
 		const preferred = [
@@ -548,12 +580,112 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		}
 	};
 
+	// ---- Native capture start / stop ----
+
+	const startNativeRecording = async () => {
+		try {
+			const selectedSource = await window.electronAPI.getSelectedSource();
+			if (!selectedSource) {
+				alert(t("recording.selectSource"));
+				return;
+			}
+
+			const result = await window.electronAPI.nativeStartCapture({
+				source: {
+					id: selectedSource.id,
+					name: selectedSource.name,
+					type: selectedSource.display_id ? "display" : "window",
+					displayId: selectedSource.display_id || undefined,
+				},
+				width: TARGET_WIDTH,
+				height: TARGET_HEIGHT,
+				frameRate: TARGET_FRAME_RATE,
+				systemAudio: systemAudioEnabled,
+			});
+
+			if (!result.success) {
+				console.warn("Native capture failed, falling back to browser:", result.error);
+				toast.error("Native capture unavailable, using browser recording");
+				setCaptureMode("browser");
+				await startRecording();
+				return;
+			}
+
+			nativeRecordingActive.current = true;
+			recordingId.current = Date.now();
+			startTime.current = recordingId.current;
+			setRecording(true);
+			window.electronAPI?.setRecordingState(true);
+		} catch (error) {
+			console.error("Failed to start native recording:", error);
+			const errorMsg = error instanceof Error ? error.message : "Failed to start recording";
+			toast.error(errorMsg);
+			// Fall back to browser mode
+			setCaptureMode("browser");
+		}
+	};
+
+	const stopNativeRecording = async () => {
+		if (!nativeRecordingActive.current) return;
+
+		try {
+			const result = await window.electronAPI.nativeStopCapture();
+			nativeRecordingActive.current = false;
+			setRecording(false);
+			window.electronAPI?.setRecordingState(false);
+
+			if (!result.success || !result.outputPath) {
+				console.error("Failed to stop native recording:", result.error);
+				return;
+			}
+
+			// The native backend writes an MP4 directly — set the path and open editor
+			await window.electronAPI.setCurrentRecordingSession({
+				screenVideoPath: result.outputPath,
+				createdAt: recordingId.current,
+			});
+			await window.electronAPI.switchToEditor();
+		} catch (error) {
+			console.error("Error stopping native recording:", error);
+			nativeRecordingActive.current = false;
+			setRecording(false);
+		}
+	};
+
 	const toggleRecording = () => {
-		recording ? stopRecording.current() : startRecording();
+		if (recording) {
+			if (captureMode === "native" && nativeRecordingActive.current) {
+				void stopNativeRecording();
+			} else {
+				stopRecording.current();
+			}
+		} else {
+			void (async () => {
+				const mode = await resolveCaptureMode();
+				setCaptureMode(mode);
+				if (mode === "native") {
+					await startNativeRecording();
+				} else {
+					await startRecording();
+				}
+			})();
+		}
 	};
 
 	const restartRecording = async () => {
 		if (restarting.current) return;
+
+		// For native mode, just stop and start again
+		if (captureMode === "native" && nativeRecordingActive.current) {
+			restarting.current = true;
+			try {
+				await stopNativeRecording();
+				await startNativeRecording();
+			} finally {
+				restarting.current = false;
+			}
+			return;
+		}
 
 		const activeScreenRecorder = screenRecorder.current;
 		if (!activeScreenRecorder || activeScreenRecorder.recorder.state !== "recording") return;
@@ -602,5 +734,6 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		setSystemAudioEnabled,
 		webcamEnabled,
 		setWebcamEnabled,
+		captureMode,
 	};
 }

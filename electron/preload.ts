@@ -136,4 +136,33 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		ipcRenderer.on("request-save-before-close", listener);
 		return () => ipcRenderer.removeListener("request-save-before-close", listener);
 	},
+
+	// Native Capture
+	nativeGetSources: () => {
+		return ipcRenderer.invoke("native-get-sources");
+	},
+	nativeStartCapture: (options: import("../src/lib/native/types").CaptureOptions) => {
+		return ipcRenderer.invoke("native-start-capture", options);
+	},
+	nativeStopCapture: () => {
+		return ipcRenderer.invoke("native-stop-capture");
+	},
+	nativePauseCapture: () => {
+		return ipcRenderer.invoke("native-pause-capture");
+	},
+	nativeResumeCapture: () => {
+		return ipcRenderer.invoke("native-resume-capture");
+	},
+	nativeGetCaptureStatus: () => {
+		return ipcRenderer.invoke("native-get-capture-status");
+	},
+	nativeGetBackend: () => {
+		return ipcRenderer.invoke("native-get-backend");
+	},
+	getSetting: (key: string) => {
+		return ipcRenderer.invoke("get-setting", key);
+	},
+	setSetting: (key: string, value: string) => {
+		return ipcRenderer.invoke("set-setting", key, value);
+	},
 });
