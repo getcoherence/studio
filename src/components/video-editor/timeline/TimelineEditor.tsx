@@ -1,9 +1,11 @@
 import type { Range, Span } from "dnd-timeline";
 import { useTimelineContext } from "dnd-timeline";
 import {
+	Captions,
 	Check,
 	ChevronDown,
 	Gauge,
+	Loader2,
 	MessageSquare,
 	Plus,
 	Scissors,
@@ -22,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useScopedT } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
+import type { CaptionTrack } from "@/lib/ai/types";
 import { matchesShortcut } from "@/lib/shortcuts";
 import { cn } from "@/lib/utils";
 import { ASPECT_RATIOS, type AspectRatio, getAspectRatioLabel } from "@/utils/aspectRatioUtils";
@@ -45,6 +48,7 @@ const ZOOM_ROW_ID = "row-zoom";
 const TRIM_ROW_ID = "row-trim";
 const ANNOTATION_ROW_ID = "row-annotation";
 const SPEED_ROW_ID = "row-speed";
+const CAPTION_ROW_ID = "row-caption";
 const FALLBACK_RANGE_MS = 1000;
 const TARGET_MARKER_COUNT = 12;
 const SUGGESTION_SPACING_MS = 1800;
@@ -81,6 +85,9 @@ interface TimelineEditorProps {
 	onSelectSpeed?: (id: string | null) => void;
 	aspectRatio: AspectRatio;
 	onAspectRatioChange: (aspectRatio: AspectRatio) => void;
+	captionTrack?: CaptionTrack | null;
+	onAutoCaption?: () => void;
+	isTranscribing?: boolean;
 }
 
 interface TimelineScaleConfig {
@@ -638,6 +645,7 @@ function Timeline({
 	const trimItems = items.filter((item) => item.rowId === TRIM_ROW_ID);
 	const annotationItems = items.filter((item) => item.rowId === ANNOTATION_ROW_ID);
 	const speedItems = items.filter((item) => item.rowId === SPEED_ROW_ID);
+	const captionItems = items.filter((item) => item.rowId === CAPTION_ROW_ID);
 
 	return (
 		<div
@@ -727,6 +735,24 @@ function Timeline({
 					</Item>
 				))}
 			</Row>
+
+			{captionItems.length > 0 && (
+				<Row id={CAPTION_ROW_ID} isEmpty={false}>
+					{captionItems.map((item) => (
+						<Item
+							id={item.id}
+							key={item.id}
+							rowId={item.rowId}
+							span={item.span}
+							isSelected={false}
+							onSelect={() => {}}
+							variant="annotation"
+						>
+							{item.label}
+						</Item>
+					))}
+				</Row>
+			)}
 		</div>
 	);
 }
@@ -763,6 +789,9 @@ export default function TimelineEditor({
 	onSelectSpeed,
 	aspectRatio,
 	onAspectRatioChange,
+	captionTrack,
+	onAutoCaption,
+	isTranscribing = false,
 }: TimelineEditorProps) {
 	const t = useScopedT("timeline");
 	const totalMs = useMemo(() => Math.max(0, Math.round(videoDuration * 1000)), [videoDuration]);
@@ -1313,8 +1342,23 @@ export default function TimelineEditor({
 			variant: "speed",
 		}));
 
-		return [...zooms, ...trims, ...annotations, ...speeds];
-	}, [zoomRegions, trimRegions, annotationRegions, speedRegions, t]);
+		// Build caption items from caption track lines
+		const captions: TimelineRenderItem[] = captionTrack
+			? captionTrack.lines.map((line) => {
+					const preview = line.words.map((w) => w.text).join(" ");
+					const label = preview.length > 20 ? `${preview.substring(0, 20)}...` : preview;
+					return {
+						id: line.id,
+						rowId: CAPTION_ROW_ID,
+						span: { start: line.startMs, end: line.endMs },
+						label,
+						variant: "annotation" as const,
+					};
+				})
+			: [];
+
+		return [...zooms, ...trims, ...annotations, ...speeds, ...captions];
+	}, [zoomRegions, trimRegions, annotationRegions, speedRegions, captionTrack, t]);
 
 	// Flat list of all non-annotation region spans for neighbour-clamping during drag/resize
 	const allRegionSpans = useMemo(() => {
@@ -1412,6 +1456,25 @@ export default function TimelineEditor({
 					>
 						<Gauge className="w-4 h-4" />
 					</Button>
+					{onAutoCaption && (
+						<>
+							<div className="w-[1px] h-4 bg-white/10" />
+							<Button
+								onClick={onAutoCaption}
+								variant="ghost"
+								size="icon"
+								className="h-7 w-7 text-slate-400 hover:text-[#34B27B] hover:bg-[#34B27B]/10 transition-all"
+								title="Auto-Caption"
+								disabled={isTranscribing}
+							>
+								{isTranscribing ? (
+									<Loader2 className="w-4 h-4 animate-spin" />
+								) : (
+									<Captions className="w-4 h-4" />
+								)}
+							</Button>
+						</>
+					)}
 				</div>
 				<div className="flex items-center gap-2">
 					<DropdownMenu>

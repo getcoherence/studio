@@ -36,6 +36,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useScopedT } from "@/contexts/I18nContext";
+import type { CaptionStyle, CaptionTrack } from "@/lib/ai/types";
 import { getAssetPath } from "@/lib/assetPath";
 import { WEBCAM_LAYOUT_PRESETS } from "@/lib/compositeLayout";
 import { CURSOR_STYLES } from "@/lib/cursor/cursorStyles";
@@ -46,6 +47,7 @@ import { cn } from "@/lib/utils";
 import { type AspectRatio, isPortraitAspectRatio } from "@/utils/aspectRatioUtils";
 import { getTestId } from "@/utils/getTestId";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
+import { CaptionStyleEditor } from "./CaptionStyleEditor";
 import { CropControl } from "./CropControl";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import type {
@@ -242,6 +244,11 @@ interface SettingsPanelProps {
 	onCursorSwayCommit?: () => void;
 	showClickRings?: boolean;
 	onShowClickRingsChange?: (show: boolean) => void;
+	captionTrack?: CaptionTrack | null;
+	captionStyle?: CaptionStyle;
+	onCaptionStyleChange?: (style: Partial<CaptionStyle>) => void;
+	onCaptionTrackChange?: (track: CaptionTrack | null) => void;
+	videoPath?: string | null;
 }
 
 export default SettingsPanel;
@@ -322,6 +329,11 @@ export function SettingsPanel({
 	onCursorSwayCommit,
 	showClickRings = true,
 	onShowClickRingsChange,
+	captionTrack,
+	captionStyle,
+	onCaptionStyleChange,
+	onCaptionTrackChange,
+	videoPath,
 }: SettingsPanelProps) {
 	const t = useScopedT("settings");
 	const [wallpaperPaths, setWallpaperPaths] = useState<string[]>([]);
@@ -1113,6 +1125,34 @@ export function SettingsPanel({
 							</Tabs>
 						</AccordionContent>
 					</AccordionItem>
+
+					{/* Captions section */}
+					{onCaptionStyleChange && onCaptionTrackChange && captionStyle && (
+						<AccordionItem
+							value="captions"
+							className="border-white/5 rounded-xl bg-white/[0.02] px-3"
+						>
+							<AccordionTrigger className="py-2.5 hover:no-underline">
+								<span className="text-sm font-medium text-slate-200 flex items-center gap-2">
+									Captions
+									{captionTrack && (
+										<span className="text-[10px] uppercase tracking-wider font-medium text-[#34B27B] bg-[#34B27B]/10 px-2 py-0.5 rounded-full">
+											Active
+										</span>
+									)}
+								</span>
+							</AccordionTrigger>
+							<AccordionContent className="pb-3">
+								<CaptionStyleEditor
+									captionTrack={captionTrack ?? null}
+									captionStyle={captionStyle}
+									onStyleChange={onCaptionStyleChange}
+									onCaptionTrackChange={onCaptionTrackChange}
+									videoPath={videoPath ?? null}
+								/>
+							</AccordionContent>
+						</AccordionItem>
+					)}
 				</Accordion>
 			</div>
 

@@ -20,6 +20,7 @@ import { registerIpcHandlers } from "./ipc/handlers";
 import { registerProjectHandlers } from "./ipc/projectHandlers";
 import { registerSettingsHandlers } from "./ipc/settingsHandlers";
 import { registerUpdaterHandlers } from "./ipc/updaterHandlers";
+import { registerWhisperHandlers } from "./ipc/whisperHandlers";
 import { createEditorWindow, createHudOverlayWindow, createSourceSelectorWindow } from "./windows";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -409,5 +410,9 @@ app.whenReady().then(async () => {
 	registerCountdownHandlers();
 	registerUpdaterHandlers();
 	registerProjectHandlers();
+
+	// Register Whisper / caption IPC handlers
+	registerWhisperHandlers(() => mainWindow);
+
 	createWindow();
 });

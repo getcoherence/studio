@@ -122,5 +122,24 @@ interface Window {
 		setHasUnsavedChanges: (hasChanges: boolean) => void;
 		onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => () => void;
 		setLocale: (locale: string) => Promise<void>;
+
+		// Whisper / Captions
+		whisperTranscribe: (
+			videoPath: string,
+			options?: { modelId?: string; language?: string; threads?: number },
+		) => Promise<{
+			success: boolean;
+			captionTrack?: import("./lib/ai/types").CaptionTrack;
+			error?: string;
+		}>;
+		whisperModelStatus: (modelId: string) => Promise<import("./lib/ai/types").WhisperModelStatus>;
+		whisperModelDownload: (
+			modelId: string,
+		) => Promise<{ success: boolean; path?: string; error?: string }>;
+		whisperModelDelete: (modelId: string) => Promise<{ success: boolean; error?: string }>;
+		whisperAvailable: () => Promise<boolean>;
+		onWhisperModelDownloadProgress: (
+			callback: (progress: import("./lib/ai/types").ModelDownloadProgress) => void,
+		) => () => void;
 	};
 }
