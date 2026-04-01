@@ -28,24 +28,22 @@ export function createVideoEventHandlers(params: VideoEventHandlersParams) {
 		speedRegionsRef,
 	} = params;
 
-	let isSkippingTrim = false;
+	// Track whether we're in the middle of a trim skip to prevent re-entrancy
+	let skipInProgress = false;
 
 	const emitTime = (timeValue: number) => {
 		currentTimeRef.current = timeValue * 1000;
 		onTimeUpdate(timeValue);
 	};
 
-	// Helper function to check if current time is within a trim region
 	const findActiveTrimRegion = (currentTimeMs: number): TrimRegion | null => {
-		const trimRegions = trimRegionsRef.current;
 		return (
-			trimRegions.find(
+			trimRegionsRef.current.find(
 				(region) => currentTimeMs >= region.startMs && currentTimeMs < region.endMs,
 			) || null
 		);
 	};
 
-	// Helper function to find the active speed region at the current time
 	const findActiveSpeedRegion = (currentTimeMs: number): SpeedRegion | null => {
 		return (
 			speedRegionsRef.current.find(
@@ -54,35 +52,60 @@ export function createVideoEventHandlers(params: VideoEventHandlersParams) {
 		);
 	};
 
+	// Skip past a trim region. Uses a one-shot seeked listener to avoid
+	// the animation-frame race condition that caused restart loops.
+	function skipTrimRegion(trimRegion: TrimRegion) {
+		if (skipInProgress) return;
+		const skipToTime = trimRegion.endMs / 1000;
+
+		if (skipToTime >= video.duration) {
+			video.pause();
+			emitTime(video.duration);
+			return;
+		}
+
+		skipInProgress = true;
+
+		// Listen for the seek to complete before resuming the animation loop
+		const onSkipComplete = () => {
+			video.removeEventListener("seeked", onSkipComplete);
+			skipInProgress = false;
+			emitTime(video.currentTime);
+
+			// Check if we landed in another trim region (back-to-back trims)
+			const nextTrim = findActiveTrimRegion(video.currentTime * 1000);
+			if (nextTrim && !video.paused) {
+				skipTrimRegion(nextTrim);
+			} else if (!video.paused && !video.ended) {
+				// Resume the animation frame loop
+				timeUpdateAnimationRef.current = requestAnimationFrame(updateTime);
+			}
+		};
+
+		video.addEventListener("seeked", onSkipComplete, { once: true });
+		video.currentTime = skipToTime;
+	}
+
 	function updateTime() {
-		if (!video) return;
+		if (!video || video.paused || video.ended) return;
 
 		const currentTimeMs = video.currentTime * 1000;
 		const activeTrimRegion = findActiveTrimRegion(currentTimeMs);
 
-		// If we're in a trim region during playback, skip to the end of it
-		if (activeTrimRegion && !video.paused && !video.ended && !isSkippingTrim) {
-			const skipToTime = activeTrimRegion.endMs / 1000;
-
-			// If the skip would take us past the video duration, pause instead
-			if (skipToTime >= video.duration) {
-				video.pause();
-				emitTime(video.duration);
-			} else {
-				isSkippingTrim = true;
-				video.currentTime = skipToTime;
-				emitTime(skipToTime);
-				// Reset after a frame to allow normal playback
-				requestAnimationFrame(() => {
-					isSkippingTrim = false;
-				});
+		if (activeTrimRegion && !skipInProgress) {
+			// Cancel the animation loop — skipTrimRegion will restart it after the seek
+			if (timeUpdateAnimationRef.current) {
+				cancelAnimationFrame(timeUpdateAnimationRef.current);
+				timeUpdateAnimationRef.current = null;
 			}
-		} else {
-			// Apply playback speed from active speed region
-			const activeSpeedRegion = findActiveSpeedRegion(currentTimeMs);
-			video.playbackRate = activeSpeedRegion ? activeSpeedRegion.speed : 1;
-			emitTime(video.currentTime);
+			skipTrimRegion(activeTrimRegion);
+			return;
 		}
+
+		// Apply playback speed from active speed region
+		const activeSpeedRegion = findActiveSpeedRegion(currentTimeMs);
+		video.playbackRate = activeSpeedRegion ? activeSpeedRegion.speed : 1;
+		emitTime(video.currentTime);
 
 		if (!video.paused && !video.ended) {
 			timeUpdateAnimationRef.current = requestAnimationFrame(updateTime);
@@ -121,24 +144,14 @@ export function createVideoEventHandlers(params: VideoEventHandlersParams) {
 	const handleSeeked = () => {
 		isSeekingRef.current = false;
 
+		// If a skip is in progress, let the skipTrimRegion handler deal with it
+		if (skipInProgress) return;
+
 		const currentTimeMs = video.currentTime * 1000;
 		const activeTrimRegion = findActiveTrimRegion(currentTimeMs);
 
-		// If we seeked into a trim region while playing, skip to the end
-		if (activeTrimRegion && isPlayingRef.current && !video.paused && !isSkippingTrim) {
-			const skipToTime = activeTrimRegion.endMs / 1000;
-
-			if (skipToTime >= video.duration) {
-				video.pause();
-				emitTime(video.duration);
-			} else {
-				isSkippingTrim = true;
-				video.currentTime = skipToTime;
-				emitTime(skipToTime);
-				requestAnimationFrame(() => {
-					isSkippingTrim = false;
-				});
-			}
+		if (activeTrimRegion && isPlayingRef.current && !video.paused) {
+			skipTrimRegion(activeTrimRegion);
 		} else {
 			if (!isPlayingRef.current && !video.paused) {
 				video.pause();
@@ -149,10 +162,6 @@ export function createVideoEventHandlers(params: VideoEventHandlersParams) {
 
 	const handleSeeking = () => {
 		isSeekingRef.current = true;
-
-		if (!isPlayingRef.current && !video.paused) {
-			video.pause();
-		}
 		emitTime(video.currentTime);
 	};
 
