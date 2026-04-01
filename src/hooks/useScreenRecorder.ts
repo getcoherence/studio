@@ -57,6 +57,10 @@ type UseScreenRecorderReturn = {
 	setWebcamEnabled: (enabled: boolean) => Promise<boolean>;
 	/** Which capture mode is currently in use. */
 	captureMode: CaptureMode;
+	/** Live screen capture stream (available during recording) */
+	screenStreamRef: React.RefObject<MediaStream | null>;
+	/** Live webcam stream (available during recording if webcam enabled) */
+	webcamStreamRef: React.RefObject<MediaStream | null>;
 };
 
 type RecorderHandle = {
@@ -739,5 +743,7 @@ export function useScreenRecorder(options?: {
 		webcamEnabled,
 		setWebcamEnabled,
 		captureMode,
+		screenStreamRef: screenStream,
+		webcamStreamRef: webcamStream,
 	};
 }

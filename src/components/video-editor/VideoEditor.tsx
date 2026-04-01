@@ -1,10 +1,11 @@
 import type { Span } from "dnd-timeline";
-import { FolderOpen, Languages, Save, Sparkles, Square, Video, Wand2 } from "lucide-react";
+import { FolderOpen, Languages, Save, Sparkles, Video, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
 import { ProjectBrowser } from "@/components/project-browser/ProjectBrowser";
 import { CountdownOverlay } from "@/components/recording/CountdownOverlay";
+import { LiveMonitor } from "@/components/recording/LiveMonitor";
 import {
 	type RecordingConfig,
 	RecordingSetupDialog,
@@ -173,6 +174,8 @@ export default function VideoEditor() {
 		setMicrophoneEnabled,
 		setSystemAudioEnabled,
 		setWebcamEnabled,
+		screenStreamRef,
+		webcamStreamRef,
 	} = useScreenRecorder({
 		onRecordingFinalized: () => {
 			setReloadTrigger((prev) => prev + 1);
@@ -605,11 +608,9 @@ export default function VideoEditor() {
 		setSystemAudioEnabled(pendingRecordingConfig.systemAudioEnabled);
 		await setWebcamEnabled(pendingRecordingConfig.webcamEnabled);
 
-		// Start recording
+		// Start recording — the LiveMonitor component will show the live preview.
+		// User can manually minimize to the recording bar when ready.
 		toggleRecording();
-
-		// Show the recording bar and minimize editor
-		await window.electronAPI?.showRecordingBar();
 
 		setPendingRecordingConfig(null);
 	}, [
@@ -1646,18 +1647,14 @@ export default function VideoEditor() {
 	}
 	if (recording) {
 		return (
-			<div className="flex flex-col items-center justify-center h-screen gap-6 bg-[#09090b]">
-				<div className="w-4 h-4 rounded-full bg-red-500 animate-pulse" />
-				<h1 className="text-xl font-semibold text-white">Recording in progress...</h1>
-				<p className="text-sm text-white/40">Your screen is being captured</p>
-				<button
-					onClick={() => toggleRecording()}
-					className="flex items-center gap-2 px-6 py-3 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 font-medium transition-colors border border-red-500/20"
-				>
-					<Square size={14} fill="currentColor" />
-					Stop Recording
-				</button>
-			</div>
+			<LiveMonitor
+				screenStream={screenStreamRef.current}
+				webcamStream={webcamStreamRef.current}
+				onStop={() => toggleRecording()}
+				onMinimize={async () => {
+					await window.electronAPI?.showRecordingBar();
+				}}
+			/>
 		);
 	}
 	if (error || !videoPath) {
