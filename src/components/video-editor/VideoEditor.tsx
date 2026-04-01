@@ -163,6 +163,12 @@ export default function VideoEditor() {
 	const nextTrimIdRef = useRef(1);
 	const nextSpeedIdRef = useRef(1);
 
+	// Refs used by keyboard shortcut handler to avoid stale closures
+	const handleOpenExportDialogRef = useRef<() => void>(() => {});
+	const captionTrackStashRef = useRef<CaptionTrack | null>(null);
+	const captionTrackRef = useRef<CaptionTrack | null>(null);
+	const [, setCaptionsHidden] = useState(false);
+
 	const { shortcuts, isMac } = useShortcuts();
 	const t = useScopedT("editor");
 	const ts = useScopedT("settings");
@@ -1143,21 +1149,65 @@ export default function VideoEditor() {
 			}
 
 			if (matchesShortcut(e, shortcuts.playPause, isMac)) {
-				// Allow space only in inputs/textareas
-				if (isInput) {
-					return;
-				}
+				if (isInput) return;
 				e.preventDefault();
 				const playback = videoPlaybackRef.current;
 				if (playback?.video) {
 					playback.video.paused ? playback.play().catch(console.error) : playback.pause();
 				}
+				return;
 			}
+
+			if (matchesShortcut(e, shortcuts.togglePlay, isMac)) {
+				if (isInput) return;
+				e.preventDefault();
+				const playback = videoPlaybackRef.current;
+				if (playback?.video) {
+					playback.video.paused ? playback.play().catch(console.error) : playback.pause();
+				}
+				return;
+			}
+
+			if (matchesShortcut(e, shortcuts.export, isMac)) {
+				e.preventDefault();
+				handleOpenExportDialogRef.current();
+				return;
+			}
+
+			if (matchesShortcut(e, shortcuts.toggleCaptions, isMac)) {
+				if (isInput) return;
+				e.preventDefault();
+				// Toggle captions: hide if visible, show stored track if hidden
+				setCaptionsHidden((prev) => {
+					const next = !prev;
+					if (next) {
+						// Hiding — stash current track and set null
+						captionTrackStashRef.current = captionTrackRef.current;
+						pushState({ captionTrack: null });
+					} else {
+						// Showing — restore stashed track
+						if (captionTrackStashRef.current) {
+							pushState({ captionTrack: captionTrackStashRef.current });
+						}
+					}
+					return next;
+				});
+				return;
+			}
+
+			if (matchesShortcut(e, shortcuts.toggleCursor, isMac)) {
+				if (isInput) return;
+				e.preventDefault();
+				pushState((prev) => ({ showCursor: !prev.showCursor }));
+				return;
+			}
+
+			// zoomIn / zoomOut — reserved for future timeline zoom control
 		};
 
 		window.addEventListener("keydown", handleKeyDown, { capture: true });
 		return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
-	}, [undo, redo, shortcuts, isMac]);
+	}, [undo, redo, shortcuts, isMac, pushState]);
 
 	useEffect(() => {
 		if (selectedZoomId && !zoomRegions.some((region) => region.id === selectedZoomId)) {
@@ -1587,6 +1637,10 @@ export default function VideoEditor() {
 		cropRegion,
 		handleExport,
 	]);
+
+	// Keep refs in sync for the keyboard shortcut handler
+	handleOpenExportDialogRef.current = handleOpenExportDialog;
+	captionTrackRef.current = captionTrack;
 
 	const handleCancelExport = useCallback(() => {
 		if (exporterRef.current) {
