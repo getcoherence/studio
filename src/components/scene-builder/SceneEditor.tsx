@@ -8,6 +8,7 @@ import {
 	Pause,
 	Play,
 	RotateCcw,
+	Sparkles,
 	Square,
 	Trash2,
 	Type,
@@ -18,7 +19,9 @@ import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { AnimatedBackgroundPicker } from "@/components/video-editor/AnimatedBackgroundPicker";
+import { generateSceneProject } from "@/lib/ai/sceneGenerator";
 import {
+	captureCanvas,
 	DEFAULT_IMAGE_LAYER,
 	DEFAULT_PROJECT,
 	DEFAULT_SCENE,
@@ -27,11 +30,20 @@ import {
 	type Scene,
 	type SceneLayer,
 	type SceneProject,
+	type SceneTransition,
 } from "@/lib/scene-renderer";
 import { exportSceneProject, type SceneExportProgress } from "@/lib/scene-renderer/sceneExporter";
+import { renderScene } from "@/lib/scene-renderer/sceneRenderer";
 import { LayerPanel } from "./LayerPanel";
 import { SceneCanvas } from "./SceneCanvas";
 import { SceneTimeline } from "./SceneTimeline";
+
+function getResolution(ratio: string): { width: number; height: number } {
+	const [w, h] = ratio.split("/").map(Number);
+	if (!w || !h) return { width: 1920, height: 1080 };
+	if (w >= h) return { width: 1920, height: Math.round(1920 * (h / w)) };
+	return { width: Math.round(1920 * (w / h)), height: 1920 };
+}
 
 function formatTime(ms: number): string {
 	const totalSeconds = Math.floor(ms / 1000);
@@ -53,7 +65,13 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 	const [isExporting, setIsExporting] = useState(false);
 	const [exportProgress, setExportProgress] = useState<SceneExportProgress | null>(null);
 	const [aspectRatio, setAspectRatio] = useState("16/9");
+	const [activeTransition, setActiveTransition] = useState<SceneTransition | null>(null);
+	const [transitionFromCanvas, setTransitionFromCanvas] = useState<HTMLCanvasElement | null>(null);
+	const [aiPrompt, setAiPrompt] = useState("");
+	const [isAiGenerating, setIsAiGenerating] = useState(false);
+	const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const canvasRefOut = useRef<HTMLCanvasElement | null>(null);
 
 	const currentScene = project.scenes[selectedSceneIndex];
 	const selectedLayer = currentScene?.layers.find((l) => l.id === selectedLayerId) ?? null;
@@ -124,6 +142,8 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 		setSelectedLayerId(null);
 		setCurrentTimeMs(0);
 		setIsPlaying(false);
+		setActiveTransition(null);
+		setTransitionFromCanvas(null);
 	}, []);
 
 	// ── Layer management ───────────────────────────────────────────────
@@ -211,14 +231,43 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 
 	const handleSceneComplete = useCallback(() => {
 		if (selectedSceneIndex < project.scenes.length - 1) {
-			setSelectedSceneIndex((prev) => prev + 1);
+			const nextIndex = selectedSceneIndex + 1;
+			const nextScene = project.scenes[nextIndex];
+			const trans = nextScene.transition;
+
+			// Capture the last frame of the outgoing scene for transition
+			if (trans.type !== "none" && trans.durationMs > 0 && canvasRefOut.current) {
+				const canvas = canvasRefOut.current;
+				const ctx = canvas.getContext("2d");
+				if (ctx) {
+					// Render the final frame of the current scene
+					const res = getResolution(aspectRatio);
+					renderScene(
+						ctx,
+						project.scenes[selectedSceneIndex],
+						project.scenes[selectedSceneIndex].durationMs,
+						res.width,
+						res.height,
+					);
+					const captured = captureCanvas(ctx, res.width, res.height);
+					setTransitionFromCanvas(captured);
+					setActiveTransition(trans);
+				}
+			} else {
+				setTransitionFromCanvas(null);
+				setActiveTransition(null);
+			}
+
+			setSelectedSceneIndex(nextIndex);
 			setCurrentTimeMs(0);
 			// isPlaying stays true so next scene auto-plays
 		} else {
 			setIsPlaying(false);
+			setActiveTransition(null);
+			setTransitionFromCanvas(null);
 			setCurrentTimeMs(project.scenes[selectedSceneIndex].durationMs);
 		}
-	}, [selectedSceneIndex, project.scenes]);
+	}, [selectedSceneIndex, project.scenes, aspectRatio]);
 
 	const handleTimeUpdate = useCallback((timeMs: number) => {
 		setCurrentTimeMs(timeMs);
@@ -228,6 +277,8 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 		setSelectedSceneIndex(0);
 		setCurrentTimeMs(0);
 		setIsPlaying(false);
+		setActiveTransition(null);
+		setTransitionFromCanvas(null);
 	}, []);
 
 	// ── Export ──────────────────────────────────────────────────────────
@@ -286,6 +337,36 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 		},
 		[currentScene, updateCurrentScene],
 	);
+
+	// ── AI scene generation ───────────────────────────────────────────
+
+	const handleAiGenerate = useCallback(async () => {
+		if (!aiPrompt.trim() || isAiGenerating) return;
+
+		setIsAiGenerating(true);
+		try {
+			const generated = await generateSceneProject(aiPrompt.trim());
+			if (generated) {
+				setProject(generated);
+				setSelectedSceneIndex(0);
+				setSelectedLayerId(null);
+				setCurrentTimeMs(0);
+				setIsPlaying(false);
+				setActiveTransition(null);
+				setTransitionFromCanvas(null);
+				setAiPopoverOpen(false);
+				setAiPrompt("");
+				toast.success(`Generated "${generated.name}" with ${generated.scenes.length} scenes`);
+			} else {
+				toast.error("AI generation failed. Check your AI provider settings.");
+			}
+		} catch (err) {
+			console.error("AI scene generation failed:", err);
+			toast.error(`Generation failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+		} finally {
+			setIsAiGenerating(false);
+		}
+	}, [aiPrompt, isAiGenerating]);
 
 	// ── Keyboard shortcuts ─────────────────────────────────────────────
 
@@ -419,6 +500,64 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 					</PopoverContent>
 				</Popover>
 
+				<div className="w-px h-5 bg-white/10 mx-1" />
+
+				{/* AI Generate */}
+				<Popover open={aiPopoverOpen} onOpenChange={setAiPopoverOpen}>
+					<PopoverTrigger asChild>
+						<button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-purple-400/70 hover:text-purple-300 hover:bg-purple-400/10 transition-colors text-xs">
+							<Sparkles size={14} />
+							AI Generate
+						</button>
+					</PopoverTrigger>
+					<PopoverContent className="w-80 bg-[#141417] border-white/10" align="start">
+						<div className="space-y-3">
+							<div className="text-xs text-white/60 font-medium">
+								Generate Scene Project with AI
+							</div>
+							<p className="text-[10px] text-white/40">
+								Describe the video you want to create. AI will generate multiple scenes with
+								backgrounds, text, and animations.
+							</p>
+							<textarea
+								value={aiPrompt}
+								onChange={(e) => setAiPrompt(e.target.value)}
+								placeholder="e.g. A product launch video for a SaaS app called Acme. Show features, pricing, and a call to action."
+								className="w-full h-20 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-white/90 placeholder:text-white/25 resize-none focus:outline-none focus:border-[#2563eb]/50"
+								onKeyDown={(e) => {
+									if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+										e.preventDefault();
+										handleAiGenerate();
+									}
+									e.stopPropagation(); // prevent space from toggling playback
+								}}
+							/>
+							<div className="flex items-center justify-between">
+								<span className="text-[10px] text-white/30">
+									{navigator.platform.includes("Mac") ? "Cmd" : "Ctrl"}+Enter to generate
+								</span>
+								<button
+									onClick={handleAiGenerate}
+									disabled={!aiPrompt.trim() || isAiGenerating}
+									className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									{isAiGenerating ? (
+										<>
+											<Loader2 size={12} className="animate-spin" />
+											Generating...
+										</>
+									) : (
+										<>
+											<Sparkles size={12} />
+											Generate
+										</>
+									)}
+								</button>
+							</div>
+						</div>
+					</PopoverContent>
+				</Popover>
+
 				{/* Spacer */}
 				<div className="flex-1" />
 
@@ -489,6 +628,9 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 									isPlaying={isPlaying}
 									selectedLayerId={selectedLayerId}
 									aspectRatio={aspectRatio}
+									transition={activeTransition ?? undefined}
+									transitionFromCanvas={transitionFromCanvas}
+									canvasRefOut={canvasRefOut}
 									onSelectLayer={setSelectedLayerId}
 									onTimeUpdate={handleTimeUpdate}
 									onSceneComplete={handleSceneComplete}
@@ -567,6 +709,7 @@ export function SceneEditor({ onBack }: SceneEditorProps) {
 				onSelectScene={selectScene}
 				onAddScene={addScene}
 				onDeleteScene={deleteScene}
+				onUpdateTransition={(sceneIndex, transition) => updateScene(sceneIndex, { transition })}
 			/>
 		</div>
 	);

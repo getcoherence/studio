@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Scene } from "@/lib/scene-renderer";
+import type { Scene, SceneTransition } from "@/lib/scene-renderer";
 import { hitTestLayers, renderScene } from "@/lib/scene-renderer";
+import { renderTransition } from "@/lib/scene-renderer/transitionRenderer";
 
 interface SceneCanvasProps {
 	scene: Scene;
@@ -8,11 +9,17 @@ interface SceneCanvasProps {
 	isPlaying: boolean;
 	selectedLayerId: string | null;
 	aspectRatio?: string;
+	/** When provided, enables transition rendering between scenes during playback */
+	transition?: SceneTransition;
+	/** Captured last frame of the outgoing scene (set by SceneEditor before advancing) */
+	transitionFromCanvas?: HTMLCanvasElement | null;
 	onSelectLayer: (layerId: string | null) => void;
 	onTimeUpdate?: (timeMs: number) => void;
 	onSceneComplete?: () => void;
 	onLayerMove?: (layerId: string, x: number, y: number) => void;
 	onLayerResize?: (layerId: string, width: number, height: number) => void;
+	/** Expose canvas ref to parent for frame capture */
+	canvasRefOut?: React.MutableRefObject<HTMLCanvasElement | null>;
 }
 
 const BASE_SIZE = 1920;
@@ -32,11 +39,14 @@ export function SceneCanvas({
 	currentTimeMs,
 	isPlaying,
 	selectedLayerId,
+	transition,
+	transitionFromCanvas,
 	onSelectLayer,
 	onTimeUpdate,
 	onSceneComplete,
 	onLayerMove,
 	onLayerResize,
+	canvasRefOut,
 	aspectRatio = "16/9",
 }: SceneCanvasProps) {
 	const resolution = useMemo(() => getResolution(aspectRatio), [aspectRatio]);
@@ -48,6 +58,13 @@ export function SceneCanvas({
 	const rafRef = useRef<number>(0);
 	const startTimeRef = useRef<number>(0);
 	const startOffsetRef = useRef<number>(0);
+
+	// Sync canvas ref to parent
+	useEffect(() => {
+		if (canvasRefOut) {
+			canvasRefOut.current = canvasRef.current;
+		}
+	});
 
 	const [dragMode, setDragMode] = useState<DragMode>(null);
 	const dragStartRef = useRef<{
@@ -107,6 +124,37 @@ export function SceneCanvas({
 			const ctx = canvas.getContext("2d");
 			if (!ctx) return;
 
+			// Check if we're in a transition phase
+			const inTransition =
+				transition &&
+				transition.type !== "none" &&
+				transition.durationMs > 0 &&
+				transitionFromCanvas &&
+				timeMs < transition.durationMs;
+
+			if (inTransition) {
+				// During transition: blend the outgoing captured frame with incoming scene's current frame
+				const progress = timeMs / transition.durationMs;
+
+				// Render the incoming scene at time=0+elapsed into an offscreen canvas
+				const toCanvas = document.createElement("canvas");
+				toCanvas.width = INTERNAL_WIDTH;
+				toCanvas.height = INTERNAL_HEIGHT;
+				const toCtx = toCanvas.getContext("2d")!;
+				renderScene(toCtx, scene, timeMs, INTERNAL_WIDTH, INTERNAL_HEIGHT);
+
+				renderTransition(
+					ctx,
+					transitionFromCanvas,
+					toCanvas,
+					progress,
+					transition.type,
+					INTERNAL_WIDTH,
+					INTERNAL_HEIGHT,
+				);
+				return; // Skip selection overlay during transitions
+			}
+
 			// When paused, ensure all layers are past their entrance animations
 			// so content is always visible while editing
 			let renderTime = timeMs;
@@ -151,8 +199,21 @@ export function SceneCanvas({
 				}
 			}
 		},
-		[scene, selectedLayerId, isPlaying, INTERNAL_WIDTH, INTERNAL_HEIGHT],
+		[
+			scene,
+			selectedLayerId,
+			isPlaying,
+			transition,
+			transitionFromCanvas,
+			INTERNAL_WIDTH,
+			INTERNAL_HEIGHT,
+		],
 	);
+
+	// Total playback duration includes transition time at the start
+	const transitionDuration =
+		transition && transition.type !== "none" && transitionFromCanvas ? transition.durationMs : 0;
+	const totalPlayDuration = scene.durationMs + transitionDuration;
 
 	// Playback animation loop
 	useEffect(() => {
@@ -168,9 +229,9 @@ export function SceneCanvas({
 			const elapsed = performance.now() - startTimeRef.current;
 			const timeMs = startOffsetRef.current + elapsed;
 
-			if (timeMs >= scene.durationMs) {
-				drawFrame(scene.durationMs);
-				onTimeUpdate?.(scene.durationMs);
+			if (timeMs >= totalPlayDuration) {
+				drawFrame(totalPlayDuration);
+				onTimeUpdate?.(totalPlayDuration);
 				onSceneComplete?.();
 				return;
 			}
@@ -185,7 +246,15 @@ export function SceneCanvas({
 		return () => {
 			if (rafRef.current) cancelAnimationFrame(rafRef.current);
 		};
-	}, [isPlaying, currentTimeMs, scene, drawFrame, onTimeUpdate, onSceneComplete]);
+	}, [
+		isPlaying,
+		currentTimeMs,
+		scene,
+		totalPlayDuration,
+		drawFrame,
+		onTimeUpdate,
+		onSceneComplete,
+	]);
 
 	// Redraw when scene changes while paused
 	useEffect(() => {
