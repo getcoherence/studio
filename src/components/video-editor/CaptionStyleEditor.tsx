@@ -202,7 +202,7 @@ export function CaptionStyleEditor({
 								{isDownloading && (
 									<div className="mt-1 h-1 bg-white/10 rounded-full overflow-hidden">
 										<div
-											className="h-full bg-[#34B27B] rounded-full transition-all duration-300"
+											className="h-full bg-[#2563eb] rounded-full transition-all duration-300"
 											style={{ width: `${downloadPercent}%` }}
 										/>
 									</div>
@@ -214,7 +214,7 @@ export function CaptionStyleEditor({
 										<Button
 											variant="ghost"
 											size="icon"
-											className="h-6 w-6 text-[#34B27B] hover:text-white hover:bg-[#34B27B]/20"
+											className="h-6 w-6 text-[#2563eb] hover:text-white hover:bg-[#2563eb]/20"
 											onClick={() => handleTranscribe(model.id)}
 											disabled={isTranscribing || !videoPath || whisperAvailable === false}
 											title="Auto-caption with this model"
@@ -239,7 +239,7 @@ export function CaptionStyleEditor({
 									<Button
 										variant="ghost"
 										size="icon"
-										className="h-6 w-6 text-slate-400 hover:text-[#34B27B] hover:bg-[#34B27B]/10"
+										className="h-6 w-6 text-slate-400 hover:text-[#2563eb] hover:bg-[#2563eb]/10"
 										onClick={() => handleDownloadModel(model.id)}
 										disabled={isDownloading}
 										title={`Download ${model.name} (${model.sizeLabel})`}
@@ -259,8 +259,8 @@ export function CaptionStyleEditor({
 
 			{/* Caption info / remove */}
 			{captionTrack && (
-				<div className="flex items-center justify-between p-2 rounded-lg bg-[#34B27B]/10 border border-[#34B27B]/20">
-					<div className="text-xs text-[#34B27B]">
+				<div className="flex items-center justify-between p-2 rounded-lg bg-[#2563eb]/10 border border-[#2563eb]/20">
+					<div className="text-xs text-[#2563eb]">
 						{captionTrack.lines.length} caption lines ({captionTrack.language.toUpperCase()})
 					</div>
 					<Button

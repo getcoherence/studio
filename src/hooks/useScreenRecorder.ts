@@ -45,7 +45,7 @@ type CaptureMode = "browser" | "native";
 
 type UseScreenRecorderReturn = {
 	recording: boolean;
-	toggleRecording: () => void;
+	toggleRecording: (overrides?: { mic?: boolean; webcam?: boolean; systemAudio?: boolean }) => void;
 	restartRecording: () => void;
 	microphoneEnabled: boolean;
 	setMicrophoneEnabled: (enabled: boolean) => void;
@@ -58,9 +58,9 @@ type UseScreenRecorderReturn = {
 	/** Which capture mode is currently in use. */
 	captureMode: CaptureMode;
 	/** Live screen capture stream (available during recording) */
-	screenStreamRef: React.RefObject<MediaStream | null>;
+	liveScreenStream: MediaStream | null;
 	/** Live webcam stream (available during recording if webcam enabled) */
-	webcamStreamRef: React.RefObject<MediaStream | null>;
+	liveWebcamStream: MediaStream | null;
 };
 
 type RecorderHandle = {
@@ -130,6 +130,9 @@ export function useScreenRecorder(options?: {
 	const screenStream = useRef<MediaStream | null>(null);
 	const microphoneStream = useRef<MediaStream | null>(null);
 	const webcamStream = useRef<MediaStream | null>(null);
+	// State mirrors so React re-renders when streams become available for LiveMonitor
+	const [liveScreenStream, setLiveScreenStream] = useState<MediaStream | null>(null);
+	const [liveWebcamStream, setLiveWebcamStream] = useState<MediaStream | null>(null);
 	const mixingContext = useRef<AudioContext | null>(null);
 	const startTime = useRef<number>(0);
 	const recordingId = useRef<number>(0);
@@ -176,6 +179,7 @@ export function useScreenRecorder(options?: {
 			screenStream.current.getTracks().forEach((track) => track.stop());
 			screenStream.current = null;
 		}
+		setLiveScreenStream(null);
 		if (microphoneStream.current) {
 			microphoneStream.current.getTracks().forEach((track) => track.stop());
 			microphoneStream.current = null;
@@ -184,6 +188,7 @@ export function useScreenRecorder(options?: {
 			webcamStream.current.getTracks().forEach((track) => track.stop());
 			webcamStream.current = null;
 		}
+		setLiveWebcamStream(null);
 		if (mixingContext.current) {
 			mixingContext.current.close().catch(() => {
 				// Ignore close errors during recorder teardown.
@@ -372,7 +377,20 @@ export function useScreenRecorder(options?: {
 		};
 	}, [teardownMedia]);
 
+	// Overrides allow the caller to pass mic/webcam config directly,
+	// avoiding the stale-closure problem when state was just set.
+	const pendingOverrides = useRef<{
+		mic?: boolean;
+		webcam?: boolean;
+		systemAudio?: boolean;
+	} | null>(null);
+
 	const startRecording = async () => {
+		const overrides = pendingOverrides.current;
+		pendingOverrides.current = null;
+		const useMic = overrides?.mic ?? microphoneEnabled;
+		const useWebcam = overrides?.webcam ?? webcamEnabled;
+		const useSystemAudio = overrides?.systemAudio ?? systemAudioEnabled;
 		try {
 			const selectedSource = await window.electronAPI.getSelectedSource();
 			if (!selectedSource) {
@@ -393,7 +411,7 @@ export function useScreenRecorder(options?: {
 				},
 			};
 
-			if (systemAudioEnabled) {
+			if (useSystemAudio) {
 				try {
 					screenMediaStream = await navigator.mediaDevices.getUserMedia({
 						audio: {
@@ -419,8 +437,9 @@ export function useScreenRecorder(options?: {
 				} as unknown as MediaStreamConstraints);
 			}
 			screenStream.current = screenMediaStream;
+			setLiveScreenStream(screenMediaStream);
 
-			if (microphoneEnabled) {
+			if (useMic) {
 				try {
 					microphoneStream.current = await navigator.mediaDevices.getUserMedia({
 						audio: microphoneDeviceId
@@ -444,7 +463,7 @@ export function useScreenRecorder(options?: {
 				}
 			}
 
-			if (webcamEnabled) {
+			if (useWebcam) {
 				try {
 					webcamStream.current = await navigator.mediaDevices.getUserMedia({
 						audio: false,
@@ -454,6 +473,7 @@ export function useScreenRecorder(options?: {
 							frameRate: { ideal: WEBCAM_TARGET_FRAME_RATE, max: WEBCAM_TARGET_FRAME_RATE },
 						},
 					});
+					setLiveWebcamStream(webcamStream.current);
 				} catch (cameraError) {
 					console.warn("Failed to get webcam access:", cameraError);
 					if (webcamStream.current) {
@@ -660,7 +680,14 @@ export function useScreenRecorder(options?: {
 		}
 	};
 
-	const toggleRecording = () => {
+	const toggleRecording = (overrides?: {
+		mic?: boolean;
+		webcam?: boolean;
+		systemAudio?: boolean;
+	}) => {
+		if (overrides) {
+			pendingOverrides.current = overrides;
+		}
 		if (recording) {
 			if (captureMode === "native" && nativeRecordingActive.current) {
 				void stopNativeRecording();
@@ -743,7 +770,7 @@ export function useScreenRecorder(options?: {
 		webcamEnabled,
 		setWebcamEnabled,
 		captureMode,
-		screenStreamRef: screenStream,
-		webcamStreamRef: webcamStream,
+		liveScreenStream,
+		liveWebcamStream,
 	};
 }

@@ -116,7 +116,7 @@ html, body {
 		background: #fff;
 		transform: scale(1.15);
 		box-shadow: 0 3px 10px rgba(255, 255, 255, 0.5);
-		border-color: #34b27b;
+		border-color: #2563eb;
 	}
 
 	input[type="range"]::-webkit-slider-thumb:active {
@@ -138,7 +138,7 @@ html, body {
 		background: #fff;
 		transform: scale(1.15);
 		box-shadow: 0 3px 10px rgba(255, 255, 255, 0.5);
-		border-color: #34b27b;
+		border-color: #2563eb;
 	}
 
 	input[type="range"]::-moz-range-thumb:active {

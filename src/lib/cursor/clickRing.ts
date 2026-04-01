@@ -22,7 +22,7 @@ const START_RADIUS_FACTOR = 1;
 const END_RADIUS_FACTOR = 3;
 
 const CLICK_COLORS: Record<string, string> = {
-	left: "#34B27B", // green (matches the app's accent)
+	left: "#2563eb", // green (matches the app's accent)
 	right: "#3B82F6", // blue
 	double: "#F59E0B", // amber
 	middle: "#8B5CF6", // purple

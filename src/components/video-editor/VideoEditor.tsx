@@ -174,8 +174,8 @@ export default function VideoEditor() {
 		setMicrophoneEnabled,
 		setSystemAudioEnabled,
 		setWebcamEnabled,
-		screenStreamRef,
-		webcamStreamRef,
+		liveScreenStream,
+		liveWebcamStream,
 	} = useScreenRecorder({
 		onRecordingFinalized: () => {
 			setReloadTrigger((prev) => prev + 1);
@@ -608,9 +608,12 @@ export default function VideoEditor() {
 		setSystemAudioEnabled(pendingRecordingConfig.systemAudioEnabled);
 		await setWebcamEnabled(pendingRecordingConfig.webcamEnabled);
 
-		// Start recording — the LiveMonitor component will show the live preview.
-		// User can manually minimize to the recording bar when ready.
-		toggleRecording();
+		// Start recording with explicit config overrides to avoid stale state
+		toggleRecording({
+			mic: pendingRecordingConfig.microphoneEnabled,
+			webcam: pendingRecordingConfig.webcamEnabled,
+			systemAudio: pendingRecordingConfig.systemAudioEnabled,
+		});
 
 		setPendingRecordingConfig(null);
 	}, [
@@ -1648,8 +1651,8 @@ export default function VideoEditor() {
 	if (recording) {
 		return (
 			<LiveMonitor
-				screenStream={screenStreamRef.current}
-				webcamStream={webcamStreamRef.current}
+				screenStream={liveScreenStream}
+				webcamStream={liveWebcamStream}
 				onStop={() => toggleRecording()}
 				onMinimize={async () => {
 					await window.electronAPI?.showRecordingBar();
@@ -1683,7 +1686,7 @@ export default function VideoEditor() {
 	}
 
 	return (
-		<div className="flex flex-col h-screen bg-[#09090b] text-slate-200 overflow-hidden selection:bg-[#34B27B]/30">
+		<div className="flex flex-col h-screen bg-[#09090b] text-slate-200 overflow-hidden selection:bg-[#2563eb]/30">
 			<div
 				className="h-10 flex-shrink-0 bg-[#09090b]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-6 z-50"
 				style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
@@ -1750,7 +1753,7 @@ export default function VideoEditor() {
 						onClick={toggleAIPanel}
 						className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-150 text-[11px] font-medium ${
 							showAIPanel
-								? "text-[#34B27B] bg-[#34B27B]/10"
+								? "text-[#2563eb] bg-[#2563eb]/10"
 								: "text-white/50 hover:text-white/90 hover:bg-white/10"
 						}`}
 						title="Toggle AI features panel"
@@ -1766,7 +1769,7 @@ export default function VideoEditor() {
 				<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
 					<div className="bg-[#18181b] rounded-xl border border-white/10 shadow-2xl p-6 max-w-sm w-full mx-4">
 						<div className="flex items-center gap-2 mb-4">
-							<Wand2 size={18} className="text-[#34B27B]" />
+							<Wand2 size={18} className="text-[#2563eb]" />
 							<h3 className="text-sm font-semibold text-white">Magic Polish Preview</h3>
 						</div>
 						<div className="space-y-1.5 mb-5 text-xs text-white/70">
@@ -1803,7 +1806,7 @@ export default function VideoEditor() {
 							<button
 								type="button"
 								onClick={handleApplyPolish}
-								className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#34B27B] hover:bg-[#34B27B]/90 text-white transition-colors"
+								className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-[#2563eb] hover:bg-[#2563eb]/90 text-white transition-colors"
 							>
 								Apply Changes
 							</button>

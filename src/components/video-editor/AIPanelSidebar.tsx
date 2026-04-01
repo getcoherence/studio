@@ -208,13 +208,13 @@ export function AIPanelSidebar({
 		<div className="h-full flex flex-col bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden">
 			{/* Header */}
 			<div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/5">
-				<Sparkles size={14} className="text-[#34B27B]" />
+				<Sparkles size={14} className="text-[#2563eb]" />
 				<span className="text-xs font-semibold text-white/90">AI Features</span>
 				{availability && (
 					<span
 						className={`ml-auto text-[9px] px-1.5 py-0.5 rounded ${
 							availability.activeProvider
-								? "bg-[#34B27B]/20 text-[#34B27B]"
+								? "bg-[#2563eb]/20 text-[#2563eb]"
 								: "bg-white/10 text-white/40"
 						}`}
 					>
@@ -244,7 +244,7 @@ export function AIPanelSidebar({
 								type="button"
 								onClick={handleRunPolish}
 								disabled={isPolishing || !hasTelemetry}
-								className="flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#34B27B]/20 to-purple-500/20 hover:from-[#34B27B]/30 hover:to-purple-500/30 text-white/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+								className="flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#2563eb]/20 to-purple-500/20 hover:from-[#2563eb]/30 hover:to-purple-500/30 text-white/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
 							>
 								<Wand2 size={14} />
 								{isPolishing ? "Analyzing..." : "Run Magic Polish"}
@@ -267,7 +267,7 @@ export function AIPanelSidebar({
 									<button
 										type="button"
 										onClick={handleApplyPolish}
-										className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] font-medium bg-[#34B27B]/20 hover:bg-[#34B27B]/30 text-[#34B27B] transition-colors"
+										className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] font-medium bg-[#2563eb]/20 hover:bg-[#2563eb]/30 text-[#2563eb] transition-colors"
 									>
 										<Check size={10} />
 										Apply
@@ -303,13 +303,13 @@ export function AIPanelSidebar({
 								<textarea
 									value={narrationText}
 									onChange={(e) => setNarrationText(e.target.value)}
-									className="w-full h-32 px-2 py-1.5 rounded bg-white/5 border border-white/10 text-[10px] text-white/70 resize-none focus:outline-none focus:border-[#34B27B]/40"
+									className="w-full h-32 px-2 py-1.5 rounded bg-white/5 border border-white/10 text-[10px] text-white/70 resize-none focus:outline-none focus:border-[#2563eb]/40"
 									placeholder="Narration script..."
 								/>
 								<button
 									type="button"
 									onClick={handleApplyNarration}
-									className="flex items-center justify-center gap-1 w-full px-2 py-1.5 rounded text-[10px] font-medium bg-[#34B27B]/20 hover:bg-[#34B27B]/30 text-[#34B27B] transition-colors"
+									className="flex items-center justify-center gap-1 w-full px-2 py-1.5 rounded text-[10px] font-medium bg-[#2563eb]/20 hover:bg-[#2563eb]/30 text-[#2563eb] transition-colors"
 								>
 									<Check size={10} />
 									Save to Project
@@ -363,7 +363,7 @@ export function AIPanelSidebar({
 							<select
 								value={provider}
 								onChange={(e) => setProvider(e.target.value as AIProvider)}
-								className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/80 focus:outline-none focus:border-[#34B27B]/40"
+								className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/80 focus:outline-none focus:border-[#2563eb]/40"
 							>
 								<option value="local" className="bg-[#09090b]">
 									Local (Ollama)
@@ -384,7 +384,7 @@ export function AIPanelSidebar({
 								value={apiKey}
 								onChange={(e) => setApiKey(e.target.value)}
 								placeholder="sk-..."
-								className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/80 placeholder-white/30 focus:outline-none focus:border-[#34B27B]/40"
+								className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/80 placeholder-white/30 focus:outline-none focus:border-[#2563eb]/40"
 							/>
 						</div>
 

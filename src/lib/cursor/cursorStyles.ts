@@ -49,7 +49,7 @@ export const CURSOR_STYLES: CursorStyleDefinition[] = [
 		name: "dot",
 		size: 16,
 		hotspot: { x: 8, y: 8 },
-		color: "#34B27B",
+		color: "#2563eb",
 	},
 	{
 		name: "crosshair",

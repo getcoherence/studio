@@ -9,7 +9,7 @@ export function KeyboardShortcutsHelp() {
 
 	return (
 		<div className="relative group">
-			<HelpCircle className="w-4 h-4 text-slate-500 hover:text-[#34B27B] transition-colors cursor-help" />
+			<HelpCircle className="w-4 h-4 text-slate-500 hover:text-[#2563eb] transition-colors cursor-help" />
 
 			<div className="absolute right-0 top-full mt-2 w-64 bg-[#09090b] border border-white/10 rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 shadow-xl z-50">
 				<div className="flex items-center justify-between mb-2">
@@ -18,7 +18,7 @@ export function KeyboardShortcutsHelp() {
 						type="button"
 						onClick={openConfig}
 						title="Customize shortcuts"
-						className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-[#34B27B] transition-colors"
+						className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-[#2563eb] transition-colors"
 					>
 						<Settings2 className="w-3 h-3" />
 						{t("customize")}
@@ -29,7 +29,7 @@ export function KeyboardShortcutsHelp() {
 					{SHORTCUT_ACTIONS.map((action) => (
 						<div key={action} className="flex items-center justify-between">
 							<span className="text-slate-400">{t(`actions.${action}`)}</span>
-							<kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">
+							<kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#2563eb] font-mono">
 								{formatBinding(shortcuts[action], isMac)}
 							</kbd>
 						</div>
@@ -39,7 +39,7 @@ export function KeyboardShortcutsHelp() {
 						{FIXED_SHORTCUTS.map((fixed) => (
 							<div key={fixed.label} className="flex items-center justify-between">
 								<span className="text-slate-400">{fixed.label}</span>
-								<kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#34B27B] font-mono">
+								<kbd className="px-1 py-0.5 bg-white/5 border border-white/10 rounded text-[#2563eb] font-mono">
 									{isMac
 										? fixed.display
 												.replace(/Ctrl/g, "⌘")
