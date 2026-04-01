@@ -1591,37 +1591,48 @@ export default function VideoEditor() {
 	);
 
 	const handleScreenshot = useCallback(async () => {
-		const app = videoPlaybackRef.current?.app;
-		if (!app) {
-			toast.error("No renderer available for screenshot");
+		// Capture the entire player container (background + video + PiP + overlays)
+		const container = videoPlaybackRef.current?.containerRef?.current ?? playerContainerRef.current;
+		if (!container) {
+			toast.error("No content available for screenshot");
 			return;
 		}
 
-		// Use PixiJS extract to get pixels from the WebGL renderer
-		let blob: Blob | null = null;
-		try {
-			// PixiJS v8: extract the stage to a canvas, then convert to blob
-			const extractCanvas = app.renderer.extract.canvas(app.stage) as HTMLCanvasElement;
-			blob = await new Promise<Blob | null>((resolve) => {
-				extractCanvas.toBlob(resolve, "image/png");
-			});
-		} catch {
-			// Fallback: try the video element directly
-			const video = videoPlaybackRef.current?.video;
-			if (video) {
-				const offscreen = document.createElement("canvas");
-				offscreen.width = video.videoWidth;
-				offscreen.height = video.videoHeight;
-				const ctx = offscreen.getContext("2d");
-				if (ctx) {
-					ctx.drawImage(video, 0, 0);
-					blob = await new Promise<Blob | null>((resolve) => {
-						offscreen.toBlob(resolve, "image/png");
-					});
+		// Composite all visible layers into a single canvas
+		const rect = container.getBoundingClientRect();
+		const dpr = window.devicePixelRatio || 1;
+		const w = Math.round(rect.width * dpr);
+		const h = Math.round(rect.height * dpr);
+		const offscreen = document.createElement("canvas");
+		offscreen.width = w;
+		offscreen.height = h;
+		const ctx = offscreen.getContext("2d");
+		if (!ctx) {
+			toast.error("Failed to create canvas");
+			return;
+		}
+		ctx.scale(dpr, dpr);
+
+		// Gather all canvas and video elements inside the container in DOM order
+		const elements = container.querySelectorAll("canvas, video");
+		for (const el of elements) {
+			const elRect = el.getBoundingClientRect();
+			const x = elRect.left - rect.left;
+			const y = elRect.top - rect.top;
+			try {
+				if (el instanceof HTMLCanvasElement) {
+					ctx.drawImage(el, x, y, elRect.width, elRect.height);
+				} else if (el instanceof HTMLVideoElement) {
+					ctx.drawImage(el, x, y, elRect.width, elRect.height);
 				}
+			} catch {
+				// Cross-origin or tainted canvas — skip
 			}
 		}
 
+		const blob = await new Promise<Blob | null>((resolve) => {
+			offscreen.toBlob(resolve, "image/png");
+		});
 		if (!blob) {
 			toast.error("Failed to capture screenshot");
 			return;
