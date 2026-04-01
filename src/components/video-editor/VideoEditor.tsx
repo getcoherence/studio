@@ -1,5 +1,5 @@
 import type { Span } from "dnd-timeline";
-import { FolderOpen, Languages, Save, Sparkles, Wand2 } from "lucide-react";
+import { FolderOpen, Languages, Save, Sparkles, Video, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
@@ -530,11 +530,15 @@ export default function VideoEditor() {
 	}, [applyLoadedProject]);
 
 	useEffect(() => {
+		const removeNewRecording = window.electronAPI.onMenuNewRecording?.(() => {
+			window.electronAPI?.switchToRecorder?.();
+		});
 		const removeLoadListener = window.electronAPI.onMenuLoadProject(handleLoadProject);
 		const removeSaveListener = window.electronAPI.onMenuSaveProject(handleSaveProject);
 		const removeSaveAsListener = window.electronAPI.onMenuSaveProjectAs(handleSaveProjectAs);
 
 		return () => {
+			removeNewRecording?.();
 			removeLoadListener?.();
 			removeSaveListener?.();
 			removeSaveAsListener?.();
@@ -1591,6 +1595,15 @@ export default function VideoEditor() {
 							))}
 						</select>
 					</div>
+					<button
+						type="button"
+						onClick={() => window.electronAPI?.switchToRecorder?.()}
+						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 text-[11px] font-medium"
+						title="Start a new recording"
+					>
+						<Video size={14} />
+						New Recording
+					</button>
 					<button
 						type="button"
 						onClick={handleLoadProject}

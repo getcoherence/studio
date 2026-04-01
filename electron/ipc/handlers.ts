@@ -296,6 +296,27 @@ export function registerIpcHandlers(
 		createEditorWindow();
 	});
 
+	ipcMain.handle("switch-to-recorder", () => {
+		const mainWin = getMainWindow();
+		if (mainWin) {
+			// Navigate the current window back to the HUD overlay
+			const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
+			if (VITE_DEV_SERVER_URL) {
+				mainWin.loadURL(`${VITE_DEV_SERVER_URL}?windowType=hud-overlay`);
+			} else {
+				const RENDERER_DIST = path.join(path.resolve(__dirname, ".."), "dist");
+				mainWin.loadFile(path.join(RENDERER_DIST, "index.html"), {
+					query: { windowType: "hud-overlay" },
+				});
+			}
+			// Resize to HUD dimensions
+			mainWin.setSize(500, 155);
+			mainWin.setResizable(false);
+			mainWin.setAlwaysOnTop(true);
+			mainWin.center();
+		}
+	});
+
 	ipcMain.handle("store-recorded-session", async (_, payload: StoreRecordedSessionInput) => {
 		try {
 			return await storeRecordedSessionFiles(payload);

@@ -1,4 +1,4 @@
-import { ChevronDown, Clock, Languages } from "lucide-react";
+import { Clock, Play, Square } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BsRecordCircle } from "react-icons/bs";
 import { FaRegStopCircle } from "react-icons/fa";
@@ -17,16 +17,10 @@ import {
 } from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { ProjectBrowser } from "@/components/project-browser/ProjectBrowser";
-import { useI18n, useScopedT } from "@/contexts/I18nContext";
-import { type Locale, SUPPORTED_LOCALES } from "@/i18n/config";
-import { getLocaleName } from "@/i18n/loader";
-import { isMac as getIsMac } from "@/utils/platformUtils";
-import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
-import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
+import { useScopedT } from "@/contexts/I18nContext";
 import { useScreenRecorder } from "../../hooks/useScreenRecorder";
 import { requestCameraAccess } from "../../lib/requestCameraAccess";
 import { formatTimePadded } from "../../utils/timeUtils";
-import { AudioLevelMeter } from "../ui/audio-level-meter";
 import { Tooltip } from "../ui/tooltip";
 import styles from "./LaunchWindow.module.css";
 
@@ -68,12 +62,6 @@ const windowBtnClasses =
 
 export function LaunchWindow() {
 	const t = useScopedT("launch");
-	const { locale, setLocale } = useI18n();
-	const [isMac, setIsMac] = useState(false);
-
-	useEffect(() => {
-		getIsMac().then(setIsMac);
-	}, []);
 
 	const {
 		recording,
@@ -81,8 +69,6 @@ export function LaunchWindow() {
 		restartRecording,
 		microphoneEnabled,
 		setMicrophoneEnabled,
-		microphoneDeviceId,
-		setMicrophoneDeviceId,
 		systemAudioEnabled,
 		setSystemAudioEnabled,
 		webcamEnabled,
@@ -90,20 +76,6 @@ export function LaunchWindow() {
 	} = useScreenRecorder();
 	const [recordingStart, setRecordingStart] = useState<number | null>(null);
 	const [elapsed, setElapsed] = useState(0);
-
-	const showMicControls = microphoneEnabled && !recording;
-	const { devices, selectedDeviceId, setSelectedDeviceId } =
-		useMicrophoneDevices(microphoneEnabled);
-	const { level } = useAudioLevelMeter({
-		enabled: showMicControls,
-		deviceId: microphoneDeviceId,
-	});
-
-	useEffect(() => {
-		if (selectedDeviceId && selectedDeviceId !== "default") {
-			setMicrophoneDeviceId(selectedDeviceId);
-		}
-	}, [selectedDeviceId, setMicrophoneDeviceId]);
 
 	useEffect(() => {
 		let timer: NodeJS.Timeout | null = null;
@@ -233,74 +205,28 @@ export function LaunchWindow() {
 	return (
 		<>
 			<div className="w-full h-full flex items-end justify-center bg-transparent relative">
-				{/* Language switcher — top-left, beside traffic lights */}
-				<div
-					className={`absolute top-2 flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 ${isMac ? "left-[72px]" : "left-2"} ${styles.electronNoDrag}`}
-				>
-					<Languages size={14} />
-					<select
-						value={locale}
-						onChange={(e) => setLocale(e.target.value as Locale)}
-						className="bg-transparent text-[11px] font-medium outline-none cursor-pointer appearance-none pr-1"
-						style={{ color: "inherit" }}
-					>
-						{SUPPORTED_LOCALES.map((loc) => (
-							<option key={loc} value={loc} className="bg-[#1c1c24] text-white">
-								{getLocaleName(loc)}
-							</option>
-						))}
-					</select>
-				</div>
-
 				<div className={`flex flex-col items-center gap-2 mx-auto ${styles.electronDrag}`}>
-					{/* Mic controls panel */}
-					{showMicControls && (
-						<div
-							className={`flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-[rgba(28,28,36,0.97)] to-[rgba(18,18,26,0.96)] backdrop-blur-[16px] backdrop-saturate-[140%] border border-[rgba(80,80,120,0.25)] rounded-2xl shadow-mic-panel animate-mic-panel-in ${styles.electronNoDrag}`}
-						>
-							<div className="relative flex-1" style={{ maxWidth: "70%" }}>
-								<select
-									value={microphoneDeviceId || selectedDeviceId}
-									onChange={(e) => {
-										setSelectedDeviceId(e.target.value);
-										setMicrophoneDeviceId(e.target.value);
-									}}
-									className="w-full appearance-none bg-white/10 text-white text-xs rounded-full pl-3 pr-7 py-2 border border-white/20 outline-none truncate"
-								>
-									{devices.map((device) => (
-										<option key={device.deviceId} value={device.deviceId}>
-											{device.label}
-										</option>
-									))}
-								</select>
-								<ChevronDown
-									size={14}
-									className="absolute right-2 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none"
-								/>
-							</div>
-							<AudioLevelMeter level={level} className="w-24 h-4" />
-						</div>
-					)}
-
 					{/* Main pill bar */}
-					<div className="flex items-center gap-1.5 px-2 py-1.5 isolate rounded-full shadow-hud-bar bg-gradient-to-br from-[rgba(28,28,36,0.97)] to-[rgba(18,18,26,0.96)] backdrop-blur-[16px] backdrop-saturate-[140%] border border-[rgba(80,80,120,0.25)]">
+					<div className="flex items-center gap-1 px-2 py-1.5 isolate rounded-full shadow-hud-bar bg-gradient-to-br from-[rgba(28,28,36,0.97)] to-[rgba(18,18,26,0.96)] backdrop-blur-[16px] backdrop-saturate-[140%] border border-[rgba(80,80,120,0.25)] max-w-[490px]">
 						{/* Drag handle */}
 						<div className={`flex items-center px-1 ${styles.electronDrag}`}>
 							{getIcon("drag", "text-white/30")}
 						</div>
 
-						{/* Source selector */}
-						<button
-							className={`${hudGroupClasses} p-2 ${styles.electronNoDrag}`}
-							onClick={openSourceSelector}
-							disabled={recording}
-							title={selectedSource}
-						>
-							{getIcon("monitor", "text-white/80")}
-							<span className="text-white/70 text-[11px] max-w-[72px] truncate">
-								{selectedSource}
-							</span>
-						</button>
+						{/* Source indicator (click to change) */}
+						{hasSelectedSource && (
+							<button
+								className={`${hudGroupClasses} p-2 ${styles.electronNoDrag}`}
+								onClick={openSourceSelector}
+								disabled={recording}
+								title={`Recording: ${selectedSource} (click to change)`}
+							>
+								{getIcon("monitor", "text-white/80")}
+								<span className="text-white/70 text-[11px] max-w-[72px] truncate">
+									{selectedSource}
+								</span>
+							</button>
+						)}
 
 						{/* Audio controls group */}
 						<div className={`${hudGroupClasses} ${styles.electronNoDrag}`}>
@@ -341,34 +267,55 @@ export function LaunchWindow() {
 							</button>
 						</div>
 
-						{/* Record/Stop group */}
-						<button
-							className={`flex items-center gap-0.5 rounded-full p-2 transition-colors duration-150 ${styles.electronNoDrag} ${
+						{/* Record/Stop button */}
+						<Tooltip
+							content={
 								recording
-									? "animate-record-pulse bg-red-500/10"
-									: "bg-white/5 hover:bg-white/[0.08]"
-							}`}
-							onClick={
-								recording
-									? toggleRecording
+									? t("tooltips.stopRecording")
 									: hasSelectedSource
-										? startWithCountdown
-										: openSourceSelector
+										? t("tooltips.startRecording")
+										: t("tooltips.selectSource")
 							}
-							disabled={(!hasSelectedSource && !recording) || countdownActive}
-							style={{ flex: "0 0 auto" }}
 						>
-							{recording ? (
-								<>
-									{getIcon("stop", "text-red-400")}
-									<span className="text-red-400 text-xs font-semibold tabular-nums">
-										{formatTimePadded(elapsed)}
-									</span>
-								</>
-							) : (
-								getIcon("record", hasSelectedSource ? "text-white/80" : "text-white/30")
-							)}
-						</button>
+							<button
+								className={`flex items-center gap-1 rounded-full px-2.5 py-2 transition-colors duration-150 ${styles.electronNoDrag} ${
+									recording
+										? "bg-red-500/10"
+										: hasSelectedSource
+											? "bg-[#34B27B]/15 hover:bg-[#34B27B]/25"
+											: "bg-white/5 hover:bg-white/[0.08]"
+								}`}
+								onClick={
+									recording
+										? toggleRecording
+										: hasSelectedSource
+											? startWithCountdown
+											: openSourceSelector
+								}
+								disabled={countdownActive}
+								style={{ flex: "0 0 auto" }}
+							>
+								{recording ? (
+									<>
+										<Square size={12} className="text-red-400" fill="currentColor" />
+										<span className="text-red-400 text-[11px] font-semibold tabular-nums">
+											{formatTimePadded(elapsed)}
+										</span>
+									</>
+								) : (
+									<>
+										<Play
+											size={14}
+											className={hasSelectedSource ? "text-[#34B27B]" : "text-white/30"}
+											fill="currentColor"
+										/>
+										{!hasSelectedSource && (
+											<span className="text-white/40 text-[11px]">Record</span>
+										)}
+									</>
+								)}
+							</button>
+						</Tooltip>
 
 						{/* Restart recording */}
 						{recording && (

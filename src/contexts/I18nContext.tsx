@@ -7,13 +7,7 @@ import {
 	useMemo,
 	useState,
 } from "react";
-import {
-	DEFAULT_LOCALE,
-	type I18nNamespace,
-	LOCALE_STORAGE_KEY,
-	type Locale,
-	SUPPORTED_LOCALES,
-} from "@/i18n/config";
+import { DEFAULT_LOCALE, type I18nNamespace, LOCALE_STORAGE_KEY, type Locale } from "@/i18n/config";
 import { translate } from "@/i18n/loader";
 
 type TranslateVars = Record<string, string | number>;
@@ -40,14 +34,11 @@ export function useScopedT(namespace: I18nNamespace) {
 	);
 }
 
-function isSupportedLocale(value: string): value is Locale {
-	return (SUPPORTED_LOCALES as readonly string[]).includes(value);
-}
-
 function getInitialLocale(): Locale {
+	// Language picker removed for v0.1 — always use default (English)
+	// Clear any previously stored locale so it doesn't persist
 	try {
-		const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
-		if (stored && isSupportedLocale(stored)) return stored;
+		localStorage.removeItem(LOCALE_STORAGE_KEY);
 	} catch {
 		// localStorage may be unavailable
 	}
