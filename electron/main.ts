@@ -151,6 +151,15 @@ function setupApplicationMenu() {
 				},
 				{ type: "separator" },
 				{
+					label: "Open Video File…",
+					click: () => {
+						const targetWindow = BrowserWindow.getFocusedWindow() ?? mainWindow;
+						if (targetWindow && !targetWindow.isDestroyed()) {
+							targetWindow.webContents.send("menu-open-video");
+						}
+					},
+				},
+				{
 					label: "Load Project…",
 					accelerator: "CmdOrCtrl+O",
 					click: () => sendEditorMenuAction("menu-load-project"),
