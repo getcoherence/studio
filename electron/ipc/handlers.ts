@@ -20,7 +20,7 @@ import {
 import { mainT } from "../i18n";
 import { RECORDINGS_DIR } from "../main";
 
-const PROJECT_FILE_EXTENSION = "openscreen";
+const PROJECT_FILE_EXTENSION = "lucid";
 const SHORTCUTS_FILE = path.join(app.getPath("userData"), "shortcuts.json");
 const RECORDING_SESSION_SUFFIX = ".session.json";
 
@@ -600,7 +600,7 @@ export function registerIpcHandlers(
 					defaultPath: path.join(RECORDINGS_DIR, defaultName),
 					filters: [
 						{
-							name: mainT("dialogs", "fileDialogs.openscreenProject"),
+							name: mainT("dialogs", "fileDialogs.lucidProject"),
 							extensions: [PROJECT_FILE_EXTENSION],
 						},
 						{ name: "JSON", extensions: ["json"] },
@@ -642,7 +642,7 @@ export function registerIpcHandlers(
 				defaultPath: RECORDINGS_DIR,
 				filters: [
 					{
-						name: mainT("dialogs", "fileDialogs.openscreenProject"),
+						name: mainT("dialogs", "fileDialogs.lucidProject"),
 						extensions: [PROJECT_FILE_EXTENSION],
 					},
 					{ name: "JSON", extensions: ["json"] },

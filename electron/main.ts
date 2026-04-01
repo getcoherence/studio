@@ -13,7 +13,9 @@ import {
 	Tray,
 } from "electron";
 import { mainT, setMainLocale } from "./i18n";
+import { registerFfmpegHandlers } from "./ipc/ffmpegHandlers";
 import { registerIpcHandlers } from "./ipc/handlers";
+import { registerSettingsHandlers } from "./ipc/settingsHandlers";
 import { createEditorWindow, createHudOverlayWindow, createSourceSelectorWindow } from "./windows";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -64,7 +66,7 @@ let tray: Tray | null = null;
 let selectedSourceName = "";
 
 // Tray Icons
-const defaultTrayIcon = getTrayIcon("openscreen.png");
+const defaultTrayIcon = getTrayIcon("lucid.png");
 const recordingTrayIcon = getTrayIcon("rec-button.png");
 
 function createWindow() {
@@ -212,7 +214,7 @@ function getTrayIcon(filename: string) {
 function updateTrayMenu(recording: boolean = false) {
 	if (!tray) return;
 	const trayIcon = recording ? recordingTrayIcon : defaultTrayIcon;
-	const trayToolTip = recording ? `Recording: ${selectedSourceName}` : "OpenScreen";
+	const trayToolTip = recording ? `Recording: ${selectedSourceName}` : "Lucid Studio";
 	const menuTemplate = recording
 		? [
 				{
@@ -385,5 +387,7 @@ app.whenReady().then(async () => {
 			}
 		},
 	);
+	registerSettingsHandlers();
+	registerFfmpegHandlers();
 	createWindow();
 });

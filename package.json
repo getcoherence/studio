@@ -1,7 +1,7 @@
 {
-	"name": "openscreen",
+	"name": "lucid-studio",
 	"private": true,
-	"version": "1.2.0",
+	"version": "0.1.0",
 	"type": "module",
 	"packageManager": "npm@10.9.4",
 	"engines": {
