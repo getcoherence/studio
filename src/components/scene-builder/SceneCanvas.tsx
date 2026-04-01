@@ -151,7 +151,7 @@ export function SceneCanvas({
 				}
 			}
 		},
-		[scene, selectedLayerId, isPlaying],
+		[scene, selectedLayerId, isPlaying, INTERNAL_WIDTH, INTERNAL_HEIGHT],
 	);
 
 	// Playback animation loop
