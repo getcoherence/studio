@@ -55,6 +55,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	saveExportedVideo: (videoData: ArrayBuffer, fileName: string) => {
 		return ipcRenderer.invoke("save-exported-video", videoData, fileName);
 	},
+	saveScreenshot: (imageData: ArrayBuffer, fileName: string) => {
+		return ipcRenderer.invoke("save-screenshot", imageData, fileName);
+	},
 	openVideoFilePicker: () => {
 		return ipcRenderer.invoke("open-video-file-picker");
 	},

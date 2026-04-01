@@ -1,5 +1,14 @@
 import type { Span } from "dnd-timeline";
-import { FolderOpen, Languages, MessageSquare, Save, Sparkles, Video, Wand2 } from "lucide-react";
+import {
+	Camera,
+	FolderOpen,
+	Languages,
+	MessageSquare,
+	Save,
+	Sparkles,
+	Video,
+	Wand2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
@@ -1580,6 +1589,34 @@ export default function VideoEditor() {
 		],
 	);
 
+	const handleScreenshot = useCallback(async () => {
+		const canvas = videoPlaybackRef.current?.app?.canvas;
+		if (!canvas) {
+			toast.error("No canvas available for screenshot");
+			return;
+		}
+
+		const blob = await new Promise<Blob | null>((resolve) => {
+			(canvas as HTMLCanvasElement).toBlob(resolve, "image/png");
+		});
+		if (!blob) {
+			toast.error("Failed to capture screenshot");
+			return;
+		}
+
+		const buffer = await blob.arrayBuffer();
+		const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+		const result = await window.electronAPI.saveScreenshot(
+			buffer,
+			`lucid-screenshot-${timestamp}.png`,
+		);
+		if (result.success) {
+			toast.success("Screenshot saved", { description: result.path });
+		} else if (!result.canceled) {
+			toast.error("Failed to save screenshot", { description: result.error });
+		}
+	}, []);
+
 	const handleOpenExportDialog = useCallback(() => {
 		if (!videoPath) {
 			toast.error("No video loaded");
@@ -1816,6 +1853,16 @@ export default function VideoEditor() {
 					>
 						<Wand2 size={14} />
 						Magic Polish
+					</button>
+					<button
+						type="button"
+						onClick={handleScreenshot}
+						disabled={!videoPath}
+						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 text-[11px] font-medium disabled:opacity-30 disabled:cursor-not-allowed"
+						title="Save current frame as image"
+					>
+						<Camera size={14} />
+						Screenshot
 					</button>
 					<button
 						type="button"
@@ -2218,6 +2265,7 @@ export default function VideoEditor() {
 														videoPlaybackRef.current.video.currentTime = timeSec;
 													}
 												}}
+												onScreenshot={handleScreenshot}
 												captionTrack={captionTrack}
 												videoPath={videoSourcePath || videoPath}
 											/>

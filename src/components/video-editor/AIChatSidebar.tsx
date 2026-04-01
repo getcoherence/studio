@@ -53,6 +53,7 @@ interface AIChatSidebarProps {
 	editorState: EditorState;
 	onApplyEdits: (edits: Partial<EditorState>) => void;
 	onSeek?: (timeMs: number) => void;
+	onScreenshot?: () => Promise<void>;
 	captionTrack: CaptionTrack | null;
 	videoPath?: string | null;
 }
@@ -120,6 +121,7 @@ export function AIChatSidebar({
 	editorState,
 	onApplyEdits,
 	onSeek,
+	onScreenshot,
 	captionTrack,
 	videoPath,
 }: AIChatSidebarProps) {
@@ -475,6 +477,13 @@ export function AIChatSidebar({
 						return { tool, args, success: true };
 					}
 
+					case "takeScreenshot": {
+						if (onScreenshot) {
+							void onScreenshot();
+						}
+						return { tool, args, success: true };
+					}
+
 					default:
 						return {
 							tool,
@@ -499,6 +508,7 @@ export function AIChatSidebar({
 			recordingProfile,
 			onApplyEdits,
 			onSeek,
+			onScreenshot,
 			videoPath,
 		],
 	);

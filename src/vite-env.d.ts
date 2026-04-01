@@ -73,6 +73,10 @@ interface Window {
 			message?: string;
 			canceled?: boolean;
 		}>;
+		saveScreenshot: (
+			imageData: ArrayBuffer,
+			fileName: string,
+		) => Promise<{ success: boolean; path?: string; canceled?: boolean; error?: string }>;
 		openVideoFilePicker: () => Promise<{ success: boolean; path?: string; canceled?: boolean }>;
 		setCurrentVideoPath: (path: string) => Promise<{ success: boolean }>;
 		setCurrentRecordingSession: (

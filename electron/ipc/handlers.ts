@@ -599,6 +599,38 @@ export function registerIpcHandlers(
 		}
 	});
 
+	ipcMain.handle("save-screenshot", async (_, imageData: ArrayBuffer, fileName: string) => {
+		try {
+			const isPng = fileName.toLowerCase().endsWith(".png");
+			const filters = isPng
+				? [
+						{ name: "PNG Image", extensions: ["png"] },
+						{ name: "JPEG Image", extensions: ["jpg", "jpeg"] },
+					]
+				: [
+						{ name: "JPEG Image", extensions: ["jpg", "jpeg"] },
+						{ name: "PNG Image", extensions: ["png"] },
+					];
+
+			const result = await dialog.showSaveDialog({
+				title: "Save Screenshot",
+				defaultPath: path.join(app.getPath("pictures"), fileName),
+				filters,
+				properties: ["createDirectory", "showOverwriteConfirmation"],
+			});
+
+			if (result.canceled || !result.filePath) {
+				return { success: false, canceled: true };
+			}
+
+			await fs.writeFile(result.filePath, Buffer.from(imageData));
+			return { success: true, path: result.filePath };
+		} catch (error) {
+			console.error("Failed to save screenshot:", error);
+			return { success: false, error: String(error) };
+		}
+	});
+
 	ipcMain.handle("open-video-file-picker", async () => {
 		try {
 			const result = await dialog.showOpenDialog({
