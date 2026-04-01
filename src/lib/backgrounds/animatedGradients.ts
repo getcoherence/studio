@@ -49,11 +49,11 @@ const aurora: AnimatedBackground = {
 	available: true,
 	previewColor: "#0a2e1a",
 	render(ctx, w, h, timeMs) {
-		const angle = remap(osc(timeMs, 12000), 100, 140);
+		const angle = remap(osc(timeMs, 96000), 100, 140);
 		const pts = rotatedGradientPoints(angle, w, h);
 		const grad = ctx.createLinearGradient(pts.x0, pts.y0, pts.x1, pts.y1);
 
-		const shift = remap(osc(timeMs, 10000, 1), 0.15, 0.35);
+		const shift = remap(osc(timeMs, 80000, 1), 0.15, 0.35);
 		grad.addColorStop(0, "#0a2e1a");
 		grad.addColorStop(shift, "#1a6b3c");
 		grad.addColorStop(shift + 0.2, "#2dd4a8");
@@ -74,12 +74,12 @@ const sunsetFlow: AnimatedBackground = {
 	available: true,
 	previewColor: "#7c2d12",
 	render(ctx, w, h, timeMs) {
-		const angle = remap(osc(timeMs, 14000), 110, 170);
+		const angle = remap(osc(timeMs, 112000), 110, 170);
 		const pts = rotatedGradientPoints(angle, w, h);
 		const grad = ctx.createLinearGradient(pts.x0, pts.y0, pts.x1, pts.y1);
 
-		const s1 = remap(osc(timeMs, 11000, 0.5), 0.2, 0.4);
-		const s2 = remap(osc(timeMs, 9000, 2), 0.5, 0.7);
+		const s1 = remap(osc(timeMs, 88000, 0.5), 0.2, 0.4);
+		const s2 = remap(osc(timeMs, 72000, 2), 0.5, 0.7);
 		grad.addColorStop(0, "#fdba74");
 		grad.addColorStop(s1, "#f97316");
 		grad.addColorStop(s2, "#db2777");
@@ -98,11 +98,11 @@ const oceanWave: AnimatedBackground = {
 	available: true,
 	previewColor: "#0c4a6e",
 	render(ctx, w, h, timeMs) {
-		const angle = remap(osc(timeMs, 15000), 140, 200);
+		const angle = remap(osc(timeMs, 120000), 140, 200);
 		const pts = rotatedGradientPoints(angle, w, h);
 		const grad = ctx.createLinearGradient(pts.x0, pts.y0, pts.x1, pts.y1);
 
-		const s = remap(osc(timeMs, 10000, 3), 0.25, 0.45);
+		const s = remap(osc(timeMs, 80000, 3), 0.25, 0.45);
 		grad.addColorStop(0, "#0c4a6e");
 		grad.addColorStop(s, "#0891b2");
 		grad.addColorStop(s + 0.25, "#06b6d4");
@@ -122,12 +122,12 @@ const neonPulse: AnimatedBackground = {
 	available: true,
 	previewColor: "#0f0326",
 	render(ctx, w, h, timeMs) {
-		const angle = remap(osc(timeMs, 8000), 120, 180);
+		const angle = remap(osc(timeMs, 64000), 120, 180);
 		const pts = rotatedGradientPoints(angle, w, h);
 		const grad = ctx.createLinearGradient(pts.x0, pts.y0, pts.x1, pts.y1);
 
 		// Pulsing brightness via stop offset oscillation
-		const pulse = remap(osc(timeMs, 3000), 0.3, 0.6);
+		const pulse = remap(osc(timeMs, 24000), 0.3, 0.6);
 		grad.addColorStop(0, "#0f0326");
 		grad.addColorStop(pulse - 0.1, "#ec4899");
 		grad.addColorStop(pulse + 0.1, "#6366f1");
@@ -146,11 +146,11 @@ const midnight: AnimatedBackground = {
 	available: true,
 	previewColor: "#0f172a",
 	render(ctx, w, h, timeMs) {
-		const angle = remap(osc(timeMs, 20000), 130, 170);
+		const angle = remap(osc(timeMs, 160000), 130, 170);
 		const pts = rotatedGradientPoints(angle, w, h);
 		const grad = ctx.createLinearGradient(pts.x0, pts.y0, pts.x1, pts.y1);
 
-		const shift = remap(osc(timeMs, 15000, 1.5), 0.3, 0.55);
+		const shift = remap(osc(timeMs, 120000, 1.5), 0.3, 0.55);
 		grad.addColorStop(0, "#0f172a");
 		grad.addColorStop(shift, "#1e1b4b");
 		grad.addColorStop(shift + 0.2, "#312e81");
@@ -169,11 +169,11 @@ const forest: AnimatedBackground = {
 	available: true,
 	previewColor: "#052e16",
 	render(ctx, w, h, timeMs) {
-		const angle = remap(osc(timeMs, 13000), 100, 160);
+		const angle = remap(osc(timeMs, 104000), 100, 160);
 		const pts = rotatedGradientPoints(angle, w, h);
 		const grad = ctx.createLinearGradient(pts.x0, pts.y0, pts.x1, pts.y1);
 
-		const s = remap(osc(timeMs, 11000, 2), 0.25, 0.45);
+		const s = remap(osc(timeMs, 88000, 2), 0.25, 0.45);
 		grad.addColorStop(0, "#052e16");
 		grad.addColorStop(s, "#166534");
 		grad.addColorStop(s + 0.2, "#10b981");

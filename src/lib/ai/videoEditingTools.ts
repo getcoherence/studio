@@ -151,4 +151,10 @@ export const VIDEO_EDITING_TOOLS: VideoEditTool[] = [
 		description: "Remove all annotations from the video.",
 		parameters: {},
 	},
+	{
+		name: "takeScreenshot",
+		description:
+			"Capture the current frame as a PNG image and save it. Useful for thumbnails, marketing images, or previews.",
+		parameters: {},
+	},
 ];
