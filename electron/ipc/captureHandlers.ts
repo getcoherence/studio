@@ -169,24 +169,4 @@ export function registerCaptureHandlers(): void {
 			};
 		}
 	});
-
-	/**
-	 * Simple settings store for the capture backend preference.
-	 * Uses a module-level variable; in a real app this would persist to disk.
-	 */
-	let captureBackendSetting: string = "auto";
-
-	ipcMain.handle("get-setting", (_, key: string) => {
-		if (key === "captureBackend") {
-			return captureBackendSetting;
-		}
-		return null;
-	});
-
-	ipcMain.handle("set-setting", (_, key: string, value: string) => {
-		if (key === "captureBackend") {
-			captureBackendSetting = value;
-		}
-		return { success: true };
-	});
 }
