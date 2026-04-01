@@ -13,6 +13,7 @@ import {
 	DEFAULT_WEBCAM_LAYOUT_PRESET,
 	DEFAULT_WEBCAM_POSITION,
 } from "@/components/video-editor/types";
+import type { NarrationTrack } from "@/lib/ai/types";
 import type { AspectRatio } from "@/utils/aspectRatioUtils";
 
 // Undoable state — selection IDs are intentionally excluded (undoing a
@@ -32,6 +33,7 @@ export interface EditorState {
 	aspectRatio: AspectRatio;
 	webcamLayoutPreset: WebcamLayoutPreset;
 	webcamPosition: WebcamPosition | null;
+	narrationTrack: NarrationTrack | null;
 }
 
 export const INITIAL_EDITOR_STATE: EditorState = {
@@ -49,6 +51,7 @@ export const INITIAL_EDITOR_STATE: EditorState = {
 	aspectRatio: "16:9",
 	webcamLayoutPreset: DEFAULT_WEBCAM_LAYOUT_PRESET,
 	webcamPosition: DEFAULT_WEBCAM_POSITION,
+	narrationTrack: null,
 };
 
 type StateUpdate = Partial<EditorState> | ((prev: EditorState) => Partial<EditorState>);
