@@ -249,8 +249,16 @@ export class VideoExporter {
 
 						const canvas = renderer.getCanvas();
 
-						// @ts-expect-error - colorSpace is available at runtime even if TS does not know it.
-						const exportFrame = new VideoFrame(canvas, {
+						// Read raw pixels from the canvas instead of passing
+						// the canvas directly to VideoFrame. On some Linux
+						// systems the GPU shared-image path (EGL/Ozone) fails
+						// silently, producing empty frames.
+						const canvasCtx = canvas.getContext("2d")!;
+						const imageData = canvasCtx.getImageData(0, 0, canvas.width, canvas.height);
+						const exportFrame = new VideoFrame(imageData.data.buffer, {
+							format: "RGBA",
+							codedWidth: canvas.width,
+							codedHeight: canvas.height,
 							timestamp,
 							duration: frameDuration,
 							colorSpace: {
