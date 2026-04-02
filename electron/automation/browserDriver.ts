@@ -5,14 +5,17 @@
 
 import fs from "node:fs";
 
-// Playwright is loaded dynamically to avoid crashing Electron at startup
-// when chromium-bidi or other optional deps aren't bundled
+// Playwright is loaded via createRequire because it's a CJS package
+// and dynamic import() fails with __dirname errors in ESM context
+import { createRequire } from "node:module";
+
 type Browser = import("playwright-core").Browser;
 type BrowserContext = import("playwright-core").BrowserContext;
 type Page = import("playwright-core").Page;
 
 async function getChromium() {
-	const pw = await import("playwright-core");
+	const require = createRequire(import.meta.url);
+	const pw = require("playwright-core") as typeof import("playwright-core");
 	return pw.chromium;
 }
 
