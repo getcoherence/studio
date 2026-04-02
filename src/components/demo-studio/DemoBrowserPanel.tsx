@@ -92,7 +92,7 @@ export function DemoBrowserPanel({ webviewRef, isRunning }: DemoBrowserPanelProp
 					</div>
 				)}
 				<webview
-					ref={webviewRef as unknown as React.Ref<Element>}
+					ref={webviewRef}
 					src="about:blank"
 					style={{ width: "100%", height: "100%" }}
 					webpreferences="contextIsolation=yes,nodeIntegration=no"

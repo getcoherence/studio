@@ -33,6 +33,7 @@ export interface DemoStep {
 	action: DemoAction;
 	timestamp: number;
 	screenshotDataUrl?: string;
+	audioPath?: string; // TTS narration audio file path
 }
 
 // ── Chat message types ────────────────────────────────────────────────
@@ -53,6 +54,7 @@ export interface DemoChatMessage {
 	content: string;
 	timestamp: number;
 	screenshotDataUrl?: string;
+	audioPath?: string; // TTS narration audio file path
 	actionType?: string;
 	actionTarget?: string;
 }

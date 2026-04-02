@@ -7,7 +7,13 @@
  * smarter per-scene decisions.
  */
 
-import type { Scene, SceneLayer, SceneProject, SceneTransition } from "@/lib/scene-renderer";
+import type {
+	AnimationType,
+	Scene,
+	SceneLayer,
+	SceneProject,
+	SceneTransition,
+} from "@/lib/scene-renderer";
 
 // ── Animated backgrounds (premium dark options) ──
 
@@ -176,6 +182,158 @@ export function polishSceneProject(project: SceneProject): {
 
 	return {
 		project: { ...project, scenes: polishedScenes },
+		preview,
+	};
+}
+
+// ── AI-Powered Polish (vision model) ──────────────────────────────────
+
+const AI_POLISH_PROMPT = `You are a motion design expert. Analyze this screenshot from a product demo video and suggest enhancements.
+
+Respond with JSON only:
+{
+  "focusArea": "top-left" | "top-right" | "center" | "bottom-left" | "bottom-right",
+  "imageAnimation": "ken-burns" | "zoom-in" | "fade",
+  "textAnimation": "blur-in" | "slide-up" | "fade",
+  "suggestedDurationMs": 3000-6000,
+  "background": "mesh-apple-dark" | "animated-midnight" | "animated-ocean-wave" | "particle-bokeh-cool",
+  "reasoning": "brief explanation"
+}
+
+Rules:
+- focusArea: where the most important content is (hero text, dashboard, key feature)
+- imageAnimation: ken-burns for screenshots with lots of content, zoom-in for focused elements, fade for simple pages
+- textAnimation: blur-in for titles/headers, slide-up for descriptions
+- suggestedDurationMs: longer for text-heavy pages (5000), shorter for visual pages (3000)
+- background: pick one that complements the screenshot's color palette`;
+
+interface AIPolishSuggestion {
+	focusArea: string;
+	imageAnimation: string;
+	textAnimation: string;
+	suggestedDurationMs: number;
+	background: string;
+	reasoning: string;
+}
+
+/**
+ * AI-enhanced polish — sends each scene's screenshot to a vision model
+ * for per-scene analysis, then applies the recommendations.
+ * Falls back to heuristic polish if vision fails.
+ */
+export async function aiPolishSceneProject(
+	project: SceneProject,
+	onProgress?: (sceneIndex: number, total: number) => void,
+): Promise<{ project: SceneProject; preview: ScenePolishPreview }> {
+	// Start with heuristic polish as the base
+	const { project: basePolished, preview } = polishSceneProject(project);
+
+	const scenes = [...basePolished.scenes];
+	let aiEnhanced = 0;
+
+	for (let i = 0; i < scenes.length; i++) {
+		const scene = scenes[i];
+		onProgress?.(i, scenes.length);
+
+		// Find the image layer (screenshot)
+		const imageLayer = scene.layers.find((l) => l.type === "image");
+		if (!imageLayer || !(imageLayer.content as { src?: string }).src) continue;
+
+		const src = (imageLayer.content as { src: string }).src;
+		if (!src.startsWith("data:image")) continue;
+
+		try {
+			const base64 = src.replace(/^data:image\/\w+;base64,/, "");
+			const result = await window.electronAPI?.aiAnalyzeImage(
+				"Analyze this demo screenshot for motion design enhancements.",
+				base64,
+				AI_POLISH_PROMPT,
+			);
+
+			if (!result?.success || !result.text) continue;
+
+			// Parse the suggestion
+			let json = result.text.trim();
+			const match = json.match(/\{[\s\S]*\}/);
+			if (match) json = match[0];
+			const suggestion = JSON.parse(json) as AIPolishSuggestion;
+
+			// Apply AI suggestion to the scene
+			const validAnimations: AnimationType[] = [
+				"ken-burns",
+				"zoom-in",
+				"fade",
+				"blur-in",
+				"slide-up",
+			];
+
+			// Update image layer animation
+			if (validAnimations.includes(suggestion.imageAnimation as AnimationType)) {
+				const imgIdx = scene.layers.findIndex((l) => l.type === "image");
+				if (imgIdx >= 0) {
+					scenes[i] = {
+						...scenes[i],
+						layers: scenes[i].layers.map((l, li) =>
+							li === imgIdx
+								? {
+										...l,
+										entrance: {
+											...l.entrance,
+											type: suggestion.imageAnimation as AnimationType,
+										},
+									}
+								: l,
+						),
+					};
+				}
+			}
+
+			// Update text layer animations
+			if (validAnimations.includes(suggestion.textAnimation as AnimationType)) {
+				scenes[i] = {
+					...scenes[i],
+					layers: scenes[i].layers.map((l) =>
+						l.type === "text"
+							? {
+									...l,
+									entrance: {
+										...l.entrance,
+										type: suggestion.textAnimation as AnimationType,
+									},
+								}
+							: l,
+					),
+				};
+			}
+
+			// Update duration
+			if (suggestion.suggestedDurationMs >= 2000 && suggestion.suggestedDurationMs <= 8000) {
+				scenes[i] = {
+					...scenes[i],
+					durationMs: suggestion.suggestedDurationMs,
+					layers: scenes[i].layers.map((l) => ({
+						...l,
+						endMs: suggestion.suggestedDurationMs,
+					})),
+				};
+			}
+
+			// Update background
+			if (POLISH_BACKGROUNDS.includes(suggestion.background)) {
+				scenes[i] = { ...scenes[i], background: suggestion.background };
+			}
+
+			aiEnhanced++;
+		} catch {
+			// Skip this scene, keep heuristic polish
+			continue;
+		}
+	}
+
+	preview.animationsEnhanced += aiEnhanced;
+
+	return {
+		project: { ...basePolished, scenes },
 		preview,
 	};
 }

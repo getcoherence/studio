@@ -6,6 +6,7 @@
 import { ArrowLeft, Bot } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { toast } from "sonner";
 import type { Scene, SceneLayer, SceneProject } from "@/lib/scene-renderer";
 import { DemoBottomBar } from "./DemoBottomBar";
 import { DemoBrowserPanel } from "./DemoBrowserPanel";
@@ -146,6 +147,54 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 		onOpenInEditor(project);
 	}, [agent.steps, onOpenInEditor]);
 
+	// ── Voiceover generation ──
+
+	const [isGeneratingVoiceover, setIsGeneratingVoiceover] = useState(false);
+
+	const handleGenerateVoiceover = useCallback(async () => {
+		const narrationSteps = agent.steps.filter(
+			(s) => s.action.narration && s.action.narration.length > 5,
+		);
+		if (narrationSteps.length === 0) return;
+
+		setIsGeneratingVoiceover(true);
+		let successCount = 0;
+
+		for (const step of narrationSteps) {
+			if (step.audioPath) {
+				successCount++;
+				continue; // Already generated
+			}
+			try {
+				const result = await window.electronAPI?.aiTtsSynthesize(step.action.narration, "nova");
+				if (result?.success && result.audioPath) {
+					step.audioPath = result.audioPath;
+					successCount++;
+
+					// Update the corresponding chat message with the audio path
+					setMessages((prev) =>
+						prev.map((m) =>
+							m.type === "narration" && m.content === step.action.narration
+								? { ...m, audioPath: result.audioPath }
+								: m,
+						),
+					);
+				}
+			} catch (err) {
+				console.warn("TTS failed for step:", err);
+			}
+		}
+
+		setIsGeneratingVoiceover(false);
+		if (successCount > 0) {
+			toast.success(
+				`Generated voiceover for ${successCount} narration${successCount > 1 ? "s" : ""}`,
+			);
+		} else {
+			toast.error("Voiceover generation failed — check your OpenAI API key");
+		}
+	}, [agent.steps]);
+
 	return (
 		<div className="flex flex-col h-screen bg-[#09090b]">
 			{/* Header */}
@@ -175,6 +224,8 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 							status={agent.status}
 							onStart={handleStart}
 							onOpenInEditor={handleOpenInEditor}
+							onGenerateVoiceover={handleGenerateVoiceover}
+							isGeneratingVoiceover={isGeneratingVoiceover}
 						/>
 					</Panel>
 					<PanelResizeHandle className="w-1 bg-white/5 hover:bg-[#2563eb]/40 transition-colors" />
