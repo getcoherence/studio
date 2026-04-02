@@ -762,7 +762,20 @@ export default function VideoEditor() {
 	}, []);
 
 	const handleDemoOpenInEditor = useCallback(() => {
-		if (!demoResult) return;
+		if (!demoResult) {
+			toast.error("No demo data available. Try running the demo again.");
+			setDemoRunning(false);
+			setDemoComplete(false);
+			return;
+		}
+
+		console.log(
+			"[Demo→Editor]",
+			demoResult.steps.length,
+			"steps,",
+			demoResult.steps.filter((s) => s.screenshotDataUrl).length,
+			"with screenshots",
+		);
 
 		// Build a SceneProject from the demo screenshots + narration
 		// Import scene types inline to avoid circular dependencies
