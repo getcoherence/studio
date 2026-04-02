@@ -94,26 +94,20 @@ export class BrowserDriver {
 
 		console.log("[DemoRecorder] Launching Chrome:", executablePath);
 
-		// spawn UNKNOWN in Electron is caused by cwd being inside ASAR.
-		// Fix: set cwd explicitly to a real directory (os.homedir or tmpdir).
-		// See: https://github.com/electron/electron/issues/30983
+		// All child_process methods fail with "spawn UNKNOWN" inside Electron.
+		// Use Electron's shell module which uses the OS shell directly.
+		const { shell } = await import("electron");
 		const os = await import("node:os");
-		const { spawn } = await import("node:child_process");
-
-		const chromeProcess = spawn(executablePath, chromeArgs, {
-			cwd: os.homedir(), // CRITICAL: must be a real dir, not inside ASAR
-			stdio: "ignore",
-			detached: true,
-		});
-		chromeProcess.unref();
+		const launchScript = path.join(os.tmpdir(), `lucid-chrome-${Date.now()}.bat`);
+		const allArgs = chromeArgs.join(" ");
+		fs.writeFileSync(launchScript, `@echo off\n"${executablePath}" ${allArgs}\n`);
+		await shell.openPath(launchScript);
 
 		// Wait for Chrome to start and open the debug port
 		await new Promise<void>((resolve, reject) => {
-			const timeout = setTimeout(
-				() =>
-					reject(new Error(`Chrome failed to start on port ${debugPort}. Path: ${executablePath}`)),
-				15000,
-			);
+			const timeout = setTimeout(() => {
+				reject(new Error(`Chrome failed to start on port ${debugPort}`));
+			}, 15000);
 			const check = async () => {
 				try {
 					const resp = await fetch(`http://127.0.0.1:${debugPort}/json/version`);
@@ -125,14 +119,15 @@ export class BrowserDriver {
 				} catch {
 					// Not ready yet
 				}
-				setTimeout(check, 200);
+				setTimeout(check, 300);
 			};
 			check();
-			chromeProcess.on("error", (err) => {
-				clearTimeout(timeout);
-				reject(err);
-			});
 		});
+
+		// Clean up launch script
+		try {
+			fs.unlinkSync(launchScript);
+		} catch {}
 
 		// Connect Playwright to the running Chrome via CDP
 		const chromium = await getChromium();
