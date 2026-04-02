@@ -44,6 +44,7 @@ import {
 	VideoExporter,
 } from "@/lib/exporter";
 import type { ProjectMedia } from "@/lib/recordingSession";
+import type { SceneProject } from "@/lib/scene-renderer";
 import { matchesShortcut } from "@/lib/shortcuts";
 import {
 	getAspectRatioValue,
@@ -66,6 +67,16 @@ import {
 } from "./projectPersistence";
 import { SettingsPanel } from "./SettingsPanel";
 import TimelineEditor from "./timeline/TimelineEditor";
+
+// Module-level variable for passing demo projects to SceneEditor
+// (sessionStorage can't handle large base64 screenshots)
+export let pendingDemoProject: SceneProject | null = null;
+export function consumePendingDemoProject(): SceneProject | null {
+	const p = pendingDemoProject;
+	pendingDemoProject = null;
+	return p;
+}
+
 import {
 	type AnnotationRegion,
 	type CursorTelemetryPoint,
@@ -856,23 +867,15 @@ export default function VideoEditor() {
 		setDemoResult(null);
 		setDemoCurrentStep(null);
 
-		// Open the scene editor with this project by setting showSceneEditor
-		// The SceneEditor will load with a default project; we store our project
-		// in sessionStorage so SceneEditor can pick it up
-		try {
-			sessionStorage.setItem(
-				"lucid-demo-project",
-				JSON.stringify({
-					id: `demo-${Date.now()}`,
-					name: "AI Demo",
-					scenes,
-					resolution: { width: 1920, height: 1080 },
-					fps: 30,
-				}),
-			);
-		} catch {
-			// sessionStorage might be unavailable or full
-		}
+		// Store the demo project in a module-level variable that SceneEditor reads
+		// (sessionStorage fails for large base64 screenshots)
+		pendingDemoProject = {
+			id: `demo-${Date.now()}`,
+			name: "AI Demo",
+			scenes,
+			resolution: { width: 1920, height: 1080 },
+			fps: 30,
+		};
 		setSceneEditorKey((k) => k + 1);
 		setShowSceneEditor(true);
 	}, [demoResult]);
