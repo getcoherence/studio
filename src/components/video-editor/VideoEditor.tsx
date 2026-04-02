@@ -774,8 +774,8 @@ export default function VideoEditor() {
 				background: "#09090b",
 				animatedBgSpeed: 1,
 				transition: {
-					type: "fade" as const,
-					durationMs: 500,
+					type: "none" as const,
+					durationMs: 0,
 				},
 				layers: [
 					// Screenshot as image layer (full frame)
@@ -2014,7 +2014,7 @@ export default function VideoEditor() {
 			/>
 		);
 	}
-	if (demoRunning) {
+	if (demoRunning || demoComplete) {
 		return (
 			<DemoProgress
 				currentStep={demoCurrentStep}

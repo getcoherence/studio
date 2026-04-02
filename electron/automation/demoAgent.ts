@@ -74,7 +74,9 @@ CRITICAL RULES:
 - A good demo shows: homepage → features/product page → pricing → signup/CTA
 - Use "scroll" with value "down" to reveal content below the fold on each page
 - When the demo goal is fully achieved AND you have at least 8 steps, use action "done"
-- For click: use the element's text content from the list (e.g. "Platform", "Pricing", "Features")
+- For click: use the element's EXACT text content from the elements list. Only click elements that appear in the list.
+- If a menu item has a dropdown arrow (▾ or ▸) or is a group header, click a SPECIFIC subpage link instead, not the group.
+- If clicking didn't navigate to a new page, try scrolling down or clicking a different link.
 - For type: set target to the input selector and value to the text to type
 - For scroll: set value to "up" or "down"
 - For navigate: set target to the URL
