@@ -3,7 +3,7 @@
  * Left panel: chat with agent progress. Right panel: embedded browser.
  */
 
-import { ArrowLeft, Bot } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Bot, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
@@ -105,6 +105,7 @@ interface DemoStudioPageProps {
 export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) {
 	const [messages, setMessages] = useState<DemoChatMessage[]>([]);
 	const [maxSteps, setMaxSteps] = useState(12);
+	const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 	const webviewRef = useRef<Electron.WebviewTag>(null);
 
 	const handleMessage = useCallback((msg: DemoChatMessage) => {
@@ -206,18 +207,59 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 
 	return (
 		<div className="flex flex-col h-screen bg-[#09090b]">
+			{/* Leave confirmation dialog */}
+			{showLeaveConfirm && (
+				<div className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center">
+					<div className="w-full max-w-sm mx-4 bg-[#141417] border border-white/10 rounded-xl p-5 space-y-4">
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-2 text-amber-400">
+								<AlertTriangle size={18} />
+								<span className="text-sm font-semibold text-white">Leave Demo Studio?</span>
+							</div>
+							<button
+								onClick={() => setShowLeaveConfirm(false)}
+								className="text-white/40 hover:text-white/60 transition-colors"
+							>
+								<X size={16} />
+							</button>
+						</div>
+						<p className="text-sm text-white/50">
+							{agent.status === "running" || agent.status === "paused"
+								? "A demo is still in progress. Leaving will stop it and discard all captured steps."
+								: "Your demo hasn't been opened in the editor yet. Leaving will discard all captured steps."}
+						</p>
+						<div className="flex justify-end gap-2">
+							<button
+								onClick={() => setShowLeaveConfirm(false)}
+								className="px-4 py-2 rounded-md text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={() => {
+									agent.stop();
+									setShowLeaveConfirm(false);
+									onBack();
+								}}
+								className="px-4 py-2 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm font-medium transition-colors"
+							>
+								Leave
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
 			{/* Header */}
 			<div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8 bg-[#0c0c0f]">
 				<div className="flex items-center gap-3">
 					<button
 						onClick={() => {
-							if (agent.steps.length > 0 && agent.status !== "idle") {
-								if (!confirm("You have a demo in progress. Leave without saving?")) return;
-								agent.stop();
-							} else if (agent.steps.length > 0) {
-								if (!confirm("Your demo hasn't been opened in the editor. Leave anyway?")) return;
+							if (agent.steps.length > 0) {
+								setShowLeaveConfirm(true);
+							} else {
+								onBack();
 							}
-							onBack();
 						}}
 						className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors"
 					>
