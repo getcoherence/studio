@@ -15,7 +15,7 @@ import { BrowserDriver, type PageInfo } from "./browserDriver";
 // ── Types ────────────────────────────────────────────────────────────────
 
 export interface DemoAction {
-	action: "click" | "type" | "scroll" | "navigate" | "wait" | "done";
+	action: "click" | "type" | "scroll" | "navigate" | "wait" | "pause" | "done";
 	target?: string;
 	value?: string;
 	narration: string;
@@ -57,7 +57,7 @@ Your goal is provided by the user.
 
 Respond with ONE JSON action at a time. No markdown, no explanation outside the JSON:
 {
-  "action": "click|type|scroll|navigate|wait|done",
+  "action": "click|type|scroll|navigate|wait|pause|done",
   "target": "CSS selector or element text description",
   "value": "text for type action, or 'up'/'down' for scroll",
   "narration": "Professional voiceover text for this moment",
@@ -78,6 +78,8 @@ CRITICAL RULES:
 - For type: set target to the input selector and value to the text to type
 - For scroll: set value to "up" or "down"
 - For navigate: set target to the URL
+- For pause: use when you detect a login page, OAuth prompt, or any screen requiring user input you can't handle. The user will complete the action manually, then the demo resumes.
+- If you see "Sign In", "Log In", "OAuth", SSO buttons, or any authentication form, use action "pause" with narration explaining what the user should do.
 - NEVER say "done" before step 8`;
 
 // ── DemoAgent class ──────────────────────────────────────────────────────
@@ -88,6 +90,7 @@ export class DemoAgent {
 	private startTime: number = 0;
 	private stopped: boolean = false;
 	private onProgress?: (step: DemoStep, stepIndex: number) => void;
+	private resumeResolver: (() => void) | null = null;
 
 	constructor(onProgress?: (step: DemoStep, stepIndex: number) => void) {
 		this.driver = new BrowserDriver();
@@ -135,7 +138,29 @@ export class DemoAgent {
 			// 2. Ask AI what to do next
 			const action = await this.getNextAction(config.prompt, pageInfo, i);
 
-			// 3. If done, capture final screenshot and break
+			// 3. If pause, wait for user to resume (e.g., after manual login)
+			if (action.action === "pause") {
+				const screenshot = await this.driver.screenshot();
+				const pauseStep: DemoStep = {
+					action,
+					timestamp: Date.now() - this.startTime,
+					screenshot,
+				};
+				this.steps.push(pauseStep);
+				this.onProgress?.(pauseStep, this.steps.length - 1);
+
+				// Wait for resume() to be called
+				await new Promise<void>((resolve) => {
+					this.resumeResolver = resolve;
+				});
+				this.resumeResolver = null;
+
+				// After resume, wait for page to settle (user may have navigated)
+				await new Promise((r) => setTimeout(r, 2000));
+				continue;
+			}
+
+			// 4. If done, capture final screenshot and break
 			if (action.action === "done") {
 				const finalScreenshot = await this.driver.screenshot();
 				const doneStep: DemoStep = {
@@ -255,6 +280,21 @@ Step ${stepIndex + 1}. What's the next action? Respond with JSON only.`;
 
 	async stop(): Promise<void> {
 		this.stopped = true;
+		// Resolve any pending pause
+		if (this.resumeResolver) {
+			this.resumeResolver();
+			this.resumeResolver = null;
+		}
 		await this.driver.close();
+	}
+
+	resume(): void {
+		if (this.resumeResolver) {
+			this.resumeResolver();
+		}
+	}
+
+	get isPaused(): boolean {
+		return this.resumeResolver !== null;
 	}
 }

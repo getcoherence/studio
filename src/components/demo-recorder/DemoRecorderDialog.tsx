@@ -134,7 +134,9 @@ interface DemoProgressProps {
 	elapsedMs: number;
 	onStop: () => void;
 	onComplete: () => void;
+	onResume: () => void;
 	isComplete: boolean;
+	isPaused: boolean;
 }
 
 export function DemoProgress({
@@ -144,7 +146,9 @@ export function DemoProgress({
 	elapsedMs,
 	onStop,
 	onComplete,
+	onResume,
 	isComplete,
+	isPaused,
 }: DemoProgressProps) {
 	const elapsed = Math.floor(elapsedMs / 1000);
 	const minutes = Math.floor(elapsed / 60);
@@ -201,6 +205,14 @@ export function DemoProgress({
 
 				{/* Actions */}
 				<div className="flex justify-end gap-2">
+					{isPaused && !isComplete && (
+						<button
+							onClick={onResume}
+							className="flex items-center gap-2 px-4 py-2 rounded-md bg-[#2563eb] hover:bg-[#2563eb]/90 text-white text-sm font-medium transition-colors animate-pulse"
+						>
+							Continue Demo
+						</button>
+					)}
 					{!isComplete && (
 						<button
 							onClick={onStop}

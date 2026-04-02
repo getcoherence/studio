@@ -80,6 +80,13 @@ export function registerDemoHandlers(getMainWindow: () => BrowserWindow | null):
 		return { success: true };
 	});
 
+	ipcMain.handle("demo-resume", () => {
+		if (activeAgent) {
+			activeAgent.resume();
+		}
+		return { success: true };
+	});
+
 	ipcMain.handle("demo-get-status", () => {
 		return { running: isRunning };
 	});
