@@ -153,6 +153,11 @@ interface Window {
 			context?: string,
 			schema?: Record<string, unknown>,
 		) => Promise<{ success: boolean; data?: unknown; error?: string }>;
+		aiAnalyzeImage: (
+			prompt: string,
+			imageBase64: string,
+			systemPrompt?: string,
+		) => Promise<import("../src/lib/ai/types").AIServiceResult>;
 		aiCheckAvailability: () => Promise<import("../src/lib/ai/types").AIAvailability>;
 		aiGetConfig: () => Promise<import("../src/lib/ai/types").AIServiceConfig>;
 		aiSaveConfig: (

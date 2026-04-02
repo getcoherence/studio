@@ -179,6 +179,21 @@ export class BrowserDriver {
 		return { url, title, visibleText: result.visibleText, elements: result.elements };
 	}
 
+	/** Hide the demo browser (minimize) so the main window is accessible. */
+	hide(): void {
+		if (this.win && !this.win.isDestroyed()) {
+			this.win.minimize();
+		}
+	}
+
+	/** Show the demo browser again after it was hidden. */
+	show(): void {
+		if (this.win && !this.win.isDestroyed()) {
+			this.win.restore();
+			this.win.focus();
+		}
+	}
+
 	async close(): Promise<void> {
 		if (this.win && !this.win.isDestroyed()) {
 			this.win.close();

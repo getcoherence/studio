@@ -5,6 +5,7 @@
 
 import { Bot, Loader2, Play } from "lucide-react";
 import { useState } from "react";
+import { AISettingsButton } from "@/components/ui/AISettingsDialog";
 import {
 	Dialog,
 	DialogContent,
@@ -108,6 +109,7 @@ export function DemoRecorderDialog({ open, onOpenChange, onStart }: DemoRecorder
 				</div>
 
 				<DialogFooter className="gap-2">
+					<AISettingsButton className="p-2 text-white/30 hover:text-white/60 transition-colors rounded-md hover:bg-white/5 mr-auto" />
 					<button
 						onClick={() => onOpenChange(false)}
 						className="px-4 py-2 rounded-md text-sm text-white/60 hover:text-white/80 hover:bg-white/5 transition-colors"

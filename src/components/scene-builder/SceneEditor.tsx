@@ -12,14 +12,17 @@ import {
 	Square,
 	Trash2,
 	Type,
+	Wand2,
 } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
+import { AISettingsButton } from "@/components/ui/AISettingsDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { AnimatedBackgroundPicker } from "@/components/video-editor/AnimatedBackgroundPicker";
-import { generateSceneProject } from "@/lib/ai/sceneGenerator";
+import { generateSceneProject, SCENE_TEMPLATES } from "@/lib/ai/sceneGenerator";
+import { polishSceneProject } from "@/lib/ai/scenePolish";
 import { consumePendingDemoProject } from "@/lib/demoProjectStore";
 import {
 	captureCanvas,
@@ -78,11 +81,46 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	const [aiPrompt, setAiPrompt] = useState("");
 	const [isAiGenerating, setIsAiGenerating] = useState(false);
 	const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
+	const [isPolishing, setIsPolishing] = useState(false);
+	const [projectPath, setProjectPath] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const canvasRefOut = useRef<HTMLCanvasElement | null>(null);
 
 	const currentScene = project.scenes[selectedSceneIndex];
 	const selectedLayer = currentScene?.layers.find((l) => l.id === selectedLayerId) ?? null;
+
+	// ── Save project (responds to File > Save menu) ────────────────────
+
+	const saveProject = useCallback(async () => {
+		try {
+			const result = await window.electronAPI?.saveProjectFile(
+				project,
+				project.name || "Scene Project",
+				projectPath ?? undefined,
+			);
+			if (result?.success && result.path) {
+				setProjectPath(result.path);
+				toast.success("Project saved");
+			}
+		} catch (_err) {
+			toast.error("Failed to save project");
+		}
+	}, [project, projectPath]);
+
+	useEffect(() => {
+		const cleanup = window.electronAPI?.onMenuSaveProject?.(() => {
+			saveProject();
+		});
+		return () => cleanup?.();
+	}, [saveProject]);
+
+	// Mark unsaved changes
+	useEffect(() => {
+		window.electronAPI?.setHasUnsavedChanges?.(true);
+		return () => {
+			window.electronAPI?.setHasUnsavedChanges?.(false);
+		};
+	}, []);
 
 	// ── Project mutation helpers ────────────────────────────────────────
 
@@ -376,6 +414,35 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		}
 	}, [aiPrompt, isAiGenerating]);
 
+	// ── AI Polish ─────────────────────────────────────────────────────
+
+	const handlePolish = useCallback(() => {
+		if (isPolishing || project.scenes.length === 0) return;
+		setIsPolishing(true);
+		try {
+			const { project: polished, preview } = polishSceneProject(project);
+			setProject(polished);
+			setSelectedSceneIndex(0);
+			setSelectedLayerId(null);
+			setCurrentTimeMs(0);
+			setIsPlaying(false);
+
+			const parts: string[] = [];
+			if (preview.backgroundsChanged > 0) parts.push(`${preview.backgroundsChanged} backgrounds`);
+			if (preview.transitionsAdded > 0) parts.push(`${preview.transitionsAdded} transitions`);
+			if (preview.animationsEnhanced > 0) parts.push(`${preview.animationsEnhanced} animations`);
+			if (preview.durationsAdjusted > 0) parts.push(`${preview.durationsAdjusted} timings`);
+			toast.success(
+				`Polished ${preview.totalScenes} scenes: ${parts.join(", ") || "no changes needed"}`,
+			);
+		} catch (err) {
+			toast.error("Polish failed");
+			console.error("Scene polish error:", err);
+		} finally {
+			setIsPolishing(false);
+		}
+	}, [project, isPolishing]);
+
 	// ── Keyboard shortcuts ─────────────────────────────────────────────
 
 	const handleKeyDown = useCallback(
@@ -518,19 +585,31 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 							AI Generate
 						</button>
 					</PopoverTrigger>
-					<PopoverContent className="w-80 bg-[#141417] border-white/10" align="start">
+					<PopoverContent className="w-96 bg-[#141417] border-white/10" align="start">
 						<div className="space-y-3">
 							<div className="text-xs text-white/60 font-medium">
 								Generate Scene Project with AI
 							</div>
-							<p className="text-[10px] text-white/40">
-								Describe the video you want to create. AI will generate multiple scenes with
-								backgrounds, text, and animations.
-							</p>
+
+							{/* Template chips */}
+							<div className="flex flex-wrap gap-1.5">
+								{SCENE_TEMPLATES.map((t) => (
+									<button
+										key={t.id}
+										onClick={() => setAiPrompt(t.prompt)}
+										className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/15 text-[10px] text-white/60 hover:text-white/80 transition-colors"
+										title={t.description}
+									>
+										<span>{t.thumbnail}</span>
+										{t.name}
+									</button>
+								))}
+							</div>
+
 							<textarea
 								value={aiPrompt}
 								onChange={(e) => setAiPrompt(e.target.value)}
-								placeholder="e.g. A product launch video for a SaaS app called Acme. Show features, pricing, and a call to action."
+								placeholder="Describe your video, or pick a template above..."
 								className="w-full h-20 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-white/90 placeholder:text-white/25 resize-none focus:outline-none focus:border-[#2563eb]/50"
 								onKeyDown={(e) => {
 									if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -565,6 +644,20 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 						</div>
 					</PopoverContent>
 				</Popover>
+
+				{/* AI Polish */}
+				<button
+					onClick={handlePolish}
+					disabled={isPolishing || project.scenes.length === 0}
+					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-amber-400/70 hover:text-amber-300 hover:bg-amber-400/10 transition-colors text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+					title="Auto-enhance with better animations, backgrounds, and transitions"
+				>
+					{isPolishing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+					Polish
+				</button>
+
+				{/* AI Settings */}
+				<AISettingsButton />
 
 				{/* Spacer */}
 				<div className="flex-1" />

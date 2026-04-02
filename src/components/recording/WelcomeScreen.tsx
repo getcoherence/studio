@@ -1,4 +1,7 @@
-import { Bot, Clapperboard, Film, FolderOpen, PlayCircle } from "lucide-react";
+import { Bot, Clapperboard, Film, FolderOpen, PlayCircle, Settings } from "lucide-react";
+import { useState } from "react";
+import { AISettingsDialog } from "@/components/ui/AISettingsDialog";
+import { ProBadge, useProGate } from "@/components/ui/ProGate";
 
 interface WelcomeScreenProps {
 	onNewRecording: () => void;
@@ -15,8 +18,13 @@ export function WelcomeScreen({
 	onCreateVideo,
 	onAiDemo,
 }: WelcomeScreenProps) {
+	const { isPro, checkFeature, gateDialog } = useProGate();
+	const [settingsOpen, setSettingsOpen] = useState(false);
+
 	return (
 		<div className="relative flex flex-col items-center justify-center h-screen gap-8 bg-[#09090b]">
+			{gateDialog}
+
 			<div className="flex flex-col items-center gap-3">
 				<img src="/lucidstudio-logo-noborder.png" alt="Lucid Studio" className="w-20 h-20" />
 				<h1 className="text-2xl font-semibold text-white">Lucid Studio</h1>
@@ -32,20 +40,26 @@ export function WelcomeScreen({
 				</button>
 				{onCreateVideo && (
 					<button
-						onClick={onCreateVideo}
+						onClick={() => {
+							if (checkFeature("scene-builder")) onCreateVideo();
+						}}
 						className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 font-medium transition-colors border border-[#2563eb]/30 hover:border-[#2563eb]/50"
 					>
 						<Clapperboard size={18} />
 						Create Video
+						{!isPro && <ProBadge />}
 					</button>
 				)}
 				{onAiDemo && (
 					<button
-						onClick={onAiDemo}
+						onClick={() => {
+							if (checkFeature("ai-demo-recorder")) onAiDemo();
+						}}
 						className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 font-medium transition-colors border border-[#2563eb]/30 hover:border-[#2563eb]/50"
 					>
 						<Bot size={18} />
 						AI Demo
+						{!isPro && <ProBadge />}
 					</button>
 				)}
 				<button
@@ -63,6 +77,16 @@ export function WelcomeScreen({
 					Open Project
 				</button>
 			</div>
+
+			{/* Settings gear */}
+			<button
+				onClick={() => setSettingsOpen(true)}
+				className="absolute bottom-6 left-6 p-2 text-white/30 hover:text-white/60 transition-colors rounded-md hover:bg-white/5"
+				title="Settings"
+			>
+				<Settings size={16} />
+			</button>
+			<AISettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
 			{/* Attribution */}
 			<a

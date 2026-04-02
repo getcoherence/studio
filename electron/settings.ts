@@ -6,9 +6,11 @@ export interface LucidSettings {
 	// Capture
 	captureBackend: "auto" | "native" | "browser";
 
-	// AI
-	aiProvider: "local" | "openai" | "anthropic";
+	// AI (unified — used by aiService.ts)
+	aiProvider: "ollama" | "openai" | "anthropic" | "groq" | "minimax";
 	aiApiKey?: string;
+	aiModel?: string;
+	aiOllamaUrl?: string;
 	whisperModel: "tiny" | "base" | "small";
 
 	// Cursor
@@ -24,11 +26,15 @@ export interface LucidSettings {
 	locale: string;
 	checkForUpdates: boolean;
 	recentProjects: string[];
+
+	// License
+	licenseTier: "free" | "pro";
+	licenseKey?: string;
 }
 
 const DEFAULT_SETTINGS: LucidSettings = {
 	captureBackend: "auto",
-	aiProvider: "local",
+	aiProvider: "openai",
 	whisperModel: "small",
 	cursorSmoothing: 0.5,
 	cursorSway: 0.3,
@@ -38,6 +44,7 @@ const DEFAULT_SETTINGS: LucidSettings = {
 	locale: "en",
 	checkForUpdates: true,
 	recentProjects: [],
+	licenseTier: "free",
 };
 
 let cachedSettings: LucidSettings | null = null;
