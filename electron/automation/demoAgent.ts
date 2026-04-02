@@ -9,7 +9,7 @@
  * 5. Repeats until the LLM says "done" or max steps reached
  */
 
-import { analyze } from "../ai/aiService";
+import { analyze, analyzeImage, loadAIConfig, supportsVision } from "../ai/aiService";
 import { BrowserDriver, type PageInfo } from "./browserDriver";
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -46,44 +46,61 @@ export interface DemoResult {
 
 // ── System prompt ────────────────────────────────────────────────────────
 
-const AGENT_SYSTEM_PROMPT = `You are an AI demo recorder. You control a web browser to create professional product demo videos.
+// Action-decision prompt (text-only, no narration needed — vision handles that)
+const AGENT_SYSTEM_PROMPT = `You are an expert product demo agent. You control a web browser to create compelling product demo videos.
 
-For each step, you receive:
-- Current page URL and title
-- Visible text content (summarized)
-- List of interactive elements (buttons, links, inputs)
+You receive the current page context (URL, title, text, interactive elements) and decide the NEXT action.
 
-Your goal is provided by the user.
-
-Respond with ONE JSON action at a time. No markdown, no explanation outside the JSON:
+Respond with ONE JSON action. No markdown, no explanation outside the JSON:
 {
   "action": "click|type|scroll|navigate|wait|pause|done",
   "target": "CSS selector or element text description",
   "value": "text for type action, or 'up'/'down' for scroll",
-  "narration": "Describe what is CURRENTLY VISIBLE on screen (not what you're about to do). Write as a voiceover for what the viewer sees RIGHT NOW.",
   "waitMs": 1500,
   "reasoning": "Why this action moves the demo forward"
 }
 
-CRITICAL RULES:
+DEMO STRATEGY — Act like a product expert giving a live walkthrough:
+1. START with the hero/landing — scroll down to reveal key messaging and visuals
+2. INTERACT with the product — don't just read navigation. Open actual features, click into detail views, expand dropdowns, fill sample data into forms, toggle settings, open modals
+3. SHOW the product working — if there's a dashboard, click into a specific item. If there's a list, open a record. If there's a form, fill it in. If there's a settings page, toggle something.
+4. DEPTH over breadth — it's better to deeply explore 2-3 features than to superficially click 8 nav links
+5. SCROLL to reveal content on EVERY page — most pages have below-the-fold content worth showing
+6. End with a CTA, pricing page, or signup page if available
+
+INTERACTION RULES:
 - You MUST perform at least 8 actions before using "done". Do NOT stop early.
-- Move slowly and deliberately (users need to see what's happening)
-- Add 1-2 second pauses between actions (use waitMs: 1500-2000)
-- IMPORTANT: The narration must describe what is CURRENTLY ON SCREEN, not what you're about to click. The screenshot is taken AFTER your action, so narrate what the viewer will SEE, not what you plan to do next.
-- Write narration as if presenting to an audience — clear, professional, engaging
-- Explore the site thoroughly: click navigation links, scroll to see content, visit 3-4 pages minimum
-- A good demo shows: homepage → features/product page → pricing → signup/CTA
-- Use "scroll" with value "down" to reveal content below the fold on each page
-- When the demo goal is fully achieved AND you have at least 8 steps, use action "done"
+- Move slowly and deliberately (waitMs: 1500-2500)
 - For click: use the element's EXACT text content from the elements list. Only click elements that appear in the list.
-- If a menu item has a dropdown arrow (▾ or ▸) or is a group header, click a SPECIFIC subpage link instead, not the group.
-- If clicking didn't navigate to a new page, try scrolling down or clicking a different link.
-- For type: set target to the input selector and value to the text to type
+- If a menu item has a dropdown arrow (▾ or ▸) or is a group header, click a SPECIFIC subpage link instead.
+- If clicking didn't navigate or change the page, try scrolling or a different element.
+- For type: set target to input selector, value to sample text
 - For scroll: set value to "up" or "down"
-- For navigate: set target to the URL
-- For pause: use when you detect a login page, OAuth prompt, or any screen requiring user input you can't handle. The user will complete the action manually, then the demo resumes.
-- If you see "Sign In", "Log In", "OAuth", SSO buttons, or any authentication form, use action "pause" with narration explaining what the user should do.
+- For navigate: set target to URL
+- For pause: use when you detect a login/OAuth/SSO screen the user must complete manually
 - NEVER say "done" before step 8`;
+
+// Vision narration prompt — sent with the screenshot for multimodal description
+const VISION_NARRATION_PROMPT = `You are a professional product demo narrator. You are looking at a screenshot from a live product walkthrough.
+
+Describe what you SEE on screen in 1-2 sentences, as if you are presenting to an audience watching the demo video. Be specific about the UI elements, data, and layout visible. Use present tense.
+
+Rules:
+- Describe what IS on screen, not what was clicked or what will happen next
+- Be professional and engaging, like a product launch presentation
+- Reference specific UI elements: "the analytics dashboard shows three metric cards", not "the page has some content"
+- If it's a landing page, mention the headline and key value proposition
+- If it's an app UI, describe the layout and what data/features are visible
+- Keep it concise — 1-2 sentences max, suitable for voiceover narration`;
+
+// Fallback narration prompt for non-vision providers (text-only)
+const TEXT_NARRATION_PROMPT = `Based on the following page context from a product demo, write 1-2 sentences of voiceover narration describing what the viewer would see on screen. Be specific and professional, like a product launch presentation.
+
+Page URL: {url}
+Page Title: {title}
+Visible content (excerpt): {visibleText}
+
+Write the narration only, no quotes or explanation:`;
 
 // ── DemoAgent class ──────────────────────────────────────────────────────
 
@@ -92,6 +109,7 @@ export class DemoAgent {
 	private steps: DemoStep[] = [];
 	private startTime: number = 0;
 	private stopped: boolean = false;
+	private useVision: boolean = false;
 	private onProgress?: (step: DemoStep, stepIndex: number) => void;
 	private resumeResolver: (() => void) | null = null;
 
@@ -103,6 +121,11 @@ export class DemoAgent {
 	async run(config: DemoConfig): Promise<DemoResult> {
 		this.stopped = false;
 		this.steps = [];
+
+		// Check if vision is available for screenshot-based narration
+		const aiConfig = await loadAIConfig();
+		this.useVision = supportsVision(aiConfig.provider);
+		console.log(`DemoAgent: provider=${aiConfig.provider}, vision=${this.useVision}`);
 
 		await this.driver.launch({
 			headless: config.headless ?? false,
@@ -116,13 +139,17 @@ export class DemoAgent {
 
 		this.startTime = Date.now();
 
-		// Take initial screenshot
+		// Take initial screenshot and narrate it with vision
 		const initialScreenshot = await this.driver.screenshot();
+		const initialNarration = await this.narrateScreenshot(
+			initialScreenshot,
+			await this.driver.getPageInfo(),
+		);
 		const initialStep: DemoStep = {
 			action: {
 				action: "navigate",
 				target: config.url,
-				narration: `Let's take a look at ${new URL(config.url).hostname}.`,
+				narration: initialNarration,
 			},
 			timestamp: 0,
 			screenshot: initialScreenshot,
@@ -138,12 +165,18 @@ export class DemoAgent {
 			// 1. Get page context
 			const pageInfo = await this.driver.getPageInfo();
 
-			// 2. Ask AI what to do next
+			// 2. Ask AI what to do next (action only, no narration)
 			const action = await this.getNextAction(config.prompt, pageInfo, i, maxSteps);
 
-			// 3. If pause, wait for user to resume (e.g., after manual login)
+			// 3. If pause, hide browser and wait for user to resume
 			if (action.action === "pause") {
 				const screenshot = await this.driver.screenshot();
+				action.narration =
+					"The demo is paused — please complete the login or authentication, then click Continue.";
+
+				// Hide the demo browser so the main window's Continue button is accessible
+				this.driver.hide();
+
 				const pauseStep: DemoStep = {
 					action,
 					timestamp: Date.now() - this.startTime,
@@ -158,14 +191,17 @@ export class DemoAgent {
 				});
 				this.resumeResolver = null;
 
-				// After resume, wait for page to settle (user may have navigated)
+				// Restore the demo browser and wait for page to settle
+				this.driver.show();
 				await new Promise((r) => setTimeout(r, 2000));
 				continue;
 			}
 
-			// 4. If done, capture final screenshot and break
+			// 4. If done, capture final screenshot and narrate
 			if (action.action === "done") {
 				const finalScreenshot = await this.driver.screenshot();
+				const finalPageInfo = await this.driver.getPageInfo();
+				action.narration = await this.narrateScreenshot(finalScreenshot, finalPageInfo);
 				const doneStep: DemoStep = {
 					action,
 					timestamp: Date.now() - this.startTime,
@@ -176,14 +212,17 @@ export class DemoAgent {
 				break;
 			}
 
-			// 4. Execute the action
+			// 5. Execute the action
 			await this.executeAction(action);
 
-			// 5. Wait for page to settle
+			// 6. Wait for page to settle
 			await new Promise((r) => setTimeout(r, action.waitMs ?? 1500));
 
-			// 6. Take a screenshot after the action
+			// 7. Take screenshot AFTER action, then narrate what's visible
 			const screenshot = await this.driver.screenshot();
+			const postActionPageInfo = await this.driver.getPageInfo();
+			action.narration = await this.narrateScreenshot(screenshot, postActionPageInfo);
+
 			const step: DemoStep = {
 				action,
 				timestamp: Date.now() - this.startTime,
@@ -206,6 +245,37 @@ export class DemoAgent {
 			totalDurationMs: Date.now() - this.startTime,
 			narrationText,
 		};
+	}
+
+	/**
+	 * Use vision model to narrate a screenshot, or fall back to text-based narration.
+	 */
+	private async narrateScreenshot(screenshot: Buffer, pageInfo: PageInfo): Promise<string> {
+		try {
+			if (this.useVision) {
+				const imageBase64 = screenshot.toString("base64");
+				const result = await analyzeImage(
+					"Describe what you see on this screen for a product demo voiceover.",
+					imageBase64,
+					VISION_NARRATION_PROMPT,
+				);
+				if (result.success && result.text) {
+					return result.text.replace(/^["']|["']$/g, "").trim();
+				}
+			}
+
+			// Fallback: text-based narration from page context
+			const textPrompt = TEXT_NARRATION_PROMPT.replace("{url}", pageInfo.url)
+				.replace("{title}", pageInfo.title)
+				.replace("{visibleText}", pageInfo.visibleText.slice(0, 500));
+			const result = await analyze(textPrompt);
+			if (result.success && result.text) {
+				return result.text.replace(/^["']|["']$/g, "").trim();
+			}
+		} catch (err) {
+			console.warn("DemoAgent: narration failed:", err);
+		}
+		return `Viewing ${pageInfo.title || pageInfo.url}.`;
 	}
 
 	private async getNextAction(
@@ -255,7 +325,7 @@ What's the next action? Respond with JSON only.`;
 
 		const result = await analyze(prompt, AGENT_SYSTEM_PROMPT);
 		if (!result.success || !result.text) {
-			return { action: "done", narration: "Demo complete." };
+			return { action: "done", narration: "" };
 		}
 
 		// Parse JSON from response
@@ -263,10 +333,13 @@ What's the next action? Respond with JSON only.`;
 			let json = result.text.trim();
 			const match = json.match(/\{[\s\S]*\}/);
 			if (match) json = match[0];
-			return JSON.parse(json) as DemoAction;
+			const parsed = JSON.parse(json) as DemoAction;
+			// Narration will be filled in after the screenshot is taken
+			parsed.narration = "";
+			return parsed;
 		} catch {
 			console.warn("DemoAgent: failed to parse AI response:", result.text);
-			return { action: "done", narration: "Demo complete." };
+			return { action: "done", narration: "" };
 		}
 	}
 

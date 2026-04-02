@@ -143,6 +143,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	aiGenerateJSON: (prompt: string, context?: string, schema?: Record<string, unknown>) => {
 		return ipcRenderer.invoke("ai-generate-json", prompt, context, schema);
 	},
+	aiAnalyzeImage: (prompt: string, imageBase64: string, systemPrompt?: string) => {
+		return ipcRenderer.invoke("ai-analyze-image", prompt, imageBase64, systemPrompt);
+	},
 	aiCheckAvailability: () => {
 		return ipcRenderer.invoke("ai-check-availability");
 	},

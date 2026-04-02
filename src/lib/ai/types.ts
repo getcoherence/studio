@@ -199,10 +199,19 @@ export const AI_PROVIDERS: AIProviderInfo[] = [
 	{
 		id: "openai",
 		name: "OpenAI",
-		description: "GPT-4o, GPT-4o-mini. Best all-in-one with TTS.",
+		description: "GPT-5.4, GPT-5, GPT-4.1. Best all-in-one with TTS.",
 		requiresApiKey: true,
-		defaultModel: "gpt-4o-mini",
-		models: ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1-nano"],
+		defaultModel: "gpt-5.4-mini",
+		models: [
+			"gpt-5.4",
+			"gpt-5.4-pro",
+			"gpt-5.4-mini",
+			"gpt-5.4-nano",
+			"gpt-5-mini",
+			"gpt-5-nano",
+			"gpt-5",
+			"gpt-4.1",
+		],
 		hasTTS: true,
 	},
 	{

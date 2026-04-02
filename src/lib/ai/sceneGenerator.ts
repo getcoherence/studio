@@ -11,26 +11,108 @@ import {
 	type TextContent,
 } from "@/lib/scene-renderer";
 
-const SYSTEM_PROMPT = `You are an expert motion designer creating premium video presentations. You design like Apple keynotes — clean, minimal, high-impact. Every design choice must be intentional.
+const SYSTEM_PROMPT = `You are a world-class motion designer creating cinematic video presentations. Your style: Apple keynotes, Stripe product announcements, Linear changelogs. Every pixel is intentional.
 
-DESIGN RULES (follow strictly):
-1. TYPOGRAPHY: Max 2 text layers per scene. Title: 56-72px, bold (700). Subtitle: 24-28px, weight 400, color "#ffffffaa" (semi-transparent white). Never use colors that clash with the background.
-2. LAYOUT: Always center text horizontally. Title at y:35-40%, subtitle at y:55-60%. Full-width text: x:10, width:80. Never overlap text layers.
-3. TIMING: Scenes should be 3-4 seconds (NOT longer). Entrance animations: 400-600ms. Stagger delays: title at 0ms, subtitle at 300-500ms. Keep it snappy.
-4. TRANSITIONS: Use "fade" with 400ms between most scenes. Use "zoom" for dramatic reveals only. Never use "dissolve" or "wipe" — they look cheap.
-5. BACKGROUNDS: Use dark backgrounds for readability. Best options: mesh-apple-dark, animated-midnight, animated-ocean-wave, #09090b, #0f172a. AVOID bright/busy backgrounds like aurora or neon-pulse — they distract from text.
-6. COLOR: White text (#ffffff) on dark backgrounds. Use ONE accent color sparingly (e.g., #2563eb for a highlight word). Never use multiple bright colors.
-7. ANIMATIONS: Title: "fade" or "blur-in". Subtitle: "fade" with delay. Never use "bounce", "rotate-in", or "typewriter" for titles — they look amateur. "typewriter" is OK for subtitles only.
-8. CONTENT: Keep text SHORT. Titles: 2-5 words max. Subtitles: 1 short sentence. If the user's content is long, split across multiple scenes.
-9. SCENE COUNT: 4-5 scenes. Opening scene (brand/title), 2-3 content scenes, closing scene (CTA).
-10. CLOSING: Last scene should have a clear call-to-action with the URL or action on its own line.
+IRON RULES — violating these makes the output look amateur:
 
-AVAILABLE BACKGROUNDS: mesh-apple-dark, mesh-vapor, animated-midnight, animated-ocean-wave, animated-forest, particle-bokeh-cool, #09090b, #0f172a, #1a1a2e
-AVAILABLE ANIMATIONS: none, fade, slide-up, slide-down, blur-in, zoom-in, typewriter, wipe
-AVAILABLE TRANSITIONS: none, fade, zoom
+TYPOGRAPHY
+- Max 2 text layers per scene. Period.
+- Title: 56-72px, weight 700, color "#ffffff", textAlign "center"
+- Subtitle: 24-28px, weight 400, color "#ffffff99", textAlign "center"
+- Never put more than 5 words in a title. Split long content across scenes.
+- Font: always "Inter, system-ui, sans-serif" (do not change)
 
-Return ONLY valid JSON:
-{"name":"...","scenes":[{"durationMs":3500,"background":"mesh-apple-dark","transition":{"type":"fade","durationMs":400},"layers":[{"type":"text","content":{"text":"Title","fontSize":64,"fontWeight":"700","color":"#ffffff","textAlign":"center"},"position":{"x":10,"y":38},"size":{"width":80,"height":15},"entrance":{"type":"fade","durationMs":500,"delay":0}},{"type":"text","content":{"text":"Subtitle here","fontSize":26,"fontWeight":"400","color":"#ffffffaa","textAlign":"center"},"position":{"x":15,"y":56},"size":{"width":70,"height":10},"entrance":{"type":"fade","durationMs":400,"delay":400}}]}]}`;
+LAYOUT (percentage-based positioning)
+- Title: x:10, y:36, width:80, height:16
+- Subtitle: x:15, y:55, width:70, height:10
+- NEVER stack text below y:70 (gets cut off) or above y:15 (looks cramped)
+- NEVER overlap layers. Each layer occupies its own vertical band.
+
+VISUAL HIERARCHY
+- Scene 1 (opener): Large title + subtle tagline. This is the hook.
+- Middle scenes: One key message per scene. Title + supporting line.
+- Final scene: CTA or URL. Slightly different background for emphasis.
+
+TIMING & MOTION
+- Scene duration: 3000-4000ms. Never longer.
+- Title entrance: "blur-in" 500ms delay 0. Subtitle: "fade" 400ms delay 400.
+- Exit animations: "none" (let transitions handle it)
+- Transitions: "fade" 400ms between all scenes. Use "zoom" ONLY for the final reveal.
+
+BACKGROUNDS
+- Use ONE background for the entire project (visual consistency). Exception: final CTA scene may use a different one.
+- BEST: "mesh-apple-dark", "#09090b", "animated-midnight", "#0f172a"
+- ACCEPTABLE: "animated-ocean-wave", "mesh-vapor", "particle-bokeh-cool"
+- NEVER USE: aurora, neon, bright gradients, or any light background
+
+COLOR PALETTE
+- Primary text: #ffffff
+- Secondary text: #ffffff99
+- ONE accent color if needed: #2563eb (use sparingly — e.g., wrap one word in a subtitle)
+- Never use red, green, yellow, or multiple accent colors
+
+ANIMATIONS ALLOWED
+- Titles: "blur-in" or "fade" ONLY
+- Subtitles: "fade" ONLY
+- BANNED: "bounce", "rotate-in", "slide-left", "slide-right", "typewriter" (all look cheap on titles)
+
+SCENE COUNT: Exactly 5 scenes for standard prompts. 3-4 for very short prompts.
+
+Return ONLY valid JSON (no markdown, no explanation):
+{"name":"...","scenes":[{"durationMs":3500,"background":"mesh-apple-dark","transition":{"type":"fade","durationMs":400},"layers":[{"type":"text","content":{"text":"Title","fontSize":64,"fontWeight":"700","fontFamily":"Inter, system-ui, sans-serif","color":"#ffffff","textAlign":"center"},"position":{"x":10,"y":36},"size":{"width":80,"height":16},"entrance":{"type":"blur-in","durationMs":500,"delay":0}},{"type":"text","content":{"text":"Subtitle here","fontSize":26,"fontWeight":"400","fontFamily":"Inter, system-ui, sans-serif","color":"#ffffff99","textAlign":"center"},"position":{"x":15,"y":55},"size":{"width":70,"height":10},"entrance":{"type":"fade","durationMs":400,"delay":400}}]}]}`;
+
+// ── Preset templates ────────────────────────────────────────────────────
+
+export interface SceneTemplate {
+	id: string;
+	name: string;
+	description: string;
+	thumbnail: string; // emoji for now
+	prompt: string;
+}
+
+export const SCENE_TEMPLATES: SceneTemplate[] = [
+	{
+		id: "product-launch",
+		name: "Product Launch",
+		description: "Announce a new product or major release",
+		thumbnail: "🚀",
+		prompt:
+			"Create a cinematic product launch announcement video. Scene 1: Bold product name with tagline. Scene 2: The key problem it solves. Scene 3: The hero feature with a punchy description. Scene 4: Social proof or a key metric. Scene 5: Call to action with the URL.",
+	},
+	{
+		id: "feature-walkthrough",
+		name: "Feature Walkthrough",
+		description: "Highlight a specific feature or workflow",
+		thumbnail: "✨",
+		prompt:
+			"Create a feature walkthrough video. Scene 1: Feature name with a one-line value prop. Scene 2: Step 1 of the workflow. Scene 3: Step 2 — the key interaction. Scene 4: The result or outcome. Scene 5: Try it today with URL.",
+	},
+	{
+		id: "testimonial",
+		name: "Testimonial / Quote",
+		description: "Showcase a customer quote or social proof",
+		thumbnail: "💬",
+		prompt:
+			'Create a testimonial/social proof video. Scene 1: "What our customers say" or similar hook. Scene 2: Customer quote (keep it short, attributed to a name and title). Scene 3: A key metric or result (e.g., "3x faster deployments"). Scene 4: Second short quote from a different customer. Scene 5: Join them — CTA with URL.',
+	},
+	{
+		id: "changelog",
+		name: "Changelog / Update",
+		description: "Summarize recent product updates",
+		thumbnail: "📋",
+		prompt:
+			"Create a product changelog/update video. Scene 1: 'What's New' with the month or version. Scene 2: First update — name and one-line description. Scene 3: Second update — the highlight feature. Scene 4: Third update or improvement. Scene 5: Update now — CTA.",
+	},
+	{
+		id: "comparison",
+		name: "Before / After",
+		description: "Show a before-and-after transformation",
+		thumbnail: "⚡",
+		prompt:
+			'Create a before/after comparison video. Scene 1: The problem or "before" state with a pain point. Scene 2: Emphasize the frustration or cost of the old way. Scene 3: "Now with [Product]" — the transformation. Scene 4: The key result or benefit. Scene 5: Get started — CTA with URL.',
+	},
+];
 
 let _nextId = 1;
 function uid(): string {

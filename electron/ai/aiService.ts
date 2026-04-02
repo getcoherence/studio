@@ -3,48 +3,43 @@
  * Ollama (local), OpenAI, Anthropic, Groq, MiniMax.
  */
 
-import fs from "node:fs/promises";
-import path from "node:path";
-import { app } from "electron";
-
 import type {
 	AIAvailability,
 	AIProvider,
 	AIServiceConfig,
 	AIServiceResult,
 } from "../../src/lib/ai/types";
-
-const SETTINGS_FILE_NAME = "ai-settings.json";
+import { loadSettings, saveSettings } from "../settings";
 
 const DEFAULT_CONFIG: AIServiceConfig = {
 	provider: "openai",
 	ollamaUrl: "http://localhost:11434",
 };
 
-function getSettingsPath(): string {
-	return path.join(app.getPath("userData"), SETTINGS_FILE_NAME);
-}
-
-let cachedConfig: AIServiceConfig | null = null;
-
+/**
+ * Load AI config from the unified settings store.
+ * Maps settings.ts fields → AIServiceConfig.
+ */
 export async function loadAIConfig(): Promise<AIServiceConfig> {
-	if (cachedConfig) return cachedConfig;
-	try {
-		const raw = await fs.readFile(getSettingsPath(), "utf-8");
-		const parsed = JSON.parse(raw) as Partial<AIServiceConfig>;
-		cachedConfig = { ...DEFAULT_CONFIG, ...parsed };
-		return cachedConfig;
-	} catch {
-		cachedConfig = { ...DEFAULT_CONFIG };
-		return cachedConfig;
-	}
+	const settings = await loadSettings();
+	return {
+		provider: settings.aiProvider ?? DEFAULT_CONFIG.provider,
+		apiKey: settings.aiApiKey,
+		model: settings.aiModel,
+		ollamaUrl: settings.aiOllamaUrl ?? DEFAULT_CONFIG.ollamaUrl,
+	};
 }
 
+/**
+ * Save AI config to the unified settings store.
+ */
 export async function saveAIConfig(config: Partial<AIServiceConfig>): Promise<void> {
-	const current = await loadAIConfig();
-	const merged: AIServiceConfig = { ...current, ...config };
-	cachedConfig = merged;
-	await fs.writeFile(getSettingsPath(), JSON.stringify(merged, null, 2), "utf-8");
+	await saveSettings({
+		...(config.provider && { aiProvider: config.provider }),
+		...(config.apiKey !== undefined && { aiApiKey: config.apiKey }),
+		...(config.model !== undefined && { aiModel: config.model }),
+		...(config.ollamaUrl !== undefined && { aiOllamaUrl: config.ollamaUrl }),
+	});
 }
 
 // ── Provider endpoints ──
@@ -58,7 +53,7 @@ const PROVIDER_ENDPOINTS: Record<string, string> = {
 
 const DEFAULT_MODELS: Record<string, string> = {
 	ollama: "llama3.2",
-	openai: "gpt-4o-mini",
+	openai: "gpt-5.4-mini",
 	anthropic: "claude-sonnet-4-6",
 	groq: "llama-3.3-70b-versatile",
 	minimax: "MiniMax-M2.7",
@@ -154,7 +149,7 @@ async function callProvider(
 	prompt: string,
 	config: AIServiceConfig,
 ): Promise<string> {
-	const model = config.model ?? DEFAULT_MODELS[provider] ?? "gpt-4o-mini";
+	const model = config.model ?? DEFAULT_MODELS[provider] ?? "gpt-5.4-mini";
 
 	if (provider === "ollama") {
 		const ollamaUrl = config.ollamaUrl ?? "http://localhost:11434";
@@ -212,6 +207,153 @@ export async function checkAvailability(): Promise<AIAvailability> {
 	}
 
 	return { providers, activeProvider };
+}
+
+// ── Vision support ──
+
+const VISION_MODELS: Record<string, string> = {
+	openai: "gpt-5.4-mini",
+	anthropic: "claude-sonnet-4-6",
+};
+
+/**
+ * Check if the current provider supports vision (image input).
+ * Only OpenAI and Anthropic support multimodal vision.
+ */
+export function supportsVision(provider: AIProvider): boolean {
+	return provider in VISION_MODELS;
+}
+
+async function openaiVisionChat(
+	prompt: string,
+	imageBase64: string,
+	apiKey: string,
+	model: string,
+	systemPrompt?: string,
+): Promise<string> {
+	const messages: Array<Record<string, unknown>> = [];
+	if (systemPrompt) {
+		messages.push({ role: "system", content: systemPrompt });
+	}
+	messages.push({
+		role: "user",
+		content: [
+			{ type: "text", text: prompt },
+			{
+				type: "image_url",
+				image_url: { url: `data:image/png;base64,${imageBase64}`, detail: "low" },
+			},
+		],
+	});
+
+	const response = await fetch(PROVIDER_ENDPOINTS.openai, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${apiKey}`,
+		},
+		body: JSON.stringify({ model, messages, max_tokens: 300, temperature: 0.3 }),
+		signal: AbortSignal.timeout(30_000),
+	});
+	if (!response.ok) {
+		throw new Error(`OpenAI vision responded with ${response.status}: ${response.statusText}`);
+	}
+	const data = (await response.json()) as {
+		choices?: Array<{ message?: { content?: string } }>;
+	};
+	return data.choices?.[0]?.message?.content ?? "";
+}
+
+async function anthropicVisionChat(
+	prompt: string,
+	imageBase64: string,
+	apiKey: string,
+	model: string,
+	systemPrompt?: string,
+): Promise<string> {
+	const body: Record<string, unknown> = {
+		model,
+		max_tokens: 300,
+		messages: [
+			{
+				role: "user",
+				content: [
+					{
+						type: "image",
+						source: { type: "base64", media_type: "image/png", data: imageBase64 },
+					},
+					{ type: "text", text: prompt },
+				],
+			},
+		],
+	};
+	if (systemPrompt) {
+		body.system = systemPrompt;
+	}
+
+	const response = await fetch(PROVIDER_ENDPOINTS.anthropic, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"x-api-key": apiKey,
+			"anthropic-version": "2023-06-01",
+		},
+		body: JSON.stringify(body),
+		signal: AbortSignal.timeout(30_000),
+	});
+	if (!response.ok) {
+		throw new Error(`Anthropic vision responded with ${response.status}: ${response.statusText}`);
+	}
+	const data = (await response.json()) as {
+		content?: Array<{ text?: string }>;
+	};
+	return data.content?.[0]?.text ?? "";
+}
+
+/**
+ * Analyze an image with a vision-capable model.
+ * Falls back to text-only analysis if the provider doesn't support vision.
+ */
+export async function analyzeImage(
+	prompt: string,
+	imageBase64: string,
+	systemPrompt?: string,
+): Promise<AIServiceResult> {
+	const config = await loadAIConfig();
+	const provider = config.provider;
+
+	try {
+		if (provider === "openai" && config.apiKey) {
+			const model = VISION_MODELS.openai;
+			const text = await openaiVisionChat(prompt, imageBase64, config.apiKey, model, systemPrompt);
+			return { success: true, text };
+		}
+
+		if (provider === "anthropic" && config.apiKey) {
+			const model = VISION_MODELS.anthropic;
+			const text = await anthropicVisionChat(
+				prompt,
+				imageBase64,
+				config.apiKey,
+				model,
+				systemPrompt,
+			);
+			return { success: true, text };
+		}
+
+		// Provider doesn't support vision — fall back to text-only
+		const fullPrompt = systemPrompt
+			? `${systemPrompt}\n\n${prompt}\n\n(Note: A screenshot was taken but your provider does not support image analysis. Describe what you expect based on context.)`
+			: prompt;
+		const text = await callProvider(provider, fullPrompt, config);
+		return { success: true, text };
+	} catch (err) {
+		console.warn(`Vision analysis failed for "${provider}":`, err);
+		return {
+			success: false,
+			error: err instanceof Error ? err.message : String(err),
+		};
+	}
 }
 
 // ── Public API ──

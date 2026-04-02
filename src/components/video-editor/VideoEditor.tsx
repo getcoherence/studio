@@ -12,7 +12,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
-import { DemoProgress, DemoRecorderDialog } from "@/components/demo-recorder/DemoRecorderDialog";
+import { DemoStudioPage } from "@/components/demo-studio/DemoStudioPage";
 import { ProjectBrowser } from "@/components/project-browser/ProjectBrowser";
 import { CountdownOverlay } from "@/components/recording/CountdownOverlay";
 import { LiveMonitor } from "@/components/recording/LiveMonitor";
@@ -166,33 +166,12 @@ export default function VideoEditor() {
 	const [pendingRecordingConfig, setPendingRecordingConfig] = useState<RecordingConfig | null>(
 		null,
 	);
-	const [reloadTrigger, setReloadTrigger] = useState(0);
+	const [_reloadTrigger, setReloadTrigger] = useState(0);
 	const [previewWallpaper, setPreviewWallpaper] = useState<string | null>(null);
 	const [showSceneEditor, setShowSceneEditor] = useState(false);
 	const [sceneEditorKey, setSceneEditorKey] = useState(0);
 	const sceneEditorInitialRef = useRef<unknown>(null);
-	const [showDemoRecorder, setShowDemoRecorder] = useState(false);
-	const [demoRunning, setDemoRunning] = useState(false);
-	const [demoCurrentStep, setDemoCurrentStep] = useState<{
-		action: { action: string; narration: string };
-		timestamp: number;
-		screenshotDataUrl?: string;
-	} | null>(null);
-	const [demoStepIndex, setDemoStepIndex] = useState(0);
-	const [demoMaxSteps, setDemoMaxSteps] = useState(12);
-	const [demoElapsedMs, setDemoElapsedMs] = useState(0);
-	const [demoComplete, setDemoComplete] = useState(false);
-	const [demoResult, setDemoResult] = useState<{
-		steps: Array<{
-			action: { action: string; narration: string };
-			timestamp: number;
-			screenshotDataUrl?: string;
-		}>;
-		totalDurationMs: number;
-		narrationText: string;
-	} | null>(null);
-	const demoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-	const demoStartTimeRef = useRef(0);
+	const [showDemoStudio, setShowDemoStudio] = useState(false);
 
 	const playerContainerRef = useRef<HTMLDivElement>(null);
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
@@ -465,7 +444,7 @@ export default function VideoEditor() {
 
 		loadInitialData();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [applyLoadedProject, reloadTrigger]);
+	}, [applyLoadedProject]);
 
 	const saveProject = useCallback(
 		async (forceSaveAs: boolean) => {
@@ -702,188 +681,18 @@ export default function VideoEditor() {
 		}
 	}, []);
 
-	// ── AI Demo Recorder handlers ──
+	// ── AI Demo Studio handler ──
 
-	const handleDemoStart = useCallback(
-		async (config: { url: string; prompt: string; maxSteps: number; headless: boolean }) => {
-			setShowDemoRecorder(false);
-			setDemoRunning(true);
-			setDemoComplete(false);
-			setDemoCurrentStep(null);
-			setDemoStepIndex(0);
-			setDemoMaxSteps(config.maxSteps);
-			setDemoElapsedMs(0);
-			setDemoResult(null);
-			demoStartTimeRef.current = Date.now();
-
-			// Start elapsed time timer
-			demoTimerRef.current = setInterval(() => {
-				setDemoElapsedMs(Date.now() - demoStartTimeRef.current);
-			}, 500);
-
-			// Listen for progress events
-			const removeListener = window.electronAPI.onDemoProgress?.((data) => {
-				setDemoCurrentStep(data.step);
-				setDemoStepIndex(data.stepIndex);
-			});
-
-			try {
-				const result = await window.electronAPI.demoStart({
-					url: config.url,
-					prompt: config.prompt,
-					maxSteps: config.maxSteps,
-					headless: config.headless,
-				});
-				setDemoResult(result);
-				setDemoComplete(true);
-			} catch (err) {
-				toast.error(`Demo failed: ${err instanceof Error ? err.message : String(err)}`);
-				// Keep demoRunning true so the progress view stays visible
-				// User can click "Stop Early" to dismiss
-			} finally {
-				if (demoTimerRef.current) {
-					clearInterval(demoTimerRef.current);
-					demoTimerRef.current = null;
-				}
-				removeListener?.();
-			}
+	const handleDemoOpenInEditor = useCallback(
+		(project: import("@/lib/scene-renderer").SceneProject) => {
+			setPendingDemoProject(project);
+			sceneEditorInitialRef.current = project;
+			setSceneEditorKey((k) => k + 1);
+			setShowSceneEditor(true);
+			setShowDemoStudio(false);
 		},
 		[],
 	);
-
-	const handleDemoStop = useCallback(async () => {
-		await window.electronAPI.demoStop();
-		if (demoTimerRef.current) {
-			clearInterval(demoTimerRef.current);
-			demoTimerRef.current = null;
-		}
-		setDemoRunning(false);
-		setDemoComplete(false);
-		setDemoCurrentStep(null);
-	}, []);
-
-	const handleDemoOpenInEditor = useCallback(() => {
-		if (!demoResult) {
-			toast.error("No demo data available. Try running the demo again.");
-			setDemoRunning(false);
-			setDemoComplete(false);
-			return;
-		}
-
-		console.log(
-			"[Demo→Editor]",
-			demoResult.steps.length,
-			"steps,",
-			demoResult.steps.filter((s) => s.screenshotDataUrl).length,
-			"with screenshots",
-		);
-
-		// Build a SceneProject from the demo screenshots + narration
-		// Import scene types inline to avoid circular dependencies
-		const scenes = demoResult.steps
-			.filter((step) => step.screenshotDataUrl)
-			.map((step, i) => ({
-				id: `demo-scene-${Date.now()}-${i}`,
-				durationMs: 4000,
-				background: "#09090b",
-				animatedBgSpeed: 1,
-				transition: {
-					type: "none" as const,
-					durationMs: 0,
-				},
-				layers: [
-					// Screenshot as image layer (full frame)
-					{
-						id: `demo-img-${Date.now()}-${i}`,
-						type: "image" as const,
-						startMs: 0,
-						endMs: 4000,
-						position: { x: 5, y: 5 },
-						size: { width: 90, height: 75 },
-						zIndex: 0,
-						entrance: {
-							type: "fade" as const,
-							durationMs: 400,
-							easing: "ease-out" as const,
-							delay: 0,
-						},
-						exit: {
-							type: "none" as const,
-							durationMs: 500,
-							easing: "ease-out" as const,
-							delay: 0,
-						},
-						content: {
-							src: step.screenshotDataUrl!,
-							fit: "contain" as const,
-							borderRadius: 8,
-							shadow: true,
-						},
-					},
-					// Narration as text overlay
-					...(step.action.narration
-						? [
-								{
-									id: `demo-txt-${Date.now()}-${i}`,
-									type: "text" as const,
-									startMs: 300,
-									endMs: 3800,
-									position: { x: 5, y: 82 },
-									size: { width: 90, height: 12 },
-									zIndex: 1,
-									entrance: {
-										type: "fade" as const,
-										durationMs: 400,
-										easing: "ease-out" as const,
-										delay: 200,
-									},
-									exit: {
-										type: "fade" as const,
-										durationMs: 300,
-										easing: "ease-out" as const,
-										delay: 0,
-									},
-									content: {
-										text: step.action.narration,
-										fontSize: 28,
-										fontFamily: "Inter, system-ui, sans-serif",
-										fontWeight: "500",
-										color: "#ffffff",
-										textAlign: "center" as const,
-										lineHeight: 1.4,
-									},
-								},
-							]
-						: []),
-				],
-			}));
-
-		// If no scenes were produced, bail out
-		if (scenes.length === 0) {
-			toast.error("No screenshots captured during demo");
-			setDemoRunning(false);
-			setDemoComplete(false);
-			return;
-		}
-
-		// Reset demo state
-		setDemoRunning(false);
-		setDemoComplete(false);
-		setDemoResult(null);
-		setDemoCurrentStep(null);
-
-		const demoProject = {
-			id: `demo-${Date.now()}`,
-			name: "AI Demo",
-			scenes,
-			resolution: { width: 1920, height: 1080 },
-			fps: 30,
-		};
-		setPendingDemoProject(demoProject);
-		sceneEditorInitialRef.current = demoProject;
-		setSceneEditorKey((k) => k + 1);
-		setShowSceneEditor(true);
-	}, [demoResult]);
 
 	useEffect(() => {
 		let mounted = true;
@@ -2028,18 +1837,11 @@ export default function VideoEditor() {
 			/>
 		);
 	}
-	if (demoRunning || demoComplete) {
+	if (showDemoStudio) {
 		return (
-			<DemoProgress
-				currentStep={demoCurrentStep}
-				stepIndex={demoStepIndex}
-				maxSteps={demoMaxSteps}
-				elapsedMs={demoElapsedMs}
-				onStop={handleDemoStop}
-				onComplete={handleDemoOpenInEditor}
-				onResume={() => window.electronAPI.demoResume?.()}
-				isComplete={demoComplete}
-				isPaused={demoCurrentStep?.action?.action === "pause"}
+			<DemoStudioPage
+				onBack={() => setShowDemoStudio(false)}
+				onOpenInEditor={handleDemoOpenInEditor}
 			/>
 		);
 	}
@@ -2051,12 +1853,7 @@ export default function VideoEditor() {
 					onOpenVideo={handleWelcomeOpenVideo}
 					onOpenProject={() => setShowProjectBrowser(true)}
 					onCreateVideo={() => setShowSceneEditor(true)}
-					onAiDemo={() => setShowDemoRecorder(true)}
-				/>
-				<DemoRecorderDialog
-					open={showDemoRecorder}
-					onOpenChange={setShowDemoRecorder}
-					onStart={handleDemoStart}
+					onAiDemo={() => setShowDemoStudio(true)}
 				/>
 				<RecordingSetupDialog
 					open={showRecordingSetup}

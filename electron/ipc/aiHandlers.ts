@@ -6,6 +6,7 @@ import { ipcMain } from "electron";
 import type { AIServiceConfig } from "../../src/lib/ai/types";
 import {
 	analyze,
+	analyzeImage,
 	checkAvailability,
 	generateJSON,
 	loadAIConfig,
@@ -34,6 +35,13 @@ export function registerAIHandlers(): void {
 		await saveAIConfig(config);
 		return { success: true };
 	});
+
+	ipcMain.handle(
+		"ai-analyze-image",
+		async (_event, prompt: string, imageBase64: string, systemPrompt?: string) => {
+			return analyzeImage(prompt, imageBase64, systemPrompt);
+		},
+	);
 
 	ipcMain.handle("ai-tts-synthesize", async (_event, text: string, voice?: TTSVoice) => {
 		return synthesize(text, voice);

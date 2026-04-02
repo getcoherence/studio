@@ -37,6 +37,7 @@ export function createEditorWindow(): BrowserWindow {
 			contextIsolation: true,
 			webSecurity: true,
 			backgroundThrottling: false,
+			webviewTag: true,
 		},
 	});
 
