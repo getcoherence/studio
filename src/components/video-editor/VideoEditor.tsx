@@ -31,6 +31,7 @@ import { type Locale, SUPPORTED_LOCALES } from "@/i18n/config";
 import { getLocaleName } from "@/i18n/loader";
 import { generatePolishEdits } from "@/lib/ai/oneClickPolish";
 import type { CaptionStyle, CaptionTrack, PolishPreview } from "@/lib/ai/types";
+import { setPendingDemoProject } from "@/lib/demoProjectStore";
 import {
 	calculateOutputDimensions,
 	type ExportFormat,
@@ -44,7 +45,6 @@ import {
 	VideoExporter,
 } from "@/lib/exporter";
 import type { ProjectMedia } from "@/lib/recordingSession";
-import type { SceneProject } from "@/lib/scene-renderer";
 import { matchesShortcut } from "@/lib/shortcuts";
 import {
 	getAspectRatioValue,
@@ -67,16 +67,6 @@ import {
 } from "./projectPersistence";
 import { SettingsPanel } from "./SettingsPanel";
 import TimelineEditor from "./timeline/TimelineEditor";
-
-// Module-level variable for passing demo projects to SceneEditor
-// (sessionStorage can't handle large base64 screenshots)
-export let pendingDemoProject: SceneProject | null = null;
-export function consumePendingDemoProject(): SceneProject | null {
-	const p = pendingDemoProject;
-	pendingDemoProject = null;
-	return p;
-}
-
 import {
 	type AnnotationRegion,
 	type CursorTelemetryPoint,
@@ -867,15 +857,13 @@ export default function VideoEditor() {
 		setDemoResult(null);
 		setDemoCurrentStep(null);
 
-		// Store the demo project in a module-level variable that SceneEditor reads
-		// (sessionStorage fails for large base64 screenshots)
-		pendingDemoProject = {
+		setPendingDemoProject({
 			id: `demo-${Date.now()}`,
 			name: "AI Demo",
 			scenes,
 			resolution: { width: 1920, height: 1080 },
 			fps: 30,
-		};
+		});
 		setSceneEditorKey((k) => k + 1);
 		setShowSceneEditor(true);
 	}, [demoResult]);

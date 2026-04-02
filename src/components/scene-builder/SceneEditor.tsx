@@ -19,8 +19,8 @@ import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { AnimatedBackgroundPicker } from "@/components/video-editor/AnimatedBackgroundPicker";
-import { consumePendingDemoProject } from "@/components/video-editor/VideoEditor";
 import { generateSceneProject } from "@/lib/ai/sceneGenerator";
+import { consumePendingDemoProject } from "@/lib/demoProjectStore";
 import {
 	captureCanvas,
 	DEFAULT_IMAGE_LAYER,
