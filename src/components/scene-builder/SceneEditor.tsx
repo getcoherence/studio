@@ -55,11 +55,13 @@ function formatTime(ms: number): string {
 
 interface SceneEditorProps {
 	onBack: () => void;
+	initialProject?: SceneProject;
 }
 
-export function SceneEditor({ onBack }: SceneEditorProps) {
+export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	const [project, setProject] = useState<SceneProject>(() => {
-		// Check if a demo project was passed from the AI Demo Recorder
+		// Use prop first, then check shared store, then default
+		if (initialProject) return initialProject;
 		const demo = consumePendingDemoProject();
 		if (demo) return demo;
 		return DEFAULT_PROJECT();

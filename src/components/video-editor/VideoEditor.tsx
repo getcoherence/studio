@@ -170,6 +170,7 @@ export default function VideoEditor() {
 	const [previewWallpaper, setPreviewWallpaper] = useState<string | null>(null);
 	const [showSceneEditor, setShowSceneEditor] = useState(false);
 	const [sceneEditorKey, setSceneEditorKey] = useState(0);
+	const sceneEditorInitialRef = useRef<unknown>(null);
 	const [showDemoRecorder, setShowDemoRecorder] = useState(false);
 	const [demoRunning, setDemoRunning] = useState(false);
 	const [demoCurrentStep, setDemoCurrentStep] = useState<{
@@ -857,13 +858,15 @@ export default function VideoEditor() {
 		setDemoResult(null);
 		setDemoCurrentStep(null);
 
-		setPendingDemoProject({
+		const demoProject = {
 			id: `demo-${Date.now()}`,
 			name: "AI Demo",
 			scenes,
 			resolution: { width: 1920, height: 1080 },
 			fps: 30,
-		});
+		};
+		setPendingDemoProject(demoProject);
+		sceneEditorInitialRef.current = demoProject;
 		setSceneEditorKey((k) => k + 1);
 		setShowSceneEditor(true);
 	}, [demoResult]);
@@ -1998,7 +2001,18 @@ export default function VideoEditor() {
 		);
 	}
 	if (showSceneEditor) {
-		return <SceneEditor key={sceneEditorKey} onBack={() => setShowSceneEditor(false)} />;
+		return (
+			<SceneEditor
+				key={sceneEditorKey}
+				onBack={() => {
+					setShowSceneEditor(false);
+					sceneEditorInitialRef.current = null;
+				}}
+				initialProject={
+					sceneEditorInitialRef.current as import("@/lib/scene-renderer").SceneProject | undefined
+				}
+			/>
+		);
 	}
 	if (demoRunning) {
 		return (
