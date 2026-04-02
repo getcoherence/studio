@@ -487,7 +487,7 @@ What's the next action? Respond with JSON only.`;
 			}
 		},
 		// eslint-disable-next-line -- agent helpers are stable within the hook scope
-		[webviewRef, onMessage],
+		[webviewRef, onMessage, executeAction, getNextAction, narrateScreenshot],
 	);
 
 	const stop = useCallback(() => {

@@ -8,10 +8,13 @@ import {
 	Check,
 	History,
 	Loader2,
+	Mic,
 	MousePointerClick,
 	Navigation,
 	Play,
+	Square,
 	Type,
+	Volume2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AISettingsButton } from "@/components/ui/AISettingsDialog";
@@ -21,12 +24,51 @@ import type { DemoAgentStatus, DemoChatMessage, DemoConfig } from "./types";
 
 // ── Message renderers ─────────────────────────────────────────────────
 
+// ── Inline audio player ───────────────────────────────────────────────
+
+function NarrationAudioPlayer({ audioPath }: { audioPath: string }) {
+	const [playing, setPlaying] = useState(false);
+	const audioRef = useRef<HTMLAudioElement | null>(null);
+
+	function toggle() {
+		if (!audioRef.current) {
+			// Create audio element with file:// protocol for local paths
+			const src = audioPath.startsWith("file://") ? audioPath : `file://${audioPath}`;
+			audioRef.current = new Audio(src);
+			audioRef.current.onended = () => setPlaying(false);
+		}
+		if (playing) {
+			audioRef.current.pause();
+			audioRef.current.currentTime = 0;
+			setPlaying(false);
+		} else {
+			audioRef.current.play().catch(() => setPlaying(false));
+			setPlaying(true);
+		}
+	}
+
+	return (
+		<button
+			onClick={toggle}
+			className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/60 transition-colors text-[10px]"
+			title={playing ? "Stop" : "Play narration"}
+		>
+			{playing ? <Square size={10} /> : <Volume2 size={10} />}
+			{playing ? "Stop" : "Play"}
+		</button>
+	);
+}
+
 function ChatMessage({
 	msg,
 	onOpenInEditor,
+	onGenerateVoiceover,
+	isGeneratingVoiceover,
 }: {
 	msg: DemoChatMessage;
 	onOpenInEditor?: () => void;
+	onGenerateVoiceover?: () => void;
+	isGeneratingVoiceover?: boolean;
 }) {
 	switch (msg.type) {
 		case "user-prompt":
@@ -79,6 +121,7 @@ function ChatMessage({
 					<Bot size={14} className="text-[#2563eb] mt-1 flex-shrink-0" />
 					<div className="flex flex-col gap-2 min-w-0">
 						<p className="text-sm text-white/80 leading-relaxed">{msg.content}</p>
+						{msg.audioPath && <NarrationAudioPlayer audioPath={msg.audioPath} />}
 						{msg.screenshotDataUrl && (
 							<img
 								src={msg.screenshotDataUrl}
@@ -112,14 +155,30 @@ function ChatMessage({
 						<Check size={14} />
 						{msg.content}
 					</div>
-					{onOpenInEditor && (
-						<button
-							onClick={onOpenInEditor}
-							className="self-start flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#2563eb] hover:bg-[#2563eb]/90 text-white text-xs font-medium transition-colors"
-						>
-							Open in Editor
-						</button>
-					)}
+					<div className="flex items-center gap-2">
+						{onOpenInEditor && (
+							<button
+								onClick={onOpenInEditor}
+								className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#2563eb] hover:bg-[#2563eb]/90 text-white text-xs font-medium transition-colors"
+							>
+								Open in Editor
+							</button>
+						)}
+						{onGenerateVoiceover && (
+							<button
+								onClick={onGenerateVoiceover}
+								disabled={isGeneratingVoiceover}
+								className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 text-xs font-medium transition-colors disabled:opacity-40"
+							>
+								{isGeneratingVoiceover ? (
+									<Loader2 size={12} className="animate-spin" />
+								) : (
+									<Mic size={12} />
+								)}
+								{isGeneratingVoiceover ? "Generating..." : "Generate Voiceover"}
+							</button>
+						)}
+					</div>
 				</div>
 			);
 
@@ -135,6 +194,8 @@ interface DemoChatPanelProps {
 	status: DemoAgentStatus;
 	onStart: (config: DemoConfig) => void;
 	onOpenInEditor: () => void;
+	onGenerateVoiceover?: () => void;
+	isGeneratingVoiceover?: boolean;
 }
 
 /** Extract the first URL from a message string. */
@@ -143,7 +204,14 @@ function extractUrl(text: string): string | null {
 	return match ? match[0] : null;
 }
 
-export function DemoChatPanel({ messages, status, onStart, onOpenInEditor }: DemoChatPanelProps) {
+export function DemoChatPanel({
+	messages,
+	status,
+	onStart,
+	onOpenInEditor,
+	onGenerateVoiceover,
+	isGeneratingVoiceover,
+}: DemoChatPanelProps) {
 	const [input, setInput] = useState("");
 	const [maxSteps, setMaxSteps] = useState(12);
 	const [history, setHistory] = useState<PromptHistoryEntry[]>([]);
@@ -231,6 +299,8 @@ export function DemoChatPanel({ messages, status, onStart, onOpenInEditor }: Dem
 						key={msg.id}
 						msg={msg}
 						onOpenInEditor={msg.type === "completion" ? onOpenInEditor : undefined}
+						onGenerateVoiceover={msg.type === "completion" ? onGenerateVoiceover : undefined}
+						isGeneratingVoiceover={msg.type === "completion" ? isGeneratingVoiceover : undefined}
 					/>
 				))}
 				<div ref={messagesEndRef} />

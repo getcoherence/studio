@@ -22,7 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Slider } from "@/components/ui/slider";
 import { AnimatedBackgroundPicker } from "@/components/video-editor/AnimatedBackgroundPicker";
 import { generateSceneProject, SCENE_TEMPLATES } from "@/lib/ai/sceneGenerator";
-import { polishSceneProject } from "@/lib/ai/scenePolish";
+import { aiPolishSceneProject, polishSceneProject } from "@/lib/ai/scenePolish";
 import { consumePendingDemoProject } from "@/lib/demoProjectStore";
 import {
 	captureCanvas,
@@ -416,32 +416,67 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 	// ── AI Polish ─────────────────────────────────────────────────────
 
-	const handlePolish = useCallback(() => {
-		if (isPolishing || project.scenes.length === 0) return;
-		setIsPolishing(true);
-		try {
-			const { project: polished, preview } = polishSceneProject(project);
-			setProject(polished);
-			setSelectedSceneIndex(0);
-			setSelectedLayerId(null);
-			setCurrentTimeMs(0);
-			setIsPlaying(false);
+	const handlePolish = useCallback(
+		async (useAI = false) => {
+			if (isPolishing || project.scenes.length === 0) return;
+			setIsPolishing(true);
+			try {
+				let result: {
+					project: typeof project;
+					preview: {
+						backgroundsChanged: number;
+						transitionsAdded: number;
+						animationsEnhanced: number;
+						durationsAdjusted: number;
+						totalScenes: number;
+					};
+				};
 
-			const parts: string[] = [];
-			if (preview.backgroundsChanged > 0) parts.push(`${preview.backgroundsChanged} backgrounds`);
-			if (preview.transitionsAdded > 0) parts.push(`${preview.transitionsAdded} transitions`);
-			if (preview.animationsEnhanced > 0) parts.push(`${preview.animationsEnhanced} animations`);
-			if (preview.durationsAdjusted > 0) parts.push(`${preview.durationsAdjusted} timings`);
-			toast.success(
-				`Polished ${preview.totalScenes} scenes: ${parts.join(", ") || "no changes needed"}`,
-			);
-		} catch (err) {
-			toast.error("Polish failed");
-			console.error("Scene polish error:", err);
-		} finally {
-			setIsPolishing(false);
-		}
-	}, [project, isPolishing]);
+				if (useAI) {
+					// Check if we have screenshots (image layers) to analyze
+					const hasImages = project.scenes.some((s) =>
+						s.layers.some(
+							(l) =>
+								l.type === "image" && (l.content as { src?: string }).src?.startsWith("data:image"),
+						),
+					);
+					if (hasImages) {
+						toast.info("Analyzing scenes with AI...");
+						result = await aiPolishSceneProject(project, (i, total) => {
+							toast.loading(`Analyzing scene ${i + 1} of ${total}...`, { id: "ai-polish" });
+						});
+						toast.dismiss("ai-polish");
+					} else {
+						result = polishSceneProject(project);
+					}
+				} else {
+					result = polishSceneProject(project);
+				}
+
+				setProject(result.project);
+				setSelectedSceneIndex(0);
+				setSelectedLayerId(null);
+				setCurrentTimeMs(0);
+				setIsPlaying(false);
+
+				const { preview } = result;
+				const parts: string[] = [];
+				if (preview.backgroundsChanged > 0) parts.push(`${preview.backgroundsChanged} backgrounds`);
+				if (preview.transitionsAdded > 0) parts.push(`${preview.transitionsAdded} transitions`);
+				if (preview.animationsEnhanced > 0) parts.push(`${preview.animationsEnhanced} animations`);
+				if (preview.durationsAdjusted > 0) parts.push(`${preview.durationsAdjusted} timings`);
+				toast.success(
+					`${useAI ? "AI-" : ""}Polished ${preview.totalScenes} scenes: ${parts.join(", ") || "no changes needed"}`,
+				);
+			} catch (_err) {
+				toast.error("Polish failed");
+				console.error("Scene polish error:", _err);
+			} finally {
+				setIsPolishing(false);
+			}
+		},
+		[project, isPolishing],
+	);
 
 	// ── Keyboard shortcuts ─────────────────────────────────────────────
 
@@ -645,15 +680,24 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 					</PopoverContent>
 				</Popover>
 
-				{/* AI Polish */}
+				{/* Polish buttons */}
 				<button
-					onClick={handlePolish}
+					onClick={() => handlePolish(false)}
 					disabled={isPolishing || project.scenes.length === 0}
 					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-amber-400/70 hover:text-amber-300 hover:bg-amber-400/10 transition-colors text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-					title="Auto-enhance with better animations, backgrounds, and transitions"
+					title="Quick polish — instant heuristic enhancements"
 				>
 					{isPolishing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
 					Polish
+				</button>
+				<button
+					onClick={() => handlePolish(true)}
+					disabled={isPolishing || project.scenes.length === 0}
+					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-purple-400/70 hover:text-purple-300 hover:bg-purple-400/10 transition-colors text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+					title="AI polish — vision model analyzes each screenshot for smart enhancements"
+				>
+					<Sparkles size={14} />
+					AI Polish
 				</button>
 
 				{/* AI Settings */}
