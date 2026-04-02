@@ -4,7 +4,17 @@
  */
 
 import fs from "node:fs";
-import { type Browser, type BrowserContext, chromium, type Page } from "playwright-core";
+
+// Playwright is loaded dynamically to avoid crashing Electron at startup
+// when chromium-bidi or other optional deps aren't bundled
+type Browser = import("playwright-core").Browser;
+type BrowserContext = import("playwright-core").BrowserContext;
+type Page = import("playwright-core").Page;
+
+async function getChromium() {
+	const pw = await import("playwright-core");
+	return pw.chromium;
+}
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -63,6 +73,7 @@ export class BrowserDriver {
 
 		const viewport = options?.viewport ?? { width: 1280, height: 720 };
 
+		const chromium = await getChromium();
 		this.browser = await chromium.launch({
 			executablePath,
 			headless: options?.headless ?? false,
