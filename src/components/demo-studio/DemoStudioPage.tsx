@@ -255,7 +255,13 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 				<div className="flex items-center gap-3">
 					<button
 						onClick={() => {
-							if (agent.steps.length > 0) {
+							// Check if there's any demo data worth keeping
+							const hasData =
+								messages.length > 1 ||
+								agent.status === "running" ||
+								agent.status === "paused" ||
+								agent.status === "complete";
+							if (hasData) {
 								setShowLeaveConfirm(true);
 							} else {
 								onBack();
