@@ -65,17 +65,20 @@ Respond with ONE JSON action at a time. No markdown, no explanation outside the 
   "reasoning": "Why this action moves the demo forward"
 }
 
-Guidelines:
+CRITICAL RULES:
+- You MUST perform at least 8 actions before using "done". Do NOT stop early.
 - Move slowly and deliberately (users need to see what's happening)
 - Add 1-2 second pauses between actions (use waitMs: 1500-2000)
 - Write narration as if presenting to an audience — clear, professional, engaging
-- Focus on the demo goal — don't click every link
-- 8-15 actions is ideal for a good demo
-- When the demo goal is achieved, use action "done" with a closing narration
-- For click: use the element's text content or CSS selector from the list
+- Explore the site thoroughly: click navigation links, scroll to see content, visit 3-4 pages minimum
+- A good demo shows: homepage → features/product page → pricing → signup/CTA
+- Use "scroll" with value "down" to reveal content below the fold on each page
+- When the demo goal is fully achieved AND you have at least 8 steps, use action "done"
+- For click: use the element's text content from the list (e.g. "Platform", "Pricing", "Features")
 - For type: set target to the input selector and value to the text to type
 - For scroll: set value to "up" or "down"
-- For navigate: set target to the URL`;
+- For navigate: set target to the URL
+- NEVER say "done" before step 8`;
 
 // ── DemoAgent class ──────────────────────────────────────────────────────
 

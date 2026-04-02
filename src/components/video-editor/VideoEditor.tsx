@@ -168,6 +168,7 @@ export default function VideoEditor() {
 	const [reloadTrigger, setReloadTrigger] = useState(0);
 	const [previewWallpaper, setPreviewWallpaper] = useState<string | null>(null);
 	const [showSceneEditor, setShowSceneEditor] = useState(false);
+	const [sceneEditorKey, setSceneEditorKey] = useState(0);
 	const [showDemoRecorder, setShowDemoRecorder] = useState(false);
 	const [demoRunning, setDemoRunning] = useState(false);
 	const [demoCurrentStep, setDemoCurrentStep] = useState<{
@@ -872,6 +873,7 @@ export default function VideoEditor() {
 		} catch {
 			// sessionStorage might be unavailable or full
 		}
+		setSceneEditorKey((k) => k + 1);
 		setShowSceneEditor(true);
 	}, [demoResult]);
 
@@ -2005,7 +2007,7 @@ export default function VideoEditor() {
 		);
 	}
 	if (showSceneEditor) {
-		return <SceneEditor onBack={() => setShowSceneEditor(false)} />;
+		return <SceneEditor key={sceneEditorKey} onBack={() => setShowSceneEditor(false)} />;
 	}
 	if (demoRunning) {
 		return (
