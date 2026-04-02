@@ -93,17 +93,31 @@ export class BrowserDriver {
 			...(options?.headless ? ["--headless=new"] : []),
 		];
 
-		const chromeProcess = spawn(executablePath, chromeArgs, {
-			stdio: "ignore",
+		// Quote the path on Windows since it contains spaces (C:\Program Files\...)
+		const quotedPath = process.platform === "win32" ? `"${executablePath}"` : executablePath;
+
+		console.log("[DemoRecorder] Launching Chrome:", quotedPath, chromeArgs.join(" "));
+
+		const chromeProcess = spawn(quotedPath, chromeArgs, {
+			stdio: ["ignore", "pipe", "pipe"],
 			detached: true,
 			shell: true,
 			windowsHide: false,
 		});
 		chromeProcess.unref();
 
+		// Log Chrome stderr for debugging
+		chromeProcess.stderr?.on("data", (data: Buffer) => {
+			console.log("[Chrome stderr]", data.toString().slice(0, 200));
+		});
+
 		// Wait for Chrome to start and open the debug port
 		await new Promise<void>((resolve, reject) => {
-			const timeout = setTimeout(() => reject(new Error("Chrome failed to start")), 10000);
+			const timeout = setTimeout(
+				() =>
+					reject(new Error(`Chrome failed to start on port ${debugPort}. Path: ${executablePath}`)),
+				15000,
+			);
 			const check = async () => {
 				try {
 					const resp = await fetch(`http://127.0.0.1:${debugPort}/json/version`);
