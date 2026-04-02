@@ -1,10 +1,11 @@
-import { Clapperboard, Film, FolderOpen, PlayCircle } from "lucide-react";
+import { Bot, Clapperboard, Film, FolderOpen, PlayCircle } from "lucide-react";
 
 interface WelcomeScreenProps {
 	onNewRecording: () => void;
 	onOpenVideo: () => void;
 	onOpenProject: () => void;
 	onCreateVideo?: () => void;
+	onAiDemo?: () => void;
 }
 
 export function WelcomeScreen({
@@ -12,6 +13,7 @@ export function WelcomeScreen({
 	onOpenVideo,
 	onOpenProject,
 	onCreateVideo,
+	onAiDemo,
 }: WelcomeScreenProps) {
 	return (
 		<div className="relative flex flex-col items-center justify-center h-screen gap-8 bg-[#09090b]">
@@ -35,6 +37,15 @@ export function WelcomeScreen({
 					>
 						<Clapperboard size={18} />
 						Create Video
+					</button>
+				)}
+				{onAiDemo && (
+					<button
+						onClick={onAiDemo}
+						className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 font-medium transition-colors border border-[#2563eb]/30 hover:border-[#2563eb]/50"
+					>
+						<Bot size={18} />
+						AI Demo
 					</button>
 				)}
 				<button

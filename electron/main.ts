@@ -18,6 +18,7 @@ import {
 import { mainT, setMainLocale } from "./i18n";
 import { registerAIHandlers } from "./ipc/aiHandlers";
 import { registerCaptureHandlers } from "./ipc/captureHandlers";
+import { registerDemoHandlers } from "./ipc/demoHandlers";
 import { registerFfmpegHandlers } from "./ipc/ffmpegHandlers";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { registerProjectHandlers } from "./ipc/projectHandlers";
@@ -481,6 +482,7 @@ app.whenReady().then(async () => {
 	registerCaptureHandlers();
 
 	registerAIHandlers();
+	registerDemoHandlers(() => mainWindow);
 	registerIpcHandlers(
 		createEditorWindowWrapper,
 		createSourceSelectorWindowWrapper,

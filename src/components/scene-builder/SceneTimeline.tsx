@@ -72,7 +72,7 @@ function TransitionIndicator({
 
 			{/* Dropdown */}
 			{open && (
-				<div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-[#141417] border border-white/10 rounded-lg shadow-xl p-2 z-50 w-44">
+				<div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-[#141417] border border-white/10 rounded-lg shadow-xl p-2 z-[100] w-44">
 					<div className="text-[10px] text-white/40 font-medium px-2 py-1 mb-1">Transition</div>
 					{TRANSITION_TYPES.map((t) => (
 						<button
@@ -228,7 +228,7 @@ export function SceneTimeline({
 		<div className="flex-shrink-0 border-t border-white/5 bg-[#09090b]/80 backdrop-blur-sm px-4 py-3">
 			<div
 				ref={scrollContainerRef}
-				className="flex items-center gap-0 overflow-x-auto pb-1 scrollbar-thin"
+				className="flex items-center gap-0 overflow-x-auto overflow-y-visible pb-1 scrollbar-thin"
 			>
 				{scenes.map((scene, i) => (
 					<div key={scene.id} className="flex items-center gap-0">
