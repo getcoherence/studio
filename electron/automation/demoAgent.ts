@@ -138,7 +138,7 @@ export class DemoAgent {
 			const pageInfo = await this.driver.getPageInfo();
 
 			// 2. Ask AI what to do next
-			const action = await this.getNextAction(config.prompt, pageInfo, i);
+			const action = await this.getNextAction(config.prompt, pageInfo, i, maxSteps);
 
 			// 3. If pause, wait for user to resume (e.g., after manual login)
 			if (action.action === "pause") {
@@ -211,6 +211,7 @@ export class DemoAgent {
 		goal: string,
 		pageInfo: PageInfo,
 		stepIndex: number,
+		maxSteps: number = 12,
 	): Promise<DemoAction> {
 		const previousSteps = this.steps
 			.map(
@@ -224,7 +225,17 @@ export class DemoAgent {
 			.map((e) => `- [${e.type}] "${e.text}" (${e.selector})`)
 			.join("\n");
 
+		const stepsRemaining = maxSteps - stepIndex - 1;
+		const budgetNote =
+			stepsRemaining <= 3
+				? `⚠️ ONLY ${stepsRemaining} steps remaining! Start wrapping up — navigate to the most important remaining page, then use "done".`
+				: stepsRemaining <= 5
+					? `You have ${stepsRemaining} steps left. Make sure you cover the key pages before finishing.`
+					: `You have ${stepsRemaining} steps remaining out of ${maxSteps} total. Take your time exploring.`;
+
 		const prompt = `Goal: ${goal}
+
+STEP BUDGET: Step ${stepIndex + 1} of ${maxSteps}. ${budgetNote}
 
 Current page:
 URL: ${pageInfo.url}
@@ -239,7 +250,7 @@ ${elementsList || "(no interactive elements found)"}
 Previous steps:
 ${previousSteps || "(none — this is the first action)"}
 
-Step ${stepIndex + 1}. What's the next action? Respond with JSON only.`;
+What's the next action? Respond with JSON only.`;
 
 		const result = await analyze(prompt, AGENT_SYSTEM_PROMPT);
 		if (!result.success || !result.text) {
