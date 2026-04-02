@@ -256,10 +256,20 @@ export function SceneCanvas({
 		onSceneComplete,
 	]);
 
-	// Redraw when scene changes while paused
+	// Redraw when scene changes while paused.
+	// Also schedule a delayed redraw for images that haven't loaded yet.
 	useEffect(() => {
 		if (!isPlaying) {
 			drawFrame(currentTimeMs);
+			// Images load async — redraw after a short delay to pick them up
+			const t1 = setTimeout(() => drawFrame(currentTimeMs), 100);
+			const t2 = setTimeout(() => drawFrame(currentTimeMs), 500);
+			const t3 = setTimeout(() => drawFrame(currentTimeMs), 1500);
+			return () => {
+				clearTimeout(t1);
+				clearTimeout(t2);
+				clearTimeout(t3);
+			};
 		}
 	}, [scene, currentTimeMs, isPlaying, drawFrame]);
 
