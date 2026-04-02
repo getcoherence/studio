@@ -248,6 +248,49 @@ interface Window {
 		onWhisperModelDownloadProgress: (
 			callback: (progress: import("../src/lib/ai/types").ModelDownloadProgress) => void,
 		) => () => void;
+
+		// AI Demo Recorder
+		demoStart: (config: {
+			url: string;
+			prompt: string;
+			maxSteps?: number;
+			viewport?: { width: number; height: number };
+			headless?: boolean;
+		}) => Promise<{
+			steps: Array<{
+				action: {
+					action: string;
+					target?: string;
+					value?: string;
+					narration: string;
+					waitMs?: number;
+					reasoning?: string;
+				};
+				timestamp: number;
+				screenshotDataUrl?: string;
+			}>;
+			totalDurationMs: number;
+			narrationText: string;
+		}>;
+		demoStop: () => Promise<{ success: boolean }>;
+		demoGetStatus: () => Promise<{ running: boolean }>;
+		onDemoProgress: (
+			callback: (data: {
+				step: {
+					action: {
+						action: string;
+						target?: string;
+						value?: string;
+						narration: string;
+						waitMs?: number;
+						reasoning?: string;
+					};
+					timestamp: number;
+					screenshotDataUrl?: string;
+				};
+				stepIndex: number;
+			}) => void,
+		) => () => void;
 	};
 }
 

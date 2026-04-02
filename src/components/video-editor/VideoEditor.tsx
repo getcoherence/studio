@@ -12,6 +12,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
+import { DemoProgress, DemoRecorderDialog } from "@/components/demo-recorder/DemoRecorderDialog";
 import { ProjectBrowser } from "@/components/project-browser/ProjectBrowser";
 import { CountdownOverlay } from "@/components/recording/CountdownOverlay";
 import { LiveMonitor } from "@/components/recording/LiveMonitor";
@@ -167,6 +168,28 @@ export default function VideoEditor() {
 	const [reloadTrigger, setReloadTrigger] = useState(0);
 	const [previewWallpaper, setPreviewWallpaper] = useState<string | null>(null);
 	const [showSceneEditor, setShowSceneEditor] = useState(false);
+	const [showDemoRecorder, setShowDemoRecorder] = useState(false);
+	const [demoRunning, setDemoRunning] = useState(false);
+	const [demoCurrentStep, setDemoCurrentStep] = useState<{
+		action: { action: string; narration: string };
+		timestamp: number;
+		screenshotDataUrl?: string;
+	} | null>(null);
+	const [demoStepIndex, setDemoStepIndex] = useState(0);
+	const [demoMaxSteps, setDemoMaxSteps] = useState(12);
+	const [demoElapsedMs, setDemoElapsedMs] = useState(0);
+	const [demoComplete, setDemoComplete] = useState(false);
+	const [demoResult, setDemoResult] = useState<{
+		steps: Array<{
+			action: { action: string; narration: string };
+			timestamp: number;
+			screenshotDataUrl?: string;
+		}>;
+		totalDurationMs: number;
+		narrationText: string;
+	} | null>(null);
+	const demoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const demoStartTimeRef = useRef(0);
 
 	const playerContainerRef = useRef<HTMLDivElement>(null);
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
@@ -675,6 +698,182 @@ export default function VideoEditor() {
 			setReloadTrigger((prev) => prev + 1);
 		}
 	}, []);
+
+	// ── AI Demo Recorder handlers ──
+
+	const handleDemoStart = useCallback(
+		async (config: { url: string; prompt: string; maxSteps: number; headless: boolean }) => {
+			setShowDemoRecorder(false);
+			setDemoRunning(true);
+			setDemoComplete(false);
+			setDemoCurrentStep(null);
+			setDemoStepIndex(0);
+			setDemoMaxSteps(config.maxSteps);
+			setDemoElapsedMs(0);
+			setDemoResult(null);
+			demoStartTimeRef.current = Date.now();
+
+			// Start elapsed time timer
+			demoTimerRef.current = setInterval(() => {
+				setDemoElapsedMs(Date.now() - demoStartTimeRef.current);
+			}, 500);
+
+			// Listen for progress events
+			const removeListener = window.electronAPI.onDemoProgress?.((data) => {
+				setDemoCurrentStep(data.step);
+				setDemoStepIndex(data.stepIndex);
+			});
+
+			try {
+				const result = await window.electronAPI.demoStart({
+					url: config.url,
+					prompt: config.prompt,
+					maxSteps: config.maxSteps,
+					headless: config.headless,
+				});
+				setDemoResult(result);
+				setDemoComplete(true);
+			} catch (err) {
+				toast.error(`Demo failed: ${err instanceof Error ? err.message : String(err)}`);
+				setDemoRunning(false);
+			} finally {
+				if (demoTimerRef.current) {
+					clearInterval(demoTimerRef.current);
+					demoTimerRef.current = null;
+				}
+				removeListener?.();
+			}
+		},
+		[],
+	);
+
+	const handleDemoStop = useCallback(async () => {
+		await window.electronAPI.demoStop();
+		if (demoTimerRef.current) {
+			clearInterval(demoTimerRef.current);
+			demoTimerRef.current = null;
+		}
+		setDemoRunning(false);
+		setDemoComplete(false);
+		setDemoCurrentStep(null);
+	}, []);
+
+	const handleDemoOpenInEditor = useCallback(() => {
+		if (!demoResult) return;
+
+		// Build a SceneProject from the demo screenshots + narration
+		// Import scene types inline to avoid circular dependencies
+		const scenes = demoResult.steps
+			.filter((step) => step.screenshotDataUrl)
+			.map((step, i) => ({
+				id: `demo-scene-${Date.now()}-${i}`,
+				durationMs: 4000,
+				background: "#09090b",
+				animatedBgSpeed: 1,
+				transition: {
+					type: "fade" as const,
+					durationMs: 500,
+				},
+				layers: [
+					// Screenshot as image layer (full frame)
+					{
+						id: `demo-img-${Date.now()}-${i}`,
+						type: "image" as const,
+						startMs: 0,
+						endMs: 4000,
+						position: { x: 5, y: 5 },
+						size: { width: 90, height: 75 },
+						zIndex: 0,
+						entrance: {
+							type: "fade" as const,
+							durationMs: 400,
+							easing: "ease-out" as const,
+							delay: 0,
+						},
+						exit: {
+							type: "none" as const,
+							durationMs: 500,
+							easing: "ease-out" as const,
+							delay: 0,
+						},
+						content: {
+							src: step.screenshotDataUrl!,
+							fit: "contain" as const,
+							borderRadius: 8,
+							shadow: true,
+						},
+					},
+					// Narration as text overlay
+					...(step.action.narration
+						? [
+								{
+									id: `demo-txt-${Date.now()}-${i}`,
+									type: "text" as const,
+									startMs: 300,
+									endMs: 3800,
+									position: { x: 5, y: 82 },
+									size: { width: 90, height: 12 },
+									zIndex: 1,
+									entrance: {
+										type: "fade" as const,
+										durationMs: 400,
+										easing: "ease-out" as const,
+										delay: 200,
+									},
+									exit: {
+										type: "fade" as const,
+										durationMs: 300,
+										easing: "ease-out" as const,
+										delay: 0,
+									},
+									content: {
+										text: step.action.narration,
+										fontSize: 28,
+										fontFamily: "Inter, system-ui, sans-serif",
+										fontWeight: "500",
+										color: "#ffffff",
+										textAlign: "center" as const,
+										lineHeight: 1.4,
+									},
+								},
+							]
+						: []),
+				],
+			}));
+
+		// If no scenes were produced, bail out
+		if (scenes.length === 0) {
+			toast.error("No screenshots captured during demo");
+			setDemoRunning(false);
+			setDemoComplete(false);
+			return;
+		}
+
+		// Reset demo state
+		setDemoRunning(false);
+		setDemoComplete(false);
+		setDemoResult(null);
+		setDemoCurrentStep(null);
+
+		// Open the scene editor with this project by setting showSceneEditor
+		// The SceneEditor will load with a default project; we store our project
+		// in sessionStorage so SceneEditor can pick it up
+		try {
+			sessionStorage.setItem(
+				"lucid-demo-project",
+				JSON.stringify({
+					id: `demo-${Date.now()}`,
+					name: "AI Demo",
+					scenes,
+					resolution: { width: 1920, height: 1080 },
+					fps: 30,
+				}),
+			);
+		} catch {
+			// sessionStorage might be unavailable or full
+		}
+		setShowSceneEditor(true);
+	}, [demoResult]);
 
 	useEffect(() => {
 		let mounted = true;
@@ -1808,6 +2007,19 @@ export default function VideoEditor() {
 	if (showSceneEditor) {
 		return <SceneEditor onBack={() => setShowSceneEditor(false)} />;
 	}
+	if (demoRunning) {
+		return (
+			<DemoProgress
+				currentStep={demoCurrentStep}
+				stepIndex={demoStepIndex}
+				maxSteps={demoMaxSteps}
+				elapsedMs={demoElapsedMs}
+				onStop={handleDemoStop}
+				onComplete={handleDemoOpenInEditor}
+				isComplete={demoComplete}
+			/>
+		);
+	}
 	if (error || !videoPath) {
 		return (
 			<>
@@ -1816,6 +2028,12 @@ export default function VideoEditor() {
 					onOpenVideo={handleWelcomeOpenVideo}
 					onOpenProject={() => setShowProjectBrowser(true)}
 					onCreateVideo={() => setShowSceneEditor(true)}
+					onAiDemo={() => setShowDemoRecorder(true)}
+				/>
+				<DemoRecorderDialog
+					open={showDemoRecorder}
+					onOpenChange={setShowDemoRecorder}
+					onStart={handleDemoStart}
 				/>
 				<RecordingSetupDialog
 					open={showRecordingSetup}

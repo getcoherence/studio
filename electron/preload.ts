@@ -292,4 +292,42 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		ipcRenderer.on("whisper-model-download-progress", listener);
 		return () => ipcRenderer.removeListener("whisper-model-download-progress", listener);
 	},
+
+	// ── AI Demo Recorder ──
+	demoStart: (config: {
+		url: string;
+		prompt: string;
+		maxSteps?: number;
+		viewport?: { width: number; height: number };
+		headless?: boolean;
+	}) => {
+		return ipcRenderer.invoke("demo-start", config);
+	},
+	demoStop: () => {
+		return ipcRenderer.invoke("demo-stop");
+	},
+	demoGetStatus: () => {
+		return ipcRenderer.invoke("demo-get-status");
+	},
+	onDemoProgress: (
+		callback: (data: {
+			step: {
+				action: {
+					action: string;
+					target?: string;
+					value?: string;
+					narration: string;
+					waitMs?: number;
+					reasoning?: string;
+				};
+				timestamp: number;
+				screenshotDataUrl?: string;
+			};
+			stepIndex: number;
+		}) => void,
+	) => {
+		const listener = (_: unknown, data: Parameters<typeof callback>[0]) => callback(data);
+		ipcRenderer.on("demo-progress", listener);
+		return () => ipcRenderer.removeListener("demo-progress", listener);
+	},
 });
