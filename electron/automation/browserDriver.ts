@@ -94,11 +94,18 @@ export class BrowserDriver {
 
 		console.log("[DemoRecorder] Launching Chrome:", executablePath);
 
-		// Use execFile (not spawn) — handles paths with spaces on Windows
-		const { execFile } = await import("node:child_process");
-		const chromeProcess = execFile(executablePath, chromeArgs, { windowsHide: false }, (error) => {
-			if (error) console.error("[Chrome exit]", error.message);
+		// spawn UNKNOWN in Electron is caused by cwd being inside ASAR.
+		// Fix: set cwd explicitly to a real directory (os.homedir or tmpdir).
+		// See: https://github.com/electron/electron/issues/30983
+		const os = await import("node:os");
+		const { spawn } = await import("node:child_process");
+
+		const chromeProcess = spawn(executablePath, chromeArgs, {
+			cwd: os.homedir(), // CRITICAL: must be a real dir, not inside ASAR
+			stdio: "ignore",
+			detached: true,
 		});
+		chromeProcess.unref();
 
 		// Wait for Chrome to start and open the debug port
 		await new Promise<void>((resolve, reject) => {
