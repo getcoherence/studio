@@ -95,8 +95,11 @@ export class BrowserDriver {
 
 		const chromeProcess = spawn(executablePath, chromeArgs, {
 			stdio: "ignore",
-			detached: false,
+			detached: true,
+			shell: true,
+			windowsHide: false,
 		});
+		chromeProcess.unref();
 
 		// Wait for Chrome to start and open the debug port
 		await new Promise<void>((resolve, reject) => {
