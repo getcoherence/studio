@@ -12,7 +12,11 @@ export default defineConfig({
 				// Shortcut of `build.lib.entry`.
 				entry: "electron/main.ts",
 				vite: {
-					build: {},
+					build: {
+						rollupOptions: {
+							external: ["playwright-core"],
+						},
+					},
 				},
 			},
 			preload: {
