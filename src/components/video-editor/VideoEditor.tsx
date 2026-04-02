@@ -738,7 +738,8 @@ export default function VideoEditor() {
 				setDemoComplete(true);
 			} catch (err) {
 				toast.error(`Demo failed: ${err instanceof Error ? err.message : String(err)}`);
-				setDemoRunning(false);
+				// Keep demoRunning true so the progress view stays visible
+				// User can click "Stop Early" to dismiss
 			} finally {
 				if (demoTimerRef.current) {
 					clearInterval(demoTimerRef.current);
