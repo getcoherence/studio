@@ -2023,7 +2023,9 @@ export default function VideoEditor() {
 				elapsedMs={demoElapsedMs}
 				onStop={handleDemoStop}
 				onComplete={handleDemoOpenInEditor}
+				onResume={() => window.electronAPI.demoResume?.()}
 				isComplete={demoComplete}
+				isPaused={demoCurrentStep?.action?.action === "pause"}
 			/>
 		);
 	}

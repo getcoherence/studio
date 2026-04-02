@@ -273,6 +273,7 @@ interface Window {
 			narrationText: string;
 		}>;
 		demoStop: () => Promise<{ success: boolean }>;
+		demoResume: () => Promise<{ success: boolean }>;
 		demoGetStatus: () => Promise<{ running: boolean }>;
 		onDemoProgress: (
 			callback: (data: {

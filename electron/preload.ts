@@ -306,6 +306,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	demoStop: () => {
 		return ipcRenderer.invoke("demo-stop");
 	},
+	demoResume: () => {
+		return ipcRenderer.invoke("demo-resume");
+	},
 	demoGetStatus: () => {
 		return ipcRenderer.invoke("demo-get-status");
 	},
