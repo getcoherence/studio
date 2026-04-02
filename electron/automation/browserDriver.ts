@@ -74,11 +74,20 @@ export class BrowserDriver {
 		const viewport = options?.viewport ?? { width: 1280, height: 720 };
 
 		const chromium = await getChromium();
-		this.browser = await chromium.launch({
-			executablePath,
-			headless: options?.headless ?? false,
-			args: [`--window-size=${viewport.width},${viewport.height}`],
-		});
+		try {
+			this.browser = await chromium.launch({
+				channel: "chrome", // Use installed Chrome via channel instead of executablePath
+				headless: options?.headless ?? false,
+				args: [`--window-size=${viewport.width},${viewport.height}`, "--no-sandbox"],
+			});
+		} catch {
+			// Fallback: try with explicit executable path
+			this.browser = await chromium.launch({
+				executablePath,
+				headless: options?.headless ?? false,
+				args: [`--window-size=${viewport.width},${viewport.height}`, "--no-sandbox"],
+			});
+		}
 
 		this.context = await this.browser.newContext({
 			viewport,
