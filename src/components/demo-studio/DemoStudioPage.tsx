@@ -4,7 +4,7 @@
  */
 
 import { ArrowLeft, Bot } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
 import type { Scene, SceneLayer, SceneProject } from "@/lib/scene-renderer";
@@ -120,6 +120,15 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 
 	const agent = useDemoAgent(webviewRef, handleMessage);
 
+	// Mark window as having unsaved changes when demo has captured steps
+	useEffect(() => {
+		const hasData = agent.steps.length > 0;
+		window.electronAPI?.setHasUnsavedChanges?.(hasData);
+		return () => {
+			window.electronAPI?.setHasUnsavedChanges?.(false);
+		};
+	}, [agent.steps.length]);
+
 	const handleStart = useCallback(
 		(config: DemoConfig) => {
 			setMaxSteps(config.maxSteps);
@@ -201,7 +210,15 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 			<div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8 bg-[#0c0c0f]">
 				<div className="flex items-center gap-3">
 					<button
-						onClick={onBack}
+						onClick={() => {
+							if (agent.steps.length > 0 && agent.status !== "idle") {
+								if (!confirm("You have a demo in progress. Leave without saving?")) return;
+								agent.stop();
+							} else if (agent.steps.length > 0) {
+								if (!confirm("Your demo hasn't been opened in the editor. Leave anyway?")) return;
+							}
+							onBack();
+						}}
 						className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors"
 					>
 						<ArrowLeft size={14} />
