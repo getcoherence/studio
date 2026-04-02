@@ -4,10 +4,10 @@
  */
 
 import fs from "node:fs";
-
 // Playwright is loaded via createRequire because it's a CJS package
 // and dynamic import() fails with __dirname errors in ESM context
 import { createRequire } from "node:module";
+import path from "node:path";
 
 type Browser = import("playwright-core").Browser;
 type BrowserContext = import("playwright-core").BrowserContext;
@@ -76,30 +76,62 @@ export class BrowserDriver {
 
 		const viewport = options?.viewport ?? { width: 1280, height: 720 };
 
-		const chromium = await getChromium();
-		try {
-			this.browser = await chromium.launch({
-				channel: "chrome", // Use installed Chrome via channel instead of executablePath
-				headless: options?.headless ?? false,
-				args: [`--window-size=${viewport.width},${viewport.height}`, "--no-sandbox"],
-			});
-		} catch {
-			// Fallback: try with explicit executable path
-			this.browser = await chromium.launch({
-				executablePath,
-				headless: options?.headless ?? false,
-				args: [`--window-size=${viewport.width},${viewport.height}`, "--no-sandbox"],
-			});
-		}
+		// Playwright's chromium.launch() uses its own spawn which fails inside
+		// Electron's main process. Instead, we manually spawn Chrome with a
+		// remote debugging port and connect Playwright via CDP.
+		const { spawn } = await import("node:child_process");
+		const debugPort = 9222 + Math.floor(Math.random() * 1000);
+		const userDataDir = path.join((await import("node:os")).tmpdir(), `lucid-demo-${Date.now()}`);
 
-		this.context = await this.browser.newContext({
-			viewport,
-			// Bypass bot detection basics
-			userAgent:
-				"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+		const chromeArgs = [
+			`--remote-debugging-port=${debugPort}`,
+			`--window-size=${viewport.width},${viewport.height}`,
+			`--user-data-dir=${userDataDir}`,
+			"--no-first-run",
+			"--no-default-browser-check",
+			"--disable-default-apps",
+			...(options?.headless ? ["--headless=new"] : []),
+		];
+
+		const chromeProcess = spawn(executablePath, chromeArgs, {
+			stdio: "ignore",
+			detached: false,
 		});
 
-		this.page = await this.context.newPage();
+		// Wait for Chrome to start and open the debug port
+		await new Promise<void>((resolve, reject) => {
+			const timeout = setTimeout(() => reject(new Error("Chrome failed to start")), 10000);
+			const check = async () => {
+				try {
+					const resp = await fetch(`http://127.0.0.1:${debugPort}/json/version`);
+					if (resp.ok) {
+						clearTimeout(timeout);
+						resolve();
+						return;
+					}
+				} catch {
+					// Not ready yet
+				}
+				setTimeout(check, 200);
+			};
+			check();
+			chromeProcess.on("error", (err) => {
+				clearTimeout(timeout);
+				reject(err);
+			});
+		});
+
+		// Connect Playwright to the running Chrome via CDP
+		const chromium = await getChromium();
+		this.browser = await chromium.connectOverCDP(`http://127.0.0.1:${debugPort}`);
+
+		// CDP connection uses the browser's default context
+		const contexts = this.browser.contexts();
+		this.context = contexts[0] ?? (await this.browser.newContext({ viewport }));
+
+		const pages = this.context.pages();
+		this.page = pages[0] ?? (await this.context.newPage());
+		await this.page.setViewportSize(viewport);
 	}
 
 	async navigateTo(url: string): Promise<void> {
