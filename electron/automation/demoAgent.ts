@@ -60,7 +60,7 @@ Respond with ONE JSON action at a time. No markdown, no explanation outside the 
   "action": "click|type|scroll|navigate|wait|pause|done",
   "target": "CSS selector or element text description",
   "value": "text for type action, or 'up'/'down' for scroll",
-  "narration": "Professional voiceover text for this moment",
+  "narration": "Describe what is CURRENTLY VISIBLE on screen (not what you're about to do). Write as a voiceover for what the viewer sees RIGHT NOW.",
   "waitMs": 1500,
   "reasoning": "Why this action moves the demo forward"
 }
@@ -69,6 +69,7 @@ CRITICAL RULES:
 - You MUST perform at least 8 actions before using "done". Do NOT stop early.
 - Move slowly and deliberately (users need to see what's happening)
 - Add 1-2 second pauses between actions (use waitMs: 1500-2000)
+- IMPORTANT: The narration must describe what is CURRENTLY ON SCREEN, not what you're about to click. The screenshot is taken AFTER your action, so narrate what the viewer will SEE, not what you plan to do next.
 - Write narration as if presenting to an audience — clear, professional, engaging
 - Explore the site thoroughly: click navigation links, scroll to see content, visit 3-4 pages minimum
 - A good demo shows: homepage → features/product page → pricing → signup/CTA
