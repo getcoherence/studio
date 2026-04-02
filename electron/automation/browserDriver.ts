@@ -79,7 +79,6 @@ export class BrowserDriver {
 		// Playwright's chromium.launch() uses its own spawn which fails inside
 		// Electron's main process. Instead, we manually spawn Chrome with a
 		// remote debugging port and connect Playwright via CDP.
-		const { spawn } = await import("node:child_process");
 		const debugPort = 9222 + Math.floor(Math.random() * 1000);
 		const userDataDir = path.join((await import("node:os")).tmpdir(), `lucid-demo-${Date.now()}`);
 
@@ -93,22 +92,12 @@ export class BrowserDriver {
 			...(options?.headless ? ["--headless=new"] : []),
 		];
 
-		// Quote the path on Windows since it contains spaces (C:\Program Files\...)
-		const quotedPath = process.platform === "win32" ? `"${executablePath}"` : executablePath;
+		console.log("[DemoRecorder] Launching Chrome:", executablePath);
 
-		console.log("[DemoRecorder] Launching Chrome:", quotedPath, chromeArgs.join(" "));
-
-		const chromeProcess = spawn(quotedPath, chromeArgs, {
-			stdio: ["ignore", "pipe", "pipe"],
-			detached: true,
-			shell: true,
-			windowsHide: false,
-		});
-		chromeProcess.unref();
-
-		// Log Chrome stderr for debugging
-		chromeProcess.stderr?.on("data", (data: Buffer) => {
-			console.log("[Chrome stderr]", data.toString().slice(0, 200));
+		// Use execFile (not spawn) — handles paths with spaces on Windows
+		const { execFile } = await import("node:child_process");
+		const chromeProcess = execFile(executablePath, chromeArgs, { windowsHide: false }, (error) => {
+			if (error) console.error("[Chrome exit]", error.message);
 		});
 
 		// Wait for Chrome to start and open the debug port
