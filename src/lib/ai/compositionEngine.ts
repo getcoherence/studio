@@ -23,6 +23,7 @@ import {
 // ── Template IDs ─────────────────────────────────────────────────────────
 
 type TemplateId =
+	| "textOnly"
 	| "heroReveal"
 	| "deviceMockup"
 	| "featureSpotlight"
@@ -129,71 +130,56 @@ function composeStep(ctx: ComposeContext): {
 // ── Template scoring ─────────────────────────────────────────────────────
 
 function scoreTemplates(ctx: ComposeContext): Record<TemplateId, number> {
-	const { step, analysis, narration, sceneIndex, totalScenes, previousTemplates } = ctx;
-	const complexity = analysis?.complexityScore ?? 0.5;
+	const { step, narration, sceneIndex, totalScenes, previousTemplates } = ctx;
 	const hasNumbers = /\d+[%xX+]|\$\d/.test(narration);
-
-	// UI elements from DOM detection (cards, sections, heading groups)
 	const els = step.uiElements ?? [];
 	const domCards = els.filter((e) => e.type === "card");
-	const domSections = els.filter((e) => e.type === "section" || e.type === "heading-group");
-	const hasElements = els.length > 0;
 
+	// TEXT-FIRST PHILOSOPHY: Most scenes should be text-only on black.
+	// Screenshots appear only at key moments (first, middle feature, last).
 	const scores: Record<TemplateId, number> = {
-		heroReveal: 0.2,
-		deviceMockup: 0.2,
-		featureSpotlight: 0.15,
-		splitReveal: 0.1,
-		offsetCard: 0.4,
+		textOnly: 0.7, // DEFAULT: bold headline on black
+		heroReveal: 0.1,
+		deviceMockup: 0.15,
+		featureSpotlight: 0.1,
+		splitReveal: 0.05,
+		offsetCard: 0.25,
 		statsBanner: 0.1,
-		typingWithImage: 0.35,
-		simpleScreenshot: 0.05,
+		typingWithImage: 0.2,
+		simpleScreenshot: 0.0,
 	};
 
-	// ── Position-based scoring ──
+	// ── Key screenshot moments ──
+	// Scene 0: always hero reveal (establishing shot)
 	if (sceneIndex === 0) {
-		scores.heroReveal += 0.6;
-		scores.deviceMockup += 0.3;
+		scores.heroReveal += 0.8;
+		scores.textOnly -= 0.5;
 	}
+	// Last scene: device mockup (closing product shot)
 	if (sceneIndex === totalScenes - 1) {
-		scores.deviceMockup += 0.3;
+		scores.deviceMockup += 0.6;
+		scores.textOnly -= 0.3;
+	}
+	// Middle feature scene: if cards detected, show them
+	const isMidpoint = sceneIndex === Math.floor(totalScenes / 2);
+	if (isMidpoint && domCards.length >= 1) {
+		scores.offsetCard += 0.5;
+		scores.featureSpotlight += 0.4;
+		scores.textOnly -= 0.3;
+	}
+	// If cards detected and we haven't shown a screenshot recently
+	const recentHasScreenshot = previousTemplates
+		.slice(-2)
+		.some((t) => t !== "textOnly" && t !== "statsBanner");
+	if (domCards.length >= 2 && !recentHasScreenshot) {
+		scores.splitReveal += 0.5;
+		scores.textOnly -= 0.2;
 	}
 
-	// ── DOM element-based scoring (strongest signals) ──
-	if (domCards.length >= 2) {
-		scores.splitReveal += 0.6; // Two cards → show side by side
-		scores.featureSpotlight += 0.3;
-	}
-	if (domCards.length === 1) {
-		scores.featureSpotlight += 0.5; // Single card → spotlight it
-		scores.offsetCard += 0.4; // Or offset with headline
-	}
-	if (domSections.length > 0 && domCards.length === 0) {
-		scores.offsetCard += 0.3; // Section without cards → headline + crop
-		scores.typingWithImage += 0.3;
-	}
-	if (!hasElements) {
-		scores.deviceMockup += 0.3; // No elements found → show full page in frame
-		scores.heroReveal += 0.2;
-	}
-
-	// ── Complexity-based scoring ──
-	if (complexity > 0.6) {
-		scores.deviceMockup += 0.2;
-	}
-	if (complexity < 0.3) {
-		scores.offsetCard += 0.2;
-		scores.typingWithImage += 0.2;
-	}
-
-	// ── Narration-based scoring ──
+	// ── Narration-based ──
 	if (hasNumbers) {
-		scores.statsBanner += 0.6;
-	}
-
-	if (narration.length > 80) {
-		scores.offsetCard += 0.2;
-		scores.typingWithImage += 0.2;
+		scores.statsBanner += 0.5;
+		scores.textOnly -= 0.2;
 	}
 
 	// ── Variety enforcement ──
@@ -201,7 +187,8 @@ function scoreTemplates(ctx: ComposeContext): Record<TemplateId, number> {
 	const prev2 = previousTemplates[previousTemplates.length - 2];
 
 	for (const template of Object.keys(scores) as TemplateId[]) {
-		if (template === prev1) scores[template] -= 0.8; // Heavy penalty for immediate repeat
+		if (template === prev1) scores[template] -= 0.6;
+		if (template === prev2) scores[template] -= 0.3;
 		if (template === prev2) scores[template] -= 0.4; // Moderate penalty for near-repeat
 	}
 
@@ -231,6 +218,15 @@ function generateScenes(template: TemplateId, ctx: ComposeContext): Scene[] {
 	const bestCrop = bestElement?.bounds ?? step.cropRegion;
 
 	switch (template) {
+		case "textOnly":
+			return [
+				titleCard({
+					title: headline,
+					background: "#000000",
+					durationMs: typingMs,
+				}),
+			];
+
 		case "heroReveal":
 			return [
 				heroReveal({
