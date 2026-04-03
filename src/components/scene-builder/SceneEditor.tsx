@@ -22,14 +22,8 @@ import { AISettingsButton } from "@/components/ui/AISettingsDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { AnimatedBackgroundPicker } from "@/components/video-editor/AnimatedBackgroundPicker";
-import {
-	applyCritiqueMutations,
-	critiqueSceneProject,
-} from "@/lib/ai/designCritique";
-import {
-	DESIGN_STYLE_LIST,
-	type DesignStyleId,
-} from "@/lib/ai/designStyles";
+import { applyCritiqueMutations, critiqueSceneProject } from "@/lib/ai/designCritique";
+import { DESIGN_STYLE_LIST, type DesignStyleId } from "@/lib/ai/designStyles";
 import { generateSceneProject, SCENE_TEMPLATES } from "@/lib/ai/sceneGenerator";
 import { aiPolishSceneProject, polishSceneProject } from "@/lib/ai/scenePolish";
 import { consumePendingDemoProject } from "@/lib/demoProjectStore";
@@ -414,7 +408,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 				setAiPopoverOpen(false);
 				setAiPrompt("");
 				const styleName = selectedStyle
-					? DESIGN_STYLE_LIST.find((s) => s.id === selectedStyle)?.name ?? ""
+					? (DESIGN_STYLE_LIST.find((s) => s.id === selectedStyle)?.name ?? "")
 					: "";
 				toast.success(
 					`Generated "${generated.name}" with ${generated.scenes.length} scenes${styleName ? ` (${styleName})` : ""}`,

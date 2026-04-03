@@ -41,10 +41,18 @@ export interface DemoStep {
 	isZoomShot?: boolean; // true for cropped zoom screenshots
 	/** Ken-burns focus point (0-1 normalized), detected from prominent page elements */
 	focusPoint?: { x: number; y: number };
+	/** Short visual headline for the slide (3-6 words, from storyboard) */
+	headline?: string;
 	/** Vision-detected crop region (0-1 normalized) for the most relevant UI element */
 	cropRegion?: { x: number; y: number; width: number; height: number };
 	/** OpenCV analysis results (replaces vision API) */
 	analysis?: ScreenshotAnalysis;
+	/** Individual UI elements detected in the viewport */
+	uiElements?: Array<{
+		type: string;
+		text: string;
+		bounds: { x: number; y: number; width: number; height: number };
+	}>;
 }
 
 // ── Storyboard types (Phase 2 output) ────────────────────────────────
@@ -56,7 +64,9 @@ export interface StoryboardScene {
 	scrollToY: number;
 	/** CSS selector to zoom into for a highlight shot */
 	zoomTarget?: string;
-	/** Pre-written narration for this scene */
+	/** Short visual headline for the slide (3-6 words) */
+	headline?: string;
+	/** Pre-written narration/voiceover for this scene */
 	narration: string;
 	/** Suggested scene duration in ms */
 	durationMs: number;

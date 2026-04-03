@@ -1909,9 +1909,7 @@ export default function VideoEditor() {
 						Home
 					</button>
 					<div className="w-px h-4 bg-white/10 mx-1" />
-					<div
-						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150"
-					>
+					<div className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150">
 						<Languages size={14} />
 						<select
 							value={locale}
