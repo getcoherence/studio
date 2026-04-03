@@ -31,25 +31,25 @@ export function titleCard(opts: {
 	const duration = opts.durationMs ?? 2500;
 	const layers: SceneLayer[] = [];
 
-	// Title text — blur-in entrance
+	// Title text — bold, centered, impactful
 	layers.push({
 		id: uid(),
 		type: "text",
 		startMs: 0,
 		endMs: duration,
-		position: { x: 10, y: opts.subtitle ? 32 : 38 },
-		size: { width: 80, height: 18 },
+		position: { x: 8, y: opts.subtitle ? 28 : 32 },
+		size: { width: 84, height: 30 },
 		zIndex: 1,
-		entrance: { type: "blur-in", durationMs: 800, easing: "ease-out", delay: 300 },
-		exit: { type: "fade", durationMs: 400, easing: "ease-in", delay: 0 },
+		entrance: { type: "blur-in", durationMs: 600, easing: "ease-out", delay: 200 },
+		exit: { type: "fade", durationMs: 300, easing: "ease-in", delay: 0 },
 		content: {
 			text: opts.title,
-			fontSize: 64,
+			fontSize: 80,
 			fontFamily: "Inter, system-ui, sans-serif",
-			fontWeight: "700",
+			fontWeight: "800",
 			color: "#ffffff",
 			textAlign: "center",
-			lineHeight: 1.2,
+			lineHeight: 1.15,
 		} satisfies TextContent,
 	});
 
@@ -347,20 +347,20 @@ export function typingSequence(opts: {
 			type: "text",
 			startMs: 0,
 			endMs: duration,
-			// With image: text left side. Without: centered.
-			position: hasImage ? { x: 4, y: 22 } : { x: 10, y: 36 },
-			size: hasImage ? { width: 42, height: 50 } : { width: 80, height: 20 },
+			// With image: text left side. Without: bold centered.
+			position: hasImage ? { x: 4, y: 22 } : { x: 8, y: 28 },
+			size: hasImage ? { width: 42, height: 50 } : { width: 84, height: 40 },
 			zIndex: 2,
-			entrance: { type: "typewriter", durationMs: duration * 0.6, easing: "linear", delay: 200 },
-			exit: { type: "blur-in", durationMs: 400, easing: "ease-in", delay: 0 },
+			entrance: { type: "typewriter", durationMs: duration * 0.55, easing: "linear", delay: 150 },
+			exit: { type: "blur-in", durationMs: 300, easing: "ease-in", delay: 0 },
 			content: {
 				text: opts.text,
-				fontSize: hasImage ? 36 : 48,
+				fontSize: hasImage ? 40 : 64,
 				fontFamily: "Inter, system-ui, sans-serif",
-				fontWeight: "600",
+				fontWeight: "800",
 				color: "#ffffff",
-				textAlign: "left",
-				lineHeight: 1.3,
+				textAlign: hasImage ? "left" : "center",
+				lineHeight: 1.2,
 			} satisfies TextContent,
 		},
 	];
