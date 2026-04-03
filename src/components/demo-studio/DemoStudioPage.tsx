@@ -7,109 +7,16 @@ import { AlertTriangle, ArrowLeft, Bot, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
-import type { Scene, SceneProject } from "@/lib/scene-renderer";
-import {
-	heroReveal,
-	simpleScreenshot,
-	titleCard,
-	typingSequence,
-} from "@/lib/ai/compositionTemplates";
+import { composeProject } from "@/lib/ai/compositionEngine";
+import type { SceneProject } from "@/lib/scene-renderer";
 import { DemoBottomBar } from "./DemoBottomBar";
 import { DemoBrowserPanel } from "./DemoBrowserPanel";
 import { DemoChatPanel } from "./DemoChatPanel";
 import { addToPromptHistory } from "./promptHistory";
-import type { DemoChatMessage, DemoConfig, DemoStep } from "./types";
+import type { DemoChatMessage, DemoConfig } from "./types";
 import { useDemoAgent } from "./useDemoAgent";
 
 // ── Helpers ───────────────────────────────────────────────────────────
-
-let _uid = 1;
-function uid(): string {
-	return `demo-${Date.now()}-${_uid++}`;
-}
-
-function buildSceneProject(steps: DemoStep[]): SceneProject {
-	const stepsWithScreenshots = steps.filter((s) => s.screenshotDataUrl);
-	const scenes: Scene[] = [];
-
-	// Opening title card from the first narration
-	const firstNarration = stepsWithScreenshots.find((s) => s.action.narration)?.action.narration;
-	if (firstNarration) {
-		scenes.push(titleCard({ title: firstNarration, background: "animated-midnight" }));
-	}
-
-	// Build scenes from steps using composition templates
-	for (let i = 0; i < stepsWithScreenshots.length; i++) {
-		const step = stepsWithScreenshots[i];
-		if (!step.screenshotDataUrl) continue;
-
-		const narration = step.action.narration || "";
-		const isZoom = step.isZoomShot === true;
-
-		if (isZoom) {
-			// Zoom shots: isolated element with zoom-in entrance
-			scenes.push(
-				simpleScreenshot({
-					screenshotSrc: step.screenshotDataUrl,
-					narration,
-					durationMs: 3500,
-				}),
-			);
-		} else if (i === 0) {
-			// First screenshot: hero reveal with ken-burns
-			scenes.push(
-				heroReveal({
-					screenshotSrc: step.screenshotDataUrl,
-					narration,
-					focusPoint: { x: 0.5, y: 0.3 },
-					durationMs: 3000,
-				}),
-			);
-		} else if (i === stepsWithScreenshots.length - 1) {
-			// Last screenshot: typing bridge + hero reveal finale
-			scenes.push(typingSequence({ text: narration, durationMs: 2000 }));
-			scenes.push(
-				heroReveal({
-					screenshotSrc: step.screenshotDataUrl,
-					narration: "",
-					focusPoint: { x: 0.5, y: 0.5 },
-					durationMs: 2500,
-				}),
-			);
-		} else {
-			// Middle screenshots: alternate between hero-reveal and simple
-			if (i % 3 === 0) {
-				// Every 3rd scene: insert a typing bridge for rhythm
-				scenes.push(typingSequence({ text: narration, durationMs: 2000 }));
-				scenes.push(
-					heroReveal({
-						screenshotSrc: step.screenshotDataUrl,
-						narration: "",
-						focusPoint: { x: 0.3 + Math.random() * 0.4, y: 0.2 + Math.random() * 0.4 },
-						durationMs: 2500,
-					}),
-				);
-			} else {
-				scenes.push(
-					heroReveal({
-						screenshotSrc: step.screenshotDataUrl,
-						narration,
-						focusPoint: { x: 0.3 + Math.random() * 0.4, y: 0.2 + Math.random() * 0.4 },
-						durationMs: 2500,
-					}),
-				);
-			}
-		}
-	}
-
-	return {
-		id: uid(),
-		name: "AI Demo Recording",
-		scenes,
-		resolution: { width: 1920, height: 1080 },
-		fps: 30,
-	};
-}
 
 // ── Page component ────────────────────────────────────────────────────
 
@@ -169,9 +76,9 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 
 	const handleOpenInEditor = useCallback(() => {
 		if (agent.steps.length === 0) return;
-		const project = buildSceneProject(agent.steps);
+		const project = composeProject(agent.steps, { title: agent.storyboardTitle });
 		onOpenInEditor(project);
-	}, [agent.steps, onOpenInEditor]);
+	}, [agent.steps, agent.storyboardTitle, onOpenInEditor]);
 
 	// ── Voiceover generation ──
 

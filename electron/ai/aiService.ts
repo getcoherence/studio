@@ -3,6 +3,7 @@
  * Ollama (local), OpenAI, Anthropic, Groq, MiniMax.
  */
 
+import dns from "node:dns";
 import type {
 	AIAvailability,
 	AIProvider,
@@ -10,6 +11,9 @@ import type {
 	AIServiceResult,
 } from "../../src/lib/ai/types";
 import { loadSettings, saveSettings } from "../settings";
+
+// Force IPv4 for all DNS lookups — prevents IPv6 socket errors with some API endpoints
+dns.setDefaultResultOrder("ipv4first");
 
 const DEFAULT_CONFIG: AIServiceConfig = {
 	provider: "openai",
@@ -22,24 +26,44 @@ const DEFAULT_CONFIG: AIServiceConfig = {
  */
 export async function loadAIConfig(): Promise<AIServiceConfig> {
 	const settings = await loadSettings();
+	const provider = settings.aiProvider ?? DEFAULT_CONFIG.provider;
+	// Read per-provider key, falling back to legacy single key
+	const providerKeyField = `aiApiKey_${provider}` as keyof typeof settings;
+	const apiKey = (settings[providerKeyField] as string | undefined) ?? settings.aiApiKey;
+	// Only use saved model if it belongs to the current provider
+	// (prevents sending "gpt-5.4" to Anthropic after switching)
+	const savedModel = settings.aiModel;
+	const validModel =
+		savedModel && isModelValidForProvider(savedModel, provider) ? savedModel : undefined;
+
 	return {
-		provider: settings.aiProvider ?? DEFAULT_CONFIG.provider,
-		apiKey: settings.aiApiKey,
-		model: settings.aiModel,
+		provider,
+		apiKey,
+		model: validModel,
 		ollamaUrl: settings.aiOllamaUrl ?? DEFAULT_CONFIG.ollamaUrl,
 	};
 }
 
 /**
  * Save AI config to the unified settings store.
+ * Saves the API key to a per-provider field so switching providers doesn't wipe keys.
  */
 export async function saveAIConfig(config: Partial<AIServiceConfig>): Promise<void> {
-	await saveSettings({
-		...(config.provider && { aiProvider: config.provider }),
-		...(config.apiKey !== undefined && { aiApiKey: config.apiKey }),
-		...(config.model !== undefined && { aiModel: config.model }),
-		...(config.ollamaUrl !== undefined && { aiOllamaUrl: config.ollamaUrl }),
-	});
+	const current = await loadSettings();
+	const provider = config.provider ?? current.aiProvider ?? "openai";
+	const updates: Record<string, unknown> = {};
+
+	if (config.provider) updates.aiProvider = config.provider;
+	if (config.model !== undefined) updates.aiModel = config.model;
+	if (config.ollamaUrl !== undefined) updates.aiOllamaUrl = config.ollamaUrl;
+
+	if (config.apiKey !== undefined) {
+		// Save to per-provider key field AND legacy field
+		updates[`aiApiKey_${provider}`] = config.apiKey;
+		updates.aiApiKey = config.apiKey;
+	}
+
+	await saveSettings(updates as Partial<import("../settings").LucidSettings>);
 }
 
 // ── Provider endpoints ──
@@ -48,7 +72,7 @@ const PROVIDER_ENDPOINTS: Record<string, string> = {
 	openai: "https://api.openai.com/v1/chat/completions",
 	anthropic: "https://api.anthropic.com/v1/messages",
 	groq: "https://api.groq.com/openai/v1/chat/completions",
-	minimax: "https://api.minimax.io/v1/text/chatcompletion_v2",
+	minimax: "https://api.minimaxi.chat/v1/text/chatcompletion_v2",
 };
 
 const DEFAULT_MODELS: Record<string, string> = {
@@ -58,6 +82,19 @@ const DEFAULT_MODELS: Record<string, string> = {
 	groq: "llama-3.3-70b-versatile",
 	minimax: "MiniMax-M2.7",
 };
+
+/** Check if a model name belongs to a given provider */
+function isModelValidForProvider(model: string, provider: string): boolean {
+	const prefixes: Record<string, string[]> = {
+		openai: ["gpt-", "o1", "o3", "o4"],
+		anthropic: ["claude-"],
+		groq: ["llama", "mixtral", "gemma"],
+		minimax: ["MiniMax", "minimax"],
+		ollama: ["llama", "mistral", "phi", "gemma", "qwen", "deepseek"],
+	};
+	const providerPrefixes = prefixes[provider] ?? [];
+	return providerPrefixes.some((p) => model.toLowerCase().startsWith(p.toLowerCase()));
+}
 
 // ── Provider communication ──
 
@@ -80,7 +117,14 @@ async function openaiCompatibleChat(
 	apiKey: string,
 	model: string,
 	endpoint: string,
+	systemPrompt?: string,
 ): Promise<string> {
+	const messages: Array<{ role: string; content: string }> = [];
+	if (systemPrompt) {
+		messages.push({ role: "system", content: systemPrompt });
+	}
+	messages.push({ role: "user", content: prompt });
+
 	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
@@ -89,7 +133,7 @@ async function openaiCompatibleChat(
 		},
 		body: JSON.stringify({
 			model,
-			messages: [{ role: "user", content: prompt }],
+			messages,
 			temperature: 0.3,
 		}),
 		signal: AbortSignal.timeout(60_000),
@@ -120,7 +164,20 @@ async function openaiCompatibleChat(
 	return text;
 }
 
-async function anthropicChat(prompt: string, apiKey: string, model: string): Promise<string> {
+async function anthropicChat(
+	prompt: string,
+	apiKey: string,
+	model: string,
+	systemPrompt?: string,
+): Promise<string> {
+	const body: Record<string, unknown> = {
+		model,
+		max_tokens: 4096,
+		messages: [{ role: "user", content: prompt }],
+	};
+	if (systemPrompt) {
+		body.system = systemPrompt;
+	}
 	const response = await fetch(PROVIDER_ENDPOINTS.anthropic, {
 		method: "POST",
 		headers: {
@@ -128,15 +185,14 @@ async function anthropicChat(prompt: string, apiKey: string, model: string): Pro
 			"x-api-key": apiKey,
 			"anthropic-version": "2023-06-01",
 		},
-		body: JSON.stringify({
-			model,
-			max_tokens: 4096,
-			messages: [{ role: "user", content: prompt }],
-		}),
+		body: JSON.stringify(body),
 		signal: AbortSignal.timeout(60_000),
 	});
 	if (!response.ok) {
-		throw new Error(`Anthropic responded with ${response.status}: ${response.statusText}`);
+		const errorBody = await response.text().catch(() => "");
+		throw new Error(
+			`Anthropic ${response.status}: ${response.statusText} — ${errorBody.slice(0, 200)}`,
+		);
 	}
 	const data = (await response.json()) as {
 		content?: Array<{ text?: string }>;
@@ -148,24 +204,27 @@ async function callProvider(
 	provider: AIProvider,
 	prompt: string,
 	config: AIServiceConfig,
+	systemPrompt?: string,
 ): Promise<string> {
 	const model = config.model ?? DEFAULT_MODELS[provider] ?? "gpt-5.4-mini";
 
 	if (provider === "ollama") {
 		const ollamaUrl = config.ollamaUrl ?? "http://localhost:11434";
-		return ollamaGenerate(prompt, model, ollamaUrl);
+		// For Ollama, concatenate system prompt into the prompt
+		const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+		return ollamaGenerate(fullPrompt, model, ollamaUrl);
 	}
 
 	if (provider === "anthropic") {
 		if (!config.apiKey) throw new Error("Anthropic API key not configured");
-		return anthropicChat(prompt, config.apiKey, model);
+		return anthropicChat(prompt, config.apiKey, model, systemPrompt);
 	}
 
 	// OpenAI, Groq, MiniMax all use OpenAI-compatible chat completions API
 	const endpoint = PROVIDER_ENDPOINTS[provider];
 	if (!endpoint) throw new Error(`Unknown provider: ${provider}`);
 	if (!config.apiKey) throw new Error(`${provider} API key not configured`);
-	return openaiCompatibleChat(prompt, config.apiKey, model, endpoint);
+	return openaiCompatibleChat(prompt, config.apiKey, model, endpoint, systemPrompt);
 }
 
 // ── Availability check ──
@@ -252,8 +311,8 @@ async function openaiVisionChat(
 			"Content-Type": "application/json",
 			Authorization: `Bearer ${apiKey}`,
 		},
-		body: JSON.stringify({ model, messages, max_tokens: 300, temperature: 0.3 }),
-		signal: AbortSignal.timeout(30_000),
+		body: JSON.stringify({ model, messages, max_tokens: 4096, temperature: 0.3 }),
+		signal: AbortSignal.timeout(60_000),
 	});
 	if (!response.ok) {
 		throw new Error(`OpenAI vision responded with ${response.status}: ${response.statusText}`);
@@ -273,7 +332,7 @@ async function anthropicVisionChat(
 ): Promise<string> {
 	const body: Record<string, unknown> = {
 		model,
-		max_tokens: 300,
+		max_tokens: 4096,
 		messages: [
 			{
 				role: "user",
@@ -299,7 +358,7 @@ async function anthropicVisionChat(
 			"anthropic-version": "2023-06-01",
 		},
 		body: JSON.stringify(body),
-		signal: AbortSignal.timeout(30_000),
+		signal: AbortSignal.timeout(60_000),
 	});
 	if (!response.ok) {
 		throw new Error(`Anthropic vision responded with ${response.status}: ${response.statusText}`);
@@ -323,10 +382,15 @@ export async function analyzeImage(
 	const provider = config.provider;
 
 	try {
+		console.log(
+			`[AI] analyzeImage: provider=${provider}, hasKey=${!!config.apiKey}, imageLen=${imageBase64.length}`,
+		);
+
 		if (provider === "openai" && config.apiKey) {
 			const model = VISION_MODELS.openai;
 			const text = await openaiVisionChat(prompt, imageBase64, config.apiKey, model, systemPrompt);
-			return { success: true, text };
+			console.log(`[AI] OpenAI vision response length: ${text?.length ?? 0}`);
+			return { success: !!text, text: text || undefined };
 		}
 
 		if (provider === "anthropic" && config.apiKey) {
@@ -338,17 +402,19 @@ export async function analyzeImage(
 				model,
 				systemPrompt,
 			);
-			return { success: true, text };
+			console.log(`[AI] Anthropic vision response length: ${text?.length ?? 0}`);
+			return { success: !!text, text: text || undefined };
 		}
 
 		// Provider doesn't support vision — fall back to text-only
-		const fullPrompt = systemPrompt
-			? `${systemPrompt}\n\n${prompt}\n\n(Note: A screenshot was taken but your provider does not support image analysis. Describe what you expect based on context.)`
-			: prompt;
-		const text = await callProvider(provider, fullPrompt, config);
-		return { success: true, text };
+		console.log(`[AI] Provider ${provider} has no vision — using text-only`);
+		const text = await callProvider(provider, prompt, config, systemPrompt);
+		return { success: !!text, text: text || undefined };
 	} catch (err) {
-		console.warn(`Vision analysis failed for "${provider}":`, err);
+		console.error(
+			`[AI] Vision analysis failed for "${provider}" (key present: ${!!config.apiKey}):`,
+			err,
+		);
 		return {
 			success: false,
 			error: err instanceof Error ? err.message : String(err),
@@ -360,10 +426,10 @@ export async function analyzeImage(
 
 export async function analyze(prompt: string, context?: string): Promise<AIServiceResult> {
 	const config = await loadAIConfig();
-	const fullPrompt = context ? `${context}\n\n${prompt}` : prompt;
 
 	try {
-		const text = await callProvider(config.provider, fullPrompt, config);
+		// Pass context as a proper system prompt for all providers
+		const text = await callProvider(config.provider, prompt, config, context);
 		return { success: true, text };
 	} catch (err) {
 		console.warn(`AI provider "${config.provider}" failed:`, err);

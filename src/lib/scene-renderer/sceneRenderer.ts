@@ -4,10 +4,12 @@
 // point in time. Pure function — deterministic output for a given timeMs.
 
 import { getAnimatedBackground, isAnimatedBackground } from "@/lib/backgrounds";
+import { renderLottieFrame } from "@/lib/lottie/lottieRenderer";
 import { applyEasing, computeAnimation, identityTransform } from "./animations";
 import type {
 	ImageContent,
 	LayerTransform,
+	LottieContent,
 	Scene,
 	SceneLayer,
 	ShapeContent,
@@ -429,9 +431,67 @@ export function renderScene(
 			case "shape":
 				renderShapeLayer(ctx, layer.content as ShapeContent, layerX, layerY, layerW, layerH);
 				break;
+			case "lottie":
+				renderLottieLayer(
+					ctx,
+					layer.content as LottieContent,
+					layerX,
+					layerY,
+					layerW,
+					layerH,
+					timeMs,
+					layer.startMs,
+					layer.endMs,
+				);
+				break;
 		}
 
 		ctx.restore();
+	}
+}
+
+// ── Lottie layer rendering ────────────────────────────────────────────────
+
+function renderLottieLayer(
+	ctx: CanvasRenderingContext2D,
+	content: LottieContent,
+	x: number,
+	y: number,
+	w: number,
+	h: number,
+	sceneTimeMs: number,
+	layerStartMs: number,
+	layerEndMs: number,
+): void {
+	const layerDuration = layerEndMs - layerStartMs;
+	const localTime = sceneTimeMs - layerStartMs;
+	let progress = layerDuration > 0 ? localTime / layerDuration : 0;
+
+	if (content.loop) {
+		progress = progress % 1;
+	} else {
+		progress = Math.max(0, Math.min(1, progress));
+	}
+
+	const frame = renderLottieFrame(
+		content.animationId,
+		progress,
+		Math.round(w),
+		Math.round(h),
+		content.loop,
+		content.speed,
+	);
+
+	if (frame) {
+		if (content.tintColor) {
+			ctx.drawImage(frame, x, y, w, h);
+			ctx.globalCompositeOperation = "source-atop";
+			ctx.fillStyle = content.tintColor;
+			ctx.fillRect(x, y, w, h);
+			ctx.globalCompositeOperation = "source-over";
+		} else {
+			ctx.drawImage(frame, x, y, w, h);
+		}
 	}
 }
 

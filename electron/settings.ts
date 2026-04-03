@@ -8,10 +8,16 @@ export interface LucidSettings {
 
 	// AI (unified — used by aiService.ts)
 	aiProvider: "ollama" | "openai" | "anthropic" | "groq" | "minimax";
-	aiApiKey?: string;
+	aiApiKey?: string; // Legacy single key (still read as fallback)
 	aiModel?: string;
 	aiOllamaUrl?: string;
 	whisperModel: "tiny" | "base" | "small";
+
+	// Per-provider API keys (so switching providers doesn't wipe keys)
+	aiApiKey_openai?: string;
+	aiApiKey_anthropic?: string;
+	aiApiKey_groq?: string;
+	aiApiKey_minimax?: string;
 
 	// Cursor
 	cursorSmoothing: number;

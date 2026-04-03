@@ -25,7 +25,7 @@ export interface SceneTransition {
 
 export interface SceneLayer {
 	id: string;
-	type: "text" | "image" | "shape";
+	type: "text" | "image" | "shape" | "lottie";
 	startMs: number; // relative to scene start
 	endMs: number;
 	position: { x: number; y: number }; // percentage (0-100)
@@ -33,7 +33,7 @@ export interface SceneLayer {
 	zIndex: number;
 	entrance: LayerAnimation;
 	exit: LayerAnimation;
-	content: TextContent | ImageContent | ShapeContent;
+	content: TextContent | ImageContent | ShapeContent | LottieContent;
 }
 
 // ── Content types ─────────────────────────────────────────────────────────
@@ -63,6 +63,17 @@ export interface ShapeContent {
 	fill: string;
 	stroke?: string;
 	strokeWidth?: number;
+}
+
+export interface LottieContent {
+	/** ID referencing a Lottie asset from the catalog */
+	animationId: string;
+	/** Whether the animation should loop */
+	loop: boolean;
+	/** Playback speed multiplier (1 = normal) */
+	speed: number;
+	/** Optional tint color override */
+	tintColor?: string;
 }
 
 // ── Animations ────────────────────────────────────────────────────────────

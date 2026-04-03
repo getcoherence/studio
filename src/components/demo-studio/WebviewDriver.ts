@@ -222,7 +222,12 @@ export class WebviewDriver {
 						const all = [...document.querySelectorAll('*')];
 						el = all.find(e => e.innerText?.trim().toLowerCase().includes(sel.toLowerCase()));
 					}
-					if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+					if (el) {
+						// Place heading near top of viewport (not center) so content below is visible
+						var rect = el.getBoundingClientRect();
+						var targetY = window.scrollY + rect.top - window.innerHeight * 0.15;
+						window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+					}
 				})()`,
 				undefined,
 			);
@@ -314,15 +319,137 @@ export class WebviewDriver {
 	}
 
 	/**
-	 * Scroll to a specific Y pixel position on the page.
+	 * Scroll to a specific Y pixel position on the page,
+	 * clamped so we never scroll past the content.
 	 */
 	async scrollToPosition(y: number): Promise<void> {
 		await safeExec(
 			this.wv,
-			`window.scrollTo({ top: ${y}, behavior: 'smooth' })`,
+			`(function() {
+				var maxY = Math.max(0, document.body.scrollHeight - window.innerHeight);
+				window.scrollTo({ top: Math.min(${y}, maxY), behavior: 'smooth' });
+			})()`,
 			undefined,
 		);
 		await new Promise((r) => setTimeout(r, 800));
+	}
+
+	/**
+	 * Get the page's scroll bounds — useful for clamping storyboard scroll positions.
+	 */
+	async getScrollBounds(): Promise<{ scrollHeight: number; viewportHeight: number }> {
+		return safeExec(
+			this.wv,
+			`({ scrollHeight: document.body.scrollHeight, viewportHeight: window.innerHeight })`,
+			{ scrollHeight: 2000, viewportHeight: 800 },
+		);
+	}
+
+	/**
+	 * Find the most prominent visible element (heading, hero image, CTA) and
+	 * return its center as a 0-1 normalized focus point for ken-burns.
+	 */
+	async getProminentElementPosition(): Promise<{ x: number; y: number }> {
+		return safeExec(
+			this.wv,
+			`(function() {
+				var vw = window.innerWidth, vh = window.innerHeight;
+				var best = null, bestScore = 0;
+
+				// Headings — h1 is most prominent
+				document.querySelectorAll('h1, h2, h3').forEach(function(el) {
+					var r = el.getBoundingClientRect();
+					if (r.top < 0 || r.bottom > vh || r.width < 50) return;
+					var w = el.tagName === 'H1' ? 3 : el.tagName === 'H2' ? 2 : 1;
+					var s = w * r.width;
+					if (s > bestScore) { bestScore = s; best = r; }
+				});
+
+				// Large images / videos
+				document.querySelectorAll('img, video, [class*="hero"]').forEach(function(el) {
+					var r = el.getBoundingClientRect();
+					if (r.top < 0 || r.bottom > vh || r.width < 200 || r.height < 100) return;
+					var s = r.width * r.height * 0.001;
+					if (s > bestScore) { bestScore = s; best = r; }
+				});
+
+				// CTA buttons
+				document.querySelectorAll('button, [role="button"], a[class*="cta"], a[class*="btn"]').forEach(function(el) {
+					var r = el.getBoundingClientRect();
+					if (r.top < 0 || r.bottom > vh || r.width < 40) return;
+					var s = r.width * 2;
+					if (s > bestScore) { bestScore = s; best = r; }
+				});
+
+				if (!best) return { x: 0.5, y: 0.4 };
+				return {
+					x: Math.max(0.1, Math.min(0.9, (best.left + best.width / 2) / vw)),
+					y: Math.max(0.1, Math.min(0.9, (best.top + best.height / 2) / vh))
+				};
+			})()`,
+			{ x: 0.5, y: 0.4 },
+		);
+	}
+
+	/**
+	 * Find the section container for a heading and return its viewport-relative
+	 * bounds normalized to 0-1. Used for cropping screenshots to specific sections.
+	 */
+	async getSectionBounds(
+		headingText: string,
+	): Promise<{ x: number; y: number; width: number; height: number } | null> {
+		return safeExec(
+			this.wv,
+			`(function() {
+				var target = ${JSON.stringify(headingText.toLowerCase())};
+				var vw = window.innerWidth, vh = window.innerHeight;
+				var heading = null;
+
+				// Find the heading element
+				var candidates = document.querySelectorAll('h1, h2, h3, h4, [class*="heading"], [class*="title"]');
+				for (var i = 0; i < candidates.length; i++) {
+					var t = (candidates[i].innerText || '').trim().toLowerCase();
+					if (t.includes(target) || target.includes(t.slice(0, 20))) {
+						heading = candidates[i];
+						break;
+					}
+				}
+				if (!heading) return null;
+
+				// Walk up to find section container
+				var section = heading.parentElement;
+				while (section && section !== document.body) {
+					var tag = section.tagName.toLowerCase();
+					var r = section.getBoundingClientRect();
+					if ((tag === 'section' || tag === 'article' || section.classList.toString().match(/section|block|container|wrapper|card/i)) &&
+						r.height > 80 && r.height < vh * 3 && r.width > vw * 0.4) {
+						break;
+					}
+					section = section.parentElement;
+				}
+
+				var rect;
+				if (section && section !== document.body) {
+					rect = section.getBoundingClientRect();
+				} else {
+					// Fallback: heading rect with generous padding below
+					var hr = heading.getBoundingClientRect();
+					rect = { left: 0, top: hr.top - 20, width: vw, height: Math.min(vh * 0.6, vh - hr.top + 20) };
+				}
+
+				// Clamp to viewport
+				var x = Math.max(0, rect.left / vw);
+				var y = Math.max(0, rect.top / vh);
+				var w = Math.min(1 - x, rect.width / vw);
+				var h = Math.min(1 - y, rect.height / vh);
+
+				// Ensure minimum size
+				if (w < 0.2 || h < 0.15) return null;
+
+				return { x: x, y: y, width: w, height: h };
+			})()`,
+			null,
+		);
 	}
 
 	getURL(): string {
