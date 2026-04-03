@@ -27,6 +27,7 @@ import { DESIGN_STYLE_LIST, type DesignStyleId } from "@/lib/ai/designStyles";
 import { generateSceneProject, SCENE_TEMPLATES } from "@/lib/ai/sceneGenerator";
 import { aiPolishSceneProject, polishSceneProject } from "@/lib/ai/scenePolish";
 import { consumePendingDemoProject } from "@/lib/demoProjectStore";
+import { RemotionPreview } from "@/lib/remotion/RemotionPreview";
 import {
 	captureCanvas,
 	DEFAULT_IMAGE_LAYER,
@@ -79,6 +80,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	const [isExporting, setIsExporting] = useState(false);
 	const [exportProgress, setExportProgress] = useState<SceneExportProgress | null>(null);
 	const [aspectRatio, setAspectRatio] = useState("16/9");
+	const [previewMode, setPreviewMode] = useState<"canvas" | "remotion">("canvas");
 	const [activeTransition, setActiveTransition] = useState<SceneTransition | null>(null);
 	const [transitionFromCanvas, setTransitionFromCanvas] = useState<HTMLCanvasElement | null>(null);
 	const [aiPrompt, setAiPrompt] = useState("");
@@ -833,6 +835,23 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 						<div className="flex flex-col h-full min-w-0 min-h-0">
 							{/* Responsive size toolbar */}
 							<div className="flex-shrink-0 flex items-center justify-center gap-1 px-4 py-1.5 border-b border-white/5">
+								{/* Preview mode toggle */}
+								<div className="flex gap-0.5 p-0.5 rounded bg-white/5 mr-3">
+									{(["canvas", "remotion"] as const).map((mode) => (
+										<button
+											key={mode}
+											onClick={() => setPreviewMode(mode)}
+											className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+												previewMode === mode
+													? "bg-[#2563eb]/20 text-[#2563eb]"
+													: "text-white/40 hover:text-white/70"
+											}`}
+										>
+											{mode === "canvas" ? "Canvas" : "Remotion"}
+										</button>
+									))}
+								</div>
+
 								{[
 									{ label: "16:9", ratio: "16/9" },
 									{ label: "9:16", ratio: "9/16" },
@@ -853,35 +872,39 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 									</button>
 								))}
 							</div>
-							{/* Canvas */}
+							{/* Preview area */}
 							<div className="flex-1 p-4 flex flex-col min-h-0 overflow-hidden">
-								<SceneCanvas
-									scene={currentScene}
-									currentTimeMs={currentTimeMs}
-									isPlaying={isPlaying}
-									selectedLayerId={selectedLayerId}
-									aspectRatio={aspectRatio}
-									transition={activeTransition ?? undefined}
-									transitionFromCanvas={transitionFromCanvas}
-									canvasRefOut={canvasRefOut}
-									onSelectLayer={setSelectedLayerId}
-									onTimeUpdate={handleTimeUpdate}
-									onSceneComplete={handleSceneComplete}
-									onLayerMove={(layerId, x, y) => {
-										updateCurrentScene({
-											layers: currentScene.layers.map((l) =>
-												l.id === layerId ? { ...l, position: { x, y } } : l,
-											),
-										});
-									}}
-									onLayerResize={(layerId, width, height) => {
-										updateCurrentScene({
-											layers: currentScene.layers.map((l) =>
-												l.id === layerId ? { ...l, size: { width, height } } : l,
-											),
-										});
-									}}
-								/>
+								{previewMode === "remotion" ? (
+									<RemotionPreview project={project} isPlaying={isPlaying} />
+								) : (
+									<SceneCanvas
+										scene={currentScene}
+										currentTimeMs={currentTimeMs}
+										isPlaying={isPlaying}
+										selectedLayerId={selectedLayerId}
+										aspectRatio={aspectRatio}
+										transition={activeTransition ?? undefined}
+										transitionFromCanvas={transitionFromCanvas}
+										canvasRefOut={canvasRefOut}
+										onSelectLayer={setSelectedLayerId}
+										onTimeUpdate={handleTimeUpdate}
+										onSceneComplete={handleSceneComplete}
+										onLayerMove={(layerId, x, y) => {
+											updateCurrentScene({
+												layers: currentScene.layers.map((l) =>
+													l.id === layerId ? { ...l, position: { x, y } } : l,
+												),
+											});
+										}}
+										onLayerResize={(layerId, width, height) => {
+											updateCurrentScene({
+												layers: currentScene.layers.map((l) =>
+													l.id === layerId ? { ...l, size: { width, height } } : l,
+												),
+											});
+										}}
+									/>
+								)}
 							</div>
 
 							{/* Playback controls bar */}
