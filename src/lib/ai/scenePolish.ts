@@ -14,10 +14,11 @@ import type {
 	SceneProject,
 	SceneTransition,
 } from "@/lib/scene-renderer";
+import { type DesignStyleId, getDesignStyle } from "./designStyles";
 
-// ── Animated backgrounds (premium dark options) ──
+// ── Animated backgrounds (premium dark options — fallback when no style specified) ──
 
-const POLISH_BACKGROUNDS = [
+const DEFAULT_POLISH_BACKGROUNDS = [
 	"mesh-apple-dark",
 	"animated-midnight",
 	"animated-ocean-wave",
@@ -49,6 +50,14 @@ export function polishSceneProject(project: SceneProject): {
 	project: SceneProject;
 	preview: ScenePolishPreview;
 } {
+	const styleId = project.styleId as DesignStyleId | undefined;
+	const style = styleId ? getDesignStyle(styleId) : null;
+
+	// Use style-appropriate backgrounds, or fall back to defaults
+	const polishBackgrounds =
+		style && style.backgroundIds.length > 0 ? style.backgroundIds : DEFAULT_POLISH_BACKGROUNDS;
+	const fallbackBg = style?.fallbackBackground ?? "animated-midnight";
+
 	const preview: ScenePolishPreview = {
 		backgroundsChanged: 0,
 		transitionsAdded: 0,
@@ -58,8 +67,8 @@ export function polishSceneProject(project: SceneProject): {
 	};
 
 	// Pick a consistent background for the project
-	const mainBg = POLISH_BACKGROUNDS[Math.floor(Math.random() * POLISH_BACKGROUNDS.length)];
-	const lastBg = POLISH_BACKGROUNDS.find((b) => b !== mainBg) ?? "animated-midnight";
+	const mainBg = polishBackgrounds[Math.floor(Math.random() * polishBackgrounds.length)];
+	const lastBg = polishBackgrounds.find((b) => b !== mainBg) ?? fallbackBg;
 
 	const polishedScenes: Scene[] = project.scenes.map((scene, sceneIdx) => {
 		const isFirst = sceneIdx === 0;
@@ -130,25 +139,35 @@ export function polishSceneProject(project: SceneProject): {
 					? (layer.content as { fontSize: number }).fontSize >= 36
 					: false;
 
+				// Use style-appropriate animations, or fall back to defaults
+				const titleAnim = style?.defaultTitleEntrance ?? {
+					type: "blur-in",
+					durationMs: 500,
+					delay: 0,
+				};
+				const subtitleAnim = style?.defaultSubtitleEntrance ?? {
+					type: "slide-up",
+					durationMs: 400,
+					delay: 300,
+				};
+
 				if (isTitle) {
-					// Title: blur-in, no delay
 					if (layer.entrance.type === "fade" || layer.entrance.type === "none") {
 						enhanced.entrance = {
-							type: "blur-in",
-							durationMs: 500,
+							type: titleAnim.type as AnimationType,
+							durationMs: titleAnim.durationMs,
 							easing: "ease-out",
-							delay: isFirst ? 200 : 100,
+							delay: isFirst ? titleAnim.delay + 100 : titleAnim.delay,
 						};
 						preview.animationsEnhanced++;
 					}
 				} else {
-					// Subtitle/narration: slide-up with stagger
 					if (layer.entrance.type === "fade" || layer.entrance.type === "none") {
 						enhanced.entrance = {
-							type: "slide-up",
-							durationMs: 400,
+							type: subtitleAnim.type as AnimationType,
+							durationMs: subtitleAnim.durationMs,
 							easing: "ease-out",
-							delay: 300 + layerIdx * 150,
+							delay: subtitleAnim.delay + layerIdx * 150,
 						};
 						preview.animationsEnhanced++;
 					}
@@ -225,6 +244,10 @@ export async function aiPolishSceneProject(
 	project: SceneProject,
 	onProgress?: (sceneIndex: number, total: number) => void,
 ): Promise<{ project: SceneProject; preview: ScenePolishPreview }> {
+	// Resolve style for background validation
+	const styleId = project.styleId as DesignStyleId | undefined;
+	const style = styleId ? getDesignStyle(styleId) : null;
+
 	// Start with heuristic polish as the base
 	const { project: basePolished, preview } = polishSceneProject(project);
 
@@ -318,8 +341,10 @@ export async function aiPolishSceneProject(
 				};
 			}
 
-			// Update background
-			if (POLISH_BACKGROUNDS.includes(suggestion.background)) {
+			// Update background (accept style-appropriate or default backgrounds)
+			const validBgs =
+				style && style.backgroundIds.length > 0 ? style.backgroundIds : DEFAULT_POLISH_BACKGROUNDS;
+			if (validBgs.includes(suggestion.background)) {
 				scenes[i] = { ...scenes[i], background: suggestion.background };
 			}
 

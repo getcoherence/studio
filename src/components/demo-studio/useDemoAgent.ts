@@ -1,10 +1,13 @@
 /**
- * useDemoAgent — renderer-side agent hook for the Demo Studio.
- * Ports the agent loop from electron/automation/demoAgent.ts to run
- * entirely in the renderer, controlling a <webview> element directly.
+ * useDemoAgent — Three-phase agent for the Demo Studio.
+ *
+ * Phase 1 (Recon):   Browse the entire site, build a site map.
+ * Phase 2 (Script):  Send site map to AI, get a coherent storyboard.
+ * Phase 3 (Execute): Follow the storyboard, capture screenshots.
  */
 
 import { useCallback, useRef, useState } from "react";
+import { type DemoModeId, getDemoMode } from "@/lib/ai/demoModes";
 import type {
 	DemoAction,
 	DemoAgentStatus,
@@ -12,63 +15,82 @@ import type {
 	DemoConfig,
 	DemoStep,
 	PageInfo,
+	SiteMapPage,
+	Storyboard,
 } from "./types";
 import { WebviewDriver } from "./WebviewDriver";
 
-// ── Prompts (copied from electron/automation/demoAgent.ts) ────────────
+// ── Prompts ──────────────────────────────────────────────────────────
 
-const AGENT_SYSTEM_PROMPT = `You are an expert product demo agent. You control a web browser to create compelling product demo videos.
+const RECON_SYSTEM_PROMPT = `You are a site explorer agent. You are browsing a website to build a complete map of its pages and features BEFORE creating a demo video.
 
-You receive the current page context (URL, title, text, interactive elements) and decide the NEXT action.
+Your job: systematically visit every important page and report what you find. Do NOT create narration or take demo screenshots — just explore and discover.
 
-Respond with ONE JSON action. No markdown, no explanation outside the JSON:
+Respond with ONE JSON action:
 {
-  "action": "click|type|scroll|navigate|wait|pause|done",
-  "target": "CSS selector or element text description",
-  "value": "text for type action, or 'up'/'down' for scroll",
-  "waitMs": 1500,
-  "reasoning": "Why this action moves the demo forward"
+  "action": "click|scroll|navigate|done",
+  "target": "element text or URL",
+  "value": "up/down for scroll",
+  "reasoning": "What you expect to find"
 }
 
-DEMO STRATEGY — Act like a product expert giving a live walkthrough:
-1. START with the hero/landing — scroll down to reveal key messaging and visuals
-2. INTERACT with the product — don't just read navigation. Open actual features, click into detail views, expand dropdowns, fill sample data into forms, toggle settings, open modals
-3. SHOW the product working — if there's a dashboard, click into a specific item. If there's a list, open a record. If there's a form, fill it in. If there's a settings page, toggle something.
-4. DEPTH over breadth — it's better to deeply explore 2-3 features than to superficially click 8 nav links
-5. SCROLL to reveal content on EVERY page — most pages have below-the-fold content worth showing
-6. End with a CTA, pricing page, or signup page if available
+EXPLORATION STRATEGY:
+1. Start at the landing page — note the main value prop and navigation structure
+2. Click through EVERY main navigation item to discover all pages — this is your TOP priority
+3. Prioritize: feature pages, product pages, pricing, integrations, use cases, about, how it works
+4. Skip: FAQ, legal, privacy, terms, careers, blog index, help docs, login/signup forms
+5. You MUST visit at least 4 DIFFERENT URLs before using "done". Scrolling the same page does NOT count.
+6. If you've only visited 1-2 pages, click more navigation links — there are always more pages.
+7. Use "done" ONLY when you've clicked every relevant navigation link
 
 INTERACTION RULES:
-- You MUST perform at least 8 actions before using "done". Do NOT stop early.
-- Move slowly and deliberately (waitMs: 1500-2500)
-- For click: use the element's EXACT text content from the elements list. Only click elements that appear in the list.
-- If a menu item has a dropdown arrow (▾ or ▸) or is a group header, click a SPECIFIC subpage link instead.
-- If clicking didn't navigate or change the page, try scrolling or a different element.
-- For type: set target to input selector, value to sample text
-- For scroll: set value to "up" or "down"
-- For navigate: set target to URL
-- For pause: use when you detect a login/OAuth/SSO screen the user must complete manually
-- NEVER say "done" before step 8`;
+- Only click links/buttons from the interactive elements list
+- If clicking doesn't change the page, scroll or try a different link
+- Move quickly — waitMs is not needed during recon`;
 
-const VISION_NARRATION_PROMPT = `You are a professional product demo narrator. You are looking at a screenshot from a live product walkthrough.
+function buildScriptPrompt(mode: DemoModeId): string {
+	const demoMode = getDemoMode(mode);
+	return `You are a video storyboard writer creating a script for a product demo video.
 
-Describe what you SEE on screen in 1-2 sentences, as if you are presenting to an audience watching the demo video. Be specific about the UI elements, data, and layout visible. Use present tense.
+VIDEO MODE: ${demoMode.name}
+${demoMode.scriptStyle}
 
-Rules:
-- Describe what IS on screen, not what was clicked or what will happen next
-- Be professional and engaging, like a product launch presentation
-- Reference specific UI elements: "the analytics dashboard shows three metric cards", not "the page has some content"
-- If it's a landing page, mention the headline and key value proposition
-- If it's an app UI, describe the layout and what data/features are visible
-- Keep it concise — 1-2 sentences max, suitable for voiceover narration`;
+NARRATION VOICE:
+${demoMode.narrationVoice}
 
-const TEXT_NARRATION_PROMPT = `Based on the following page context from a product demo, write 1-2 sentences of voiceover narration describing what the viewer would see on screen. Be specific and professional, like a product launch presentation.
+You will receive a site map — a complete list of all pages on a website with their content summaries. Using this map, write a storyboard that tells a coherent story.
 
-Page URL: {url}
-Page Title: {title}
-Visible content (excerpt): {visibleText}
+Return ONLY valid JSON (no markdown):
+{
+  "title": "Short video title",
+  "scenes": [
+    {
+      "url": "https://example.com/features",
+      "scrollToY": 0,
+      "narration": "One punchy sentence for voiceover.",
+      "durationMs": 4000
+    },
+    {
+      "url": "https://example.com/features",
+      "scrollToY": 1200,
+      "narration": "Scroll down to show the next section.",
+      "durationMs": 5000
+    }
+  ]
+}
 
-Write the narration only, no quotes or explanation:`;
+RULES:
+- 8-12 scenes total. Quality over quantity.
+- Each scene's narration is ONE sentence, max 25 words. This will be the voiceover.
+- The narrations must form a coherent story when read in sequence — like chapters.
+- scrollToY: PIXEL position to scroll to on the page. Use 0 for the top. Each page's sections have specific Y positions listed in the site map — use those EXACT values.
+- IMPORTANT: When showing multiple sections of the SAME page, scrollToY values must be AT LEAST 600px apart! Closer values show overlapping content, which looks terrible. Use the section Y positions from the site map and pick ones that are far apart.
+- MAX 3 scenes per URL. If a page has many sections, pick the 2-3 BEST ones, not all of them.
+- Prefer showing DIFFERENT PAGES over scrolling the same page. Each page visit tells a new chapter.
+- durationMs: 3000-5000ms per scene. Longer for text-heavy narration.
+- Order scenes to tell a logical story, not just page-by-page listing.
+- Every scene MUST show something visually DIFFERENT from the previous scene.`;
+}
 
 // Vision-capable providers
 const VISION_PROVIDERS = new Set(["openai", "anthropic"]);
@@ -103,185 +125,322 @@ export function useDemoAgent(
 	const resumeResolverRef = useRef<(() => void) | null>(null);
 	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const startTimeRef = useRef(0);
-
 	const useVisionRef = useRef(false);
 
-	// ── Narration helpers ──
+	// ── Phase 1: Reconnaissance ──────────────────────────────────────
 
-	async function narrateScreenshot(screenshotDataUrl: string, pageInfo: PageInfo): Promise<string> {
-		try {
-			if (useVisionRef.current) {
-				// Extract base64 from data URL
-				const base64 = screenshotDataUrl.replace(/^data:image\/\w+;base64,/, "");
-				const result = await window.electronAPI.aiAnalyzeImage(
-					"Describe what you see on this screen for a product demo voiceover.",
-					base64,
-					VISION_NARRATION_PROMPT,
-				);
-				if (result?.success && result.text) {
-					return result.text.replace(/^["']|["']$/g, "").trim();
+	async function runRecon(driver: WebviewDriver, config: DemoConfig): Promise<SiteMapPage[]> {
+		const siteMap: SiteMapPage[] = [];
+		const visitedUrls = new Set<string>();
+		const maxReconSteps = Math.min(config.maxSteps, 30);
+		const mode = getDemoMode(config.mode);
+
+		// Capture the landing page first — scroll to bottom to discover all sections
+		const landingInfo = await driver.getPageInfo();
+		const landingHeadings = await driver.getSectionHeadings();
+		visitedUrls.add(normalizeUrl(landingInfo.url));
+		siteMap.push(pageInfoToSiteMapPage(landingInfo, landingHeadings));
+
+		onMessage(createMessage("system", `📍 Discovered: ${landingInfo.title || landingInfo.url}`));
+
+		const reconSystemPrompt = `${RECON_SYSTEM_PROMPT}\n\nADDITIONAL FOCUS:\n${mode.reconFocus}`;
+
+		for (let i = 0; i < maxReconSteps; i++) {
+			if (stoppedRef.current) break;
+
+			const pageInfo = await driver.getPageInfo();
+
+			onMessage(createMessage("thinking", `Exploring (${i + 1}/${maxReconSteps})...`));
+
+			// Get next recon action from AI
+			const visitedList = siteMap.map((p) => `- ${p.title}: ${p.url}`).join("\n");
+			const elementsList = pageInfo.elements
+				.slice(0, 30)
+				.map((e) => `- [${e.type}] "${e.text}" (${e.selector})`)
+				.join("\n");
+
+			const prompt = `PAGES VISITED SO FAR:\n${visitedList}\n\nCURRENT PAGE: ${pageInfo.url} — "${pageInfo.title}"\n\nVisible text:\n${pageInfo.visibleText.slice(0, 400)}\n\nInteractive elements:\n${elementsList || "(none)"}\n\nStep ${i + 1} of ${maxReconSteps}. ${maxReconSteps - i <= 3 ? "⚠️ WRAPPING UP — use 'done' soon." : ""}\n\nWhat next? JSON only.`;
+
+			const result = await window.electronAPI.aiAnalyze(prompt, reconSystemPrompt);
+			if (!result?.success || !result.text) {
+				await driver.scroll("down");
+				await new Promise((r) => setTimeout(r, 500));
+				continue;
+			}
+
+			try {
+				let json = result.text.trim();
+				json = json.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
+				const match = json.match(/\{[\s\S]*\}/);
+				if (match) json = match[0];
+				const action = JSON.parse(json) as DemoAction;
+
+				// Guard: force continue if done too early — need at least 4 pages
+				if (action.action === "done" && siteMap.length < 4) {
+					await driver.scroll("down");
+					continue;
 				}
-			}
+				if (action.action === "done") break;
 
-			// Fallback: text-based narration
-			const textPrompt = TEXT_NARRATION_PROMPT.replace("{url}", pageInfo.url)
-				.replace("{title}", pageInfo.title)
-				.replace("{visibleText}", pageInfo.visibleText.slice(0, 500));
-			const result = await window.electronAPI.aiAnalyze(textPrompt);
-			if (result?.success && result.text) {
-				return result.text.replace(/^["']|["']$/g, "").trim();
+				// Execute the recon action
+				if (action.action === "click" && action.target) {
+					await driver.click(action.target);
+					await new Promise((r) => setTimeout(r, 1500));
+				} else if (action.action === "scroll") {
+					await driver.scroll(action.value === "up" ? "up" : "down");
+					await new Promise((r) => setTimeout(r, 500));
+				} else if (action.action === "navigate" && action.target) {
+					await driver.loadURL(action.target);
+					await new Promise((r) => setTimeout(r, 1500));
+				}
+
+				// Check if we landed on a new page
+				const newPageInfo = await driver.getPageInfo();
+				const normalizedUrl = normalizeUrl(newPageInfo.url);
+				if (!visitedUrls.has(normalizedUrl)) {
+					visitedUrls.add(normalizedUrl);
+					// Scroll down to discover all sections before capturing
+					await driver.scroll("down");
+					await new Promise((r) => setTimeout(r, 500));
+					await driver.scroll("down");
+					await new Promise((r) => setTimeout(r, 500));
+					const headings = await driver.getSectionHeadings();
+					// Scroll back to top
+					await driver.scrollToElement("top");
+					siteMap.push(pageInfoToSiteMapPage(newPageInfo, headings));
+					onMessage(
+						createMessage(
+							"system",
+							`📍 Discovered: ${newPageInfo.title || normalizedUrl} (${headings.length} sections)`,
+						),
+					);
+				}
+			} catch {
+				await driver.scroll("down");
+				await new Promise((r) => setTimeout(r, 500));
 			}
-		} catch (err) {
-			console.warn("DemoAgent: narration failed:", err);
 		}
-		return `Viewing ${pageInfo.title || pageInfo.url}.`;
+
+		return siteMap;
 	}
 
-	async function getNextAction(
-		goal: string,
-		pageInfo: PageInfo,
-		stepIndex: number,
-		maxSteps: number,
-		previousSteps: DemoStep[],
-	): Promise<DemoAction> {
-		const prevSummary = previousSteps
-			.map(
-				(s, i) =>
-					`Step ${i + 1}: ${s.action.action}${s.action.target ? ` → "${s.action.target}"` : ""}`,
-			)
-			.join("\n");
+	// ── Phase 2: Script Generation ───────────────────────────────────
 
-		const elementsList = pageInfo.elements
-			.slice(0, 30)
-			.map((e) => `- [${e.type}] "${e.text}" (${e.selector})`)
-			.join("\n");
+	async function generateStoryboard(
+		siteMap: SiteMapPage[],
+		config: DemoConfig,
+	): Promise<Storyboard | null> {
+		const scriptPrompt = buildScriptPrompt(config.mode);
 
-		const stepsRemaining = maxSteps - stepIndex - 1;
-		const budgetNote =
-			stepsRemaining <= 3
-				? `⚠️ ONLY ${stepsRemaining} steps remaining! Start wrapping up — navigate to the most important remaining page, then use "done".`
-				: stepsRemaining <= 5
-					? `You have ${stepsRemaining} steps left. Make sure you cover the key pages before finishing.`
-					: `You have ${stepsRemaining} steps remaining out of ${maxSteps} total. Take your time exploring.`;
+		const siteMapText = siteMap
+			.map((p, i) => {
+				const sectionsText =
+					p.sections.length > 0
+						? `  Sections (with scroll Y positions):\n${p.sections.map((s) => `    - "${s.text}" at Y=${s.yPosition}px`).join("\n")}`
+						: "  Sections: none found";
+				return `Page ${i + 1}: ${p.url}\n  Title: ${p.title}\n  Summary: ${p.summary}\n  Features: ${p.features.join(", ") || "none identified"}\n${sectionsText}`;
+			})
+			.join("\n\n");
 
-		const prompt = `Goal: ${goal}
+		const userPrompt = `USER'S GOAL: ${config.prompt}\n\nSITE MAP (${siteMap.length} pages discovered):\n\n${siteMapText}\n\nWrite the storyboard. JSON only.`;
 
-STEP BUDGET: Step ${stepIndex + 1} of ${maxSteps}. ${budgetNote}
-
-Current page:
-URL: ${pageInfo.url}
-Title: ${pageInfo.title}
-
-Visible text (first 500 chars):
-${pageInfo.visibleText.slice(0, 500)}
-
-Interactive elements:
-${elementsList || "(no interactive elements found)"}
-
-Previous steps:
-${prevSummary || "(none — this is the first action)"}
-
-What's the next action? Respond with JSON only.`;
-
-		console.log(
-			`[DemoAgent] Step ${stepIndex + 1}/${maxSteps} — sending prompt (${prompt.length} chars)`,
-		);
-
-		const result = await window.electronAPI.aiAnalyze(prompt, AGENT_SYSTEM_PROMPT);
-
-		if (!result?.success || !result.text) {
-			const rawErr = result?.error ?? "empty response";
-			console.warn("[DemoAgent] AI call failed:", rawErr);
-
-			// Translate common API errors to user-friendly messages
-			let friendlyError = "AI unavailable";
-			const lower = rawErr.toLowerCase();
-			if (lower.includes("key") || lower.includes("auth") || lower.includes("login fail")) {
-				friendlyError = "API key invalid or missing — check Settings";
-			} else if (
-				lower.includes("credit") ||
-				lower.includes("quota") ||
-				lower.includes("insufficient") ||
-				lower.includes("billing") ||
-				lower.includes("rate")
-			) {
-				friendlyError = "Out of API credits — check your provider billing";
-			} else if (lower.includes("timeout") || lower.includes("timed out")) {
-				friendlyError = "AI request timed out — retrying";
-			} else if (lower.includes("model") || lower.includes("not found")) {
-				friendlyError = "Model not available — try a different one";
-			}
-
-			return {
-				action: "scroll",
-				value: "down",
-				narration: "",
-				waitMs: 1500,
-				reasoning: friendlyError,
-			};
-		}
-
-		console.log("[DemoAgent] AI response:", result.text.slice(0, 300));
+		const result = await window.electronAPI.aiAnalyze(userPrompt, scriptPrompt);
+		if (!result?.success || !result.text) return null;
 
 		try {
 			let json = result.text.trim();
-			// Strip thinking tags (MiniMax)
 			json = json.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
+			if (json.startsWith("```")) {
+				json = json.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+			}
 			const match = json.match(/\{[\s\S]*\}/);
 			if (match) json = match[0];
-			const parsed = JSON.parse(json) as DemoAction;
-			parsed.narration = "";
+			const parsed = JSON.parse(json) as Storyboard;
 
-			// Guard: reject "done" before minimum steps (models often ignore the prompt rule)
-			const MIN_STEPS = Math.min(8, maxSteps);
-			if (parsed.action === "done" && stepIndex < MIN_STEPS - 1) {
-				console.warn(
-					`[DemoAgent] Model tried "done" at step ${stepIndex + 1}/${maxSteps}, forcing scroll`,
-				);
+			if (!Array.isArray(parsed.scenes) || parsed.scenes.length === 0) return null;
+
+			// Build a set of known URLs from the site map for validation
+			const knownUrls = new Set(siteMap.map((p) => p.url));
+			const baseOrigin = new URL(config.url).origin;
+
+			// Validate and clamp
+			parsed.scenes = parsed.scenes.slice(0, 15).map((s) => {
+				let url = typeof s.url === "string" ? s.url : (siteMap[0]?.url ?? config.url);
+
+				// Fix protocol mismatch — AI often upgrades http to https
+				if (baseOrigin.startsWith("http://") && url.startsWith("https://")) {
+					url = url.replace("https://", "http://");
+				}
+
+				// If URL isn't in our site map, find the closest match or use the base
+				if (!knownUrls.has(url)) {
+					const match = siteMap.find((p) => p.url.includes(new URL(url).pathname));
+					url = match?.url ?? config.url;
+				}
+
 				return {
-					action: "scroll",
-					value: "down",
-					narration: "",
-					waitMs: 1500,
-					reasoning: "Forced: model tried to stop early",
+					url,
+					scrollToY: typeof s.scrollToY === "number" ? Math.max(0, Math.round(s.scrollToY)) : 0,
+					zoomTarget: typeof s.zoomTarget === "string" ? s.zoomTarget : undefined,
+					narration: typeof s.narration === "string" ? s.narration : "",
+					durationMs:
+						typeof s.durationMs === "number" ? Math.max(2000, Math.min(8000, s.durationMs)) : 4000,
 				};
-			}
+			});
 
 			return parsed;
-		} catch {
-			console.warn("[DemoAgent] Failed to parse JSON from:", result.text.slice(0, 200));
-			// Don't give up — scroll and let next iteration try again
-			return {
-				action: "scroll",
-				value: "down",
-				narration: "",
-				waitMs: 1500,
-				reasoning: "Parse error — scrolling instead",
+		} catch (err) {
+			console.error("Failed to parse storyboard:", err);
+			return null;
+		}
+	}
+
+	// ── Phase 3: Execution ───────────────────────────────────────────
+
+	async function executeStoryboard(
+		driver: WebviewDriver,
+		storyboard: Storyboard,
+	): Promise<DemoStep[]> {
+		const allSteps: DemoStep[] = [];
+		let lastUrl = "";
+
+		for (let i = 0; i < storyboard.scenes.length; i++) {
+			if (stoppedRef.current) break;
+
+			const scene = storyboard.scenes[i];
+
+			onMessage(
+				createMessage("thinking", `Capturing scene ${i + 1}/${storyboard.scenes.length}...`),
+			);
+
+			// Navigate if URL changed
+			if (scene.url !== lastUrl) {
+				await driver.loadURL(scene.url);
+				// Wait generously for page to fully render (CSS, images, JS)
+				await new Promise((r) => setTimeout(r, 3000));
+				lastUrl = scene.url;
+			}
+
+			// Scroll to the exact pixel position
+			await driver.scrollToPosition(scene.scrollToY ?? 0);
+			// Wait for scroll animation + any lazy-loaded content
+			await new Promise((r) => setTimeout(r, 1500));
+
+			if (stoppedRef.current) break;
+
+			// Take screenshot — retry once if we get a blank/fallback image
+			let screenshot = await driver.screenshot();
+			if (screenshot.length < 200) {
+				// Got the 1px fallback — wait and retry
+				await new Promise((r) => setTimeout(r, 2000));
+				screenshot = await driver.screenshot();
+			}
+			const mainStep: DemoStep = {
+				action: {
+					action: "navigate",
+					target: scene.url,
+					narration: scene.narration,
+				},
+				timestamp: Date.now() - startTimeRef.current,
+				screenshotDataUrl: screenshot,
 			};
+			allSteps.push(mainStep);
+			setSteps([...allSteps]);
+			setCurrentStepIndex(allSteps.length - 1);
+
+			onMessage(
+				createMessage("narration", scene.narration, {
+					screenshotDataUrl: screenshot,
+				}),
+			);
+
+			// Zoom shot if specified
+			if (scene.zoomTarget) {
+				const zoomScreenshot = await captureZoomShot(driver, screenshot, scene.zoomTarget);
+				if (zoomScreenshot) {
+					const zoomStep: DemoStep = {
+						action: {
+							action: "navigate",
+							target: scene.url,
+							narration: "", // Zoom shots share the parent narration
+						},
+						timestamp: Date.now() - startTimeRef.current,
+						screenshotDataUrl: zoomScreenshot,
+						isZoomShot: true,
+					};
+					allSteps.push(zoomStep);
+					setSteps([...allSteps]);
+					setCurrentStepIndex(allSteps.length - 1);
+				}
+			}
+		}
+
+		return allSteps;
+	}
+
+	// ── Zoom capture helper ──────────────────────────────────────────
+
+	async function captureZoomShot(
+		driver: WebviewDriver,
+		_fullScreenshotDataUrl: string,
+		zoomTarget: string,
+	): Promise<string | null> {
+		try {
+			// First scroll to the element to make sure it's visible
+			await driver.scrollToElement(zoomTarget);
+			await new Promise((r) => setTimeout(r, 500));
+
+			const bounds = await driver.getElementBounds(zoomTarget);
+			if (!bounds || bounds.width < 10 || bounds.height < 10) return null;
+
+			// Take a fresh screenshot with the element in view
+			const freshScreenshot = await driver.screenshot();
+
+			// Re-query bounds after scroll (position may have changed)
+			const freshBounds = await driver.getElementBounds(zoomTarget);
+			if (!freshBounds || freshBounds.width < 10 || freshBounds.height < 10) {
+				return freshScreenshot; // Return full screenshot as fallback
+			}
+
+			// Crop the screenshot to the element bounds with padding
+			return cropScreenshot(freshScreenshot, freshBounds);
+		} catch (err) {
+			console.warn("Zoom capture failed:", err);
+			return null;
 		}
 	}
 
-	async function executeAction(driver: WebviewDriver, action: DemoAction): Promise<void> {
-		switch (action.action) {
-			case "click":
-				if (action.target) await driver.click(action.target);
-				break;
-			case "type":
-				if (action.target && action.value) await driver.type(action.target, action.value);
-				break;
-			case "scroll":
-				await driver.scroll(action.value === "up" ? "up" : "down");
-				break;
-			case "navigate":
-				if (action.target) await driver.loadURL(action.target);
-				break;
-			case "wait":
-				await new Promise((r) => setTimeout(r, action.waitMs ?? 2000));
-				break;
-		}
+	function cropScreenshot(
+		dataUrl: string,
+		bounds: { x: number; y: number; width: number; height: number },
+	): Promise<string> {
+		return new Promise((resolve) => {
+			const img = new Image();
+			img.onload = () => {
+				// Scale factor: webview may be at device pixel ratio
+				const scaleX = img.width / window.innerWidth;
+				const scaleY = img.height / window.innerHeight;
+
+				// Add 20% padding around the element
+				const pad = 0.2;
+				const sx = Math.max(0, (bounds.x - bounds.width * pad) * scaleX);
+				const sy = Math.max(0, (bounds.y - bounds.height * pad) * scaleY);
+				const sw = Math.min(img.width - sx, bounds.width * (1 + pad * 2) * scaleX);
+				const sh = Math.min(img.height - sy, bounds.height * (1 + pad * 2) * scaleY);
+
+				const canvas = document.createElement("canvas");
+				canvas.width = 1920;
+				canvas.height = Math.round(1920 * (sh / sw));
+				const ctx = canvas.getContext("2d")!;
+				ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+				resolve(canvas.toDataURL("image/png"));
+			};
+			img.onerror = () => resolve(dataUrl);
+			img.src = dataUrl;
+		});
 	}
 
-	// ── Main agent loop ──
+	// ── Main three-phase loop ────────────────────────────────────────
 
 	const start = useCallback(
 		async (config: DemoConfig) => {
@@ -295,7 +454,6 @@ What's the next action? Respond with JSON only.`;
 			setElapsedMs(0);
 			startTimeRef.current = Date.now();
 
-			// Start elapsed timer
 			timerRef.current = setInterval(() => {
 				setElapsedMs(Date.now() - startTimeRef.current);
 			}, 500);
@@ -309,167 +467,72 @@ What's the next action? Respond with JSON only.`;
 			}
 
 			const driver = new WebviewDriver(wv);
-			const allSteps: DemoStep[] = [];
 
 			try {
-				// Navigate to URL
+				// Navigate to starting URL
 				onMessage(createMessage("system", `Starting demo of ${config.url}...`));
 				await driver.loadURL(config.url);
 				await new Promise((r) => setTimeout(r, 2000));
 
 				if (stoppedRef.current) return;
 
-				// Initial screenshot + narration
-				const initialScreenshot = await driver.screenshot();
-				const initialPageInfo = await driver.getPageInfo();
-				const initialNarration = await narrateScreenshot(initialScreenshot, initialPageInfo);
+				// ── PHASE 1: Reconnaissance ──────────────────────────
+				onMessage(createMessage("system", "🔍 Phase 1: Exploring the site..."));
 
-				const initialStep: DemoStep = {
-					action: { action: "navigate", target: config.url, narration: initialNarration },
-					timestamp: 0,
-					screenshotDataUrl: initialScreenshot,
-				};
-				allSteps.push(initialStep);
-				setSteps([...allSteps]);
-				setCurrentStepIndex(0);
+				const siteMap = await runRecon(driver, config);
+
+				if (stoppedRef.current) return;
 
 				onMessage(
-					createMessage("narration", initialNarration, {
-						screenshotDataUrl: initialScreenshot,
-					}),
+					createMessage(
+						"system",
+						`✅ Recon complete — discovered ${siteMap.length} pages: ${siteMap.map((p) => p.title || "Untitled").join(", ")}`,
+					),
 				);
 
-				// Agent loop
-				for (let i = 0; i < config.maxSteps; i++) {
-					if (stoppedRef.current) break;
+				// ── PHASE 2: Script Generation ───────────────────────
+				onMessage(createMessage("system", "📝 Phase 2: Writing the storyboard..."));
 
-					try {
-						// Wait a beat for any in-flight navigation to settle
-						await new Promise((r) => setTimeout(r, 300));
+				const storyboard = await generateStoryboard(siteMap, config);
 
-						const pageInfo = await driver.getPageInfo();
+				if (stoppedRef.current) return;
 
-						// Thinking
-						onMessage(createMessage("thinking", "Analyzing page..."));
-
-						const action = await getNextAction(
-							config.prompt,
-							pageInfo,
-							i,
-							config.maxSteps,
-							allSteps,
-						);
-
-						if (stoppedRef.current) break;
-
-						// Pause
-						if (action.action === "pause") {
-							setStatus("paused");
-							const screenshot = await driver.screenshot();
-							action.narration =
-								"Demo paused — complete the login or authentication, then click Continue.";
-							const pauseStep: DemoStep = {
-								action,
-								timestamp: Date.now() - startTimeRef.current,
-								screenshotDataUrl: screenshot,
-							};
-							allSteps.push(pauseStep);
-							setSteps([...allSteps]);
-
-							onMessage(createMessage("pause", action.narration));
-
-							await new Promise<void>((resolve) => {
-								resumeResolverRef.current = resolve;
-							});
-							resumeResolverRef.current = null;
-							setStatus("running");
-							await new Promise((r) => setTimeout(r, 2000));
-							continue;
-						}
-
-						// Done
-						if (action.action === "done") {
-							const finalScreenshot = await driver.screenshot();
-							const finalPageInfo = await driver.getPageInfo();
-							action.narration = await narrateScreenshot(finalScreenshot, finalPageInfo);
-							const doneStep: DemoStep = {
-								action,
-								timestamp: Date.now() - startTimeRef.current,
-								screenshotDataUrl: finalScreenshot,
-							};
-							allSteps.push(doneStep);
-							setSteps([...allSteps]);
-
-							onMessage(
-								createMessage("narration", action.narration, {
-									screenshotDataUrl: finalScreenshot,
-								}),
-							);
-							break;
-						}
-
-						// Execute action
-						let actionLabel =
-							action.action === "click"
-								? `Clicked: ${action.target}`
-								: action.action === "scroll"
-									? `Scrolled ${action.value ?? "down"}`
-									: action.action === "type"
-										? `Typed: "${action.value}" into ${action.target}`
-										: action.action === "navigate"
-											? `Navigated to ${action.target}`
-											: `Waited ${action.waitMs ?? 2000}ms`;
-						if (action.reasoning) {
-							actionLabel += ` — ${action.reasoning}`;
-						}
-
-						onMessage(
-							createMessage("action", actionLabel, {
-								actionType: action.action,
-								actionTarget: action.target,
-							}),
-						);
-
-						await executeAction(driver, action);
-						await new Promise((r) => setTimeout(r, action.waitMs ?? 1500));
-
-						if (stoppedRef.current) break;
-
-						// Screenshot + narrate
-						const screenshot = await driver.screenshot();
-						const postPageInfo = await driver.getPageInfo();
-						action.narration = await narrateScreenshot(screenshot, postPageInfo);
-
-						const step: DemoStep = {
-							action,
-							timestamp: Date.now() - startTimeRef.current,
-							screenshotDataUrl: screenshot,
-						};
-						allSteps.push(step);
-						setSteps([...allSteps]);
-						setCurrentStepIndex(allSteps.length - 1);
-
-						onMessage(
-							createMessage("narration", action.narration, {
-								screenshotDataUrl: screenshot,
-							}),
-						);
-					} catch (stepErr) {
-						// Log the error but continue to the next step
-						console.warn(`DemoAgent: step ${i + 1} failed, continuing:`, stepErr);
-						onMessage(createMessage("system", `Step recovered — retrying...`));
-						// Wait for page to settle before retrying
-						await new Promise((r) => setTimeout(r, 2000));
-					}
+				if (!storyboard) {
+					onMessage(createMessage("error", "Failed to generate storyboard. Check AI settings."));
+					setStatus("idle");
+					return;
 				}
+
+				// Show the storyboard in chat
+				const storyboardPreview = storyboard.scenes
+					.map((s, i) => `${i + 1}. ${s.narration}`)
+					.join("\n");
+				onMessage(
+					createMessage(
+						"storyboard",
+						`📋 **${storyboard.title}** (${storyboard.scenes.length} scenes)\n\n${storyboardPreview}`,
+					),
+				);
+
+				// ── PHASE 3: Execution ───────────────────────────────
+				onMessage(
+					createMessage("system", `🎬 Phase 3: Capturing ${storyboard.scenes.length} scenes...`),
+				);
+
+				const allSteps = await executeStoryboard(driver, storyboard);
+
+				if (stoppedRef.current) return;
+
+				setSteps([...allSteps]);
 
 				// Complete
-				if (!stoppedRef.current) {
-					setStatus("complete");
-					onMessage(
-						createMessage("completion", `Demo complete! ${allSteps.length} steps captured.`),
-					);
-				}
+				setStatus("complete");
+				onMessage(
+					createMessage(
+						"completion",
+						`Demo complete! ${allSteps.length} screenshots captured from ${storyboard.scenes.length} scripted scenes.`,
+					),
+				);
 			} catch (err) {
 				console.error("DemoAgent error:", err);
 				onMessage(
@@ -486,8 +549,7 @@ What's the next action? Respond with JSON only.`;
 				}
 			}
 		},
-		// eslint-disable-next-line -- agent helpers are stable within the hook scope
-		[webviewRef, onMessage, executeAction, getNextAction, narrateScreenshot],
+		[webviewRef, onMessage],
 	);
 
 	const stop = useCallback(() => {
@@ -510,4 +572,39 @@ What's the next action? Respond with JSON only.`;
 	}, []);
 
 	return { start, stop, resume, status, steps, currentStepIndex, elapsedMs };
+}
+
+// ── Utilities ────────────────────────────────────────────────────────
+
+function normalizeUrl(url: string): string {
+	try {
+		const u = new URL(url);
+		// Remove trailing slashes, hashes, and common query params
+		return `${u.origin}${u.pathname.replace(/\/$/, "")}`;
+	} catch {
+		return url;
+	}
+}
+
+function pageInfoToSiteMapPage(
+	info: PageInfo,
+	headings?: { text: string; tag: string; yPosition: number }[],
+): SiteMapPage {
+	return {
+		url: info.url,
+		title: info.title,
+		summary: info.visibleText.slice(0, 300),
+		features: extractFeatures(info.visibleText),
+		interactiveElements: info.elements.slice(0, 10).map((e) => `${e.type}: ${e.text}`),
+		sections: (headings ?? []).map((h) => ({ text: h.text, yPosition: h.yPosition })),
+	};
+}
+
+function extractFeatures(text: string): string[] {
+	// Simple heuristic: look for short capitalized phrases or bullet-like items
+	const lines = text.split("\n").filter((l) => {
+		const t = l.trim();
+		return t.length > 3 && t.length < 80 && !t.includes("©") && !t.includes("privacy");
+	});
+	return lines.slice(0, 8);
 }

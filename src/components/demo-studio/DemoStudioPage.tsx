@@ -7,7 +7,13 @@ import { AlertTriangle, ArrowLeft, Bot, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
-import type { Scene, SceneLayer, SceneProject } from "@/lib/scene-renderer";
+import type { Scene, SceneProject } from "@/lib/scene-renderer";
+import {
+	heroReveal,
+	simpleScreenshot,
+	titleCard,
+	typingSequence,
+} from "@/lib/ai/compositionTemplates";
 import { DemoBottomBar } from "./DemoBottomBar";
 import { DemoBrowserPanel } from "./DemoBrowserPanel";
 import { DemoChatPanel } from "./DemoChatPanel";
@@ -24,67 +30,77 @@ function uid(): string {
 
 function buildSceneProject(steps: DemoStep[]): SceneProject {
 	const stepsWithScreenshots = steps.filter((s) => s.screenshotDataUrl);
+	const scenes: Scene[] = [];
 
-	const scenes: Scene[] = stepsWithScreenshots.map((step, i) => {
-		const layers: SceneLayer[] = [];
+	// Opening title card from the first narration
+	const firstNarration = stepsWithScreenshots.find((s) => s.action.narration)?.action.narration;
+	if (firstNarration) {
+		scenes.push(titleCard({ title: firstNarration, background: "animated-midnight" }));
+	}
 
-		// Screenshot as image layer
-		if (step.screenshotDataUrl) {
-			layers.push({
-				id: uid(),
-				type: "image",
-				startMs: 0,
-				endMs: 4000,
-				position: { x: 5, y: 5 },
-				size: { width: 90, height: 70 },
-				zIndex: 1,
-				entrance: { type: "fade", durationMs: 400, easing: "ease-out", delay: 0 },
-				exit: { type: "none", durationMs: 0, easing: "ease-out", delay: 0 },
-				content: {
-					src: step.screenshotDataUrl,
-					fit: "contain",
-					borderRadius: 8,
-					shadow: true,
-				},
-			});
+	// Build scenes from steps using composition templates
+	for (let i = 0; i < stepsWithScreenshots.length; i++) {
+		const step = stepsWithScreenshots[i];
+		if (!step.screenshotDataUrl) continue;
+
+		const narration = step.action.narration || "";
+		const isZoom = step.isZoomShot === true;
+
+		if (isZoom) {
+			// Zoom shots: isolated element with zoom-in entrance
+			scenes.push(
+				simpleScreenshot({
+					screenshotSrc: step.screenshotDataUrl,
+					narration,
+					durationMs: 3500,
+				}),
+			);
+		} else if (i === 0) {
+			// First screenshot: hero reveal with ken-burns
+			scenes.push(
+				heroReveal({
+					screenshotSrc: step.screenshotDataUrl,
+					narration,
+					focusPoint: { x: 0.5, y: 0.3 },
+					durationMs: 3000,
+				}),
+			);
+		} else if (i === stepsWithScreenshots.length - 1) {
+			// Last screenshot: typing bridge + hero reveal finale
+			scenes.push(typingSequence({ text: narration, durationMs: 2000 }));
+			scenes.push(
+				heroReveal({
+					screenshotSrc: step.screenshotDataUrl,
+					narration: "",
+					focusPoint: { x: 0.5, y: 0.5 },
+					durationMs: 2500,
+				}),
+			);
+		} else {
+			// Middle screenshots: alternate between hero-reveal and simple
+			if (i % 3 === 0) {
+				// Every 3rd scene: insert a typing bridge for rhythm
+				scenes.push(typingSequence({ text: narration, durationMs: 2000 }));
+				scenes.push(
+					heroReveal({
+						screenshotSrc: step.screenshotDataUrl,
+						narration: "",
+						focusPoint: { x: 0.3 + Math.random() * 0.4, y: 0.2 + Math.random() * 0.4 },
+						durationMs: 2500,
+					}),
+				);
+			} else {
+				scenes.push(
+					heroReveal({
+						screenshotSrc: step.screenshotDataUrl,
+						narration,
+						focusPoint: { x: 0.3 + Math.random() * 0.4, y: 0.2 + Math.random() * 0.4 },
+						durationMs: 2500,
+					}),
+				);
+			}
 		}
-
-		// Narration as text overlay
-		if (step.action.narration) {
-			layers.push({
-				id: uid(),
-				type: "text",
-				startMs: 0,
-				endMs: 4000,
-				position: { x: 5, y: 80 },
-				size: { width: 90, height: 15 },
-				zIndex: 2,
-				entrance: { type: "fade", durationMs: 400, easing: "ease-out", delay: 300 },
-				exit: { type: "none", durationMs: 0, easing: "ease-out", delay: 0 },
-				content: {
-					text: step.action.narration,
-					fontSize: 22,
-					fontFamily: "Inter, system-ui, sans-serif",
-					fontWeight: "500",
-					color: "#ffffffcc",
-					textAlign: "center" as const,
-					lineHeight: 1.4,
-				},
-			});
-		}
-
-		return {
-			id: uid(),
-			durationMs: 4000,
-			background: "#09090b",
-			animatedBgSpeed: 1,
-			transition:
-				i === 0
-					? { type: "none" as const, durationMs: 0 }
-					: { type: "fade" as const, durationMs: 500 },
-			layers,
-		};
-	});
+	}
 
 	return {
 		id: uid(),

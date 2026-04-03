@@ -1,5 +1,6 @@
 import type { Span } from "dnd-timeline";
 import {
+	ArrowLeft,
 	Camera,
 	FolderOpen,
 	Languages,
@@ -1863,9 +1864,18 @@ export default function VideoEditor() {
 				<ProjectBrowser
 					open={showProjectBrowser}
 					onOpenChange={setShowProjectBrowser}
-					onProjectOpened={() => {
+					onProjectOpened={(project, path) => {
 						setError(null);
-						setReloadTrigger((prev) => prev + 1);
+						if (project && typeof project === "object" && "scenes" in project) {
+							// Scene project (from AI Demo or Scene Builder) — open in Scene Editor
+							sceneEditorInitialRef.current = project;
+							setSceneEditorKey((k) => k + 1);
+							setShowSceneEditor(true);
+						} else if (project) {
+							applyLoadedProject(project, path);
+						} else {
+							setReloadTrigger((prev) => prev + 1);
+						}
 					}}
 				/>
 				{showCountdown && (
@@ -1885,8 +1895,22 @@ export default function VideoEditor() {
 					className="flex-1 flex items-center gap-1"
 					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
 				>
+					<button
+						onClick={() => {
+							setVideoPath(null);
+							setVideoSourcePath(null);
+							setCurrentProjectPath(null);
+							setError(null);
+						}}
+						className={`flex items-center gap-1 px-2 py-1 rounded-md text-white/40 hover:text-white/80 hover:bg-white/10 transition-colors text-xs ${isMac ? "ml-14" : "ml-2"}`}
+						title="Back to Home"
+					>
+						<ArrowLeft size={14} />
+						Home
+					</button>
+					<div className="w-px h-4 bg-white/10 mx-1" />
 					<div
-						className={`flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 ${isMac ? "ml-14" : "ml-2"}`}
+						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150"
 					>
 						<Languages size={14} />
 						<select
@@ -2412,9 +2436,17 @@ export default function VideoEditor() {
 			<ProjectBrowser
 				open={showProjectBrowser}
 				onOpenChange={setShowProjectBrowser}
-				onProjectOpened={() => {
+				onProjectOpened={(project, path) => {
 					setError(null);
-					setReloadTrigger((prev) => prev + 1);
+					if (project && typeof project === "object" && "scenes" in project) {
+						sceneEditorInitialRef.current = project;
+						setSceneEditorKey((k) => k + 1);
+						setShowSceneEditor(true);
+					} else if (project) {
+						applyLoadedProject(project, path);
+					} else {
+						setReloadTrigger((prev) => prev + 1);
+					}
 				}}
 			/>
 			{showCountdown && (

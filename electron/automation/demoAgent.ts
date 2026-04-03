@@ -60,13 +60,17 @@ Respond with ONE JSON action. No markdown, no explanation outside the JSON:
   "reasoning": "Why this action moves the demo forward"
 }
 
-DEMO STRATEGY — Act like a product expert giving a live walkthrough:
-1. START with the hero/landing — scroll down to reveal key messaging and visuals
-2. INTERACT with the product — don't just read navigation. Open actual features, click into detail views, expand dropdowns, fill sample data into forms, toggle settings, open modals
-3. SHOW the product working — if there's a dashboard, click into a specific item. If there's a list, open a record. If there's a form, fill it in. If there's a settings page, toggle something.
-4. DEPTH over breadth — it's better to deeply explore 2-3 features than to superficially click 8 nav links
-5. SCROLL to reveal content on EVERY page — most pages have below-the-fold content worth showing
-6. End with a CTA, pricing page, or signup page if available
+DEMO STRATEGY — Act like a product evangelist showing why this product is incredible:
+1. START with the hero/landing — scroll ONCE to see the main value prop, then move on
+2. GO TO FEATURE PAGES — click into pages that show what the product DOES: features, how it works, use cases, integrations, product tours. These are the money pages.
+3. INTERACT with the product — if there's a live demo, dashboard, or interactive element, USE it. Fill forms, click buttons, toggle settings, open modals.
+4. DEPTH over breadth — deeply explore 2-3 compelling features rather than clicking every nav link
+5. SCROLL to reveal content on feature-rich pages — skip scrolling on generic/boilerplate pages
+6. End with pricing or CTA if available
+
+PAGES TO SKIP (never navigate to these):
+- FAQ, Help, Support, Contact, About Us, Privacy Policy, Terms of Service, Cookie Policy, Legal, Careers, Blog index, Press, Status pages
+- These are boilerplate and waste demo time. Focus on PRODUCT pages only.
 
 INTERACTION RULES:
 - You MUST perform at least 8 actions before using "done". Do NOT stop early.
@@ -81,26 +85,34 @@ INTERACTION RULES:
 - NEVER say "done" before step 8`;
 
 // Vision narration prompt — sent with the screenshot for multimodal description
-const VISION_NARRATION_PROMPT = `You are a professional product demo narrator. You are looking at a screenshot from a live product walkthrough.
+const VISION_NARRATION_PROMPT = `You are narrating a SaaS product explainer video. Write ONE short sentence (max 20 words) about what's NEW on this screen.
 
-Describe what you SEE on screen in 1-2 sentences, as if you are presenting to an audience watching the demo video. Be specific about the UI elements, data, and layout visible. Use present tense.
+CRITICAL RULES:
+- NEVER repeat what was already said. You will be given previous narrations — say something DIFFERENT.
+- Each narration must cover a SPECIFIC feature or capability visible NOW, not the overall product pitch.
+- ONE sentence. Max 20 words. Punchy. No filler words.
+- Talk about what the product DOES, not what the page looks like.
+- Never mention UI layout, navigation, design, footers, or boilerplate.
 
-Rules:
-- Describe what IS on screen, not what was clicked or what will happen next
-- Be professional and engaging, like a product launch presentation
-- Reference specific UI elements: "the analytics dashboard shows three metric cards", not "the page has some content"
-- If it's a landing page, mention the headline and key value proposition
-- If it's an app UI, describe the layout and what data/features are visible
-- Keep it concise — 1-2 sentences max, suitable for voiceover narration`;
+GOOD examples (notice each is different, specific, and short):
+- "Auto-captions transcribe your recording in seconds — no manual work."
+- "Smart trimming cuts the dead air so your video stays tight."
+- "One click exports a polished, shareable video ready for your team."
+- "Built-in narration generates a professional voiceover from your content."
+
+BAD (too long, too generic, repeats the pitch):
+- "Lucid Studio turns raw screen recordings into polished professional videos with AI-powered captions smart trimming and narration so you can create content."`;
 
 // Fallback narration prompt for non-vision providers (text-only)
-const TEXT_NARRATION_PROMPT = `Based on the following page context from a product demo, write 1-2 sentences of voiceover narration describing what the viewer would see on screen. Be specific and professional, like a product launch presentation.
+const TEXT_NARRATION_PROMPT = `You are narrating a SaaS product explainer video. Write ONE short sentence (max 20 words) about a SPECIFIC feature visible on this page. Do NOT repeat anything from the previous narrations listed below.
 
 Page URL: {url}
 Page Title: {title}
 Visible content (excerpt): {visibleText}
 
-Write the narration only, no quotes or explanation:`;
+{previousContext}
+
+Write ONE sentence only, no quotes:`;
 
 // ── DemoAgent class ──────────────────────────────────────────────────────
 
@@ -110,6 +122,7 @@ export class DemoAgent {
 	private startTime: number = 0;
 	private stopped: boolean = false;
 	private useVision: boolean = false;
+	private previousNarrations: string[] = [];
 	private onProgress?: (step: DemoStep, stepIndex: number) => void;
 	private resumeResolver: (() => void) | null = null;
 
@@ -121,6 +134,7 @@ export class DemoAgent {
 	async run(config: DemoConfig): Promise<DemoResult> {
 		this.stopped = false;
 		this.steps = [];
+		this.previousNarrations = [];
 
 		// Check if vision is available for screenshot-based narration
 		const aiConfig = await loadAIConfig();
@@ -251,26 +265,39 @@ export class DemoAgent {
 	 * Use vision model to narrate a screenshot, or fall back to text-based narration.
 	 */
 	private async narrateScreenshot(screenshot: Buffer, pageInfo: PageInfo): Promise<string> {
+		const prevContext =
+			this.previousNarrations.length > 0
+				? `ALREADY SAID (do NOT repeat any of this):\n${this.previousNarrations.map((n, i) => `${i + 1}. ${n}`).join("\n")}`
+				: "";
+
 		try {
 			if (this.useVision) {
 				const imageBase64 = screenshot.toString("base64");
+				const userPrompt = prevContext
+					? `${prevContext}\n\nNow narrate what's NEW on this screen. ONE sentence, max 20 words.`
+					: "Narrate this screen for a product explainer. ONE sentence, max 20 words.";
 				const result = await analyzeImage(
-					"Describe what you see on this screen for a product demo voiceover.",
+					userPrompt,
 					imageBase64,
 					VISION_NARRATION_PROMPT,
 				);
 				if (result.success && result.text) {
-					return result.text.replace(/^["']|["']$/g, "").trim();
+					const narration = result.text.replace(/^["']|["']$/g, "").trim();
+					this.previousNarrations.push(narration);
+					return narration;
 				}
 			}
 
 			// Fallback: text-based narration from page context
 			const textPrompt = TEXT_NARRATION_PROMPT.replace("{url}", pageInfo.url)
 				.replace("{title}", pageInfo.title)
-				.replace("{visibleText}", pageInfo.visibleText.slice(0, 500));
+				.replace("{visibleText}", pageInfo.visibleText.slice(0, 500))
+				.replace("{previousContext}", prevContext);
 			const result = await analyze(textPrompt);
 			if (result.success && result.text) {
-				return result.text.replace(/^["']|["']$/g, "").trim();
+				const narration = result.text.replace(/^["']|["']$/g, "").trim();
+				this.previousNarrations.push(narration);
+				return narration;
 			}
 		} catch (err) {
 			console.warn("DemoAgent: narration failed:", err);

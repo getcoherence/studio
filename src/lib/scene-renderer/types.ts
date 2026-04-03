@@ -3,6 +3,7 @@
 export interface SceneProject {
 	id: string;
 	name: string;
+	styleId?: string;
 	scenes: Scene[];
 	resolution: { width: number; height: number };
 	fps: number;
@@ -53,6 +54,8 @@ export interface ImageContent {
 	fit: "cover" | "contain" | "fill";
 	borderRadius: number;
 	shadow: boolean;
+	/** Crop region (0-1 normalized). Only this region of the source image is shown. */
+	cropRegion?: { x: number; y: number; width: number; height: number };
 }
 
 export interface ShapeContent {
@@ -85,6 +88,8 @@ export interface LayerAnimation {
 	durationMs: number;
 	easing: "linear" | "ease-in" | "ease-out" | "ease-in-out" | "spring";
 	delay: number;
+	/** Focus point for ken-burns (0-1 normalized). Default: center {x:0.5, y:0.5} */
+	focusPoint?: { x: number; y: number };
 }
 
 export interface LayerTransform {

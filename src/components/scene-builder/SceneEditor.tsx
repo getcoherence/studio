@@ -2,6 +2,7 @@ import {
 	ArrowLeft,
 	Clock,
 	Download,
+	Eye,
 	ImagePlus,
 	Loader2,
 	Palette,
@@ -21,6 +22,14 @@ import { AISettingsButton } from "@/components/ui/AISettingsDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { AnimatedBackgroundPicker } from "@/components/video-editor/AnimatedBackgroundPicker";
+import {
+	applyCritiqueMutations,
+	critiqueSceneProject,
+} from "@/lib/ai/designCritique";
+import {
+	DESIGN_STYLE_LIST,
+	type DesignStyleId,
+} from "@/lib/ai/designStyles";
 import { generateSceneProject, SCENE_TEMPLATES } from "@/lib/ai/sceneGenerator";
 import { aiPolishSceneProject, polishSceneProject } from "@/lib/ai/scenePolish";
 import { consumePendingDemoProject } from "@/lib/demoProjectStore";
@@ -82,6 +91,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	const [isAiGenerating, setIsAiGenerating] = useState(false);
 	const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
 	const [isPolishing, setIsPolishing] = useState(false);
+	const [isCritiquing, setIsCritiquing] = useState(false);
+	const [selectedStyle, setSelectedStyle] = useState<DesignStyleId | null>(null);
 	const [projectPath, setProjectPath] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const canvasRefOut = useRef<HTMLCanvasElement | null>(null);
@@ -391,7 +402,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 		setIsAiGenerating(true);
 		try {
-			const generated = await generateSceneProject(aiPrompt.trim());
+			const generated = await generateSceneProject(aiPrompt.trim(), selectedStyle ?? undefined);
 			if (generated) {
 				setProject(generated);
 				setSelectedSceneIndex(0);
@@ -402,7 +413,12 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 				setTransitionFromCanvas(null);
 				setAiPopoverOpen(false);
 				setAiPrompt("");
-				toast.success(`Generated "${generated.name}" with ${generated.scenes.length} scenes`);
+				const styleName = selectedStyle
+					? DESIGN_STYLE_LIST.find((s) => s.id === selectedStyle)?.name ?? ""
+					: "";
+				toast.success(
+					`Generated "${generated.name}" with ${generated.scenes.length} scenes${styleName ? ` (${styleName})` : ""}`,
+				);
 			} else {
 				toast.error("AI generation failed. Check your AI provider settings.");
 			}
@@ -412,7 +428,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		} finally {
 			setIsAiGenerating(false);
 		}
-	}, [aiPrompt, isAiGenerating]);
+	}, [aiPrompt, isAiGenerating, selectedStyle]);
 
 	// ── AI Polish ─────────────────────────────────────────────────────
 
@@ -477,6 +493,42 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		},
 		[project, isPolishing],
 	);
+
+	// ── AI Critique ───────────────────────────────────────────────────
+
+	const handleCritique = useCallback(async () => {
+		if (isCritiquing || project.scenes.length === 0) return;
+		setIsCritiquing(true);
+		try {
+			toast.info("Critiquing scenes with AI...");
+			const result = await critiqueSceneProject(project, (i, total) => {
+				toast.loading(`Analyzing scene ${i + 1} of ${total}...`, { id: "critique" });
+			});
+			toast.dismiss("critique");
+
+			// Count available mutations
+			const totalMutations = result.sceneCritiques.reduce((sum, c) => sum + c.mutations.length, 0);
+
+			if (totalMutations > 0) {
+				// Auto-apply improvements
+				const improved = applyCritiqueMutations(project, result.sceneCritiques);
+				setProject(improved);
+				setSelectedSceneIndex(0);
+				setCurrentTimeMs(0);
+				setIsPlaying(false);
+				toast.success(
+					`Score: ${result.projectScore}/10 — applied ${totalMutations} improvements. ${result.summary}`,
+				);
+			} else {
+				toast.success(`Score: ${result.projectScore}/10 — ${result.summary}`);
+			}
+		} catch (err) {
+			console.error("Critique failed:", err);
+			toast.error("Critique failed — check your AI provider settings.");
+		} finally {
+			setIsCritiquing(false);
+		}
+	}, [project, isCritiquing]);
 
 	// ── Keyboard shortcuts ─────────────────────────────────────────────
 
@@ -620,10 +672,41 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 							AI Generate
 						</button>
 					</PopoverTrigger>
-					<PopoverContent className="w-96 bg-[#141417] border-white/10" align="start">
+					<PopoverContent className="w-[440px] bg-[#141417] border-white/10" align="start">
 						<div className="space-y-3">
 							<div className="text-xs text-white/60 font-medium">
 								Generate Scene Project with AI
+							</div>
+
+							{/* Style selector grid */}
+							<div>
+								<div className="text-[10px] text-white/40 mb-1.5">Design Style</div>
+								<div className="grid grid-cols-4 gap-1.5">
+									{DESIGN_STYLE_LIST.map((style) => (
+										<button
+											key={style.id}
+											onClick={() =>
+												setSelectedStyle(
+													selectedStyle === style.id ? null : (style.id as DesignStyleId),
+												)
+											}
+											className={`flex flex-col items-center gap-1 px-1.5 py-1.5 rounded-md border transition-colors ${
+												selectedStyle === style.id
+													? "border-purple-500/60 bg-purple-500/10 text-purple-300"
+													: "border-white/5 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/10 text-white/50 hover:text-white/70"
+											}`}
+											title={style.description}
+										>
+											<div
+												className="w-full h-5 rounded-sm"
+												style={{ background: style.previewGradient }}
+											/>
+											<span className="text-[9px] leading-tight text-center truncate w-full">
+												{style.name}
+											</span>
+										</button>
+									))}
+								</div>
 							</div>
 
 							{/* Template chips */}
@@ -698,6 +781,17 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 				>
 					<Sparkles size={14} />
 					AI Polish
+				</button>
+
+				{/* AI Critique */}
+				<button
+					onClick={handleCritique}
+					disabled={isCritiquing || project.scenes.length === 0}
+					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-teal-400/70 hover:text-teal-300 hover:bg-teal-400/10 transition-colors text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+					title="AI critique — scores each scene against design principles and auto-applies improvements"
+				>
+					{isCritiquing ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />}
+					Critique
 				</button>
 
 				{/* AI Settings */}
