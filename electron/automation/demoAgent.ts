@@ -276,11 +276,7 @@ export class DemoAgent {
 				const userPrompt = prevContext
 					? `${prevContext}\n\nNow narrate what's NEW on this screen. ONE sentence, max 20 words.`
 					: "Narrate this screen for a product explainer. ONE sentence, max 20 words.";
-				const result = await analyzeImage(
-					userPrompt,
-					imageBase64,
-					VISION_NARRATION_PROMPT,
-				);
+				const result = await analyzeImage(userPrompt, imageBase64, VISION_NARRATION_PROMPT);
 				if (result.success && result.text) {
 					const narration = result.text.replace(/^["']|["']$/g, "").trim();
 					this.previousNarrations.push(narration);

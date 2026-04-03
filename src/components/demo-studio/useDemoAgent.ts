@@ -55,45 +55,62 @@ function buildScriptPrompt(mode: DemoModeId): string {
 	const demoMode = getDemoMode(mode);
 	return `You are a video storyboard writer creating a script for a product demo video.
 
-VIDEO MODE: ${demoMode.name}
-${demoMode.scriptStyle}
+<mode>
+<name>${demoMode.name}</name>
+<style>${demoMode.scriptStyle}</style>
+<voice>${demoMode.narrationVoice}</voice>
+</mode>
 
-NARRATION VOICE:
-${demoMode.narrationVoice}
+<task>
+You will receive a site map with all pages and their section headings with Y positions.
+Write a storyboard with 8-12 scenes that tells a compelling story about this product.
+Each scene maps to a specific section of a specific page.
+</task>
 
-You will receive a site map — a complete list of all pages on a website with their content summaries. Using this map, write a storyboard that tells a coherent story.
-
-Return ONLY valid JSON (no markdown):
+<output_format>
+Return ONLY valid JSON. No markdown fences. No explanation.
 {
-  "title": "Short video title",
+  "title": "Short Video Title (3-6 words)",
   "scenes": [
     {
       "url": "https://example.com/features",
-      "scrollToY": 0,
-      "narration": "One punchy sentence for voiceover.",
+      "scrollToY": 800,
+      "headline": "AI Does the Heavy Lifting",
+      "narration": "One punchy sentence for voiceover, max 20 words.",
       "durationMs": 4000
-    },
-    {
-      "url": "https://example.com/features",
-      "scrollToY": 1200,
-      "narration": "Scroll down to show the next section.",
-      "durationMs": 5000
     }
   ]
 }
 
-RULES:
-- 8-12 scenes total. Quality over quantity.
-- Each scene's narration is ONE sentence, max 25 words. This will be the voiceover.
-- The narrations must form a coherent story when read in sequence — like chapters.
-- scrollToY: PIXEL position to scroll to on the page. Use 0 for the top. Each page's sections have specific Y positions listed in the site map — use those EXACT values.
-- CRITICAL: Use scrollToY 0 (the hero/top of page) for AT MOST ONE scene across the entire video. Never show the same hero section twice.
-- When showing multiple sections of the SAME page, scrollToY values must be AT LEAST 600px apart. Each scene should show a DIFFERENT section.
-- For single-page sites: use different scrollToY values to show different sections. Each scene = one section.
-- Spread scenes across ALL discovered pages. Each page should have at least one scene.
-- durationMs: 3000-5000ms per scene. Longer for text-heavy narration.
-- Order scenes to tell a logical story, not just page-by-page listing.
-- Every scene MUST show something visually DIFFERENT from the previous scene.`;
+Field definitions:
+- url: Page URL from the site map. MUST be an exact URL from the site map.
+- scrollToY: EXACT Y position from the site map's section list. Use section Y values, not guesses.
+- headline: 3-6 word visual headline for the slide. Punchy, not a full sentence. Think billboard.
+- narration: One sentence voiceover script. Max 20 words. Conversational tone.
+- durationMs: 3000-5000ms. Longer for complex narration.
+</output_format>
+
+<rules>
+<rule priority="critical">Use scrollToY 0 for AT MOST ONE scene in the entire video. Never repeat the hero.</rule>
+<rule priority="critical">Each scene MUST use a scrollToY value from the site map's section list. Do not invent Y values.</rule>
+<rule priority="critical">Every scene must show visually DIFFERENT content. If same URL, scrollToY must differ by 600px+.</rule>
+<rule priority="high">Spread scenes across ALL pages in the site map. Every page gets at least one scene.</rule>
+<rule priority="high">8-12 scenes total. Quality over quantity.</rule>
+<rule priority="high">Headlines are SHORT (3-6 words). Not sentences. Think: "AI-Powered Editing" not "The AI handles all the editing for you".</rule>
+<rule priority="medium">Order scenes to tell a logical story arc, not just page-by-page.</rule>
+<rule priority="medium">Narrations must flow as a coherent voiceover when read in sequence.</rule>
+</rules>
+
+<example>
+{
+  "title": "Ship Faster with Acme",
+  "scenes": [
+    {"url": "https://acme.com", "scrollToY": 0, "headline": "Ship Code, Not Bugs", "narration": "Acme catches bugs before your users do.", "durationMs": 3500},
+    {"url": "https://acme.com", "scrollToY": 900, "headline": "Real-Time Monitoring", "narration": "Every deploy gets instant monitoring with zero setup.", "durationMs": 4000},
+    {"url": "https://acme.com/pricing", "scrollToY": 0, "headline": "Free to Start", "narration": "Start free, scale when you're ready. No credit card required.", "durationMs": 3500}
+  ]
+}
+</example>`;
 }
 
 let msgId = 0;
@@ -350,6 +367,7 @@ export function useDemoAgent(
 					url,
 					scrollToY: typeof s.scrollToY === "number" ? Math.max(0, Math.round(s.scrollToY)) : 0,
 					zoomTarget: typeof s.zoomTarget === "string" ? s.zoomTarget : undefined,
+					headline: typeof s.headline === "string" ? s.headline : undefined,
 					narration: typeof s.narration === "string" ? s.narration : "",
 					durationMs:
 						typeof s.durationMs === "number" ? Math.max(2000, Math.min(8000, s.durationMs)) : 4000,
@@ -447,6 +465,9 @@ export function useDemoAgent(
 				}
 			}
 
+			// Detect individual UI elements in the viewport (cards, headings, CTAs)
+			const uiElements = await driver.getVisibleUIElements();
+
 			// Canvas analysis for color/complexity data
 			let analysis: ScreenshotAnalysis | undefined;
 			if (!isLikelyBlank(screenshot)) {
@@ -466,8 +487,10 @@ export function useDemoAgent(
 				timestamp: Date.now() - startTimeRef.current,
 				screenshotDataUrl: screenshot,
 				focusPoint,
+				headline: scene.headline,
 				cropRegion,
 				analysis,
+				uiElements: uiElements.length > 0 ? uiElements : undefined,
 			};
 			allSteps.push(mainStep);
 			setSteps([...allSteps]);
@@ -889,9 +912,11 @@ function is404Page(pageInfo: PageInfo): boolean {
 function areScreenshotsSimilar(a: string, b: string): boolean {
 	// If both are very short, they're both blank
 	if (a.length < 7000 && b.length < 7000) return true;
-	// Compare lengths — JPEG screenshots of the same content are within 5% size
+	// Only skip near-identical screenshots (same pixel content)
+	// Different scroll positions on same page produce ~90-97% similar sizes,
+	// so we need a very tight threshold to avoid false positives
 	const ratio = Math.min(a.length, b.length) / Math.max(a.length, b.length);
-	return ratio > 0.95;
+	return ratio > 0.995;
 }
 
 // ── Screenshot quality checks (legacy) ───────────────────────────────

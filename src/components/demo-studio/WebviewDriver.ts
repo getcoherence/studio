@@ -452,6 +452,73 @@ export class WebviewDriver {
 		);
 	}
 
+	/**
+	 * Detect individual UI elements visible in the current viewport.
+	 * Returns normalized 0-1 bounding boxes for cards, headings, images, CTAs.
+	 */
+	async getVisibleUIElements(): Promise<
+		Array<{
+			type: string;
+			text: string;
+			bounds: { x: number; y: number; width: number; height: number };
+		}>
+	> {
+		return safeExec(
+			this.wv,
+			`(function() {
+				var vw = window.innerWidth, vh = window.innerHeight;
+				var elements = [];
+				var seen = new Set();
+
+				function addEl(el, type) {
+					var r = el.getBoundingClientRect();
+					if (r.top >= vh || r.bottom <= 0 || r.width < 100 || r.height < 60) return;
+					if (r.width > vw * 0.95 && r.height > vh * 0.8) return;
+					var key = Math.round(r.left) + ',' + Math.round(r.top) + ',' + Math.round(r.width);
+					if (seen.has(key)) return;
+					seen.add(key);
+					var text = (el.querySelector('h1,h2,h3,h4,strong') || el).innerText || '';
+					text = text.trim().slice(0, 60);
+					elements.push({
+						type: type,
+						text: text,
+						bounds: {
+							x: Math.max(0, r.left / vw),
+							y: Math.max(0, r.top / vh),
+							width: Math.min(1 - r.left / vw, r.width / vw),
+							height: Math.min(1 - r.top / vh, r.height / vh)
+						}
+					});
+				}
+
+				document.querySelectorAll('[class*="card"], [class*="Card"], [class*="feature"], [class*="Feature"], [class*="pricing"], [class*="plan"], [class*="tier"]').forEach(function(el) {
+					addEl(el, 'card');
+				});
+
+				document.querySelectorAll('section, [class*="section"], [class*="block"], [class*="hero"], [class*="cta"]').forEach(function(el) {
+					var r = el.getBoundingClientRect();
+					if (r.height > 60 && r.height < vh * 0.7 && r.top < vh && r.bottom > 0) {
+						addEl(el, 'section');
+					}
+				});
+
+				document.querySelectorAll('h1, h2').forEach(function(el) {
+					var r = el.getBoundingClientRect();
+					if (r.top >= 0 && r.bottom <= vh) {
+						var parent = el.parentElement;
+						if (parent) addEl(parent, 'heading-group');
+					}
+				});
+
+				elements.sort(function(a, b) {
+					return (b.bounds.width * b.bounds.height) - (a.bounds.width * a.bounds.height);
+				});
+				return elements.slice(0, 8);
+			})()`,
+			[],
+		);
+	}
+
 	getURL(): string {
 		return this.wv.getURL();
 	}
