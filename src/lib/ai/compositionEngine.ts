@@ -52,8 +52,8 @@ export function composeProject(steps: DemoStep[], opts?: { title?: string }): Sc
 	scenes.push(
 		titleCard({
 			title: videoTitle,
-			background: "animated-midnight",
-			durationMs: 3000,
+			background: "#000000",
+			durationMs: 2000,
 		}),
 	);
 
@@ -219,7 +219,8 @@ function generateScenes(template: TemplateId, ctx: ComposeContext): Scene[] {
 	const { step, analysis, narration, headline, focusPoint } = ctx;
 	const src = step.screenshotDataUrl!;
 	const bg = pickBackground(analysis, ctx.sceneIndex);
-	const typingMs = Math.max(2500, Math.min(5000, 1200 + headline.length * 50));
+	// Fast pacing — headlines are short (3-6 words), don't need long scenes
+	const typingMs = Math.max(1800, Math.min(3000, 800 + headline.length * 40));
 
 	// UI elements detected in the DOM (cards, sections, heading groups)
 	const els = step.uiElements ?? [];
@@ -236,7 +237,7 @@ function generateScenes(template: TemplateId, ctx: ComposeContext): Scene[] {
 					screenshotSrc: src,
 					narration: "",
 					focusPoint,
-					durationMs: 3000,
+					durationMs: 2000,
 				}),
 			];
 
@@ -246,7 +247,7 @@ function generateScenes(template: TemplateId, ctx: ComposeContext): Scene[] {
 					screenshotSrc: src,
 					narration: headline, // Short headline, not full narration
 					background: bg,
-					durationMs: 3500,
+					durationMs: 2500,
 				}),
 			];
 
@@ -256,7 +257,7 @@ function generateScenes(template: TemplateId, ctx: ComposeContext): Scene[] {
 					screenshotSrc: src,
 					narration: headline,
 					highlightRegion: bestCrop ?? regionFromFocus(focusPoint),
-					durationMs: 3500,
+					durationMs: 2500,
 				}),
 			];
 
@@ -271,7 +272,7 @@ function generateScenes(template: TemplateId, ctx: ComposeContext): Scene[] {
 					leftRegion: left,
 					rightRegion: right,
 					background: bg,
-					durationMs: 3500,
+					durationMs: 2500,
 				}),
 			];
 		}
@@ -285,7 +286,7 @@ function generateScenes(template: TemplateId, ctx: ComposeContext): Scene[] {
 					side,
 					cropRegion: bestCrop, // Crop to specific card/element, not full page
 					background: bg,
-					durationMs: 3500,
+					durationMs: 2500,
 				}),
 			];
 		}
@@ -297,7 +298,7 @@ function generateScenes(template: TemplateId, ctx: ComposeContext): Scene[] {
 					narration: headline,
 					cropRegion: bestCrop,
 					background: bg,
-					durationMs: 3500,
+					durationMs: 2500,
 				}),
 			];
 
@@ -320,7 +321,7 @@ function generateScenes(template: TemplateId, ctx: ComposeContext): Scene[] {
 				simpleScreenshot({
 					screenshotSrc: src,
 					narration,
-					durationMs: 3000,
+					durationMs: 2000,
 				}),
 			];
 	}
@@ -363,15 +364,19 @@ function regionFromFocus(fp: { x: number; y: number }) {
 	};
 }
 
-const ALL_BACKGROUNDS = [
+// Alternate between clean solid backgrounds and subtle animated ones
+// Inspired by Adaptive.ai video: mostly black/white with occasional color
+const BACKGROUNDS = [
+	"#000000",
 	"animated-midnight",
+	"#09090b",
 	"animated-aurora",
+	"#000000",
 	"animated-ocean-wave",
+	"#09090b",
 	"animated-sunset-flow",
-	"animated-neon-pulse",
 ];
 
 function pickBackground(_analysis: ScreenshotAnalysis | null, sceneIndex: number): string {
-	// Rotate through backgrounds by scene index for guaranteed variety
-	return ALL_BACKGROUNDS[sceneIndex % ALL_BACKGROUNDS.length];
+	return BACKGROUNDS[sceneIndex % BACKGROUNDS.length];
 }
