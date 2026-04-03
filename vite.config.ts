@@ -14,7 +14,12 @@ export default defineConfig({
 				vite: {
 					build: {
 						rollupOptions: {
-							external: ["playwright-core"],
+							external: [
+								"playwright-core",
+								"@remotion/bundler",
+								"@remotion/renderer",
+								"@remotion/cli",
+							],
 						},
 					},
 				},
@@ -54,6 +59,7 @@ export default defineConfig({
 				manualChunks: {
 					pixi: ["pixi.js"],
 					"react-vendor": ["react", "react-dom"],
+					remotion: ["remotion", "@remotion/player"],
 					"video-processing": ["mediabunny", "mp4box", "@fix-webm-duration/fix"],
 				},
 			},
