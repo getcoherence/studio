@@ -5,6 +5,7 @@
 
 import { Check, Crown, Loader2, Settings, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AI_PROVIDERS, type AIProvider, type AIServiceConfig } from "@/lib/ai/types";
 import {
 	getLicenseTier,
@@ -34,6 +35,9 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 	const [testing, setTesting] = useState(false);
 	const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
 
+	// Per-provider key cache — survives provider switching within the dialog
+	const [keyCache, setKeyCache] = useState<Record<string, string>>({});
+
 	// License state
 	const [licenseTier, setLicenseTierLocal] = useState<LicenseTier>("free");
 	const [licenseKey, setLicenseKeyInput] = useState("");
@@ -52,6 +56,10 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 			setOllamaUrl(config.ollamaUrl ?? "http://localhost:11434");
 			setSaved(false);
 			setTestResult(null);
+			// Seed the key cache with the current provider's key
+			if (config.apiKey) {
+				setKeyCache((prev) => ({ ...prev, [config.provider ?? "openai"]: config.apiKey! }));
+			}
 		});
 		getLicenseTier().then(setLicenseTierLocal);
 		setLicenseKeyInput("");
@@ -63,6 +71,18 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 
 	async function handleSave() {
 		setSaving(true);
+		// Save current provider's key to cache
+		const allKeys = { ...keyCache, [provider]: apiKey };
+		// Save each provider's key separately
+		for (const [prov, key] of Object.entries(allKeys)) {
+			if (key) {
+				await window.electronAPI?.aiSaveConfig({
+					provider: prov as AIProvider,
+					apiKey: key,
+				});
+			}
+		}
+		// Save the active provider + model
 		await window.electronAPI?.aiSaveConfig({
 			provider,
 			apiKey: apiKey || undefined,
@@ -77,6 +97,7 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 	async function handleTest() {
 		setTesting(true);
 		setTestResult(null);
+		// Save current provider + key so the test uses the right credentials
 		await window.electronAPI?.aiSaveConfig({
 			provider,
 			apiKey: apiKey || undefined,
@@ -86,6 +107,10 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 		const result = await window.electronAPI?.aiAnalyze('Say "AI is connected" in exactly 3 words.');
 		setTesting(false);
 		setTestResult(result?.success ? "success" : "error");
+		// Update cache with the key that worked (or didn't)
+		if (apiKey) {
+			setKeyCache((prev) => ({ ...prev, [provider]: apiKey }));
+		}
 	}
 
 	async function handleActivateLicense() {
@@ -112,9 +137,12 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 
 	if (!open) return null;
 
-	return (
-		<div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center">
-			<div className="w-full max-w-md mx-4 bg-[#141417] border border-white/10 rounded-xl p-6 space-y-5">
+	return createPortal(
+		<div
+			className="fixed inset-0 bg-black/80 flex items-start justify-center overflow-y-auto py-8"
+			style={{ zIndex: 99999 }}
+		>
+			<div className="w-full max-w-md mx-4 bg-[#141417] border border-white/10 rounded-xl p-6 space-y-5 shrink-0">
 				{/* Header */}
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
@@ -161,7 +189,11 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 									<button
 										key={p.id}
 										onClick={() => {
+											// Cache the current provider's key before switching
+											setKeyCache((prev) => ({ ...prev, [provider]: apiKey }));
+											// Switch provider and restore its cached key
 											setProvider(p.id);
+											setApiKey(keyCache[p.id] ?? "");
 											setModel("");
 											setTestResult(null);
 										}}
@@ -351,7 +383,8 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 					</>
 				)}
 			</div>
-		</div>
+		</div>,
+		document.body,
 	);
 }
 

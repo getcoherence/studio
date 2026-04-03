@@ -39,7 +39,11 @@ export function registerAIHandlers(): void {
 	ipcMain.handle(
 		"ai-analyze-image",
 		async (_event, prompt: string, imageBase64: string, systemPrompt?: string) => {
-			return analyzeImage(prompt, imageBase64, systemPrompt);
+			const result = await analyzeImage(prompt, imageBase64, systemPrompt);
+			console.log(
+				`[IPC] ai-analyze-image returning: success=${result.success}, textLen=${result.text?.length ?? 0}`,
+			);
+			return { success: result.success, text: result.text, error: result.error };
 		},
 	);
 

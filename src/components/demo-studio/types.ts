@@ -1,6 +1,7 @@
 // ── Demo Studio shared types ──────────────────────────────────────────
 
 import type { DemoModeId } from "@/lib/ai/demoModes";
+import type { ScreenshotAnalysis } from "@/lib/cv/types";
 
 export interface PageElement {
 	type: "button" | "link" | "input" | "select";
@@ -38,6 +39,12 @@ export interface DemoStep {
 	screenshotDataUrl?: string;
 	audioPath?: string;
 	isZoomShot?: boolean; // true for cropped zoom screenshots
+	/** Ken-burns focus point (0-1 normalized), detected from prominent page elements */
+	focusPoint?: { x: number; y: number };
+	/** Vision-detected crop region (0-1 normalized) for the most relevant UI element */
+	cropRegion?: { x: number; y: number; width: number; height: number };
+	/** OpenCV analysis results (replaces vision API) */
+	analysis?: ScreenshotAnalysis;
 }
 
 // ── Storyboard types (Phase 2 output) ────────────────────────────────

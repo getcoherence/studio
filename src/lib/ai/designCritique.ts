@@ -147,37 +147,60 @@ export async function critiqueSceneProject(
 		try {
 			let result;
 
+			console.log(
+				`[Critique] Scene ${i}: electronAPI available:`,
+				!!window.electronAPI,
+				"screenshot:",
+				!!screenshot,
+			);
+
 			// Try vision first, fall back to text-only if vision fails
-			if (screenshot) {
-				result = await window.electronAPI?.aiAnalyzeImage(
+			if (screenshot && window.electronAPI?.aiAnalyzeImage) {
+				console.log(`[Critique] Scene ${i}: Calling aiAnalyzeImage...`);
+				result = await window.electronAPI.aiAnalyzeImage(
 					critiquePrompt,
 					screenshot,
 					"You are an elite design critic. Evaluate this scene screenshot.",
+				);
+				console.log(
+					`[Critique] Scene ${i}: Vision result: success=${result?.success}, textLen=${result?.text?.length ?? 0}, error=${result?.error}`,
 				);
 			}
 
 			// Fall back to text-only analysis if vision unavailable or failed
 			if (!result?.success || !result.text) {
-				result = await window.electronAPI?.aiAnalyze(
-					critiquePrompt,
-					"You are an elite design critic. Evaluate this scene based on its data.",
-				);
+				if (window.electronAPI?.aiAnalyze) {
+					console.log(`[Critique] Scene ${i}: Falling back to text-only...`);
+					result = await window.electronAPI.aiAnalyze(
+						critiquePrompt,
+						"You are an elite design critic. Evaluate this scene based on its data.",
+					);
+					console.log(`[Critique] Scene ${i}: Text result:`, result?.success, result?.error);
+				} else {
+					console.error(`[Critique] Scene ${i}: window.electronAPI.aiAnalyze not available!`);
+				}
 			}
 
 			if (!result?.success || !result.text) {
+				console.warn(`[Critique] Scene ${i}: All methods failed. Error:`, result?.error);
 				sceneCritiques.push(buildFallbackCritique(i));
 				continue;
 			}
 
-			// Parse response
-			let json = result.text.trim();
-			const match = json.match(/\{[\s\S]*\}/);
-			if (match) json = match[0];
-			const parsed = JSON.parse(json) as {
+			// Parse response — LLMs often produce slightly malformed JSON
+			const parsed = lenientJsonParse(result.text) as {
 				scores?: CritiqueScore[];
 				topIssues?: string[];
 				mutations?: SceneMutation[];
-			};
+			} | null;
+			if (!parsed) {
+				console.warn(
+					`[Critique] Scene ${i}: JSON parse failed. Raw text (first 300):`,
+					result.text.slice(0, 300),
+				);
+				sceneCritiques.push(buildFallbackCritique(i));
+				continue;
+			}
 
 			const scores = Array.isArray(parsed.scores) ? parsed.scores : [];
 			const overallEntry = scores.find((s) => s.category === "overall");
@@ -190,7 +213,8 @@ export async function critiqueSceneProject(
 				topIssues: Array.isArray(parsed.topIssues) ? parsed.topIssues : [],
 				mutations: Array.isArray(parsed.mutations) ? parsed.mutations : [],
 			});
-		} catch {
+		} catch (err) {
+			console.error(`[Critique] Scene ${i}: Exception:`, err);
 			sceneCritiques.push(buildFallbackCritique(i));
 		}
 	}
@@ -312,14 +336,72 @@ function averageScores(scores: CritiqueScore[]): number {
 	return Math.round((scores.reduce((sum, s) => sum + s.score, 0) / scores.length) * 10) / 10;
 }
 
+/** Try multiple strategies to parse LLM JSON output */
+function lenientJsonParse(text: string): unknown | null {
+	// Strategy 1: extract JSON block and parse directly
+	let json = text.trim();
+	// Remove markdown code fences
+	json = json.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+	const match = json.match(/\{[\s\S]*\}/);
+	if (!match) return null;
+	json = match[0];
+
+	// Strategy 2: try as-is
+	try {
+		return JSON.parse(json);
+	} catch {
+		/* continue */
+	}
+
+	// Strategy 3: fix trailing commas
+	let fixed = json.replace(/,\s*([\]}])/g, "$1");
+	try {
+		return JSON.parse(fixed);
+	} catch {
+		/* continue */
+	}
+
+	// Strategy 4: fix unescaped newlines inside strings
+	fixed = fixed.replace(/(?<=:\s*"[^"]*)\n/g, "\\n");
+	try {
+		return JSON.parse(fixed);
+	} catch {
+		/* continue */
+	}
+
+	// Strategy 5: extract just the scores array and rebuild
+	try {
+		const scoresMatch = json.match(/"scores"\s*:\s*\[[\s\S]*?\]/);
+		const issuesMatch = json.match(/"topIssues"\s*:\s*\[[\s\S]*?\]/);
+		if (scoresMatch) {
+			const minimal = `{${scoresMatch[0]}${issuesMatch ? `,${issuesMatch[0]}` : ""},"mutations":[]}`;
+			return JSON.parse(minimal.replace(/,\s*([\]}])/g, "$1"));
+		}
+	} catch {
+		/* continue */
+	}
+
+	// Strategy 6: use Function constructor as last resort (safe since we control the input source)
+	try {
+		// Replace problematic characters and try eval-style parse
+		fixed = json
+			.replace(new RegExp("[\\x00-\\x1f]", "g"), " ") // control chars
+			.replace(/,\s*([\]}])/g, "$1") // trailing commas
+			.replace(/'/g, '"'); // single quotes
+		return JSON.parse(fixed);
+	} catch {
+		/* give up */
+	}
+
+	return null;
+}
+
 function buildFallbackCritique(sceneIndex: number): SceneCritique {
 	return {
 		sceneIndex,
-		scores: [
-			{ category: "overall", score: 5, note: "Could not analyze — vision model unavailable" },
-		],
+		scores: [{ category: "overall", score: 5, note: "AI analysis failed for this scene" }],
 		overallScore: 5,
-		topIssues: ["Vision model unavailable — try with OpenAI or Anthropic provider"],
+		topIssues: ["AI analysis failed — check console for details"],
 		mutations: [],
 	};
 }

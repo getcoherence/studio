@@ -33,10 +33,15 @@ function NarrationAudioPlayer({ audioPath }: { audioPath: string }) {
 
 	function toggle() {
 		if (!audioRef.current) {
-			// Create audio element with file:// protocol for local paths
-			const src = audioPath.startsWith("file://") ? audioPath : `file://${audioPath}`;
+			// Use lucid:// protocol for secure local file access in Electron
+			const cleaned = audioPath.replace(/^file:\/\//, "");
+			const src = `lucid://file/${cleaned.replace(/\\/g, "/")}`;
 			audioRef.current = new Audio(src);
 			audioRef.current.onended = () => setPlaying(false);
+			audioRef.current.onerror = (e) => {
+				console.warn("Audio playback failed:", e);
+				setPlaying(false);
+			};
 		}
 		if (playing) {
 			audioRef.current.pause();

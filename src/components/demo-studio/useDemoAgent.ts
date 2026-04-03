@@ -8,6 +8,8 @@
 
 import { useCallback, useRef, useState } from "react";
 import { type DemoModeId, getDemoMode } from "@/lib/ai/demoModes";
+import { analyzeScreenshot } from "@/lib/cv/screenshotAnalyzer";
+import type { ScreenshotAnalysis } from "@/lib/cv/types";
 import type {
 	DemoAction,
 	DemoAgentStatus,
@@ -17,6 +19,7 @@ import type {
 	PageInfo,
 	SiteMapPage,
 	Storyboard,
+	StoryboardScene,
 } from "./types";
 import { WebviewDriver } from "./WebviewDriver";
 
@@ -84,16 +87,14 @@ RULES:
 - Each scene's narration is ONE sentence, max 25 words. This will be the voiceover.
 - The narrations must form a coherent story when read in sequence — like chapters.
 - scrollToY: PIXEL position to scroll to on the page. Use 0 for the top. Each page's sections have specific Y positions listed in the site map — use those EXACT values.
-- IMPORTANT: When showing multiple sections of the SAME page, scrollToY values must be AT LEAST 600px apart! Closer values show overlapping content, which looks terrible. Use the section Y positions from the site map and pick ones that are far apart.
-- MAX 3 scenes per URL. If a page has many sections, pick the 2-3 BEST ones, not all of them.
-- Prefer showing DIFFERENT PAGES over scrolling the same page. Each page visit tells a new chapter.
+- CRITICAL: Use scrollToY 0 (the hero/top of page) for AT MOST ONE scene across the entire video. Never show the same hero section twice.
+- When showing multiple sections of the SAME page, scrollToY values must be AT LEAST 600px apart. Each scene should show a DIFFERENT section.
+- For single-page sites: use different scrollToY values to show different sections. Each scene = one section.
+- Spread scenes across ALL discovered pages. Each page should have at least one scene.
 - durationMs: 3000-5000ms per scene. Longer for text-heavy narration.
 - Order scenes to tell a logical story, not just page-by-page listing.
 - Every scene MUST show something visually DIFFERENT from the previous scene.`;
 }
-
-// Vision-capable providers
-const VISION_PROVIDERS = new Set(["openai", "anthropic"]);
 
 let msgId = 0;
 function createMessage(
@@ -120,12 +121,12 @@ export function useDemoAgent(
 	const [steps, setSteps] = useState<DemoStep[]>([]);
 	const [currentStepIndex, setCurrentStepIndex] = useState(0);
 	const [elapsedMs, setElapsedMs] = useState(0);
+	const [storyboardTitle, setStoryboardTitle] = useState("");
 
 	const stoppedRef = useRef(false);
 	const resumeResolverRef = useRef<(() => void) | null>(null);
 	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const startTimeRef = useRef(0);
-	const useVisionRef = useRef(false);
 
 	// ── Phase 1: Reconnaissance ──────────────────────────────────────
 
@@ -143,6 +144,54 @@ export function useDemoAgent(
 
 		onMessage(createMessage("system", `📍 Discovered: ${landingInfo.title || landingInfo.url}`));
 
+		// ── Auto-discover all nav links before AI-driven exploration ──
+		// This guarantees we find pages like /pro, /features even if the AI gets stuck scrolling
+		const navLinks = await driver.getNavLinks();
+		const baseOrigin = new URL(config.url).origin;
+		for (const link of navLinks) {
+			if (stoppedRef.current) break;
+			try {
+				const linkUrl = new URL(link.href, config.url);
+				const normalized = normalizeUrl(linkUrl.href);
+				// Only visit same-origin, non-blocked, unvisited pages
+				if (linkUrl.origin !== baseOrigin) continue;
+				if (visitedUrls.has(normalized)) continue;
+				if (isBlockedUrl(normalized)) continue;
+				if (isBlockedLinkText(link.text)) continue;
+
+				await driver.loadURL(linkUrl.href);
+				await new Promise((r) => setTimeout(r, 2000));
+
+				const pageInfo = await driver.getPageInfo();
+				const pageNorm = normalizeUrl(pageInfo.url);
+				if (!visitedUrls.has(pageNorm) && !isBlockedUrl(pageNorm)) {
+					visitedUrls.add(pageNorm);
+					// Scroll down to discover sections
+					await driver.scroll("down");
+					await new Promise((r) => setTimeout(r, 500));
+					await driver.scroll("down");
+					await new Promise((r) => setTimeout(r, 500));
+					const headings = await driver.getSectionHeadings();
+					await driver.scrollToElement("top");
+					siteMap.push(pageInfoToSiteMapPage(pageInfo, headings));
+					onMessage(
+						createMessage(
+							"system",
+							`📍 Discovered: ${pageInfo.title || pageNorm} (${headings.length} sections)`,
+						),
+					);
+				}
+			} catch {
+				// Skip failed nav links
+			}
+		}
+
+		// Navigate back to landing page for AI-driven exploration
+		if (siteMap.length > 1) {
+			await driver.loadURL(config.url);
+			await new Promise((r) => setTimeout(r, 2000));
+		}
+
 		const reconSystemPrompt = `${RECON_SYSTEM_PROMPT}\n\nADDITIONAL FOCUS:\n${mode.reconFocus}`;
 
 		for (let i = 0; i < maxReconSteps; i++) {
@@ -156,6 +205,7 @@ export function useDemoAgent(
 			const visitedList = siteMap.map((p) => `- ${p.title}: ${p.url}`).join("\n");
 			const elementsList = pageInfo.elements
 				.slice(0, 30)
+				.filter((e) => e.type !== "link" || !isBlockedLinkText(e.text))
 				.map((e) => `- [${e.type}] "${e.text}" (${e.selector})`)
 				.join("\n");
 
@@ -182,14 +232,21 @@ export function useDemoAgent(
 				}
 				if (action.action === "done") break;
 
-				// Execute the recon action
+				// Execute the recon action (with blocked-URL guard)
 				if (action.action === "click" && action.target) {
+					if (isBlockedLinkText(action.target)) {
+						await driver.scroll("down");
+						continue;
+					}
 					await driver.click(action.target);
 					await new Promise((r) => setTimeout(r, 1500));
 				} else if (action.action === "scroll") {
 					await driver.scroll(action.value === "up" ? "up" : "down");
 					await new Promise((r) => setTimeout(r, 500));
 				} else if (action.action === "navigate" && action.target) {
+					if (isBlockedUrl(action.target)) {
+						continue;
+					}
 					await driver.loadURL(action.target);
 					await new Promise((r) => setTimeout(r, 1500));
 				}
@@ -198,6 +255,11 @@ export function useDemoAgent(
 				const newPageInfo = await driver.getPageInfo();
 				const normalizedUrl = normalizeUrl(newPageInfo.url);
 				if (!visitedUrls.has(normalizedUrl)) {
+					// Skip blocked pages (FAQ, legal, etc.)
+					if (isBlockedUrl(normalizedUrl)) {
+						visitedUrls.add(normalizedUrl); // Mark visited so we don't retry
+						continue;
+					}
 					visitedUrls.add(normalizedUrl);
 					// Scroll down to discover all sections before capturing
 					await driver.scroll("down");
@@ -245,7 +307,13 @@ export function useDemoAgent(
 		const userPrompt = `USER'S GOAL: ${config.prompt}\n\nSITE MAP (${siteMap.length} pages discovered):\n\n${siteMapText}\n\nWrite the storyboard. JSON only.`;
 
 		const result = await window.electronAPI.aiAnalyze(userPrompt, scriptPrompt);
-		if (!result?.success || !result.text) return null;
+		if (!result?.success || !result.text) {
+			console.error("[Demo] Storyboard generation failed:", result?.error || "empty response");
+			onMessage(
+				createMessage("error", `Storyboard AI error: ${result?.error || "empty response"}`),
+			);
+			return null;
+		}
 
 		try {
 			let json = result.text.trim();
@@ -288,6 +356,10 @@ export function useDemoAgent(
 				};
 			});
 
+			// Enforce scene diversity: dedup + max scenes per URL
+			parsed.scenes = deduplicateStoryboard(parsed.scenes);
+			parsed.scenes = enforcePageDiversity(parsed.scenes);
+
 			return parsed;
 		} catch (err) {
 			console.error("Failed to parse storyboard:", err);
@@ -300,6 +372,7 @@ export function useDemoAgent(
 	async function executeStoryboard(
 		driver: WebviewDriver,
 		storyboard: Storyboard,
+		siteMap: SiteMapPage[],
 	): Promise<DemoStep[]> {
 		const allSteps: DemoStep[] = [];
 		let lastUrl = "";
@@ -316,25 +389,74 @@ export function useDemoAgent(
 			// Navigate if URL changed
 			if (scene.url !== lastUrl) {
 				await driver.loadURL(scene.url);
-				// Wait generously for page to fully render (CSS, images, JS)
 				await new Promise((r) => setTimeout(r, 3000));
 				lastUrl = scene.url;
+
+				// 404 detection — skip scenes that navigate to broken pages
+				const pageCheck = await driver.getPageInfo();
+				if (is404Page(pageCheck)) {
+					onMessage(createMessage("system", `⚠️ Skipping 404 page: ${scene.url}`));
+					continue;
+				}
 			}
 
-			// Scroll to the exact pixel position
-			await driver.scrollToPosition(scene.scrollToY ?? 0);
-			// Wait for scroll animation + any lazy-loaded content
-			await new Promise((r) => setTimeout(r, 1500));
+			// Smart scroll: try to find a section heading matching the narration
+			const matchedHeading = findMatchingHeading(scene.narration, siteMap, scene.url);
+			if (matchedHeading) {
+				await driver.scrollToElement(matchedHeading);
+				await new Promise((r) => setTimeout(r, 1200));
+			} else {
+				await driver.scrollToPosition(scene.scrollToY ?? 0);
+				await new Promise((r) => setTimeout(r, 1500));
+			}
 
 			if (stoppedRef.current) break;
 
-			// Take screenshot — retry once if we get a blank/fallback image
+			// Take screenshot
 			let screenshot = await driver.screenshot();
 			if (screenshot.length < 200) {
-				// Got the 1px fallback — wait and retry
 				await new Promise((r) => setTimeout(r, 2000));
 				screenshot = await driver.screenshot();
 			}
+
+			// Blank-image detection
+			if (isLikelyBlank(screenshot)) {
+				await driver.scrollToPosition(0);
+				await new Promise((r) => setTimeout(r, 1200));
+				screenshot = await driver.screenshot();
+			}
+
+			// Duplicate detection — skip if this screenshot is too similar to the previous one
+			if (allSteps.length > 0) {
+				const prevScreenshot = allSteps[allSteps.length - 1].screenshotDataUrl;
+				if (prevScreenshot && areScreenshotsSimilar(screenshot, prevScreenshot)) {
+					continue; // Skip duplicate
+				}
+			}
+
+			// Detect prominent element for ken-burns focus
+			const focusPoint = await driver.getProminentElementPosition();
+
+			// Section-aware cropping: use the heading we already matched for scrolling
+			// to get the section's bounds for tight cropping
+			let cropRegion: DemoStep["cropRegion"] = undefined;
+			if (matchedHeading) {
+				const sectionBounds = await driver.getSectionBounds(matchedHeading);
+				if (sectionBounds) {
+					cropRegion = sectionBounds;
+				}
+			}
+
+			// Canvas analysis for color/complexity data
+			let analysis: ScreenshotAnalysis | undefined;
+			if (!isLikelyBlank(screenshot)) {
+				try {
+					analysis = await analyzeScreenshot(screenshot);
+				} catch {
+					// Analysis failed — composition engine handles undefined
+				}
+			}
+
 			const mainStep: DemoStep = {
 				action: {
 					action: "navigate",
@@ -343,6 +465,9 @@ export function useDemoAgent(
 				},
 				timestamp: Date.now() - startTimeRef.current,
 				screenshotDataUrl: screenshot,
+				focusPoint,
+				cropRegion,
+				analysis,
 			};
 			allSteps.push(mainStep);
 			setSteps([...allSteps]);
@@ -458,14 +583,6 @@ export function useDemoAgent(
 				setElapsedMs(Date.now() - startTimeRef.current);
 			}, 500);
 
-			// Check vision support
-			try {
-				const aiConfig = await window.electronAPI.aiGetConfig();
-				useVisionRef.current = VISION_PROVIDERS.has(aiConfig?.provider);
-			} catch {
-				useVisionRef.current = false;
-			}
-
 			const driver = new WebviewDriver(wv);
 
 			try {
@@ -503,6 +620,8 @@ export function useDemoAgent(
 					return;
 				}
 
+				setStoryboardTitle(storyboard.title);
+
 				// Show the storyboard in chat
 				const storyboardPreview = storyboard.scenes
 					.map((s, i) => `${i + 1}. ${s.narration}`)
@@ -519,7 +638,7 @@ export function useDemoAgent(
 					createMessage("system", `🎬 Phase 3: Capturing ${storyboard.scenes.length} scenes...`),
 				);
 
-				const allSteps = await executeStoryboard(driver, storyboard);
+				const allSteps = await executeStoryboard(driver, storyboard, siteMap);
 
 				if (stoppedRef.current) return;
 
@@ -549,6 +668,7 @@ export function useDemoAgent(
 				}
 			}
 		},
+		// biome-ignore lint/correctness/useExhaustiveDependencies: internal functions are stable
 		[webviewRef, onMessage],
 	);
 
@@ -571,7 +691,7 @@ export function useDemoAgent(
 		}
 	}, []);
 
-	return { start, stop, resume, status, steps, currentStepIndex, elapsedMs };
+	return { start, stop, resume, status, steps, currentStepIndex, elapsedMs, storyboardTitle };
 }
 
 // ── Utilities ────────────────────────────────────────────────────────
@@ -607,4 +727,291 @@ function extractFeatures(text: string): string[] {
 		return t.length > 3 && t.length < 80 && !t.includes("©") && !t.includes("privacy");
 	});
 	return lines.slice(0, 8);
+}
+
+// ── Smart scroll position matching ───────────────────────────────────
+
+/**
+ * Match narration keywords against site map section headings.
+ * Returns the heading TEXT to scroll to in the live DOM (not a stale Y position).
+ * Returns null if no confident match — caller falls back to storyboard scrollToY.
+ */
+function findMatchingHeading(
+	narration: string,
+	siteMap: SiteMapPage[],
+	url: string,
+): string | null {
+	const lower = narration.toLowerCase();
+	if (!lower || lower.length < 10) return null;
+
+	const page = siteMap.find((p) => p.url === url);
+	if (!page || page.sections.length === 0) return null;
+
+	const stopWords = new Set([
+		"the",
+		"a",
+		"an",
+		"is",
+		"are",
+		"was",
+		"were",
+		"be",
+		"been",
+		"being",
+		"have",
+		"has",
+		"had",
+		"do",
+		"does",
+		"did",
+		"will",
+		"would",
+		"could",
+		"should",
+		"may",
+		"might",
+		"can",
+		"shall",
+		"to",
+		"of",
+		"in",
+		"for",
+		"on",
+		"with",
+		"at",
+		"by",
+		"from",
+		"as",
+		"into",
+		"through",
+		"during",
+		"before",
+		"after",
+		"and",
+		"but",
+		"or",
+		"nor",
+		"not",
+		"so",
+		"yet",
+		"both",
+		"either",
+		"neither",
+		"each",
+		"every",
+		"all",
+		"any",
+		"few",
+		"more",
+		"most",
+		"other",
+		"some",
+		"such",
+		"no",
+		"only",
+		"own",
+		"same",
+		"than",
+		"too",
+		"very",
+		"just",
+		"because",
+		"if",
+		"when",
+		"where",
+		"how",
+		"what",
+		"which",
+		"who",
+		"whom",
+		"this",
+		"that",
+		"these",
+		"those",
+		"it",
+		"its",
+		"you",
+		"your",
+		"we",
+		"our",
+		"they",
+		"their",
+	]);
+
+	const keywords = lower
+		.replace(/[^a-z0-9\s]/g, "")
+		.split(/\s+/)
+		.filter((w) => w.length > 3 && !stopWords.has(w));
+
+	if (keywords.length === 0) return null;
+
+	let bestScore = 0;
+	let bestHeading: string | null = null;
+
+	for (const section of page.sections) {
+		const headingLower = section.text.toLowerCase();
+		let score = 0;
+		for (const kw of keywords) {
+			if (headingLower.includes(kw)) score += 2;
+		}
+		if (score > bestScore) {
+			bestScore = score;
+			bestHeading = section.text;
+		}
+	}
+
+	// Only use if strong match (4+ points = 2+ keyword hits)
+	return bestScore >= 4 ? bestHeading : null;
+}
+
+// ── Page and screenshot quality checks ────────────────────────────────
+
+/** Detect 404 / error pages */
+function is404Page(pageInfo: PageInfo): boolean {
+	const title = pageInfo.title.toLowerCase();
+	const text = pageInfo.visibleText.toLowerCase().slice(0, 500);
+	return (
+		title.includes("404") ||
+		title.includes("not found") ||
+		title.includes("page not found") ||
+		text.includes("404") ||
+		text.includes("page could not be found") ||
+		text.includes("page not found") ||
+		text.includes("this page doesn't exist")
+	);
+}
+
+/**
+ * Quick similarity check between two screenshot data URLs.
+ * Compares data URL lengths as a proxy — identical viewport captures
+ * at the same scroll position produce nearly identical file sizes.
+ */
+function areScreenshotsSimilar(a: string, b: string): boolean {
+	// If both are very short, they're both blank
+	if (a.length < 7000 && b.length < 7000) return true;
+	// Compare lengths — JPEG screenshots of the same content are within 5% size
+	const ratio = Math.min(a.length, b.length) / Math.max(a.length, b.length);
+	return ratio > 0.95;
+}
+
+// ── Screenshot quality checks (legacy) ───────────────────────────────
+
+/**
+ * Detect likely-blank screenshots. JPEG screenshots of actual page content
+ * are typically 30KB+. Blank/near-empty pages compress to under ~5KB.
+ */
+function isLikelyBlank(dataUrl: string): boolean {
+	// data:image/jpeg;base64, prefix is ~23 chars. Base64 is ~1.37x raw size.
+	// A 5KB image ≈ 6850 base64 chars + 23 prefix ≈ 6873 total.
+	return dataUrl.length < 7000;
+}
+
+// ── Blocked URL / link patterns for recon ────────────────────────────
+
+const BLOCKED_PATH_PATTERNS = [
+	"/faq",
+	"/faqs",
+	"/frequently-asked",
+	"/privacy",
+	"/privacy-policy",
+	"/terms",
+	"/terms-of-service",
+	"/tos",
+	"/legal",
+	"/disclaimer",
+	"/cookie",
+	"/cookies",
+	"/careers",
+	"/jobs",
+	"/hiring",
+	"/help",
+	"/support",
+	"/docs",
+	"/documentation",
+	"/login",
+	"/signin",
+	"/sign-in",
+	"/signup",
+	"/sign-up",
+	"/register",
+	"/contact",
+	"/contact-us",
+	"/sitemap",
+	"/accessibility",
+];
+
+const BLOCKED_LINK_TEXTS = [
+	"faq",
+	"frequently asked",
+	"privacy",
+	"privacy policy",
+	"terms",
+	"terms of service",
+	"legal",
+	"disclaimer",
+	"careers",
+	"jobs",
+	"cookie",
+	"cookies",
+	"help center",
+	"support",
+	"documentation",
+	"login",
+	"log in",
+	"sign in",
+	"sign up",
+	"register",
+	"contact us",
+	"contact",
+	"sitemap",
+	"accessibility",
+];
+
+function isBlockedUrl(url: string): boolean {
+	try {
+		const pathname = new URL(url).pathname.toLowerCase().replace(/\/$/, "");
+		return BLOCKED_PATH_PATTERNS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+	} catch {
+		return false;
+	}
+}
+
+function isBlockedLinkText(text: string): boolean {
+	const lower = text.toLowerCase().trim();
+	return BLOCKED_LINK_TEXTS.some((b) => lower === b || lower.includes(b));
+}
+
+// ── Storyboard deduplication ─────────────────────────────────────────
+
+function deduplicateStoryboard(scenes: StoryboardScene[]): StoryboardScene[] {
+	const result: StoryboardScene[] = [];
+	for (const scene of scenes) {
+		const prev = result[result.length - 1];
+		if (prev && prev.url === scene.url && Math.abs(prev.scrollToY - scene.scrollToY) < 400) {
+			if (scene.narration.length > prev.narration.length) {
+				result[result.length - 1] = scene;
+			}
+			continue;
+		}
+		result.push(scene);
+	}
+	return result;
+}
+
+/** Enforce hero (scrollToY < 100) only once per URL — allow many sections */
+function enforcePageDiversity(scenes: StoryboardScene[]): StoryboardScene[] {
+	const urlHeroUsed = new Set<string>();
+	const result: StoryboardScene[] = [];
+
+	for (const scene of scenes) {
+		const isHero = scene.scrollToY < 100;
+
+		// Skip duplicate hero shots for the same URL
+		if (isHero && urlHeroUsed.has(scene.url)) continue;
+
+		result.push(scene);
+		if (isHero) urlHeroUsed.add(scene.url);
+	}
+
+	return result;
 }
