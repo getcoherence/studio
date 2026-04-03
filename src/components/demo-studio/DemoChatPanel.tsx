@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AISettingsButton } from "@/components/ui/AISettingsDialog";
+import { DEMO_MODE_LIST, type DemoModeId } from "@/lib/ai/demoModes";
 import { AI_PROVIDERS, type AIProvider, type AIServiceConfig } from "@/lib/ai/types";
 import { getPromptHistory, type PromptHistoryEntry } from "./promptHistory";
 import type { DemoAgentStatus, DemoChatMessage, DemoConfig } from "./types";
@@ -133,6 +134,29 @@ function ChatMessage({
 				</div>
 			);
 
+		case "storyboard":
+			return (
+				<div className="flex gap-2 px-2">
+					<Bot size={14} className="text-purple-400 mt-1 flex-shrink-0" />
+					<div className="flex flex-col gap-1 min-w-0 text-xs">
+						{msg.content.split("\n").map((line, i) => (
+							<span
+								key={i}
+								className={
+									line.startsWith("📋")
+										? "text-purple-300 font-medium text-sm"
+										: line.match(/^\d+\./)
+											? "text-white/60 pl-1"
+											: "text-white/30"
+								}
+							>
+								{line}
+							</span>
+						))}
+					</div>
+				</div>
+			);
+
 		case "pause":
 			return (
 				<div className="flex items-start gap-2 px-3 py-2 mx-2 rounded-md bg-amber-500/10 border border-amber-500/15 text-xs text-amber-300">
@@ -213,7 +237,8 @@ export function DemoChatPanel({
 	isGeneratingVoiceover,
 }: DemoChatPanelProps) {
 	const [input, setInput] = useState("");
-	const [maxSteps, setMaxSteps] = useState(12);
+	const [maxSteps, setMaxSteps] = useState(20);
+	const [selectedMode, setSelectedMode] = useState<DemoModeId>("evangelist");
 	const [history, setHistory] = useState<PromptHistoryEntry[]>([]);
 	const [showHistory, setShowHistory] = useState(false);
 	const [currentProvider, setCurrentProvider] = useState<AIProvider>("openai");
@@ -259,7 +284,7 @@ export function DemoChatPanel({
 
 		setInput("");
 		setShowHistory(false);
-		onStart({ url, prompt: finalPrompt, maxSteps });
+		onStart({ url, prompt: finalPrompt, maxSteps, mode: selectedMode });
 	}
 
 	function handleHistorySelect(entry: PromptHistoryEntry) {
@@ -310,6 +335,25 @@ export function DemoChatPanel({
 			<div className="p-3 bg-[#0c0c0f]">
 				{canSend && (
 					<>
+						{/* Mode selector */}
+						<div className="flex gap-1.5 mb-2">
+							{DEMO_MODE_LIST.map((mode) => (
+								<button
+									key={mode.id}
+									onClick={() => setSelectedMode(mode.id)}
+									className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-[11px] transition-colors ${
+										selectedMode === mode.id
+											? "border-[#2563eb]/50 bg-[#2563eb]/10 text-[#60a5fa]"
+											: "border-white/5 bg-white/[0.02] text-white/40 hover:text-white/60 hover:border-white/10"
+									}`}
+									title={mode.description}
+								>
+									<span>{mode.icon}</span>
+									{mode.name}
+								</button>
+							))}
+						</div>
+
 						<div className="rounded-lg border border-white/10 bg-white/[0.03] focus-within:border-[#2563eb]/50 transition-colors overflow-hidden">
 							{/* Textarea */}
 							<textarea
@@ -359,17 +403,17 @@ export function DemoChatPanel({
 										onChange={(e) => setMaxSteps(Number(e.target.value))}
 										className="px-1.5 py-1 rounded bg-white/5 text-[10px] text-white/40 focus:outline-none cursor-pointer hover:text-white/60 transition-colors"
 									>
-										<option value={8} className="bg-[#18181b] text-white">
-											8 steps
-										</option>
 										<option value={12} className="bg-[#18181b] text-white">
 											12 steps
 										</option>
-										<option value={15} className="bg-[#18181b] text-white">
-											15 steps
-										</option>
 										<option value={20} className="bg-[#18181b] text-white">
 											20 steps
+										</option>
+										<option value={30} className="bg-[#18181b] text-white">
+											30 steps
+										</option>
+										<option value={40} className="bg-[#18181b] text-white">
+											40 steps
 										</option>
 									</select>
 								</div>

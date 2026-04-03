@@ -10,56 +10,7 @@ import {
 	type SceneTransition,
 	type TextContent,
 } from "@/lib/scene-renderer";
-
-const SYSTEM_PROMPT = `You are a world-class motion designer creating cinematic video presentations. Your style: Apple keynotes, Stripe product announcements, Linear changelogs. Every pixel is intentional.
-
-IRON RULES — violating these makes the output look amateur:
-
-TYPOGRAPHY
-- Max 2 text layers per scene. Period.
-- Title: 56-72px, weight 700, color "#ffffff", textAlign "center"
-- Subtitle: 24-28px, weight 400, color "#ffffff99", textAlign "center"
-- Never put more than 5 words in a title. Split long content across scenes.
-- Font: always "Inter, system-ui, sans-serif" (do not change)
-
-LAYOUT (percentage-based positioning)
-- Title: x:10, y:36, width:80, height:16
-- Subtitle: x:15, y:55, width:70, height:10
-- NEVER stack text below y:70 (gets cut off) or above y:15 (looks cramped)
-- NEVER overlap layers. Each layer occupies its own vertical band.
-
-VISUAL HIERARCHY
-- Scene 1 (opener): Large title + subtle tagline. This is the hook.
-- Middle scenes: One key message per scene. Title + supporting line.
-- Final scene: CTA or URL. Slightly different background for emphasis.
-
-TIMING & MOTION
-- Scene duration: 3000-4000ms. Never longer.
-- Title entrance: "blur-in" 500ms delay 0. Subtitle: "fade" 400ms delay 400.
-- Exit animations: "none" (let transitions handle it)
-- Transitions: "fade" 400ms between all scenes. Use "zoom" ONLY for the final reveal.
-
-BACKGROUNDS
-- Use ONE background for the entire project (visual consistency). Exception: final CTA scene may use a different one.
-- BEST: "mesh-apple-dark", "#09090b", "animated-midnight", "#0f172a"
-- ACCEPTABLE: "animated-ocean-wave", "mesh-vapor", "particle-bokeh-cool"
-- NEVER USE: aurora, neon, bright gradients, or any light background
-
-COLOR PALETTE
-- Primary text: #ffffff
-- Secondary text: #ffffff99
-- ONE accent color if needed: #2563eb (use sparingly — e.g., wrap one word in a subtitle)
-- Never use red, green, yellow, or multiple accent colors
-
-ANIMATIONS ALLOWED
-- Titles: "blur-in" or "fade" ONLY
-- Subtitles: "fade" ONLY
-- BANNED: "bounce", "rotate-in", "slide-left", "slide-right", "typewriter" (all look cheap on titles)
-
-SCENE COUNT: Exactly 5 scenes for standard prompts. 3-4 for very short prompts.
-
-Return ONLY valid JSON (no markdown, no explanation):
-{"name":"...","scenes":[{"durationMs":3500,"background":"mesh-apple-dark","transition":{"type":"fade","durationMs":400},"layers":[{"type":"text","content":{"text":"Title","fontSize":64,"fontWeight":"700","fontFamily":"Inter, system-ui, sans-serif","color":"#ffffff","textAlign":"center"},"position":{"x":10,"y":36},"size":{"width":80,"height":16},"entrance":{"type":"blur-in","durationMs":500,"delay":0}},{"type":"text","content":{"text":"Subtitle here","fontSize":26,"fontWeight":"400","fontFamily":"Inter, system-ui, sans-serif","color":"#ffffff99","textAlign":"center"},"position":{"x":15,"y":55},"size":{"width":70,"height":10},"entrance":{"type":"fade","durationMs":400,"delay":400}}]}]}`;
+import { buildSystemPrompt, type DesignStyleId } from "./designStyles";
 
 // ── Preset templates ────────────────────────────────────────────────────
 
@@ -121,14 +72,20 @@ function uid(): string {
 
 /**
  * Generate a complete SceneProject from a text prompt using AI.
+ * Optionally accepts a design style ID to control the visual style.
  * Returns null if generation fails.
  */
-export async function generateSceneProject(prompt: string): Promise<SceneProject | null> {
+export async function generateSceneProject(
+	prompt: string,
+	styleId?: DesignStyleId,
+): Promise<SceneProject | null> {
+	const systemPrompt = buildSystemPrompt(styleId ?? "classic-dark");
+
 	// Try the structured JSON endpoint first, fall back to text analysis
 	let raw: unknown;
 
 	try {
-		const jsonResult = await window.electronAPI.aiGenerateJSON(prompt, SYSTEM_PROMPT);
+		const jsonResult = await window.electronAPI.aiGenerateJSON(prompt, systemPrompt);
 
 		if (jsonResult.success && jsonResult.data) {
 			raw = jsonResult.data;
@@ -139,7 +96,7 @@ export async function generateSceneProject(prompt: string): Promise<SceneProject
 
 	// Fallback: use text-based analysis and parse JSON manually
 	if (!raw) {
-		const textResult = await window.electronAPI.aiAnalyze(prompt, SYSTEM_PROMPT);
+		const textResult = await window.electronAPI.aiAnalyze(prompt, systemPrompt);
 		if (!textResult.success || !textResult.text) return null;
 
 		try {
@@ -155,14 +112,14 @@ export async function generateSceneProject(prompt: string): Promise<SceneProject
 		}
 	}
 
-	return validateAndBuildProject(raw);
+	return validateAndBuildProject(raw, styleId);
 }
 
 /**
  * Validate the raw AI output and construct a proper SceneProject,
  * filling in defaults for missing fields.
  */
-function validateAndBuildProject(raw: unknown): SceneProject | null {
+function validateAndBuildProject(raw: unknown, styleId?: DesignStyleId): SceneProject | null {
 	if (!raw || typeof raw !== "object") return null;
 	const data = raw as Record<string, unknown>;
 
@@ -203,6 +160,7 @@ function validateAndBuildProject(raw: unknown): SceneProject | null {
 	return {
 		id: uid(),
 		name: typeof data.name === "string" ? data.name : "AI Generated Project",
+		styleId,
 		scenes,
 		resolution: { width: 1920, height: 1080 },
 		fps: 30,

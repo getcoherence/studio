@@ -72,6 +72,8 @@ function computeLayerTransform(
 	const localTime = timeMs - layer.startMs;
 	const layerDuration = layer.endMs - layer.startMs;
 
+	const focusPoint = layer.entrance.focusPoint;
+
 	// Entrance animation
 	const entranceEnd = layer.entrance.delay + layer.entrance.durationMs;
 	if (layer.entrance.type !== "none" && localTime < entranceEnd) {
@@ -88,6 +90,7 @@ function computeLayerTransform(
 			layerW,
 			layerH,
 			totalChars,
+			focusPoint,
 		);
 	}
 
@@ -96,7 +99,6 @@ function computeLayerTransform(
 	if (layer.exit.type !== "none" && localTime > exitStart && layer.exit.durationMs > 0) {
 		const rawProgress = (localTime - exitStart) / layer.exit.durationMs;
 		const progress = applyEasing(layer.exit.easing, Math.max(0, Math.min(1, rawProgress)));
-		// Exit: reverse — go from fully visible (progress=0) to hidden (progress=1)
 		return computeAnimation(
 			layer.exit.type,
 			1 - progress,
@@ -105,6 +107,7 @@ function computeLayerTransform(
 			layerW,
 			layerH,
 			totalChars,
+			layer.exit.focusPoint,
 		);
 	}
 
@@ -119,6 +122,7 @@ function computeLayerTransform(
 			layerW,
 			layerH,
 			totalChars,
+			focusPoint,
 		);
 	}
 
@@ -238,11 +242,18 @@ function renderImageLayer(
 		ctx.shadowOffsetY = 4;
 	}
 
-	// Draw image based on fit mode
+	// Determine source region (full image or cropped)
+	const crop = content.cropRegion;
+	const sx = crop ? Math.round(crop.x * img.naturalWidth) : 0;
+	const sy = crop ? Math.round(crop.y * img.naturalHeight) : 0;
+	const sw = crop ? Math.round(crop.width * img.naturalWidth) : img.naturalWidth;
+	const sh = crop ? Math.round(crop.height * img.naturalHeight) : img.naturalHeight;
+
+	// Draw image based on fit mode (using source region)
 	if (content.fit === "fill") {
-		ctx.drawImage(img, x, y, w, h);
+		ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 	} else if (content.fit === "contain") {
-		const imgAspect = img.naturalWidth / img.naturalHeight;
+		const imgAspect = sw / sh;
 		const boxAspect = w / h;
 		let dw: number;
 		let dh: number;
@@ -253,10 +264,10 @@ function renderImageLayer(
 			dh = h;
 			dw = h * imgAspect;
 		}
-		ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+		ctx.drawImage(img, sx, sy, sw, sh, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
 	} else {
 		// cover
-		const imgAspect = img.naturalWidth / img.naturalHeight;
+		const imgAspect = sw / sh;
 		const boxAspect = w / h;
 		let dw: number;
 		let dh: number;
@@ -267,7 +278,7 @@ function renderImageLayer(
 			dw = w;
 			dh = w / imgAspect;
 		}
-		ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+		ctx.drawImage(img, sx, sy, sw, sh, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
 	}
 
 	ctx.restore();

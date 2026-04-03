@@ -179,14 +179,33 @@ export function animateWipe(progress: number): LayerTransform {
 	return { ...identityTransform(), clipProgress: progress };
 }
 
-export function animateKenBurns(progress: number): LayerTransform {
-	// Slow zoom + pan for images
+/**
+ * Ken Burns — slow zoom + pan toward a focus point.
+ * focusPoint is 0-1 normalized (0.5, 0.5 = center).
+ * layerW/layerH are the layer's pixel dimensions for calculating pan distance.
+ */
+export function animateKenBurns(
+	progress: number,
+	focusPoint?: { x: number; y: number },
+	layerW?: number,
+	layerH?: number,
+): LayerTransform {
+	const zoom = 1 + 0.08 * progress; // 8% zoom over duration (subtle, performant)
+	const fx = focusPoint?.x ?? 0.5;
+	const fy = focusPoint?.y ?? 0.5;
+	const w = layerW ?? 100;
+	const h = layerH ?? 100;
+
+	// Pan toward the focus point: offset = distance from center * zoom * progress
+	const panX = (0.5 - fx) * w * 0.08 * progress;
+	const panY = (0.5 - fy) * h * 0.08 * progress;
+
 	return {
 		...identityTransform(),
-		scaleX: 1 + 0.1 * progress,
-		scaleY: 1 + 0.1 * progress,
-		x: -5 * progress,
-		y: -3 * progress,
+		scaleX: zoom,
+		scaleY: zoom,
+		x: panX,
+		y: panY,
 	};
 }
 
@@ -211,6 +230,7 @@ export function computeAnimation(
 	layerWidth: number,
 	layerHeight: number,
 	totalChars: number,
+	focusPoint?: { x: number; y: number },
 ): LayerTransform {
 	switch (type) {
 		case "none":
@@ -238,7 +258,7 @@ export function computeAnimation(
 		case "wipe":
 			return animateWipe(progress);
 		case "ken-burns":
-			return animateKenBurns(progress);
+			return animateKenBurns(progress, focusPoint, layerWidth, layerHeight);
 		case "rotate-in":
 			return animateRotateIn(progress);
 		default:

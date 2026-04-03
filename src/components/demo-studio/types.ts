@@ -1,5 +1,7 @@
 // ── Demo Studio shared types ──────────────────────────────────────────
 
+import type { DemoModeId } from "@/lib/ai/demoModes";
+
 export interface PageElement {
 	type: "button" | "link" | "input" | "select";
 	text: string;
@@ -18,6 +20,7 @@ export interface DemoConfig {
 	url: string;
 	prompt: string;
 	maxSteps: number;
+	mode: DemoModeId;
 }
 
 export interface DemoAction {
@@ -33,7 +36,40 @@ export interface DemoStep {
 	action: DemoAction;
 	timestamp: number;
 	screenshotDataUrl?: string;
-	audioPath?: string; // TTS narration audio file path
+	audioPath?: string;
+	isZoomShot?: boolean; // true for cropped zoom screenshots
+}
+
+// ── Storyboard types (Phase 2 output) ────────────────────────────────
+
+export interface StoryboardScene {
+	/** URL to navigate to */
+	url: string;
+	/** Pixel Y position to scroll to (0 = top) */
+	scrollToY: number;
+	/** CSS selector to zoom into for a highlight shot */
+	zoomTarget?: string;
+	/** Pre-written narration for this scene */
+	narration: string;
+	/** Suggested scene duration in ms */
+	durationMs: number;
+}
+
+export interface Storyboard {
+	title: string;
+	scenes: StoryboardScene[];
+}
+
+// ── Site map types (Phase 1 output) ──────────────────────────────────
+
+export interface SiteMapPage {
+	url: string;
+	title: string;
+	summary: string;
+	features: string[];
+	interactiveElements: string[];
+	/** Section headings found on the page with Y scroll positions */
+	sections: { text: string; yPosition: number }[];
 }
 
 // ── Chat message types ────────────────────────────────────────────────
@@ -44,6 +80,7 @@ export type DemoChatMessageType =
 	| "thinking"
 	| "action"
 	| "narration"
+	| "storyboard"
 	| "pause"
 	| "error"
 	| "completion";
@@ -54,7 +91,7 @@ export interface DemoChatMessage {
 	content: string;
 	timestamp: number;
 	screenshotDataUrl?: string;
-	audioPath?: string; // TTS narration audio file path
+	audioPath?: string;
 	actionType?: string;
 	actionTarget?: string;
 }

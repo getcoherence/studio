@@ -155,8 +155,9 @@ export function SceneCanvas({
 				return; // Skip selection overlay during transitions
 			}
 
-			// When paused, ensure all layers are past their entrance animations
-			// so content is always visible while editing
+			// When paused, clamp render time so all layers are visible:
+			// - Past entrance animations (so content appears)
+			// - Before exit animations (so content doesn't fade out)
 			let renderTime = timeMs;
 			if (!isPlaying && scene.layers.length > 0) {
 				const maxEntrance = Math.max(
@@ -164,6 +165,17 @@ export function SceneCanvas({
 				);
 				if (renderTime < maxEntrance) {
 					renderTime = maxEntrance + 1;
+				}
+				// Clamp before exit animations start
+				const earliestExit = Math.min(
+					...scene.layers.map((l) =>
+						l.exit.type !== "none" && l.exit.durationMs > 0
+							? l.endMs - l.startMs - l.exit.durationMs - 1
+							: Number.MAX_SAFE_INTEGER,
+					),
+				);
+				if (earliestExit < Number.MAX_SAFE_INTEGER && renderTime > earliestExit) {
+					renderTime = earliestExit;
 				}
 			}
 
@@ -215,10 +227,20 @@ export function SceneCanvas({
 		transition && transition.type !== "none" && transitionFromCanvas ? transition.durationMs : 0;
 	const totalPlayDuration = scene.durationMs + transitionDuration;
 
-	// Playback animation loop
+	// Refs for the playback loop — avoids restarting the effect on every frame
+	const drawFrameRef = useRef(drawFrame);
+	drawFrameRef.current = drawFrame;
+	const onTimeUpdateRef = useRef(onTimeUpdate);
+	onTimeUpdateRef.current = onTimeUpdate;
+	const onSceneCompleteRef = useRef(onSceneComplete);
+	onSceneCompleteRef.current = onSceneComplete;
+	const totalPlayDurationRef = useRef(totalPlayDuration);
+	totalPlayDurationRef.current = totalPlayDuration;
+
+	// Playback animation loop — only restarts when isPlaying or scene changes
 	useEffect(() => {
 		if (!isPlaying) {
-			drawFrame(currentTimeMs);
+			drawFrameRef.current(currentTimeMs);
 			return;
 		}
 
@@ -229,15 +251,15 @@ export function SceneCanvas({
 			const elapsed = performance.now() - startTimeRef.current;
 			const timeMs = startOffsetRef.current + elapsed;
 
-			if (timeMs >= totalPlayDuration) {
-				drawFrame(totalPlayDuration);
-				onTimeUpdate?.(totalPlayDuration);
-				onSceneComplete?.();
+			if (timeMs >= totalPlayDurationRef.current) {
+				drawFrameRef.current(totalPlayDurationRef.current);
+				onTimeUpdateRef.current?.(totalPlayDurationRef.current);
+				onSceneCompleteRef.current?.();
 				return;
 			}
 
-			drawFrame(timeMs);
-			onTimeUpdate?.(timeMs);
+			drawFrameRef.current(timeMs);
+			onTimeUpdateRef.current?.(timeMs);
 			rafRef.current = requestAnimationFrame(animate);
 		};
 
@@ -246,15 +268,9 @@ export function SceneCanvas({
 		return () => {
 			if (rafRef.current) cancelAnimationFrame(rafRef.current);
 		};
-	}, [
-		isPlaying,
-		currentTimeMs,
-		scene,
-		totalPlayDuration,
-		drawFrame,
-		onTimeUpdate,
-		onSceneComplete,
-	]);
+		// Only restart when play state or scene identity changes — NOT on every time update
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isPlaying, scene.id]);
 
 	// Redraw when scene changes while paused.
 	// Also schedule a delayed redraw for images that haven't loaded yet.

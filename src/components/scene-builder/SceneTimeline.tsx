@@ -39,6 +39,7 @@ function TransitionIndicator({
 }) {
 	const [open, setOpen] = useState(false);
 	const ref = useRef<HTMLDivElement>(null);
+	const buttonRef = useRef<HTMLButtonElement>(null);
 	const transition = scene.transition;
 
 	// Close dropdown on outside click
@@ -55,9 +56,22 @@ function TransitionIndicator({
 
 	const hasTransition = transition.type !== "none";
 
+	// Calculate position when rendering
+	const getDropdownStyle = (): React.CSSProperties => {
+		if (!buttonRef.current) return { display: "none" };
+		const rect = buttonRef.current.getBoundingClientRect();
+		return {
+			position: "fixed",
+			bottom: window.innerHeight - rect.top + 8,
+			left: rect.left + rect.width / 2,
+			transform: "translateX(-50%)",
+		};
+	};
+
 	return (
 		<div ref={ref} className="relative flex-shrink-0 flex items-center justify-center w-8">
 			<button
+				ref={buttonRef}
 				onClick={() => setOpen(!open)}
 				className={cn(
 					"flex items-center justify-center w-6 h-6 rounded transition-colors",
@@ -70,9 +84,12 @@ function TransitionIndicator({
 				<Diamond size={12} className={hasTransition ? "fill-current" : ""} />
 			</button>
 
-			{/* Dropdown */}
+			{/* Dropdown — uses fixed positioning to escape overflow clipping */}
 			{open && (
-				<div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-[#141417] border border-white/10 rounded-lg shadow-xl p-2 z-[100] w-44">
+				<div
+					className="bg-[#141417] border border-white/10 rounded-lg shadow-xl p-2 z-[100] w-44"
+					style={getDropdownStyle()}
+				>
 					<div className="text-[10px] text-white/40 font-medium px-2 py-1 mb-1">Transition</div>
 					{TRANSITION_TYPES.map((t) => (
 						<button
@@ -225,7 +242,7 @@ export function SceneTimeline({
 	}, [scrollToSelected]);
 
 	return (
-		<div className="flex-shrink-0 border-t border-white/5 bg-[#09090b]/80 backdrop-blur-sm px-4 py-3">
+		<div className="flex-shrink-0 border-t border-white/5 bg-[#09090b]/80 backdrop-blur-sm px-4 py-3 relative z-20">
 			<div
 				ref={scrollContainerRef}
 				className="flex items-center gap-0 overflow-x-auto overflow-y-visible pb-1 scrollbar-thin"

@@ -19,7 +19,7 @@ interface RecentProject {
 interface ProjectBrowserProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onProjectOpened?: () => void;
+	onProjectOpened?: (project?: unknown, path?: string) => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -72,14 +72,16 @@ export function ProjectBrowser({ open, onOpenChange, onProjectOpened }: ProjectB
 
 	const handleOpen = useCallback(
 		async (filePath: string) => {
-			// Load project file by path — sets it as current project in the main process
 			const result = await window.electronAPI.loadProjectByPath(filePath);
-			if (!result?.success) {
+			if (result?.success && result.project) {
+				onOpenChange(false);
+				onProjectOpened?.(result.project, result.path);
+			} else {
 				// Fallback for raw video files
 				await window.electronAPI.setCurrentVideoPath?.(filePath);
+				onOpenChange(false);
+				onProjectOpened?.();
 			}
-			onOpenChange(false);
-			onProjectOpened?.();
 		},
 		[onOpenChange, onProjectOpened],
 	);
@@ -88,7 +90,7 @@ export function ProjectBrowser({ open, onOpenChange, onProjectOpened }: ProjectB
 		const result = await window.electronAPI.loadProjectFile();
 		if (result.success) {
 			onOpenChange(false);
-			onProjectOpened?.();
+			onProjectOpened?.(result.project, result.path);
 		}
 	}, [onOpenChange, onProjectOpened]);
 
