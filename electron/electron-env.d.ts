@@ -181,6 +181,34 @@ interface Window {
 			videoDurationSec?: number,
 		) => Promise<{ success: boolean; audioPath?: string; durationSec?: number; error?: string }>;
 
+		lottieSearch: (
+			query: string,
+			page?: number,
+		) => Promise<{
+			results: Array<{
+				id: string;
+				name: string;
+				imageUrl: string;
+				lottieUrl: string;
+				bgColor: string;
+			}>;
+			error?: string;
+		}>;
+		lottiePopular: (page?: number) => Promise<{
+			results: Array<{
+				id: string;
+				name: string;
+				imageUrl: string;
+				lottieUrl: string;
+				bgColor: string;
+			}>;
+			error?: string;
+		}>;
+		lottieDownload: (
+			lottieUrl: string,
+			name: string,
+		) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+
 		setMicrophoneExpanded: (expanded: boolean) => void;
 		setHasUnsavedChanges: (hasChanges: boolean) => void;
 		onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => () => void;

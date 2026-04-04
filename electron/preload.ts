@@ -167,6 +167,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	aiGenerateMusic: (mood: string, customPrompt?: string, videoDurationSec?: number) => {
 		return ipcRenderer.invoke("ai-generate-music", mood, customPrompt, videoDurationSec);
 	},
+	lottieSearch: (query: string, page?: number) => {
+		return ipcRenderer.invoke("lottie-search", query, page);
+	},
+	lottiePopular: (page?: number) => {
+		return ipcRenderer.invoke("lottie-popular", page);
+	},
+	lottieDownload: (lottieUrl: string, name: string) => {
+		return ipcRenderer.invoke("lottie-download", lottieUrl, name);
+	},
 
 	setMicrophoneExpanded: (expanded: boolean) => {
 		ipcRenderer.send("hud:setMicrophoneExpanded", expanded);
