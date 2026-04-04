@@ -13,8 +13,9 @@ interface SceneTimelineProps {
 	onUpdateTransition?: (sceneIndex: number, transition: SceneTransition) => void;
 }
 
-const THUMB_WIDTH = 160;
-const THUMB_HEIGHT = 90;
+const DEFAULT_THUMB_HEIGHT = 90;
+const MIN_THUMB_HEIGHT = 64;
+const MAX_THUMB_HEIGHT = 240;
 
 const TRANSITION_TYPES: Array<{ value: SceneTransition["type"]; label: string }> = [
 	{ value: "none", label: "None" },
@@ -151,6 +152,8 @@ function SceneThumbnail({
 	onSelect,
 	onDelete,
 	canDelete,
+	thumbWidth,
+	thumbHeight,
 }: {
 	scene: Scene;
 	index: number;
@@ -158,21 +161,22 @@ function SceneThumbnail({
 	onSelect: () => void;
 	onDelete: () => void;
 	canDelete: boolean;
+	thumbWidth: number;
+	thumbHeight: number;
 }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const hasRendered = useRef(false);
+	const renderWidth = Math.round(thumbWidth * 2);
+	const renderHeight = Math.round(thumbHeight * 2);
 
 	useEffect(() => {
-		// Render thumbnail once (at t=1000ms to show entrance animations partway)
 		const canvas = canvasRef.current;
 		if (!canvas) return;
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
 
 		const renderTime = Math.min(1000, scene.durationMs / 2);
-		renderScene(ctx, scene, renderTime, THUMB_WIDTH * 2, THUMB_HEIGHT * 2);
-		hasRendered.current = true;
-	}, [scene]);
+		renderScene(ctx, scene, renderTime, renderWidth, renderHeight);
+	}, [scene, renderWidth, renderHeight]);
 
 	return (
 		<div
@@ -183,15 +187,10 @@ function SceneThumbnail({
 					? "border-[#2563eb] ring-1 ring-[#2563eb]/30"
 					: "border-white/10 hover:border-white/20",
 			)}
-			style={{ width: THUMB_WIDTH, height: THUMB_HEIGHT }}
+			style={{ width: thumbWidth, height: thumbHeight }}
 			onClick={onSelect}
 		>
-			<canvas
-				ref={canvasRef}
-				width={THUMB_WIDTH * 2}
-				height={THUMB_HEIGHT * 2}
-				className="w-full h-full"
-			/>
+			<canvas ref={canvasRef} width={renderWidth} height={renderHeight} className="w-full h-full" />
 
 			{/* Scene number + duration overlay */}
 			<div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1 flex items-end justify-between">
@@ -226,12 +225,51 @@ export function SceneTimeline({
 	onUpdateTransition,
 }: SceneTimelineProps) {
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
+	const [thumbHeight, setThumbHeight] = useState(DEFAULT_THUMB_HEIGHT);
+	const isDraggingRef = useRef(false);
+	const startYRef = useRef(0);
+	const startHeightRef = useRef(DEFAULT_THUMB_HEIGHT);
+
+	const thumbWidth = Math.round(thumbHeight * (16 / 9));
+
+	// ── Resize drag handling ──
+	const handleResizeStart = useCallback(
+		(e: React.MouseEvent) => {
+			e.preventDefault();
+			isDraggingRef.current = true;
+			startYRef.current = e.clientY;
+			startHeightRef.current = thumbHeight;
+
+			const handleMove = (me: MouseEvent) => {
+				if (!isDraggingRef.current) return;
+				const delta = startYRef.current - me.clientY; // dragging up = bigger
+				const newHeight = Math.max(
+					MIN_THUMB_HEIGHT,
+					Math.min(MAX_THUMB_HEIGHT, startHeightRef.current + delta),
+				);
+				setThumbHeight(newHeight);
+			};
+
+			const handleUp = () => {
+				isDraggingRef.current = false;
+				document.removeEventListener("mousemove", handleMove);
+				document.removeEventListener("mouseup", handleUp);
+				document.body.style.cursor = "";
+				document.body.style.userSelect = "";
+			};
+
+			document.addEventListener("mousemove", handleMove);
+			document.addEventListener("mouseup", handleUp);
+			document.body.style.cursor = "ns-resize";
+			document.body.style.userSelect = "none";
+		},
+		[thumbHeight],
+	);
 
 	// Auto-scroll to keep selected scene visible
 	const scrollToSelected = useCallback(() => {
 		const container = scrollContainerRef.current;
 		if (!container) return;
-		// Find the actual scene thumbnail (skip transition indicators)
 		const thumbnails = container.querySelectorAll("[data-scene-thumb]");
 		const child = thumbnails[selectedIndex] as HTMLElement | undefined;
 		child?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
@@ -242,38 +280,48 @@ export function SceneTimeline({
 	}, [scrollToSelected]);
 
 	return (
-		<div className="flex-shrink-0 border-t border-white/5 bg-[#09090b]/80 backdrop-blur-sm px-4 py-3 relative z-20">
+		<div className="flex-shrink-0 bg-[#09090b]/80 backdrop-blur-sm relative z-20">
+			{/* Resize handle */}
 			<div
-				ref={scrollContainerRef}
-				className="flex items-center gap-0 overflow-x-auto overflow-y-visible pb-1 scrollbar-thin"
-			>
-				{scenes.map((scene, i) => (
-					<div key={scene.id} className="flex items-center gap-0">
-						{/* Transition indicator between scenes */}
-						{i > 0 && (
-							<TransitionIndicator scene={scene} sceneIndex={i} onUpdate={onUpdateTransition} />
-						)}
+				onMouseDown={handleResizeStart}
+				className="h-1.5 border-t border-white/5 cursor-ns-resize hover:bg-[#2563eb]/30 active:bg-[#2563eb]/50 transition-colors"
+				title="Drag to resize thumbnails"
+			/>
+			<div className="px-4 py-3">
+				<div
+					ref={scrollContainerRef}
+					className="flex items-center gap-0 overflow-x-auto overflow-y-visible pb-1 scrollbar-thin"
+				>
+					{scenes.map((scene, i) => (
+						<div key={scene.id} className="flex items-center gap-0">
+							{/* Transition indicator between scenes */}
+							{i > 0 && (
+								<TransitionIndicator scene={scene} sceneIndex={i} onUpdate={onUpdateTransition} />
+							)}
 
-						<SceneThumbnail
-							scene={scene}
-							index={i}
-							isSelected={i === selectedIndex}
-							onSelect={() => onSelectScene(i)}
-							onDelete={() => onDeleteScene(i)}
-							canDelete={scenes.length > 1}
-						/>
+							<SceneThumbnail
+								scene={scene}
+								index={i}
+								isSelected={i === selectedIndex}
+								onSelect={() => onSelectScene(i)}
+								onDelete={() => onDeleteScene(i)}
+								canDelete={scenes.length > 1}
+								thumbWidth={thumbWidth}
+								thumbHeight={thumbHeight}
+							/>
+						</div>
+					))}
+
+					{/* Add scene button */}
+					<div className="ml-3">
+						<button
+							onClick={onAddScene}
+							className="flex-shrink-0 flex items-center justify-center rounded-lg border-2 border-dashed border-white/10 hover:border-[#2563eb]/50 hover:bg-white/5 transition-colors"
+							style={{ width: thumbWidth, height: thumbHeight }}
+						>
+							<Plus size={24} className="text-white/30" />
+						</button>
 					</div>
-				))}
-
-				{/* Add scene button */}
-				<div className="ml-3">
-					<button
-						onClick={onAddScene}
-						className="flex-shrink-0 flex items-center justify-center rounded-lg border-2 border-dashed border-white/10 hover:border-[#2563eb]/50 hover:bg-white/5 transition-colors"
-						style={{ width: THUMB_WIDTH, height: THUMB_HEIGHT }}
-					>
-						<Plus size={24} className="text-white/30" />
-					</button>
 				</div>
 			</div>
 		</div>

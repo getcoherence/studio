@@ -3,6 +3,9 @@
 import type { DemoModeId } from "@/lib/ai/demoModes";
 import type { ScreenshotAnalysis } from "@/lib/cv/types";
 
+/** Controls composition strategy and default renderer */
+export type OutputStyle = "product-demo" | "cinematic" | "ai-cinematic";
+
 export interface PageElement {
 	type: "button" | "link" | "input" | "select";
 	text: string;
@@ -22,6 +25,7 @@ export interface DemoConfig {
 	prompt: string;
 	maxSteps: number;
 	mode: DemoModeId;
+	outputStyle: OutputStyle;
 }
 
 export interface DemoAction {

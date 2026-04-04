@@ -7,13 +7,15 @@ import { AlertTriangle, ArrowLeft, Bot, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
+import { generateAiComposition } from "@/lib/ai/aiCinematicEngine";
+import { composeCinematicProject } from "@/lib/ai/cinematicCompositionEngine";
 import { composeProject } from "@/lib/ai/compositionEngine";
 import type { SceneProject } from "@/lib/scene-renderer";
 import { DemoBottomBar } from "./DemoBottomBar";
 import { DemoBrowserPanel } from "./DemoBrowserPanel";
 import { DemoChatPanel } from "./DemoChatPanel";
 import { addToPromptHistory } from "./promptHistory";
-import type { DemoChatMessage, DemoConfig } from "./types";
+import type { DemoChatMessage, DemoConfig, OutputStyle } from "./types";
 import { useDemoAgent } from "./useDemoAgent";
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -28,6 +30,7 @@ interface DemoStudioPageProps {
 export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) {
 	const [messages, setMessages] = useState<DemoChatMessage[]>([]);
 	const [maxSteps, setMaxSteps] = useState(12);
+	const [outputStyle, setOutputStyle] = useState<OutputStyle>("cinematic");
 	const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 	const webviewRef = useRef<Electron.WebviewTag>(null);
 
@@ -56,6 +59,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 	const handleStart = useCallback(
 		(config: DemoConfig) => {
 			setMaxSteps(config.maxSteps);
+			setOutputStyle(config.outputStyle);
 			setMessages([]);
 			addToPromptHistory({ url: config.url, prompt: config.prompt });
 
@@ -74,11 +78,87 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 		[agent],
 	);
 
-	const handleOpenInEditor = useCallback(() => {
+	const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+
+	const handleOpenInEditor = useCallback(async () => {
 		if (agent.steps.length === 0) return;
-		const project = composeProject(agent.steps, { title: agent.storyboardTitle });
+		const title = agent.storyboardTitle;
+		const brand = {
+			primaryColor: agent.brandInfo?.primaryColor || "#2563eb",
+			accentColor: agent.brandInfo?.accentColor ?? undefined,
+			fontFamily: agent.brandInfo?.fontFamily ?? undefined,
+			productName: agent.brandInfo?.productName ?? undefined,
+		};
+
+		if (outputStyle === "ai-cinematic") {
+			// AI-generated composition — async, shows loading state
+			setIsGeneratingAi(true);
+			handleMessage({
+				id: `ai-gen-${Date.now()}`,
+				type: "thinking",
+				content: "Generating cinematic composition with AI...",
+				timestamp: Date.now(),
+			});
+
+			const result = await generateAiComposition(agent.steps, {
+				title,
+				brand,
+				onStatus: (msg) => {
+					handleMessage({
+						id: `ai-status-${Date.now()}`,
+						type: "thinking",
+						content: msg,
+						timestamp: Date.now(),
+					});
+				},
+			});
+
+			setIsGeneratingAi(false);
+
+			if (result.error) {
+				toast.error(`AI generation failed: ${result.error}`);
+				handleMessage({
+					id: `ai-err-${Date.now()}`,
+					type: "error",
+					content: `AI composition failed: ${result.error}. Try "Cinematic" mode as fallback.`,
+					timestamp: Date.now(),
+				});
+				return;
+			}
+
+			// Store AI composition data on the project object itself
+			// (module-level stores get consumed by React StrictMode double-mounting)
+			const fallbackProject = composeCinematicProject(agent.steps, { title, brand });
+			fallbackProject.styleId = "ai-cinematic";
+			// biome-ignore lint/suspicious/noExplicitAny: AI cinematic extends SceneProject with runtime fields
+			const proj = fallbackProject as Record<string, any>;
+			proj._aiCode = result.code;
+			proj._aiScreenshots = result.screenshots;
+			proj._aiSteps = agent.steps.map((s) => ({
+				action: s.action,
+				headline: s.headline,
+				screenshotDataUrl: s.screenshotDataUrl,
+				uiElements: s.uiElements,
+				timestamp: s.timestamp,
+			}));
+			proj._aiBrand = brand;
+			onOpenInEditor(fallbackProject);
+			return;
+		}
+
+		const project =
+			outputStyle === "cinematic"
+				? composeCinematicProject(agent.steps, { title, brand })
+				: composeProject(agent.steps, { title });
 		onOpenInEditor(project);
-	}, [agent.steps, agent.storyboardTitle, onOpenInEditor]);
+	}, [
+		agent.steps,
+		agent.storyboardTitle,
+		agent.brandInfo,
+		outputStyle,
+		onOpenInEditor,
+		handleMessage,
+	]);
 
 	// ── Voiceover generation ──
 
@@ -213,7 +293,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 							onStart={handleStart}
 							onOpenInEditor={handleOpenInEditor}
 							onGenerateVoiceover={handleGenerateVoiceover}
-							isGeneratingVoiceover={isGeneratingVoiceover}
+							isGeneratingVoiceover={isGeneratingVoiceover || isGeneratingAi}
 						/>
 					</Panel>
 					<PanelResizeHandle className="w-1 bg-white/5 hover:bg-[#2563eb]/40 transition-colors" />

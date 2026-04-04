@@ -103,7 +103,7 @@ async function ollamaGenerate(prompt: string, model: string, ollamaUrl: string):
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ model, prompt, stream: false }),
-		signal: AbortSignal.timeout(60_000),
+		signal: AbortSignal.timeout(120_000),
 	});
 	if (!response.ok) {
 		throw new Error(`Ollama responded with ${response.status}: ${response.statusText}`);
@@ -135,8 +135,9 @@ async function openaiCompatibleChat(
 			model,
 			messages,
 			temperature: 0.3,
+			max_completion_tokens: 16384,
 		}),
-		signal: AbortSignal.timeout(60_000),
+		signal: AbortSignal.timeout(120_000),
 	});
 	const data = (await response.json()) as {
 		choices?: Array<{ message?: { content?: string } }>;
@@ -172,7 +173,7 @@ async function anthropicChat(
 ): Promise<string> {
 	const body: Record<string, unknown> = {
 		model,
-		max_tokens: 4096,
+		max_tokens: 16384,
 		messages: [{ role: "user", content: prompt }],
 	};
 	if (systemPrompt) {
@@ -186,7 +187,7 @@ async function anthropicChat(
 			"anthropic-version": "2023-06-01",
 		},
 		body: JSON.stringify(body),
-		signal: AbortSignal.timeout(60_000),
+		signal: AbortSignal.timeout(120_000),
 	});
 	if (!response.ok) {
 		const errorBody = await response.text().catch(() => "");
@@ -312,7 +313,7 @@ async function openaiVisionChat(
 			Authorization: `Bearer ${apiKey}`,
 		},
 		body: JSON.stringify({ model, messages, max_tokens: 4096, temperature: 0.3 }),
-		signal: AbortSignal.timeout(60_000),
+		signal: AbortSignal.timeout(120_000),
 	});
 	if (!response.ok) {
 		throw new Error(`OpenAI vision responded with ${response.status}: ${response.statusText}`);
@@ -358,7 +359,7 @@ async function anthropicVisionChat(
 			"anthropic-version": "2023-06-01",
 		},
 		body: JSON.stringify(body),
-		signal: AbortSignal.timeout(60_000),
+		signal: AbortSignal.timeout(120_000),
 	});
 	if (!response.ok) {
 		throw new Error(`Anthropic vision responded with ${response.status}: ${response.statusText}`);

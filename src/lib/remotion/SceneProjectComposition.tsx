@@ -79,7 +79,7 @@ export const SceneProjectComposition: React.FC<SceneProjectCompositionProps> = (
 						durationInFrames={seg.durationFrames}
 						layout="none"
 					>
-						<RemotionScene scene={scene} />
+						<RemotionScene scene={scene} styleId={project.styleId} />
 					</Sequence>
 				);
 			})}

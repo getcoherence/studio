@@ -10,6 +10,9 @@ import type {
 	ShapeContent,
 	TextContent,
 } from "@/lib/scene-renderer/types";
+import { FloatingCard } from "./components/FloatingCard";
+import { PerCharacterText } from "./text/PerCharacterText";
+import { RollingNumber } from "./text/RollingNumber";
 import { useLayerAnimation } from "./useLayerAnimation";
 
 interface RemotionLayerProps {
@@ -17,9 +20,14 @@ interface RemotionLayerProps {
 	compositionWidth: number;
 	compositionHeight: number;
 	sceneDurationFrames: number;
+	styleId?: string;
 }
 
-export const RemotionLayer: React.FC<RemotionLayerProps> = ({ layer, sceneDurationFrames }) => {
+export const RemotionLayer: React.FC<RemotionLayerProps> = ({
+	layer,
+	sceneDurationFrames,
+	styleId,
+}) => {
 	const layerDurationFrames = sceneDurationFrames;
 
 	// Compute entrance and exit animation styles
@@ -56,15 +64,97 @@ export const RemotionLayer: React.FC<RemotionLayerProps> = ({ layer, sceneDurati
 		...animStyle,
 	};
 
+	const isCinematic = styleId === "cinematic";
+
 	return (
 		<div style={containerStyle}>
-			{layer.type === "text" && (
-				<TextLayer content={layer.content as TextContent} visibleChars={visibleChars} />
-			)}
-			{layer.type === "image" && <ImageLayer content={layer.content as ImageContent} />}
+			{layer.type === "text" &&
+				(isCinematic ? (
+					<CinematicTextLayer
+						layer={layer}
+						content={layer.content as TextContent}
+						visibleChars={visibleChars}
+					/>
+				) : (
+					<TextLayer content={layer.content as TextContent} visibleChars={visibleChars} />
+				))}
+			{layer.type === "image" &&
+				(isCinematic && (layer.content as ImageContent).cropRegion ? (
+					<FloatingCard
+						src={(layer.content as ImageContent).src}
+						cropRegion={(layer.content as ImageContent).cropRegion!}
+						borderRadius={(layer.content as ImageContent).borderRadius}
+						accentColor={undefined}
+					/>
+				) : (
+					<ImageLayer content={layer.content as ImageContent} />
+				))}
 			{layer.type === "shape" && <ShapeLayer content={layer.content as ShapeContent} />}
 		</div>
 	);
+};
+
+// ── Cinematic Text Layer ─────────────────────────────────────────────────
+// Routes to PerCharacterText, RollingNumber, or standard text based on content.
+
+const CinematicTextLayer: React.FC<{
+	layer: SceneLayer;
+	content: TextContent;
+	visibleChars: number;
+}> = ({ layer, content }) => {
+	const text = content.text;
+
+	// Rolling number: large font + text looks like a stat (e.g. "$465", "99%", "10x")
+	const statMatch = text.match(/^(\$?)([\d,]+(?:\.\d+)?)\s*([%xX+KkMmBb]*)$/);
+	if (statMatch && content.fontSize >= 64) {
+		return (
+			<RollingNumber
+				value={statMatch[2]}
+				prefix={statMatch[1]}
+				suffix={statMatch[3]}
+				fontSize={content.fontSize}
+				fontFamily={content.fontFamily}
+				fontWeight={content.fontWeight}
+				color={content.color}
+				textAlign={content.textAlign}
+			/>
+		);
+	}
+
+	// Per-character animation: large bold text (headlines) with spring entrance
+	if (content.fontSize >= 48 && layer.entrance.easing === "spring") {
+		return (
+			<PerCharacterText
+				text={text}
+				fontSize={content.fontSize}
+				fontFamily={content.fontFamily}
+				fontWeight={content.fontWeight}
+				color={content.color}
+				textAlign={content.textAlign}
+				lineHeight={content.lineHeight}
+				staggerFrames={2}
+			/>
+		);
+	}
+
+	// Default: per-character animation for all large cinematic text
+	if (content.fontSize >= 64) {
+		return (
+			<PerCharacterText
+				text={text}
+				fontSize={content.fontSize}
+				fontFamily={content.fontFamily}
+				fontWeight={content.fontWeight}
+				color={content.color}
+				textAlign={content.textAlign}
+				lineHeight={content.lineHeight}
+				staggerFrames={2}
+			/>
+		);
+	}
+
+	// Smaller text (subtitles, narration): standard rendering
+	return <TextLayer content={content} visibleChars={-1} />;
 };
 
 // ── Text Layer ───────────────────────────────────────────────────────────
