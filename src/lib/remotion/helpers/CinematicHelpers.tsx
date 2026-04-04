@@ -75,6 +75,14 @@ export const AnimatedText: React.FC<{
 	const cleanText = text.replace(/\\n/g, " ").replace(/\n/g, " ");
 	const words = cleanText.split(" ").filter(Boolean);
 
+	// Auto-fit: estimate if text overflows and scale down fontSize
+	const avgCharWidth = fontSize * 0.55; // rough estimate for most fonts
+	const estimatedWidth = cleanText.length * avgCharWidth;
+	const effectiveFontSize =
+		estimatedWidth > maxWidth
+			? Math.max(48, Math.floor(fontSize * (maxWidth / estimatedWidth)))
+			: fontSize;
+
 	if (animation === "scale") {
 		const progress = spring({
 			frame: localFrame,
@@ -84,7 +92,7 @@ export const AnimatedText: React.FC<{
 		return (
 			<div
 				style={{
-					fontSize,
+					fontSize: effectiveFontSize,
 					fontFamily,
 					fontWeight,
 					letterSpacing,
@@ -111,7 +119,7 @@ export const AnimatedText: React.FC<{
 		return (
 			<div
 				style={{
-					fontSize,
+					fontSize: effectiveFontSize,
 					fontFamily,
 					fontWeight,
 					letterSpacing,
@@ -137,7 +145,7 @@ export const AnimatedText: React.FC<{
 		return (
 			<div
 				style={{
-					fontSize,
+					fontSize: effectiveFontSize,
 					fontFamily,
 					fontWeight,
 					letterSpacing,
@@ -162,7 +170,7 @@ export const AnimatedText: React.FC<{
 					display: "flex",
 					flexWrap: "wrap",
 					justifyContent: align === "center" ? "center" : "flex-start",
-					gap: `0 ${fontSize * 0.18}px`,
+					gap: `0 ${effectiveFontSize * 0.18}px`,
 					maxWidth,
 					overflow: "hidden",
 				}}
@@ -184,7 +192,7 @@ export const AnimatedText: React.FC<{
 							style={{
 								display: "inline-block",
 								whiteSpace: "nowrap",
-								fontSize,
+								fontSize: effectiveFontSize,
 								fontFamily,
 								fontWeight,
 								letterSpacing,
@@ -209,10 +217,10 @@ export const AnimatedText: React.FC<{
 					display: "flex",
 					flexWrap: "wrap",
 					justifyContent: align === "center" ? "center" : "flex-start",
-					gap: `0 ${fontSize * 0.18}px`,
+					gap: `0 ${effectiveFontSize * 0.18}px`,
 					maxWidth,
 					overflow: "hidden",
-					fontSize,
+					fontSize: effectiveFontSize,
 					fontFamily,
 					fontWeight,
 					letterSpacing,
@@ -237,7 +245,7 @@ export const AnimatedText: React.FC<{
 										key={ci}
 										style={{
 											display: "inline-block",
-											fontSize,
+											fontSize: effectiveFontSize,
 											color: isAccent && accentColor ? accentColor : color,
 											opacity: fadeIn,
 											transform: `translateY(${waveOffset * fadeIn}px)`,
@@ -281,7 +289,7 @@ export const AnimatedText: React.FC<{
 							style={{
 								display: "inline-block",
 								whiteSpace: "nowrap",
-								fontSize,
+								fontSize: effectiveFontSize,
 								fontFamily,
 								fontWeight,
 								letterSpacing,
@@ -307,10 +315,10 @@ export const AnimatedText: React.FC<{
 				display: "flex",
 				flexWrap: "wrap",
 				justifyContent: align === "center" ? "center" : "flex-start",
-				gap: `0 ${fontSize * 0.18}px`,
+				gap: `0 ${effectiveFontSize * 0.18}px`,
 				maxWidth,
 				overflow: "hidden",
-				fontSize,
+				fontSize: effectiveFontSize,
 				fontFamily,
 				fontWeight,
 				letterSpacing,
@@ -323,7 +331,12 @@ export const AnimatedText: React.FC<{
 				const wordNode = (
 					<span
 						key={wi}
-						style={{ display: "inline-block", whiteSpace: "nowrap", fontSize, fontWeight }}
+						style={{
+							display: "inline-block",
+							whiteSpace: "nowrap",
+							fontSize: effectiveFontSize,
+							fontWeight,
+						}}
 					>
 						{word.split("").map((char, ci) => {
 							const charDelay = charIndex * 2;
@@ -338,7 +351,7 @@ export const AnimatedText: React.FC<{
 									key={ci}
 									style={{
 										display: "inline-block",
-										fontSize,
+										fontSize: effectiveFontSize,
 										opacity: progress,
 										transform: `translateY(${(1 - progress) * 24}px)`,
 										color: isAccent && accentColor ? accentColor : color,
