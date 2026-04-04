@@ -281,41 +281,51 @@ function CompilationErrorFallback() {
  * Parses the code to find durationInFrames values or Sequence from/duration props.
  */
 export function estimateAiDuration(code: string, fps = 30): number {
-	// Try to find explicit total duration variable
-	const totalMatch = code.match(/totalDuration\s*=\s*(\d+)/);
-	if (totalMatch) return parseInt(totalMatch[1], 10);
+	// Strategy: try to extract totalDuration by evaluating the variable declarations
+	// from the compiled code in a safe sandbox
+	try {
+		let strippedCode = code
+			.replace(/import\s+[\s\S]*?from\s*['"][^'"]*['"];?/g, "")
+			.replace(/import\s+['"][^'"]+['"];?/g, "")
+			.trim();
 
-	// Look for SCENE_FRAMES * count pattern (either order)
-	const sceneFramesMatch = code.match(/SCENE_FRAMES\s*=\s*(\d+)/);
-	if (sceneFramesMatch) {
-		const perScene = parseInt(sceneFramesMatch[1], 10);
-		const countA = code.match(/(\d+)\s*\*\s*SCENE_FRAMES/);
-		const countB = code.match(/SCENE_FRAMES\s*\*\s*(\d+)/);
-		const count = countA ? parseInt(countA[1], 10) : countB ? parseInt(countB[1], 10) : 0;
-		if (count > 0) return count * perScene;
-		// Fallback: count Sequence components × SCENE_FRAMES
-		const seqs = (code.match(/<Sequence/g) || []).length;
-		if (seqs > 0) return seqs * perScene;
+		const jsCode = transform(strippedCode, {
+			transforms: ["jsx", "typescript"],
+			jsxRuntime: "classic",
+			production: false,
+		}).code;
+
+		// Try to extract totalDuration by running just the const declarations
+		// biome-ignore lint: eval is intentional for duration extraction
+		const extractDuration = new Function(
+			"React",
+			`"use strict";
+			// Stub out components so they don't error
+			const AbsoluteFill = () => null;
+			const Sequence = () => null;
+			const Series = { Sequence: () => null };
+			const Img = () => null;
+			const Audio = () => null;
+			const useCurrentFrame = () => 0;
+			const useVideoConfig = () => ({ fps: 30, durationInFrames: 600, width: 1920, height: 1080 });
+			const interpolate = (v) => v;
+			const spring = () => 0;
+			const random = () => 0;
+			try {
+				${jsCode}
+				if (typeof totalDuration === 'number' && totalDuration > 0) return totalDuration;
+			} catch(e) {}
+			return 0;`,
+		);
+		const result = extractDuration(React);
+		if (typeof result === "number" && result > 0) return result;
+	} catch {
+		// Extraction failed — fall through to heuristics
 	}
 
-	// Look for totalDuration as an expression (e.g. 12 * 60)
-	const totalExprMatch = code.match(/totalDuration\s*=\s*(\d+)\s*\*\s*(\d+)/);
-	if (totalExprMatch) return parseInt(totalExprMatch[1], 10) * parseInt(totalExprMatch[2], 10);
-
-	// Find the highest 'from' value in Sequence components
-	const fromValues = [...code.matchAll(/from[=:]\s*{?\s*(\d+)/g)].map((m) => parseInt(m[1], 10));
-	const durationValues = [...code.matchAll(/durationInFrames[=:]\s*{?\s*(\d+)/g)].map((m) =>
-		parseInt(m[1], 10),
-	);
-	if (fromValues.length > 0 && durationValues.length > 0) {
-		const maxFrom = Math.max(...fromValues);
-		const lastDuration = durationValues[durationValues.length - 1] || 60;
-		return maxFrom + lastDuration;
-	}
-
-	// Count Sequence components and estimate
+	// Heuristic fallback: count Sequence components × 60 frames
 	const sequenceCount = (code.match(/<Sequence/g) || []).length;
-	if (sequenceCount > 0) return sequenceCount * 60; // ~2s per sequence
+	if (sequenceCount > 0) return sequenceCount * 60;
 
 	// Default: 20 seconds
 	return fps * 20;
