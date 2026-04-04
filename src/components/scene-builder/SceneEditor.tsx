@@ -32,6 +32,7 @@ import { aiPolishSceneProject, polishSceneProject } from "@/lib/ai/scenePolish";
 import { generateCustomMusic, type MusicMood } from "@/lib/audio/musicCatalog";
 import { type AiCompositionData, consumePendingDemoProject } from "@/lib/demoProjectStore";
 import { DynamicPreview } from "@/lib/remotion/DynamicPreview";
+import { LOTTIE_CATALOG } from "@/lib/remotion/helpers/LottieHelper";
 import { RemotionPreview } from "@/lib/remotion/RemotionPreview";
 import {
 	captureCanvas,
@@ -1431,15 +1432,20 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 													})}
 												</div>
 												{/* Lottie */}
-												<input
-													type="text"
+												<select
 													value={scene.lottieOverlay || ""}
 													onChange={(e) =>
 														updateScenePlan(i, { lottieOverlay: e.target.value || undefined })
 													}
-													className="w-full px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-white/40 focus:outline-none"
-													placeholder="Lottie overlay (file.json or URL)"
-												/>
+													className="w-full text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-white/40 [&>option]:bg-[#141417] [&>option]:text-white"
+												>
+													<option value="">No Lottie overlay</option>
+													{LOTTIE_CATALOG.map((l) => (
+														<option key={l.id} value={l.src}>
+															{l.name} ({l.category})
+														</option>
+													))}
+												</select>
 											</div>
 										))}
 									</div>

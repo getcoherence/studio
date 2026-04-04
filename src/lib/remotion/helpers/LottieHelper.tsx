@@ -178,6 +178,76 @@ export interface LottieCatalogItem {
  * Users can also load custom Lottie files.
  */
 export const LOTTIE_CATALOG: LottieCatalogItem[] = [
-	// These are placeholders — replace src with actual Lottie JSON files
-	// Download from https://lottiefiles.com/free-animations/
+	{
+		id: "confetti-burst",
+		name: "Confetti Burst",
+		category: "decoration",
+		src: "confetti-burst.json",
+		defaultSize: 80,
+		defaultPosition: "full",
+	},
+	{
+		id: "confetti-pop",
+		name: "Confetti Pop",
+		category: "decoration",
+		src: "confetti-pop.json",
+		defaultSize: 60,
+		defaultPosition: "center",
+	},
+	{
+		id: "confetti-cannons",
+		name: "Confetti Cannons",
+		category: "decoration",
+		src: "confetti-cannons.json",
+		defaultSize: 80,
+		defaultPosition: "full",
+	},
+	{
+		id: "fireworks",
+		name: "Fireworks",
+		category: "decoration",
+		src: "fireworks.json",
+		defaultSize: 70,
+		defaultPosition: "full",
+	},
+	{
+		id: "sparkle-stars",
+		name: "Sparkle Stars",
+		category: "decoration",
+		src: "sparkle-stars.json",
+		defaultSize: 50,
+		defaultPosition: "center",
+	},
+	{
+		id: "star-explosion",
+		name: "Star Explosion",
+		category: "transition",
+		src: "star-explosion.json",
+		defaultSize: 60,
+		defaultPosition: "center",
+	},
+	{
+		id: "abstract-shapes",
+		name: "Abstract Shapes",
+		category: "shape",
+		src: "abstract-shapes.json",
+		defaultSize: 50,
+		defaultPosition: "center",
+	},
+	{
+		id: "gradient",
+		name: "Gradient Flow",
+		category: "background",
+		src: "gradient.json",
+		defaultSize: 100,
+		defaultPosition: "full",
+	},
+	{
+		id: "morph-blob",
+		name: "Morphing Blob",
+		category: "shape",
+		src: "morph-blob.json",
+		defaultSize: 40,
+		defaultPosition: "center",
+	},
 ];
