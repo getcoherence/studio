@@ -7,6 +7,10 @@
 // This enables the "AI creates the video" approach where the AI writes
 // actual React components instead of populating a data model.
 
+import { linearTiming, springTiming, TransitionSeries } from "@remotion/transitions";
+import { fade } from "@remotion/transitions/fade";
+import { slide } from "@remotion/transitions/slide";
+import { wipe } from "@remotion/transitions/wipe";
 import React, { useEffect, useState } from "react";
 import {
 	AbsoluteFill,
@@ -143,6 +147,13 @@ const MODULE_SCOPE = {
 	Series,
 	AbsoluteFill,
 	Img,
+	// Transitions
+	TransitionSeries,
+	linearTiming,
+	springTiming,
+	fade,
+	slide,
+	wipe,
 	// Pre-built cinematic helpers — safe, responsive, animated
 	Scene,
 	AnimatedText,
