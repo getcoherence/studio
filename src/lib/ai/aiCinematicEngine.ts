@@ -83,10 +83,49 @@ export async function generateAiComposition(
 			};
 		}
 
-		opts?.onStatus?.("Composition generated successfully");
+		// ── Self-review pass: AI critiques and fixes its own code ──
+		opts?.onStatus?.("Reviewing composition for quality issues...");
+
+		const reviewPrompt = [
+			"You are a motion graphics QA reviewer. You were given this Remotion React code for a product video.",
+			"Review it for these common issues and output a FIXED version:",
+			"",
+			"ISSUES TO FIX:",
+			"1. Text too small (any fontSize below 28px) — increase to at least 32px",
+			"2. LightStreak used more than once — remove extras, keep at most one",
+			"3. GlitchText used more than once — remove extras, keep at most one",
+			"4. Scenes too short (durationInFrames or SCENE_FRAMES below 80) — increase to 90",
+			"5. Text containing literal \\n — replace with spaces",
+			"6. Text overflowing containers (missing overflow:'hidden' or maxWidth)",
+			"7. Elements positioned outside the 1920x1080 frame (negative positions, > 1920px wide)",
+			"8. Too many visual effects crammed into one scene — simplify to 1-2 effects per scene",
+			"9. Missing breathing room — ensure padding of at least 80px from edges",
+			"10. Repetitive animation styles — vary them across scenes",
+			"",
+			"Output ONLY the fixed code. No explanations. If the code is already good, output it unchanged.",
+			"",
+			"CODE TO REVIEW:",
+			code,
+		].join("\n");
+
+		const reviewResult = await window.electronAPI.aiAnalyze(
+			reviewPrompt,
+			"You fix React/Remotion code. Output ONLY the fixed code, no explanations.",
+		);
+
+		let finalCode = code;
+		if (reviewResult?.success && reviewResult.text) {
+			const reviewed = extractCode(reviewResult.text);
+			if (reviewed && reviewed.length > code.length * 0.5) {
+				finalCode = reviewed;
+				opts?.onStatus?.("Quality review complete — issues fixed");
+			} else {
+				opts?.onStatus?.("Quality review passed — no issues found");
+			}
+		}
 
 		return {
-			code,
+			code: finalCode,
 			screenshots: stepsWithScreenshots.map((s) => s.screenshotDataUrl!),
 		};
 	} catch (err) {
@@ -185,11 +224,13 @@ function buildSystemPrompt(): string {
 		"<Vignette intensity={0.5} />",
 		"- Add inside dark scenes for cinematic depth.",
 		"",
-		"## IMPORTANT: Use helpers for AWARD-WINNING quality",
-		"The OPENING scene MUST use either GradientText or ClipReveal + AnimatedText for maximum impact.",
-		"Use GlitchText for at least one scene. Use LightStreak during at least one transition.",
-		"Use Vignette on dark scenes. Mix AnimatedText animation modes (chars, words, scale, clip).",
-		"DO NOT redefine any helper component — they are already provided in scope.",
+		"## IMPORTANT: Quality principles",
+		"- OPENING scene should be dramatic: use GradientText OR ClipReveal wrapping AnimatedText.",
+		"- Use effects SPARINGLY — one GlitchText entrance, one LightStreak max. Overuse looks cheap.",
+		"- Vignette only on 1-2 dark scenes. Not every scene needs an effect.",
+		"- Mix AnimatedText animation modes (chars, words, scale, clip) — never repeat the same mode twice in a row.",
+		"- LESS IS MORE. Clean, bold typography with breathing room beats cluttered effects.",
+		"- DO NOT redefine any helper component — they are already provided in scope.",
 		"",
 		"## Critical Rules",
 		"",
