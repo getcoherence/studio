@@ -178,16 +178,6 @@ function compileCode(tsxCode: string): React.FC<{ screenshots: string[] }> {
 		.replace(/import\s+['"][^'"]+['"];?/g, "")
 		.trim();
 
-	// Step 1b: Remove declarations that shadow our injected helpers.
-	// The AI sometimes redefines Scene, Card, etc. — our injected versions are safer.
-	// Approach: rename AI's declarations to _AI_Scene, _AI_Card etc. so they don't conflict.
-	const injectedNames = ["Scene", "AnimatedText", "Card", "Pill", "Underline"];
-	for (const name of injectedNames) {
-		// Rename: "const Scene" → "const _AI_Scene", "function Scene" → "function _AI_Scene"
-		code = code.replace(new RegExp(`\\bconst ${name}\\b\\s*=`, "g"), `const _AI_${name} =`);
-		code = code.replace(new RegExp(`\\bfunction ${name}\\b\\s*\\(`, "g"), `function _AI_${name}(`);
-	}
-
 	// Step 2: Transform TSX → JS
 	const result = transform(code, {
 		transforms: ["jsx", "typescript"],
@@ -202,8 +192,16 @@ function compileCode(tsxCode: string): React.FC<{ screenshots: string[] }> {
 	code = code.replace(/export\s+default\s+/g, "").replace(/export\s+/g, "");
 
 	// Wrap in a function that returns the component
-	const scopeKeys = Object.keys(MODULE_SCOPE);
-	const scopeValues = Object.values(MODULE_SCOPE);
+	// Skip injecting scope keys that the AI already defines (prevents "already declared" errors)
+	const allKeys = Object.keys(MODULE_SCOPE);
+	const aiDefined = new Set<string>();
+	for (const name of allKeys) {
+		if (new RegExp(`\\b(const|let|var|function)\\s+${name}\\b`).test(code)) {
+			aiDefined.add(name);
+		}
+	}
+	const scopeKeys = allKeys.filter((k) => !aiDefined.has(k));
+	const scopeValues = scopeKeys.map((k) => MODULE_SCOPE[k as keyof typeof MODULE_SCOPE]);
 
 	const wrappedCode = `
 		"use strict";
