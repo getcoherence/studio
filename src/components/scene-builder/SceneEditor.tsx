@@ -50,6 +50,7 @@ import { exportSceneProject, type SceneExportProgress } from "@/lib/scene-render
 import { renderScene } from "@/lib/scene-renderer/sceneRenderer";
 import { LayerPanel } from "./LayerPanel";
 import { SceneCanvas } from "./SceneCanvas";
+import { SceneLayerTimeline } from "./SceneLayerTimeline";
 import { SceneTimeline } from "./SceneTimeline";
 
 function getResolution(ratio: string): { width: number; height: number } {
@@ -1615,15 +1616,43 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 				</PanelGroup>
 			</div>
 
-			{/* ── Bottom: Scene Timeline ────────────────────────────────── */}
-			<SceneTimeline
-				scenes={project.scenes}
-				selectedIndex={selectedSceneIndex}
-				onSelectScene={selectScene}
-				onAddScene={addScene}
-				onDeleteScene={deleteScene}
-				onUpdateTransition={(sceneIndex, transition) => updateScene(sceneIndex, { transition })}
-			/>
+			{/* ── Bottom: Scene Layer Timeline (AI Cinematic) or Scene Thumbnails */}
+			{scenePlan ? (
+				<SceneLayerTimeline
+					plan={scenePlan}
+					currentFrame={seekToFrame ?? 0}
+					onSeekToFrame={setSeekToFrame}
+					onAddLayer={(si) => {
+						// Add a default text layer to the scene
+						const newLayer = {
+							id: `layer-${Date.now()}`,
+							type: "text" as const,
+							content: "New Text",
+							position: "center" as const,
+							size: 50,
+							startFrame: 0,
+							endFrame: -1,
+						};
+						const currentLayers = scenePlan.scenes[si]?.layers || [];
+						updateScenePlan(si, { layers: [...currentLayers, newLayer] });
+					}}
+					onSelectLayer={(si, _li) => {
+						const startFrame = scenePlan.scenes
+							.slice(0, si)
+							.reduce((sum, s) => sum + (s.durationFrames || 90), 0);
+						setSeekToFrame(startFrame);
+					}}
+				/>
+			) : (
+				<SceneTimeline
+					scenes={project.scenes}
+					selectedIndex={selectedSceneIndex}
+					onSelectScene={selectScene}
+					onAddScene={addScene}
+					onDeleteScene={deleteScene}
+					onUpdateTransition={(sceneIndex, transition) => updateScene(sceneIndex, { transition })}
+				/>
+			)}
 		</div>
 	);
 }

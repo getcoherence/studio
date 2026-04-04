@@ -40,9 +40,12 @@ export function compileScenePlan(plan: ScenePlan): string {
 
 		const inner = generateSceneContent(scene, accent, fontFamily, color, i);
 
+		const layerCode = generateLayers(scene, dur);
+
 		return `    <Sequence from={${from}} durationInFrames={${dur}}>
       <Scene bg="${bg}">
         ${inner}
+        ${layerCode}
       </Scene>
     </Sequence>`;
 	});
@@ -180,6 +183,74 @@ function generateTextComponent(
           ${scene.accentWord ? `accentWord="${scene.accentWord}"` : ""}
           ${scene.accentWord ? `accentColor="${accent}"` : ""}
         />`;
+}
+
+function generateLayers(scene: ScenePlanItem, sceneDuration: number): string {
+	if (!scene.layers || scene.layers.length === 0) return "";
+
+	return scene.layers
+		.map((layer) => {
+			const endFrame = layer.endFrame === -1 ? sceneDuration : layer.endFrame;
+			const dur = Math.max(1, endFrame - layer.startFrame);
+			const pos = getLayerPosition(layer.position, layer.size);
+
+			let content = "";
+			switch (layer.type) {
+				case "text":
+					content = `<AnimatedText text={${JSON.stringify(layer.content)}} fontSize={${layer.settings?.fontSize || 60}} color="${layer.settings?.color || "#ffffff"}" animation="${layer.settings?.animation || "words"}" />`;
+					break;
+				case "lottie":
+					content = `<LottieOverlay src="${layer.content}" position="${layer.position}" size={${layer.size}} opacity={${layer.settings?.opacity || 0.8}} loop={${layer.settings?.loop ?? true}} />`;
+					break;
+				case "image":
+					content = `<Img src={${layer.content.startsWith("screenshots") ? layer.content : JSON.stringify(layer.content)}} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />`;
+					break;
+				case "shape":
+					content = `<div style={{ width: '100%', height: '100%', borderRadius: ${layer.content === "circle" ? "'50%'" : "12"}, backgroundColor: '${layer.settings?.color || "rgba(255,255,255,0.1)"}', opacity: ${layer.settings?.opacity || 0.5} }} />`;
+					break;
+			}
+
+			// For lottie type, don't wrap in positioned div — LottieOverlay handles its own positioning
+			if (layer.type === "lottie") {
+				return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>
+          ${content}
+        </Sequence>`;
+			}
+
+			return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>
+          <div style={{ position: 'absolute', ${pos}, overflow: 'hidden' }}>
+            ${content}
+          </div>
+        </Sequence>`;
+		})
+		.join("\n        ");
+}
+
+function getLayerPosition(position: string, size: number): string {
+	const s = `${size}%`;
+	const offset = `${(100 - size) / 2}%`;
+	switch (position) {
+		case "center":
+			return `left: '${offset}', top: '${offset}', width: '${s}', height: '${s}'`;
+		case "top-left":
+			return `left: '5%', top: '5%', width: '${s}', height: '${s}'`;
+		case "top-right":
+			return `right: '5%', top: '5%', width: '${s}', height: '${s}'`;
+		case "bottom-left":
+			return `left: '5%', bottom: '5%', width: '${s}', height: '${s}'`;
+		case "bottom-right":
+			return `right: '5%', bottom: '5%', width: '${s}', height: '${s}'`;
+		case "top":
+			return `left: '${offset}', top: '5%', width: '${s}', height: '${s}'`;
+		case "bottom":
+			return `left: '${offset}', bottom: '5%', width: '${s}', height: '${s}'`;
+		case "left":
+			return `left: '5%', top: '${offset}', width: '${s}', height: '${s}'`;
+		case "right":
+			return `right: '5%', top: '${offset}', width: '${s}', height: '${s}'`;
+		default:
+			return `left: '${offset}', top: '${offset}', width: '${s}', height: '${s}'`;
+	}
 }
 
 function generateRightContent(scene: ScenePlanItem, _accent: string): string {

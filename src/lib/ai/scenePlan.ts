@@ -52,6 +52,41 @@ export interface ScenePlanItem {
 	lottieOverlay?: string;
 	/** Lottie background — filename in public/lottie/ or URL */
 	lottieBackground?: string;
+	/** Composable layers within this scene — enables multi-layer compositions */
+	layers?: SceneLayer[];
+}
+
+/** A positioned, timed layer within a scene */
+export interface SceneLayer {
+	id: string;
+	type: "text" | "lottie" | "image" | "shape";
+	/** Content — text string, lottie filename, image URL, or shape type */
+	content: string;
+	/** Position preset or custom coordinates */
+	position:
+		| "center"
+		| "top-left"
+		| "top-right"
+		| "bottom-left"
+		| "bottom-right"
+		| "top"
+		| "bottom"
+		| "left"
+		| "right";
+	/** Size as % of frame (default: 50) */
+	size: number;
+	/** Start frame within the scene (0 = scene start) */
+	startFrame: number;
+	/** End frame within the scene (-1 = scene end) */
+	endFrame: number;
+	/** Layer-specific settings */
+	settings?: {
+		fontSize?: number;
+		color?: string;
+		animation?: string;
+		opacity?: number;
+		loop?: boolean;
+	};
 }
 
 export interface ScenePlan {
