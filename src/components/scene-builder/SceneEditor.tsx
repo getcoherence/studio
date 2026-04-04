@@ -1430,6 +1430,16 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 														);
 													})}
 												</div>
+												{/* Lottie */}
+												<input
+													type="text"
+													value={scene.lottieOverlay || ""}
+													onChange={(e) =>
+														updateScenePlan(i, { lottieOverlay: e.target.value || undefined })
+													}
+													className="w-full px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-white/40 focus:outline-none"
+													placeholder="Lottie overlay (file.json or URL)"
+												/>
 											</div>
 										))}
 									</div>

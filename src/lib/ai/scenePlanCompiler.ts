@@ -214,5 +214,15 @@ function generateEffects(scene: ScenePlanItem): string {
 				break;
 		}
 	}
+	// Lottie overlays
+	if (scene.lottieOverlay) {
+		parts.push(
+			`<LottieOverlay src="${scene.lottieOverlay}" position="center" size={50} opacity={0.8} />`,
+		);
+	}
+	if (scene.lottieBackground) {
+		parts.push(`<LottieBackground src="${scene.lottieBackground}" opacity={0.2} speed={0.5} />`);
+	}
+
 	return parts.join("\n        ");
 }

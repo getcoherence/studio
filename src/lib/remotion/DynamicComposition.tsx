@@ -36,6 +36,7 @@ import {
 	Underline,
 	Vignette,
 } from "./helpers/CinematicHelpers";
+import { LottieBackground, LottieOverlay } from "./helpers/LottieHelper";
 
 interface DynamicCompositionProps {
 	/** AI-generated TSX code string */
@@ -176,6 +177,9 @@ const MODULE_SCOPE = {
 	LightStreak,
 	GlitchText,
 	Vignette,
+	// Lottie
+	LottieOverlay,
+	LottieBackground,
 };
 
 /**

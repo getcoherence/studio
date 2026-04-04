@@ -48,6 +48,10 @@ export interface ScenePlanItem {
 	screenshotIndex?: number;
 	/** For split-layout: right-side content type */
 	rightContent?: "cards" | "pills" | "screenshot";
+	/** Lottie animation overlay — filename in public/lottie/ or URL */
+	lottieOverlay?: string;
+	/** Lottie background — filename in public/lottie/ or URL */
+	lottieBackground?: string;
 }
 
 export interface ScenePlan {
