@@ -290,7 +290,15 @@ function compileLayer(layer: SceneLayer, sceneDuration: number, accent: string):
 	}
 
 	// Effects (vignette, light-streak) are already returned above
-	// Regular layers get absolute positioning
+
+	// Center layers flow in the Scene's flex column (natural vertical stacking)
+	if (layer.position === "center") {
+		return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>
+          ${content}
+        </Sequence>`;
+	}
+
+	// Non-center layers get absolute positioning
 	const pos = getLayerPosition(layer.position, layer.size);
 	return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>
           <div style={{ position: 'absolute', ${pos}, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
