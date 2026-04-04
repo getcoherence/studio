@@ -153,7 +153,13 @@ export function SceneLayerTimeline({
 	const playheadPercent = totalFrames > 0 ? (currentFrame / totalFrames) * 100 : 0;
 	const maxLayers = Math.max(
 		1,
-		...plan.scenes.map((s) => expandSceneToLayers(s, plan.accentColor || "#2563eb").length),
+		...plan.scenes.map(
+			(s) =>
+				(s.layers && s.layers.length > 0
+					? s.layers
+					: expandSceneToLayers(s, plan.accentColor || "#2563eb")
+				).length,
+		),
 	);
 	const timelineWidth = `${zoom * 100}%`;
 
@@ -239,7 +245,10 @@ export function SceneLayerTimeline({
 							onClick={handleClick}
 						>
 							{plan.scenes.map((scene, si) => {
-								const layers = expandSceneToLayers(scene, plan.accentColor || "#2563eb");
+								const layers =
+									scene.layers && scene.layers.length > 0
+										? scene.layers
+										: expandSceneToLayers(scene, plan.accentColor || "#2563eb");
 								const layer = layers[trackIndex];
 								if (!layer) return null;
 

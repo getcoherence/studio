@@ -27,8 +27,9 @@ export function compileScenePlan(plan: ScenePlan): string {
 		const dur = scene.durationFrames || framesPerScene;
 		const bg = resolveBackground(scene.background);
 
-		// Expand scene content into layers (headline, subtitle, cards, effects, etc.)
-		const allLayers = expandSceneToLayers(scene, accent);
+		// Use existing layers if already expanded, otherwise expand from scene properties
+		const allLayers =
+			scene.layers && scene.layers.length > 0 ? scene.layers : expandSceneToLayers(scene, accent);
 		const layerCode = allLayers.map((layer) => compileLayer(layer, dur, accent)).join("\n        ");
 
 		return `    <Sequence from={${from}} durationInFrames={${dur}}>
