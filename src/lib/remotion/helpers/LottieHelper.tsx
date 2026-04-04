@@ -4,9 +4,9 @@
 // the public/lottie/ folder. Provides easy-to-use presets for common
 // cinematic effects.
 
-import { Lottie } from "@remotion/lottie";
+import { Lottie, type LottieAnimationData } from "@remotion/lottie";
 import React, { useEffect, useState } from "react";
-import { AbsoluteFill, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, staticFile, useCurrentFrame } from "remotion";
 
 // ── LottieOverlay ───────────────────────────────────────────────────────
 
@@ -28,8 +28,8 @@ export const LottieOverlay: React.FC<{
 	delay?: number;
 }> = ({ src, position = "center", size = 40, opacity = 1, speed = 1, loop = false, delay = 0 }) => {
 	const frame = useCurrentFrame();
-	const [animationData, setAnimationData] = useState<Record<string, unknown> | null>(
-		typeof src === "object" ? src : null,
+	const [animationData, setAnimationData] = useState<LottieAnimationData | null>(
+		typeof src === "object" ? (src as LottieAnimationData) : null,
 	);
 
 	// Load from file path if string
@@ -74,8 +74,8 @@ export const LottieBackground: React.FC<{
 	opacity?: number;
 	speed?: number;
 }> = ({ src, opacity = 0.3, speed = 0.5 }) => {
-	const [animationData, setAnimationData] = useState<Record<string, unknown> | null>(
-		typeof src === "object" ? src : null,
+	const [animationData, setAnimationData] = useState<LottieAnimationData | null>(
+		typeof src === "object" ? (src as LottieAnimationData) : null,
 	);
 
 	useEffect(() => {
