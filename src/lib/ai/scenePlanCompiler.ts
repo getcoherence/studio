@@ -28,8 +28,9 @@ export function compileScenePlan(plan: ScenePlan): string {
 		const bg = resolveBackground(scene.background);
 
 		// Use existing layers if already expanded, otherwise expand from scene properties
-		const allLayers =
-			scene.layers && scene.layers.length > 0 ? scene.layers : expandSceneToLayers(scene, accent);
+		// Use scene.layers if it exists (even if empty — user may have deleted all layers)
+		// Only fall back to expansion if layers was never set
+		const allLayers = scene.layers !== undefined ? scene.layers : expandSceneToLayers(scene, accent);
 		const layerCode = allLayers.map((layer) => compileLayer(layer, dur, accent)).join("\n        ");
 
 		return `    <Sequence from={${from}} durationInFrames={${dur}}>
