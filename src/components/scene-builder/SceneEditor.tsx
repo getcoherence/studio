@@ -171,9 +171,9 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		}
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 	const [isGeneratingMusic, setIsGeneratingMusic] = useState(false);
-	const [rightPanelTab, setRightPanelTab] = useState<"layers" | "tools" | "music" | "background">(
-		project.styleId === "ai-cinematic" ? "tools" : "layers",
-	);
+	const [rightPanelTab, setRightPanelTab] = useState<
+		"layers" | "tools" | "music" | "background" | "code"
+	>(project.styleId === "ai-cinematic" ? "tools" : "layers");
 	const [selectedStyle, setSelectedStyle] = useState<DesignStyleId | null>(null);
 	const [projectPath, setProjectPath] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1016,6 +1016,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										...(!aiComposition ? [{ id: "layers" as const, label: "Layers" }] : []),
 										{ id: "tools" as const, label: "Tools" },
 										...(!aiComposition ? [{ id: "background" as const, label: "BG" }] : []),
+										...(aiComposition ? [{ id: "code" as const, label: "Code" }] : []),
 										{ id: "music" as const, label: "Music" },
 									] as const
 								).map((tab) => (
@@ -1200,6 +1201,37 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										<AnimatedBackgroundPicker
 											selected={currentScene.background}
 											onSelect={handleBackgroundChange}
+										/>
+									</div>
+								)}
+
+								{rightPanelTab === "code" && aiComposition && (
+									<div className="flex flex-col h-full">
+										<div className="flex items-center justify-between p-3 border-b border-white/5">
+											<span className="text-xs text-white/60 font-medium">Composition Code</span>
+											<button
+												onClick={() => {
+													const textarea = document.getElementById(
+														"ai-code-editor",
+													) as HTMLTextAreaElement;
+													if (textarea && textarea.value !== aiComposition.code) {
+														setAiComposition({ ...aiComposition, code: textarea.value });
+														(project as any)._aiCode = textarea.value;
+														toast.success("Code updated — preview refreshed");
+													}
+												}}
+												className="px-2 py-1 rounded text-[10px] font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+											>
+												Apply Changes
+											</button>
+										</div>
+										<textarea
+											id="ai-code-editor"
+											defaultValue={aiComposition.code}
+											spellCheck={false}
+											className="flex-1 w-full bg-[#0a0a0c] text-[11px] text-white/80 font-mono p-3 resize-none focus:outline-none leading-relaxed"
+											style={{ tabSize: 2 }}
+											onKeyDown={(e) => e.stopPropagation()}
 										/>
 									</div>
 								)}
