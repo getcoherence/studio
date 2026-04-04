@@ -15,7 +15,7 @@ interface SceneLayerTimelineProps {
 	onSelectLayer: (sceneIndex: number, layerIndex: number) => void;
 }
 
-const TRACK_HEIGHT = 26;
+const TRACK_HEIGHT = 32;
 const MIN_HEIGHT = 80;
 const MAX_HEIGHT = 400;
 const DEFAULT_HEIGHT = 160;
@@ -166,10 +166,10 @@ export function SceneLayerTimeline({
 						/>
 					</div>
 
-					{/* Scene track */}
+					{/* Scene track — sticky */}
 					<div
-						className="relative cursor-pointer"
-						style={{ height: TRACK_HEIGHT }}
+						className="relative cursor-pointer sticky z-10 bg-[#0c0c0f] border-b border-white/10"
+						style={{ height: TRACK_HEIGHT, top: 20 }}
 						onClick={handleClick}
 					>
 						{plan.scenes.map((scene, i) => {
@@ -238,7 +238,7 @@ export function SceneLayerTimeline({
 										}}
 										title={`${layer.type}: ${layer.content.slice(0, 40)}`}
 									>
-										<span className="text-[8px] text-white/70 truncate select-none">
+										<span className="text-[11px] text-white/70 truncate select-none">
 											{layer.content.slice(0, 25)}
 										</span>
 									</div>

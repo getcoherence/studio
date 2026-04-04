@@ -1107,9 +1107,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										max={currentScene.durationMs}
 										step={16}
 									/>
-									<span className="text-[11px] text-white/50 w-44 text-right font-mono">
-										Scene {selectedSceneIndex + 1}/{project.scenes.length}
-										{" · "}
+									<span className="text-[11px] text-white/50 text-right font-mono whitespace-nowrap">
+										Scene {selectedSceneIndex + 1}/{project.scenes.length} ·{" "}
 										{formatTime(currentTimeMs)} / {formatTime(currentScene.durationMs)}
 									</span>
 								</div>
