@@ -519,11 +519,30 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		setIsPlaying(false);
 
 		try {
-			const blob = await exportSceneProject(project, {
-				fps: project.fps || 30,
-				quality: "high",
-				onProgress: setExportProgress,
-			});
+			let blob: Blob;
+
+			if (aiComposition && playerContainerRef.current) {
+				// AI Cinematic: capture from Remotion Player
+				toast.loading("Exporting AI Cinematic video... this may take a minute", { id: "export" });
+				const { exportPlayerToVideo } = await import("@/lib/remotion/playerExport");
+				const totalMs = project.scenes.reduce((s, sc) => s + sc.durationMs, 0) || 30000;
+				blob = await exportPlayerToVideo({
+					playerElement: playerContainerRef.current,
+					durationMs: totalMs,
+					fps: 30,
+					seekToFrame: (f) => setSeekToFrame(f),
+					onProgress: (p) =>
+						setExportProgress({ phase: "rendering", progress: p, currentScene: 0, totalScenes: 1 }),
+				});
+				toast.dismiss("export");
+			} else {
+				// Standard: Canvas 2D export
+				blob = await exportSceneProject(project, {
+					fps: project.fps || 30,
+					quality: "high",
+					onProgress: setExportProgress,
+				});
+			}
 
 			const arrayBuffer = await blob.arrayBuffer();
 			const fileName = `${project.name || "scene-export"}.webm`;
