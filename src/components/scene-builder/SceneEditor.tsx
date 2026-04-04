@@ -189,18 +189,19 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	const doAutoSave = useCallback(async (proj: SceneProject, path: string | null) => {
 		try {
 			if (path) {
-				// Save to existing path silently
 				await window.electronAPI?.saveProjectFile(proj, proj.name, path);
+				console.log("[AutoSave] Saved to existing path:", path);
 			} else {
-				// First save — auto-generate filename from project name
 				const fileName = (proj.name || "Untitled").replace(/[^a-zA-Z0-9-_ ]/g, "_");
+				console.log("[AutoSave] First save, filename:", fileName);
 				const result = await window.electronAPI?.autoSaveProject(proj, fileName);
+				console.log("[AutoSave] Result:", result);
 				if (result?.success && result.path) {
 					setProjectPath(result.path);
 				}
 			}
-		} catch {
-			// Silent — don't bother user with auto-save failures
+		} catch (err) {
+			console.error("[AutoSave] Failed:", err);
 		}
 	}, []);
 
