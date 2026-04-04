@@ -1326,6 +1326,69 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 														placeholder="Accent word"
 													/>
 												</div>
+												{/* Subtitle */}
+												<input
+													type="text"
+													value={scene.subtitle || ""}
+													onChange={(e) =>
+														updateScenePlan(i, { subtitle: e.target.value || undefined })
+													}
+													className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-[10px] text-white/40 focus:outline-none focus:border-[#2563eb]/50"
+													placeholder="Subtitle (optional)"
+												/>
+												{/* Cards */}
+												{scene.type === "cards" && scene.cards && scene.cards.length > 0 && (
+													<div className="space-y-1 pt-1 border-t border-white/5">
+														<span className="text-[9px] text-white/30">Cards</span>
+														{scene.cards.map((card, ci) => (
+															<div key={ci} className="flex gap-1">
+																<input
+																	type="text"
+																	value={card.title}
+																	onChange={(e) => {
+																		const c = [...(scene.cards || [])];
+																		c[ci] = { ...c[ci], title: e.target.value };
+																		updateScenePlan(i, { cards: c });
+																	}}
+																	className="flex-1 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-white/60 focus:outline-none"
+																	placeholder="Title"
+																/>
+																<input
+																	type="text"
+																	value={card.description}
+																	onChange={(e) => {
+																		const c = [...(scene.cards || [])];
+																		c[ci] = { ...c[ci], description: e.target.value };
+																		updateScenePlan(i, { cards: c });
+																	}}
+																	className="flex-1 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-white/40 focus:outline-none"
+																	placeholder="Desc"
+																/>
+															</div>
+														))}
+													</div>
+												)}
+												{/* Effects */}
+												<div className="flex gap-1 pt-1">
+													{(["vignette", "light-streak", "clip-reveal"] as const).map((fx) => {
+														const on = (scene.effects || []).includes(fx);
+														return (
+															<button
+																key={fx}
+																onClick={() =>
+																	updateScenePlan(i, {
+																		effects: on
+																			? (scene.effects || []).filter((e) => e !== fx)
+																			: [...(scene.effects || []), fx],
+																	})
+																}
+																className={`px-1.5 py-0.5 rounded text-[9px] transition-colors ${on ? "bg-[#2563eb]/20 text-[#60a5fa] border border-[#2563eb]/30" : "bg-white/5 text-white/30 border border-white/5"}`}
+															>
+																{fx}
+															</button>
+														);
+													})}
+												</div>
 											</div>
 										))}
 									</div>
