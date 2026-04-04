@@ -18,6 +18,8 @@ interface DynamicPreviewProps {
 	isPlaying?: boolean;
 	/** Optional background music URL (lucid:// protocol) */
 	musicSrc?: string;
+	/** Increment to reset playback to frame 0 */
+	resetSignal?: number;
 }
 
 /** Wrapper composition that layers DynamicComposition + background music */
@@ -39,6 +41,7 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 	screenshots,
 	isPlaying,
 	musicSrc,
+	resetSignal,
 }) => {
 	const playerRef = useRef<PlayerRef>(null);
 	const fps = 30;
@@ -53,6 +56,13 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 			playerRef.current.pause();
 		}
 	}, [isPlaying]);
+
+	// Reset to frame 0 when resetSignal changes
+	useEffect(() => {
+		if (resetSignal && playerRef.current) {
+			playerRef.current.seekTo(0);
+		}
+	}, [resetSignal]);
 
 	// Use the wrapper component when music is present
 	const CompositionComponent = musicSrc ? DynamicWithMusic : DynamicComposition;
