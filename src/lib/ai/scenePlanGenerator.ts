@@ -87,7 +87,7 @@ export async function generateScenePlan(
 		"- Effects: use 'clip-reveal' on the opening only. Use 'light-streak' on at most 1 scene. Use 'vignette' on 1-2 dark scenes.",
 		"- Vary animation styles: never repeat the same animation twice in a row.",
 		"- Font: use 'serif' on light backgrounds, 'sans-serif' on dark backgrounds.",
-		"- fontSize: 100-140 for hero text, 80-100 for split layouts, 60-80 for supporting text.",
+		"- fontSize: 120-160 for hero text, 100-120 for other scenes. MINIMUM 100. Text must be LARGE and impactful.",
 		"- LESS IS MORE. Clean typography beats cluttered effects.",
 		"",
 		"Return ONLY the JSON.",
