@@ -12,6 +12,11 @@ import {
 	loadAIConfig,
 	saveAIConfig,
 } from "../ai/aiService";
+import {
+	downloadLottieAnimation,
+	getPopularLotties,
+	searchLottieAnimations,
+} from "../ai/lottieSearch";
 import { generateMusic, type MusicMood } from "../ai/musicService";
 import { synthesize, type TTSVoice } from "../ai/ttsService";
 
@@ -58,4 +63,17 @@ export function registerAIHandlers(): void {
 			return generateMusic(mood, customPrompt, videoDurationSec);
 		},
 	);
+
+	// Lottie search
+	ipcMain.handle("lottie-search", async (_event, query: string, page?: number) => {
+		return searchLottieAnimations(query, page);
+	});
+
+	ipcMain.handle("lottie-popular", async (_event, page?: number) => {
+		return getPopularLotties(page);
+	});
+
+	ipcMain.handle("lottie-download", async (_event, lottieUrl: string, name: string) => {
+		return downloadLottieAnimation(lottieUrl, name);
+	});
 }
