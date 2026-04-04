@@ -6,7 +6,6 @@ import {
 	ImagePlus,
 	Loader2,
 	Music,
-	Palette,
 	Pause,
 	Play,
 	RotateCcw,
@@ -174,7 +173,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		}
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 	const [isGeneratingMusic, setIsGeneratingMusic] = useState(false);
-	const [showMusicMenu, setShowMusicMenu] = useState(false);
+	const [rightPanelTab, setRightPanelTab] = useState<"layers" | "music" | "background">("layers");
 	const [selectedStyle, setSelectedStyle] = useState<DesignStyleId | null>(null);
 	const [projectPath, setProjectPath] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -655,7 +654,6 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 	const handleGenerateMusic = useCallback(async (mood: MusicMood) => {
 		setIsGeneratingMusic(true);
-		setShowMusicMenu(false);
 		toast.loading("Composing your soundtrack... this takes ~30 seconds", { id: "music" });
 		try {
 			// Calculate video duration from project scenes
@@ -828,40 +826,6 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 				</div>
 
 				<div className="w-px h-5 bg-white/10 mx-1" />
-
-				{/* Background picker */}
-				<Popover>
-					<PopoverTrigger asChild>
-						<button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors text-xs">
-							<Palette size={14} />
-							Background
-						</button>
-					</PopoverTrigger>
-					<PopoverContent className="w-80 bg-[#141417] border-white/10" align="start">
-						<div className="space-y-3">
-							<div className="text-xs text-white/60 font-medium">Scene Background</div>
-
-							{/* Solid color */}
-							<div className="flex items-center gap-2">
-								<span className="text-[10px] text-white/40">Solid Color</span>
-								<input
-									type="color"
-									value={
-										currentScene.background.startsWith("#") ? currentScene.background : "#09090b"
-									}
-									onChange={(e) => handleBackgroundChange(e.target.value)}
-									className="w-8 h-6 rounded border border-white/10 cursor-pointer bg-transparent"
-								/>
-							</div>
-
-							{/* Animated backgrounds */}
-							<AnimatedBackgroundPicker
-								selected={currentScene.background}
-								onSelect={handleBackgroundChange}
-							/>
-						</div>
-					</PopoverContent>
-				</Popover>
 
 				<div className="w-px h-5 bg-white/10 mx-1" />
 
@@ -1045,57 +1009,6 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 					</button>
 				)}
 
-				{/* Music button */}
-				<div className="relative">
-					<button
-						onClick={() => setShowMusicMenu(!showMusicMenu)}
-						disabled={isGeneratingMusic}
-						className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors text-xs disabled:opacity-40"
-						title={musicPath ? "Music added" : "Add background music"}
-					>
-						{isGeneratingMusic ? (
-							<Loader2 size={14} className="animate-spin" />
-						) : (
-							<Music size={14} />
-						)}
-						{musicPath ? "Music ✓" : "Music"}
-					</button>
-
-					{showMusicMenu && (
-						<div className="absolute top-full right-0 mt-1 w-52 bg-[#141417] border border-white/10 rounded-lg shadow-xl p-2 z-50">
-							<div className="text-[10px] text-white/40 font-medium px-2 py-1 mb-1">
-								AI Generate (MiniMax)
-							</div>
-							{(["energetic", "ambient", "dramatic", "minimal", "upbeat"] as MusicMood[]).map(
-								(mood) => (
-									<button
-										key={mood}
-										onClick={() => handleGenerateMusic(mood)}
-										className="w-full text-left px-2 py-1.5 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors capitalize"
-									>
-										{mood}
-									</button>
-								),
-							)}
-							{musicPath && (
-								<>
-									<div className="border-t border-white/5 my-1" />
-									<MusicPreviewPlayer audioPath={musicPath} />
-									<button
-										onClick={() => {
-											setMusicPath(null);
-											setShowMusicMenu(false);
-										}}
-										className="w-full text-left px-2 py-1.5 rounded text-xs text-red-400/70 hover:text-red-400 hover:bg-red-400/5 transition-colors"
-									>
-										Remove music
-									</button>
-								</>
-							)}
-						</div>
-					)}
-				</div>
-
 				{/* Export button */}
 				<button
 					onClick={handleExport}
@@ -1246,15 +1159,111 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 					<PanelResizeHandle className="w-1 rounded-full bg-white/5 hover:bg-[#2563eb]/40 transition-colors" />
 
-					{/* Right sidebar: Layer properties */}
+					{/* Right sidebar: tabbed panel */}
 					<Panel defaultSize={25} minSize={15} maxSize={40}>
-						<LayerPanel
-							layer={selectedLayer}
-							sceneDurationMs={currentScene.durationMs}
-							allLayers={currentScene.layers}
-							onUpdateLayer={updateLayer}
-							onSelectLayer={setSelectedLayerId}
-						/>
+						<div className="flex flex-col h-full bg-[#0c0c0f]">
+							{/* Tab bar */}
+							<div className="flex border-b border-white/5 px-1 pt-1">
+								{(
+									[
+										{ id: "layers" as const, label: "Layers" },
+										{ id: "background" as const, label: "BG" },
+										{ id: "music" as const, label: "Music" },
+									] as const
+								).map((tab) => (
+									<button
+										key={tab.id}
+										onClick={() => setRightPanelTab(tab.id)}
+										className={`px-3 py-1.5 text-[11px] font-medium rounded-t transition-colors ${
+											rightPanelTab === tab.id
+												? "text-white bg-white/5 border-b-2 border-[#2563eb]"
+												: "text-white/40 hover:text-white/60"
+										}`}
+									>
+										{tab.label}
+									</button>
+								))}
+							</div>
+
+							{/* Tab content */}
+							<div className="flex-1 overflow-y-auto">
+								{rightPanelTab === "layers" && (
+									<LayerPanel
+										layer={selectedLayer}
+										sceneDurationMs={currentScene.durationMs}
+										allLayers={currentScene.layers}
+										onUpdateLayer={updateLayer}
+										onSelectLayer={setSelectedLayerId}
+									/>
+								)}
+
+								{rightPanelTab === "background" && (
+									<div className="p-3 space-y-3">
+										<div className="text-xs text-white/60 font-medium">Scene Background</div>
+										<div className="flex items-center gap-2">
+											<span className="text-[10px] text-white/40">Solid Color</span>
+											<input
+												type="color"
+												value={
+													currentScene.background.startsWith("#")
+														? currentScene.background
+														: "#09090b"
+												}
+												onChange={(e) => handleBackgroundChange(e.target.value)}
+												className="w-8 h-6 rounded border border-white/10 cursor-pointer bg-transparent"
+											/>
+										</div>
+										<AnimatedBackgroundPicker
+											selected={currentScene.background}
+											onSelect={handleBackgroundChange}
+										/>
+									</div>
+								)}
+
+								{rightPanelTab === "music" && (
+									<div className="p-3 space-y-3">
+										<div className="text-xs text-white/60 font-medium">Background Music</div>
+										{musicPath && (
+											<div className="space-y-2">
+												<div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
+													<Music size={12} />
+													Track loaded
+												</div>
+												<MusicPreviewPlayer audioPath={musicPath} />
+												<button
+													onClick={() => setMusicPath(null)}
+													className="w-full text-left px-2 py-1.5 rounded text-xs text-red-400/70 hover:text-red-400 hover:bg-red-400/5 transition-colors"
+												>
+													Remove music
+												</button>
+											</div>
+										)}
+										<div className="text-[10px] text-white/30 font-medium mt-2">
+											AI Generate (MiniMax)
+										</div>
+										{(["energetic", "ambient", "dramatic", "minimal", "upbeat"] as MusicMood[]).map(
+											(mood) => (
+												<button
+													key={mood}
+													onClick={() => handleGenerateMusic(mood)}
+													disabled={isGeneratingMusic}
+													className="w-full text-left px-2 py-1.5 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors capitalize disabled:opacity-40"
+												>
+													{isGeneratingMusic ? (
+														<span className="flex items-center gap-2">
+															<Loader2 size={10} className="animate-spin" />
+															Generating...
+														</span>
+													) : (
+														mood
+													)}
+												</button>
+											),
+										)}
+									</div>
+								)}
+							</div>
+						</div>
 					</Panel>
 				</PanelGroup>
 			</div>
