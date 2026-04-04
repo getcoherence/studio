@@ -920,7 +920,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 				{/* Scene duration */}
 				<div className="flex items-center gap-2">
 					<Clock size={12} className="text-white/40" />
-					<span className="text-[10px] text-white/40">Duration</span>
+					<span className="text-[11px] text-white/40">Duration</span>
 					<div className="w-24">
 						<Slider
 							value={[currentScene.durationMs]}
@@ -930,7 +930,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 							step={500}
 						/>
 					</div>
-					<span className="text-[10px] text-white/50 w-8">
+					<span className="text-[11px] text-white/50 w-8">
 						{(currentScene.durationMs / 1000).toFixed(1)}s
 					</span>
 				</div>
@@ -991,7 +991,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 											<button
 												key={mode}
 												onClick={() => setPreviewMode(mode)}
-												className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+												className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
 													previewMode === mode
 														? "bg-[#2563eb]/20 text-[#2563eb]"
 														: "text-white/40 hover:text-white/70"
@@ -1013,7 +1013,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										<button
 											key={preset.label}
 											onClick={() => setAspectRatio(preset.ratio)}
-											className={`px-2.5 py-1 rounded text-[10px] font-medium transition-colors ${
+											className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
 												aspectRatio === preset.ratio
 													? "text-[#2563eb] bg-[#2563eb]/10"
 													: "text-white/40 hover:text-white/70 hover:bg-white/10"
@@ -1099,7 +1099,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										max={currentScene.durationMs}
 										step={16}
 									/>
-									<span className="text-[10px] text-white/50 w-44 text-right font-mono">
+									<span className="text-[11px] text-white/50 w-44 text-right font-mono">
 										Scene {selectedSceneIndex + 1}/{project.scenes.length}
 										{" · "}
 										{formatTime(currentTimeMs)} / {formatTime(currentScene.durationMs)}
@@ -1158,7 +1158,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										{/* AI Generate */}
 										<div className="space-y-2">
 											<div className="text-xs text-white/60 font-medium">AI Generate</div>
-											<div className="text-[10px] text-white/40 mb-1.5">Design Style</div>
+											<div className="text-[11px] text-white/40 mb-1.5">Design Style</div>
 											<div className="grid grid-cols-3 gap-1.5">
 												{DESIGN_STYLE_LIST.map((style) => (
 													<button
@@ -1179,7 +1179,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 															className="w-full h-4 rounded-sm"
 															style={{ background: style.previewGradient }}
 														/>
-														<span className="text-[8px] truncate w-full text-center">
+														<span className="text-[11px] truncate w-full text-center">
 															{style.name}
 														</span>
 													</button>
@@ -1293,7 +1293,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 									<div className="p-3 space-y-3">
 										<div className="text-xs text-white/60 font-medium">Scene Background</div>
 										<div className="flex items-center gap-2">
-											<span className="text-[10px] text-white/40">Solid Color</span>
+											<span className="text-[11px] text-white/40">Solid Color</span>
 											<input
 												type="color"
 												value={
@@ -1324,27 +1324,27 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 											>
 												<div className="flex items-center justify-between">
 													<div className="flex items-center gap-1">
-														<span className="text-[10px] text-white/30 font-medium">
+														<span className="text-[11px] text-white/30 font-medium">
 															Scene {i + 1}
 														</span>
 														<button
 															onClick={() => moveSceneInPlan(i, "up")}
 															disabled={i === 0}
-															className="text-[10px] text-white/20 hover:text-white/50 disabled:opacity-20"
+															className="text-[11px] text-white/20 hover:text-white/50 disabled:opacity-20"
 														>
 															▲
 														</button>
 														<button
 															onClick={() => moveSceneInPlan(i, "down")}
 															disabled={i === scenePlan.scenes.length - 1}
-															className="text-[10px] text-white/20 hover:text-white/50 disabled:opacity-20"
+															className="text-[11px] text-white/20 hover:text-white/50 disabled:opacity-20"
 														>
 															▼
 														</button>
 														<button
 															onClick={() => deleteSceneFromPlan(i)}
 															disabled={scenePlan.scenes.length <= 1}
-															className="text-[10px] text-red-400/30 hover:text-red-400/70 disabled:opacity-20 ml-1"
+															className="text-[11px] text-red-400/30 hover:text-red-400/70 disabled:opacity-20 ml-1"
 														>
 															✕
 														</button>
@@ -1356,7 +1356,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 																type: e.target.value as ScenePlanItem["type"],
 															})
 														}
-														className="text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
+														className="text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
 													>
 														<option value="hero-text">Hero Text</option>
 														<option value="full-bleed">Full Bleed</option>
@@ -1387,7 +1387,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 																animation: e.target.value as ScenePlanItem["animation"],
 															})
 														}
-														className="flex-1 text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-1 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
+														className="flex-1 text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-1 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
 													>
 														<option value="chars">Per-Character</option>
 														<option value="words">Word Slam</option>
@@ -1402,7 +1402,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 													<select
 														value={scene.background}
 														onChange={(e) => updateScenePlan(i, { background: e.target.value })}
-														className="flex-1 text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-1 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
+														className="flex-1 text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-1 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
 													>
 														{BACKGROUND_NAMES.map((bg) => (
 															<option key={bg} value={bg}>
@@ -1419,7 +1419,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 														onChange={(e) =>
 															updateScenePlan(i, { font: e.target.value as ScenePlanItem["font"] })
 														}
-														className="text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-1 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
+														className="text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-1 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
 													>
 														<option value="serif">Serif</option>
 														<option value="sans-serif">Sans</option>
@@ -1433,7 +1433,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 														onChange={(e) =>
 															updateScenePlan(i, { fontSize: Number(e.target.value) })
 														}
-														className="w-16 px-1 py-1 rounded bg-white/5 border border-white/10 text-[10px] text-white/60 focus:outline-none"
+														className="w-16 px-1 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-white/60 focus:outline-none"
 														title="Font size"
 													/>
 													<input
@@ -1444,7 +1444,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 																accentWord: e.target.value || undefined,
 															})
 														}
-														className="flex-1 px-2 py-1 rounded bg-white/5 border border-white/10 text-[10px] text-white/60 focus:outline-none"
+														className="flex-1 px-2 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-white/60 focus:outline-none"
 														placeholder="Accent word"
 													/>
 												</div>
@@ -1455,15 +1455,30 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 													onChange={(e) =>
 														updateScenePlan(i, { subtitle: e.target.value || undefined })
 													}
-													className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-[10px] text-white/40 focus:outline-none focus:border-[#2563eb]/50"
+													className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-white/40 focus:outline-none focus:border-[#2563eb]/50"
 													placeholder="Subtitle (optional)"
 												/>
 												{/* Cards */}
-												{scene.type === "cards" && scene.cards && scene.cards.length > 0 && (
+												{scene.type === "cards" && (
 													<div className="space-y-1 pt-1 border-t border-white/5">
-														<span className="text-[9px] text-white/30">Cards</span>
+														<div className="flex items-center justify-between">
+															<span className="text-[11px] text-white/30">Cards</span>
+															<button
+																onClick={() =>
+																	updateScenePlan(i, {
+																		cards: [
+																			...(scene.cards || []),
+																			{ title: "New Card", description: "Description" },
+																		],
+																	})
+																}
+																className="text-[11px] text-[#2563eb] hover:text-[#60a5fa]"
+															>
+																+ Add Card
+															</button>
+														</div>
 														{scene.cards.map((card, ci) => (
-															<div key={ci} className="flex gap-1">
+															<div key={ci} className="flex gap-1 items-center">
 																<input
 																	type="text"
 																	value={card.title}
@@ -1472,7 +1487,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 																		c[ci] = { ...c[ci], title: e.target.value };
 																		updateScenePlan(i, { cards: c });
 																	}}
-																	className="flex-1 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-white/60 focus:outline-none"
+																	onKeyDown={(e) => e.stopPropagation()}
+																	className="flex-1 px-1.5 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-white/60 focus:outline-none"
 																	placeholder="Title"
 																/>
 																<input
@@ -1483,9 +1499,19 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 																		c[ci] = { ...c[ci], description: e.target.value };
 																		updateScenePlan(i, { cards: c });
 																	}}
-																	className="flex-1 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-white/40 focus:outline-none"
+																	onKeyDown={(e) => e.stopPropagation()}
+																	className="flex-1 px-1.5 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-white/40 focus:outline-none"
 																	placeholder="Desc"
 																/>
+																<button
+																	onClick={() => {
+																		const c = (scene.cards || []).filter((_, idx) => idx !== ci);
+																		updateScenePlan(i, { cards: c });
+																	}}
+																	className="text-[11px] text-red-400/30 hover:text-red-400 px-0.5"
+																>
+																	✕
+																</button>
 															</div>
 														))}
 													</div>
@@ -1504,7 +1530,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 																			: [...(scene.effects || []), fx],
 																	})
 																}
-																className={`px-1.5 py-0.5 rounded text-[9px] transition-colors ${on ? "bg-[#2563eb]/20 text-[#60a5fa] border border-[#2563eb]/30" : "bg-white/5 text-white/30 border border-white/5"}`}
+																className={`px-1.5 py-0.5 rounded text-[11px] transition-colors ${on ? "bg-[#2563eb]/20 text-[#60a5fa] border border-[#2563eb]/30" : "bg-white/5 text-white/30 border border-white/5"}`}
 															>
 																{fx}
 															</button>
@@ -1517,7 +1543,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 													onChange={(e) =>
 														updateScenePlan(i, { lottieOverlay: e.target.value || undefined })
 													}
-													className="w-full text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-white/40 [&>option]:bg-[#141417] [&>option]:text-white"
+													className="w-full text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-white/40 [&>option]:bg-[#141417] [&>option]:text-white"
 												>
 													<option value="">No Lottie overlay</option>
 													{LOTTIE_CATALOG.map((l) => (
@@ -1554,7 +1580,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 														toast.success("Code updated — preview refreshed");
 													}
 												}}
-												className="px-2 py-1 rounded text-[10px] font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+												className="px-2 py-1 rounded text-[11px] font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
 											>
 												Apply Changes
 											</button>
@@ -1588,7 +1614,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 												</button>
 											</div>
 										)}
-										<div className="text-[10px] text-white/30 font-medium mt-2">
+										<div className="text-[11px] text-white/30 font-medium mt-2">
 											AI Generate (MiniMax)
 										</div>
 										{(["energetic", "ambient", "dramatic", "minimal", "upbeat"] as MusicMood[]).map(
