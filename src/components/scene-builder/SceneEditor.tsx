@@ -25,6 +25,9 @@ import { generateAiComposition } from "@/lib/ai/aiCinematicEngine";
 import { applyCritiqueMutations, critiqueSceneProject } from "@/lib/ai/designCritique";
 import { DESIGN_STYLE_LIST, type DesignStyleId } from "@/lib/ai/designStyles";
 import { generateSceneProject } from "@/lib/ai/sceneGenerator";
+import type { ScenePlan, ScenePlanItem } from "@/lib/ai/scenePlan";
+import { BACKGROUND_NAMES } from "@/lib/ai/scenePlan";
+import { compileScenePlan } from "@/lib/ai/scenePlanCompiler";
 import { aiPolishSceneProject, polishSceneProject } from "@/lib/ai/scenePolish";
 import { generateCustomMusic, type MusicMood } from "@/lib/audio/musicCatalog";
 import { type AiCompositionData, consumePendingDemoProject } from "@/lib/demoProjectStore";
@@ -127,6 +130,9 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		}
 		return null;
 	});
+	const [scenePlan, setScenePlan] = useState<ScenePlan | null>(
+		() => (project as any)._aiPlan ?? null,
+	);
 	const [isRegenerating, setIsRegenerating] = useState(false);
 	const [previewMode, setPreviewMode] = useState<"canvas" | "remotion">(
 		// Default to Remotion for cinematic/AI projects
@@ -172,8 +178,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 	const [isGeneratingMusic, setIsGeneratingMusic] = useState(false);
 	const [rightPanelTab, setRightPanelTab] = useState<
-		"layers" | "tools" | "music" | "background" | "code"
-	>(project.styleId === "ai-cinematic" ? "tools" : "layers");
+		"layers" | "tools" | "music" | "background" | "code" | "plan"
+	>(project.styleId === "ai-cinematic" ? "plan" : "layers");
 	const [selectedStyle, setSelectedStyle] = useState<DesignStyleId | null>(null);
 	const [projectPath, setProjectPath] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -655,6 +661,25 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		}
 	}, [project, isCritiquing]);
 
+	// ── Scene Plan editing ──────────────────────────────────────────
+
+	const updateScenePlan = useCallback(
+		(sceneIndex: number, updates: Partial<ScenePlanItem>) => {
+			if (!scenePlan) return;
+			const newPlan = {
+				...scenePlan,
+				scenes: scenePlan.scenes.map((s, i) => (i === sceneIndex ? { ...s, ...updates } : s)),
+			};
+			setScenePlan(newPlan);
+			// Recompile and update preview
+			const newCode = compileScenePlan(newPlan);
+			setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
+			(project as any)._aiCode = newCode;
+			(project as any)._aiPlan = newPlan;
+		},
+		[scenePlan, project],
+	);
+
 	// ── Music ────────────────────────────────────────────────────────
 
 	const handleGenerateMusic = useCallback(async (mood: MusicMood) => {
@@ -1016,6 +1041,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										...(!aiComposition ? [{ id: "layers" as const, label: "Layers" }] : []),
 										{ id: "tools" as const, label: "Tools" },
 										...(!aiComposition ? [{ id: "background" as const, label: "BG" }] : []),
+										...(scenePlan ? [{ id: "plan" as const, label: "Scenes" }] : []),
 										...(aiComposition ? [{ id: "code" as const, label: "Code" }] : []),
 										{ id: "music" as const, label: "Music" },
 									] as const
@@ -1202,6 +1228,106 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 											selected={currentScene.background}
 											onSelect={handleBackgroundChange}
 										/>
+									</div>
+								)}
+
+								{rightPanelTab === "plan" && scenePlan && (
+									<div className="flex-1 overflow-y-auto p-3 space-y-3">
+										<div className="text-xs text-white/60 font-medium">
+											Scenes ({scenePlan.scenes.length})
+										</div>
+										{scenePlan.scenes.map((scene, i) => (
+											<div
+												key={i}
+												className="p-3 rounded-lg bg-white/[0.03] border border-white/5 space-y-2"
+											>
+												<div className="flex items-center justify-between">
+													<span className="text-[10px] text-white/30 font-medium">
+														Scene {i + 1} — {scene.type}
+													</span>
+													<select
+														value={scene.type}
+														onChange={(e) =>
+															updateScenePlan(i, {
+																type: e.target.value as ScenePlanItem["type"],
+															})
+														}
+														className="text-[10px] bg-white/5 border border-white/10 rounded px-1 py-0.5 text-white/60"
+													>
+														<option value="hero-text">Hero Text</option>
+														<option value="split-layout">Split Layout</option>
+														<option value="cards">Cards</option>
+														<option value="screenshot">Screenshot</option>
+														<option value="cta">CTA</option>
+														<option value="glitch-intro">Glitch Intro</option>
+													</select>
+												</div>
+
+												{/* Headline */}
+												<input
+													type="text"
+													value={scene.headline}
+													onChange={(e) => updateScenePlan(i, { headline: e.target.value })}
+													className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-[#2563eb]/50"
+													placeholder="Headline text"
+												/>
+
+												{/* Animation + Background row */}
+												<div className="flex gap-2">
+													<select
+														value={scene.animation}
+														onChange={(e) =>
+															updateScenePlan(i, {
+																animation: e.target.value as ScenePlanItem["animation"],
+															})
+														}
+														className="flex-1 text-[10px] bg-white/5 border border-white/10 rounded px-1 py-1 text-white/60"
+													>
+														<option value="chars">Per-Character</option>
+														<option value="words">Word Slam</option>
+														<option value="scale">Scale Up</option>
+														<option value="clip">Clip Reveal</option>
+														<option value="gradient">Gradient</option>
+														<option value="glitch">Glitch</option>
+													</select>
+													<select
+														value={scene.background}
+														onChange={(e) => updateScenePlan(i, { background: e.target.value })}
+														className="flex-1 text-[10px] bg-white/5 border border-white/10 rounded px-1 py-1 text-white/60"
+													>
+														{BACKGROUND_NAMES.map((bg) => (
+															<option key={bg} value={bg}>
+																{bg}
+															</option>
+														))}
+													</select>
+												</div>
+
+												{/* Font size + accent word */}
+												<div className="flex gap-2">
+													<input
+														type="number"
+														value={scene.fontSize}
+														onChange={(e) =>
+															updateScenePlan(i, { fontSize: Number(e.target.value) })
+														}
+														className="w-16 px-1 py-1 rounded bg-white/5 border border-white/10 text-[10px] text-white/60 focus:outline-none"
+														title="Font size"
+													/>
+													<input
+														type="text"
+														value={scene.accentWord || ""}
+														onChange={(e) =>
+															updateScenePlan(i, {
+																accentWord: e.target.value || undefined,
+															})
+														}
+														className="flex-1 px-2 py-1 rounded bg-white/5 border border-white/10 text-[10px] text-white/60 focus:outline-none"
+														placeholder="Accent word"
+													/>
+												</div>
+											</div>
+										))}
 									</div>
 								)}
 

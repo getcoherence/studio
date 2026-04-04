@@ -9,6 +9,9 @@
 
 import type { DemoStep } from "@/components/demo-studio/types";
 import type { BrandInfo } from "./cinematicCompositionEngine";
+import type { ScenePlan } from "./scenePlan";
+import { compileScenePlan } from "./scenePlanCompiler";
+import { generateScenePlan } from "./scenePlanGenerator";
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -17,6 +20,8 @@ export interface AiCompositionResult {
 	code: string;
 	/** Screenshot data URLs to pass as props */
 	screenshots: string[];
+	/** The editable scene plan (if plan-based generation was used) */
+	plan?: ScenePlan;
 	/** Any error during generation */
 	error?: string;
 }
@@ -42,6 +47,33 @@ export async function generateAiComposition(
 	const title = opts?.title || "Product Demo";
 	const brand = opts?.brand;
 
+	// ── Try plan-based generation first (faster, more controllable) ──
+	if (!opts?.instructions) {
+		opts?.onStatus?.("Planning your cinematic video...");
+		try {
+			const planResult = await generateScenePlan(stepsWithScreenshots, {
+				title,
+				brand,
+				onStatus: opts?.onStatus,
+			});
+
+			if (planResult.plan) {
+				opts?.onStatus?.("Compiling scene plan to video code...");
+				const code = compileScenePlan(planResult.plan);
+				return {
+					code,
+					screenshots: stepsWithScreenshots.map((s) => s.screenshotDataUrl!),
+					plan: planResult.plan,
+				};
+			}
+			// Plan generation failed — fall through to direct code generation
+			opts?.onStatus?.("Plan generation failed, trying direct code generation...");
+		} catch {
+			// Fall through to direct code generation
+		}
+	}
+
+	// ── Direct code generation (fallback or when instructions provided) ──
 	opts?.onStatus?.("Building prompt from captured data...");
 
 	const systemPrompt = buildSystemPrompt();
