@@ -133,7 +133,12 @@ const MODULE_SCOPE = {
 	interpolate,
 	spring,
 	random,
-	Sequence,
+	// Wrap Sequence to guard against durationInFrames <= 0 (AI sometimes generates 0)
+	Sequence: (props: any) => {
+		const dur = props.durationInFrames;
+		if (typeof dur === "number" && dur <= 0) return null;
+		return React.createElement(Sequence, props);
+	},
 	Series,
 	AbsoluteFill,
 	Img,
