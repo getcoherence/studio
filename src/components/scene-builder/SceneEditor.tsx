@@ -50,6 +50,7 @@ import { exportSceneProject, type SceneExportProgress } from "@/lib/scene-render
 import { renderScene } from "@/lib/scene-renderer/sceneRenderer";
 import { LayerPanel } from "./LayerPanel";
 import { SceneCanvas } from "./SceneCanvas";
+import { SceneLayerEditor } from "./SceneLayerEditor";
 import { SceneLayerTimeline } from "./SceneLayerTimeline";
 import { SceneTimeline } from "./SceneTimeline";
 
@@ -1551,7 +1552,9 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 																		<option value="bottom">Bottom</option>
 																	</select>
 																	<button onClick={() => { const ls = (scene.layers||[]).filter((_, idx) => idx !== li); updateScenePlan(i, {layers: ls}); }} className="text-[9px] text-red-400/30 hover:text-red-400">✕</button>
-																</div>
+																
+														<SceneLayerEditor scene={scene} sceneIndex={i} onUpdate={updateScenePlan} />
+													</div>
 															))}
 														</div>
 										))}
