@@ -80,6 +80,7 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 			}}
 		>
 			<Player
+				key={`player-${code.length}-${durationInFrames}`}
 				ref={playerRef}
 				component={CompositionComponent as React.FC<any>}
 				inputProps={inputProps}
