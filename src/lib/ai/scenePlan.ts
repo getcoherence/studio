@@ -6,7 +6,15 @@
 
 export interface ScenePlanItem {
 	/** Scene type determines the visual template */
-	type: "hero-text" | "split-layout" | "cards" | "screenshot" | "cta" | "glitch-intro";
+	type:
+		| "hero-text"
+		| "full-bleed"
+		| "split-layout"
+		| "cards"
+		| "screenshot"
+		| "cta"
+		| "glitch-intro"
+		| "stacked-text";
 	/** Main headline text */
 	headline: string;
 	/** Optional subtitle or supporting text */
@@ -14,9 +22,18 @@ export interface ScenePlanItem {
 	/** Background — CSS color, gradient, or preset name */
 	background: string;
 	/** Text animation style */
-	animation: "chars" | "words" | "scale" | "clip" | "gradient" | "glitch";
+	animation:
+		| "chars"
+		| "words"
+		| "scale"
+		| "clip"
+		| "gradient"
+		| "glitch"
+		| "blur-in"
+		| "bounce"
+		| "wave";
 	/** Font family preset */
-	font: "serif" | "sans-serif";
+	font: "serif" | "sans-serif" | "mono" | "condensed" | "wide";
 	/** Font size for the headline */
 	fontSize: number;
 	/** One word to accent with the brand color */

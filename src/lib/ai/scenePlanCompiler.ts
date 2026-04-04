@@ -22,10 +22,20 @@ export function compileScenePlan(plan: ScenePlan): string {
 			.reduce((sum, s) => sum + (s.durationFrames || framesPerScene), 0);
 		const dur = scene.durationFrames || framesPerScene;
 		const bg = resolveBackground(scene.background);
-		const fontFamily =
-			scene.font === "serif"
-				? "Georgia, 'Times New Roman', serif"
-				: "'Inter', 'Helvetica Neue', sans-serif";
+		const fontFamily = (() => {
+			switch (scene.font) {
+				case "serif":
+					return "Georgia, 'Times New Roman', serif";
+				case "mono":
+					return "'SF Mono', 'Fira Code', 'Courier New', monospace";
+				case "condensed":
+					return "'Arial Narrow', 'Impact', sans-serif";
+				case "wide":
+					return "'Trebuchet MS', 'Arial Black', sans-serif";
+				default:
+					return "'Inter', 'Helvetica Neue', sans-serif";
+			}
+		})();
 		const color = isLightBg(scene.background) ? "#050505" : "#ffffff";
 
 		const inner = generateSceneContent(scene, accent, fontFamily, color, i);
@@ -71,6 +81,23 @@ function generateSceneContent(
 			return `${generateTextComponent(scene, accent, fontFamily, color)}
         ${scene.subtitle ? `<div style={{ fontSize: 32, color: '${color}99', fontFamily: "${fontFamily}", marginTop: 16, textAlign: 'center', maxWidth: 1000 }}>{${JSON.stringify(scene.subtitle)}}</div>` : ""}
         ${effects}`;
+
+		case "full-bleed":
+			return `<div style={{ overflow: 'hidden', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          ${generateTextComponent({ ...scene, fontSize: Math.max(160, scene.fontSize || 200) }, accent, fontFamily, color)}
+        </div>
+        ${effects}`;
+
+		case "stacked-text": {
+			const lines = scene.headline
+				.split(/[.!?]+/)
+				.filter(Boolean)
+				.map((s) => s.trim());
+			return `<div style={{ display: 'flex', flexDirection: 'column', alignItems: '${scene.font === "serif" ? "center" : "flex-start"}', gap: 8, maxWidth: 1600 }}>
+          ${lines.map((line, li) => `<AnimatedText text={${JSON.stringify(line + ".")}} fontSize={${Math.max(80, (scene.fontSize || 100) - li * 10)}} color="${color}" fontFamily="${fontFamily}" animation="${scene.animation || "words"}" delay={${li * 8}} ${scene.accentWord && li === lines.length - 1 ? `accentWord="${scene.accentWord}" accentColor="${accent}"` : ""} />`).join("\n          ")}
+        </div>
+        ${effects}`;
+		}
 
 		case "glitch-intro":
 			return `<GlitchText text={${JSON.stringify(scene.headline)}} fontSize={${scene.fontSize || 120}} color="${color}" intensity={0.8} durationFrames={12} delay={3} />

@@ -1262,6 +1262,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 														className="text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
 													>
 														<option value="hero-text">Hero Text</option>
+														<option value="full-bleed">Full Bleed</option>
+														<option value="stacked-text">Stacked Text</option>
 														<option value="split-layout">Split Layout</option>
 														<option value="cards">Cards</option>
 														<option value="screenshot">Screenshot</option>
@@ -1296,6 +1298,9 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 														<option value="clip">Clip Reveal</option>
 														<option value="gradient">Gradient</option>
 														<option value="glitch">Glitch</option>
+														<option value="blur-in">Blur In</option>
+														<option value="bounce">Bounce</option>
+														<option value="wave">Wave</option>
 													</select>
 													<select
 														value={scene.background}
@@ -1312,6 +1317,19 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 												{/* Font size + accent word */}
 												<div className="flex gap-2">
+													<select
+														value={scene.font || "sans-serif"}
+														onChange={(e) =>
+															updateScenePlan(i, { font: e.target.value as ScenePlanItem["font"] })
+														}
+														className="text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-1 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
+													>
+														<option value="serif">Serif</option>
+														<option value="sans-serif">Sans</option>
+														<option value="mono">Mono</option>
+														<option value="condensed">Condensed</option>
+														<option value="wide">Wide</option>
+													</select>
 													<input
 														type="number"
 														value={scene.fontSize}
