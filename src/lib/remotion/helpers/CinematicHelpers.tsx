@@ -394,9 +394,9 @@ export const GradientText: React.FC<{
 				overflow: "hidden",
 				background: `linear-gradient(${angle}deg, ${colors.join(", ")})`,
 				backgroundSize: "200% 200%",
-				backgroundClip: "text",
 				WebkitBackgroundClip: "text",
 				WebkitTextFillColor: "transparent",
+				color: "transparent",
 				opacity,
 				transform: `scale(${scale})`,
 			}}
