@@ -1,9 +1,9 @@
 // ── Scene Layer Editor ──────────────────────────────────────────────────
 //
 // Inline layer editor for a single scene's layers.
-// Renders inside each scene card in the Scenes tab.
+// Supports drag-to-reorder via HTML5 drag and drop.
 
-import React from "react";
+import { useCallback, useRef, useState } from "react";
 import type { SceneLayer, ScenePlanItem } from "@/lib/ai/scenePlan";
 
 interface SceneLayerEditorProps {
@@ -24,6 +24,8 @@ const POSITIONS = [
 
 export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEditorProps) {
 	const layers = scene.layers || [];
+	const [dragIndex, setDragIndex] = useState<number | null>(null);
+	const [dropIndex, setDropIndex] = useState<number | null>(null);
 
 	const addLayer = () => {
 		const newLayer: SceneLayer = {
@@ -47,6 +49,49 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEdit
 		onUpdate(sceneIndex, { layers: layers.filter((_, i) => i !== layerIndex) });
 	};
 
+	const moveLayer = useCallback(
+		(fromIndex: number, toIndex: number) => {
+			if (fromIndex === toIndex) return;
+			const newLayers = [...layers];
+			const [moved] = newLayers.splice(fromIndex, 1);
+			newLayers.splice(toIndex, 0, moved);
+			onUpdate(sceneIndex, { layers: newLayers });
+		},
+		[layers, sceneIndex, onUpdate],
+	);
+
+	// ── Drag handlers ──
+	const handleDragStart = (e: React.DragEvent, index: number) => {
+		setDragIndex(index);
+		e.dataTransfer.effectAllowed = "move";
+		e.dataTransfer.setData("text/plain", String(index));
+		// Make the drag image subtle
+		const el = e.currentTarget as HTMLElement;
+		el.style.opacity = "0.5";
+	};
+
+	const handleDragEnd = (e: React.DragEvent) => {
+		(e.currentTarget as HTMLElement).style.opacity = "1";
+		setDragIndex(null);
+		setDropIndex(null);
+	};
+
+	const handleDragOver = (e: React.DragEvent, index: number) => {
+		e.preventDefault();
+		e.dataTransfer.dropEffect = "move";
+		setDropIndex(index);
+	};
+
+	const handleDrop = (e: React.DragEvent, toIndex: number) => {
+		e.preventDefault();
+		const fromIndex = dragIndex;
+		if (fromIndex !== null) {
+			moveLayer(fromIndex, toIndex);
+		}
+		setDragIndex(null);
+		setDropIndex(null);
+	};
+
 	return (
 		<div className="space-y-1 pt-2 border-t border-white/5 mt-2">
 			<div className="flex items-center justify-between">
@@ -57,7 +102,29 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEdit
 			</div>
 
 			{layers.map((layer, li) => (
-				<div key={layer.id} className="flex gap-1 items-center">
+				<div
+					key={layer.id}
+					draggable
+					onDragStart={(e) => handleDragStart(e, li)}
+					onDragEnd={handleDragEnd}
+					onDragOver={(e) => handleDragOver(e, li)}
+					onDrop={(e) => handleDrop(e, li)}
+					className={`flex gap-1 items-center rounded px-1 py-0.5 transition-colors cursor-grab active:cursor-grabbing ${
+						dropIndex === li && dragIndex !== null && dragIndex !== li
+							? "bg-[#2563eb]/20 border border-[#2563eb]/30"
+							: dragIndex === li
+								? "opacity-50"
+								: "hover:bg-white/[0.02]"
+					}`}
+				>
+					{/* Drag handle */}
+					<span
+						className="text-white/15 cursor-grab text-[11px] select-none"
+						title="Drag to reorder"
+					>
+						⠿
+					</span>
+
 					<select
 						value={layer.type}
 						onChange={(e) => updateLayer(li, { type: e.target.value as SceneLayer["type"] })}
@@ -74,7 +141,7 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEdit
 						value={layer.content}
 						onChange={(e) => updateLayer(li, { content: e.target.value })}
 						onKeyDown={(e) => e.stopPropagation()}
-						className="flex-1 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/50 focus:outline-none focus:border-[#2563eb]/50"
+						className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/50 focus:outline-none focus:border-[#2563eb]/50"
 					/>
 
 					<select
