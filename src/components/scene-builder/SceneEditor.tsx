@@ -27,7 +27,7 @@ import { DESIGN_STYLE_LIST, type DesignStyleId } from "@/lib/ai/designStyles";
 import { generateSceneProject } from "@/lib/ai/sceneGenerator";
 import type { ScenePlan, ScenePlanItem } from "@/lib/ai/scenePlan";
 import { BACKGROUND_NAMES } from "@/lib/ai/scenePlan";
-import { compileScenePlan } from "@/lib/ai/scenePlanCompiler";
+import { compileScenePlan, expandSceneToLayers } from "@/lib/ai/scenePlanCompiler";
 import { aiPolishSceneProject, polishSceneProject } from "@/lib/ai/scenePolish";
 import { generateCustomMusic, type MusicMood } from "@/lib/audio/musicCatalog";
 import { type AiCompositionData, consumePendingDemoProject } from "@/lib/demoProjectStore";
@@ -132,9 +132,18 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		}
 		return null;
 	});
-	const [scenePlan, setScenePlan] = useState<ScenePlan | null>(
-		() => (project as any)._aiPlan ?? null,
-	);
+	const [scenePlan, setScenePlan] = useState<ScenePlan | null>(() => {
+		const plan: ScenePlan | null = (project as any)._aiPlan ?? null;
+		if (plan) {
+			const accent = plan.accentColor || "#2563eb";
+			for (const scene of plan.scenes) {
+				if (!scene.layers || scene.layers.length === 0) {
+					scene.layers = expandSceneToLayers(scene, accent);
+				}
+			}
+		}
+		return plan;
+	});
 	const [isRegenerating, setIsRegenerating] = useState(false);
 	const [previewMode, setPreviewMode] = useState<"canvas" | "remotion">(
 		// Default to Remotion for cinematic/AI projects
