@@ -6,7 +6,7 @@
 //
 // The AI uses these instead of raw divs — guarantees visual quality.
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 
 // ── Scene ───────────────────────────────────────────────────────────────
@@ -370,6 +370,7 @@ export const GradientText: React.FC<{
 	maxWidth = 1400,
 }) => {
 	const frame = useCurrentFrame();
+	const textRef = useRef<HTMLDivElement>(null);
 	const localFrame = Math.max(0, frame - delay);
 	const angle = localFrame * speed;
 	const opacity = interpolate(localFrame, [0, 15], [0, 1], {
@@ -381,8 +382,19 @@ export const GradientText: React.FC<{
 		extrapolateRight: "clamp",
 	});
 
+	// Apply background-clip: text via DOM ref (React strips it from style prop)
+	useEffect(() => {
+		if (textRef.current) {
+			const el = textRef.current;
+			el.style.setProperty("-webkit-background-clip", "text");
+			el.style.setProperty("background-clip", "text");
+			el.style.setProperty("-webkit-text-fill-color", "transparent");
+		}
+	});
+
 	return (
 		<div
+			ref={textRef}
 			style={{
 				fontSize,
 				fontFamily,
@@ -394,8 +406,6 @@ export const GradientText: React.FC<{
 				overflow: "hidden",
 				background: `linear-gradient(${angle}deg, ${colors.join(", ")})`,
 				backgroundSize: "200% 200%",
-				WebkitBackgroundClip: "text",
-				WebkitTextFillColor: "transparent",
 				color: "transparent",
 				opacity,
 				transform: `scale(${scale})`,
