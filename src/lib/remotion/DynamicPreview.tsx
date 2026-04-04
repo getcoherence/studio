@@ -20,6 +20,8 @@ interface DynamicPreviewProps {
 	musicSrc?: string;
 	/** Increment to reset playback to frame 0 */
 	resetSignal?: number;
+	/** Seek to a specific frame */
+	seekToFrame?: number;
 }
 
 /** Wrapper composition that layers DynamicComposition + background music */
@@ -42,6 +44,7 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 	isPlaying,
 	musicSrc,
 	resetSignal,
+	seekToFrame,
 }) => {
 	const playerRef = useRef<PlayerRef>(null);
 	const fps = 30;
@@ -63,6 +66,13 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 			playerRef.current.seekTo(0);
 		}
 	}, [resetSignal]);
+
+	// Seek to specific frame when seekToFrame changes
+	useEffect(() => {
+		if (seekToFrame !== undefined && playerRef.current) {
+			playerRef.current.seekTo(seekToFrame);
+		}
+	}, [seekToFrame]);
 
 	// Use the wrapper component when music is present
 	const CompositionComponent = musicSrc ? DynamicWithMusic : DynamicComposition;

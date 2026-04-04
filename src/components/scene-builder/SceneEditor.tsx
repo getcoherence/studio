@@ -460,6 +460,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	}, []);
 
 	const [resetSignal, setResetSignal] = useState(0);
+	const [seekToFrame, setSeekToFrame] = useState<number | undefined>(undefined);
 
 	const resetPlayback = useCallback(() => {
 		setSelectedSceneIndex(0);
@@ -676,6 +677,11 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 			setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
 			(project as any)._aiCode = newCode;
 			(project as any)._aiPlan = newPlan;
+			// Seek player to the edited scene's start frame
+			const startFrame = newPlan.scenes
+				.slice(0, sceneIndex)
+				.reduce((sum, s) => sum + (s.durationFrames || 90), 0);
+			setSeekToFrame(startFrame);
 		},
 		[scenePlan, project],
 	);
@@ -953,6 +959,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										isPlaying={isPlaying}
 										musicSrc={musicDataUrl ?? undefined}
 										resetSignal={resetSignal}
+										seekToFrame={seekToFrame}
 									/>
 								) : previewMode === "remotion" ? (
 									<RemotionPreview
