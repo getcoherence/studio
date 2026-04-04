@@ -50,8 +50,8 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEdit
 	return (
 		<div className="space-y-1 pt-2 border-t border-white/5 mt-2">
 			<div className="flex items-center justify-between">
-				<span className="text-[9px] text-white/30">Layers ({layers.length})</span>
-				<button onClick={addLayer} className="text-[9px] text-[#2563eb] hover:text-[#60a5fa]">
+				<span className="text-[11px] text-white/30">Layers ({layers.length})</span>
+				<button onClick={addLayer} className="text-[11px] text-[#2563eb] hover:text-[#60a5fa]">
 					+ Add
 				</button>
 			</div>
@@ -61,7 +61,7 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEdit
 					<select
 						value={layer.type}
 						onChange={(e) => updateLayer(li, { type: e.target.value as SceneLayer["type"] })}
-						className="w-12 text-[8px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-white/50 [&>option]:bg-[#141417] [&>option]:text-white"
+						className="w-12 text-[11px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-white/50 [&>option]:bg-[#141417] [&>option]:text-white"
 					>
 						<option value="text">Text</option>
 						<option value="lottie">Lottie</option>
@@ -74,7 +74,7 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEdit
 						value={layer.content}
 						onChange={(e) => updateLayer(li, { content: e.target.value })}
 						onKeyDown={(e) => e.stopPropagation()}
-						className="flex-1 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[8px] text-white/50 focus:outline-none focus:border-[#2563eb]/50"
+						className="flex-1 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/50 focus:outline-none focus:border-[#2563eb]/50"
 					/>
 
 					<select
@@ -82,7 +82,7 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEdit
 						onChange={(e) =>
 							updateLayer(li, { position: e.target.value as SceneLayer["position"] })
 						}
-						className="w-14 text-[8px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-white/50 [&>option]:bg-[#141417] [&>option]:text-white"
+						className="w-14 text-[11px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-white/50 [&>option]:bg-[#141417] [&>option]:text-white"
 					>
 						{POSITIONS.map((p) => (
 							<option key={p.value} value={p.value}>
@@ -95,13 +95,13 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEdit
 						type="number"
 						value={layer.size}
 						onChange={(e) => updateLayer(li, { size: Number(e.target.value) })}
-						className="w-8 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-[8px] text-white/40 focus:outline-none"
+						className="w-8 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/40 focus:outline-none"
 						title="Size %"
 					/>
 
 					<button
 						onClick={() => deleteLayer(li)}
-						className="text-[9px] text-red-400/30 hover:text-red-400 px-0.5"
+						className="text-[11px] text-red-400/30 hover:text-red-400 px-0.5"
 					>
 						✕
 					</button>
