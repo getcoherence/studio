@@ -49,7 +49,7 @@ export const AnimatedText: React.FC<{
 	align?: "center" | "left" | "right";
 	maxWidth?: number;
 	/** Animation style */
-	animation?: "chars" | "words" | "scale" | "clip" | "none";
+	animation?: "chars" | "words" | "scale" | "clip" | "blur-in" | "bounce" | "wave" | "none";
 	/** Delay in frames before animation starts */
 	delay?: number;
 }> = ({
