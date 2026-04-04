@@ -222,7 +222,7 @@ interface DemoChatPanelProps {
 	messages: DemoChatMessage[];
 	status: DemoAgentStatus;
 	onStart: (config: DemoConfig) => void;
-	onOpenInEditor: () => void;
+	onOpenInEditor?: () => void;
 	onGenerateVoiceover?: () => void;
 	isGeneratingVoiceover?: boolean;
 }
