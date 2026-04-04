@@ -1009,7 +1009,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 									[
 										{ id: "layers" as const, label: "Layers" },
 										{ id: "tools" as const, label: "Tools" },
-										{ id: "background" as const, label: "BG" },
+										// Hide BG tab for AI cinematic — backgrounds are baked into AI code
+										...(!aiComposition ? [{ id: "background" as const, label: "BG" }] : []),
 										{ id: "music" as const, label: "Music" },
 									] as const
 								).map((tab) => (
