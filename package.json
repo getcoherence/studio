@@ -56,6 +56,7 @@
 		"fix-webm-duration": "^1.0.6",
 		"gif.js": "^0.2.0",
 		"gsap": "^3.13.0",
+		"html2canvas": "^1.4.1",
 		"lottie-web": "^5.13.0",
 		"lucide-react": "^0.545.0",
 		"mediabunny": "^1.25.1",

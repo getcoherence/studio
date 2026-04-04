@@ -28,6 +28,7 @@ import { generateSceneProject } from "@/lib/ai/sceneGenerator";
 import type { ScenePlan, ScenePlanItem } from "@/lib/ai/scenePlan";
 import { BACKGROUND_NAMES } from "@/lib/ai/scenePlan";
 import { compileScenePlan, expandSceneToLayers } from "@/lib/ai/scenePlanCompiler";
+import { reviewCompositionVisually } from "@/lib/ai/visionReview";
 import { aiPolishSceneProject, polishSceneProject } from "@/lib/ai/scenePolish";
 import { generateCustomMusic, type MusicMood } from "@/lib/audio/musicCatalog";
 import { type AiCompositionData, consumePendingDemoProject } from "@/lib/demoProjectStore";
@@ -142,9 +143,27 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 				if (!scene.layers || scene.layers.length === 0) {
 					const expanded = expandSceneToLayers(scene, accent);
 					// If expansion produced nothing (no headline etc), create a default text layer
-					scene.layers = expanded.length > 0
-						? expanded
-						: [{ id: `default-${Date.now()}`, type: "text" as const, content: scene.headline || "Untitled", position: "center" as const, size: 80, startFrame: 0, endFrame: -1, settings: { fontSize: 120, color: ["white","cream","#fafafa","#f5f0e8"].includes(scene.background) ? "#050505" : "#ffffff", animation: "chars" } }];
+					scene.layers =
+						expanded.length > 0
+							? expanded
+							: [
+									{
+										id: `default-${Date.now()}`,
+										type: "text" as const,
+										content: scene.headline || "Untitled",
+										position: "center" as const,
+										size: 80,
+										startFrame: 0,
+										endFrame: -1,
+										settings: {
+											fontSize: 120,
+											color: ["white", "cream", "#fafafa", "#f5f0e8"].includes(scene.background)
+												? "#050505"
+												: "#ffffff",
+											animation: "chars",
+										},
+									},
+								];
 				}
 			}
 		}
@@ -161,6 +180,9 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	const [isAiGenerating, setIsAiGenerating] = useState(false);
 	const [isPolishing, setIsPolishing] = useState(false);
 	const [isCritiquing, setIsCritiquing] = useState(false);
+	const [isVisionReviewing, setIsVisionReviewing] = useState(false);
+	const [visionScore, setVisionScore] = useState<number | null>(null);
+	const playerContainerRef = useRef<HTMLDivElement>(null);
 	const [musicPath, _setMusicPath] = useState<string | null>(
 		() => (project as any)._musicPath ?? null,
 	);
@@ -689,6 +711,44 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		}
 	}, [project, isCritiquing]);
 
+	// ── Vision Review ──────────────────────────────────────────────
+
+	const handleVisionReview = useCallback(async () => {
+		if (isVisionReviewing || !playerContainerRef.current) return;
+		setIsVisionReviewing(true);
+		try {
+			const totalFrames = aiComposition
+				? (() => {
+						try {
+							const m = aiComposition.code.match(/totalDuration\s*=\s*(\d+)/);
+							return m ? parseInt(m[1], 10) : 600;
+						} catch {
+							return 600;
+						}
+					})()
+				: project.scenes.reduce((s, sc) => s + Math.ceil(sc.durationMs / 33.3), 0);
+
+			const result = await reviewCompositionVisually(
+				playerContainerRef.current,
+				(frame) => setSeekToFrame(frame),
+				totalFrames,
+				(msg) => toast.loading(msg, { id: "vision-review" }),
+			);
+			toast.dismiss("vision-review");
+
+			setVisionScore(result.score);
+			if (result.issues.length > 0) {
+				toast.info(`Score: ${result.score}/10\n${result.issues.join("\n")}`, { duration: 10000 });
+			} else {
+				toast.success(`Score: ${result.score}/10 — looks great!`);
+			}
+		} catch (err) {
+			toast.dismiss("vision-review");
+			toast.error("Vision review failed");
+		}
+		setIsVisionReviewing(false);
+	}, [isVisionReviewing, aiComposition, project.scenes]);
+
 	// ── Scene Plan editing ──────────────────────────────────────────
 
 	const addSceneToPlan = useCallback(
@@ -1039,7 +1099,10 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 									))}
 							</div>
 							{/* Preview area */}
-							<div className="flex-1 p-4 flex flex-col min-h-0 overflow-hidden">
+							<div
+								ref={playerContainerRef}
+								className="flex-1 p-4 flex flex-col min-h-0 overflow-hidden"
+							>
 								{previewMode === "remotion" && aiComposition ? (
 									<DynamicPreview
 										code={aiComposition.code}
@@ -1298,6 +1361,20 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 												)}
 												Critique & Fix
 											</button>
+											{aiComposition && (
+												<button
+													onClick={handleVisionReview}
+													disabled={isVisionReviewing}
+													className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-400/10 transition-colors text-xs disabled:opacity-40"
+												>
+													{isVisionReviewing ? (
+														<Loader2 size={12} className="animate-spin" />
+													) : (
+														<Eye size={12} />
+													)}
+													Vision Review {visionScore !== null ? `(${visionScore}/10)` : ""}
+												</button>
+											)}
 										</div>
 										{/* Lottie Browser */}
 										<div className="space-y-2 pt-2 border-t border-white/5">
