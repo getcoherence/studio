@@ -138,8 +138,13 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		if (plan) {
 			const accent = plan.accentColor || "#2563eb";
 			for (const scene of plan.scenes) {
+				// Always re-expand if layers are empty or missing
 				if (!scene.layers || scene.layers.length === 0) {
-					scene.layers = expandSceneToLayers(scene, accent);
+					const expanded = expandSceneToLayers(scene, accent);
+					// If expansion produced nothing (no headline etc), create a default text layer
+					scene.layers = expanded.length > 0
+						? expanded
+						: [{ id: `default-${Date.now()}`, type: "text" as const, content: scene.headline || "Untitled", position: "center" as const, size: 80, startFrame: 0, endFrame: -1, settings: { fontSize: 120, color: ["white","cream","#fafafa","#f5f0e8"].includes(scene.background) ? "#050505" : "#ffffff", animation: "chars" } }];
 				}
 			}
 		}
