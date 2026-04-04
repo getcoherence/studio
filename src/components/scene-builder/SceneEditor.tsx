@@ -19,13 +19,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
 import { AISettingsButton } from "@/components/ui/AISettingsDialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { AnimatedBackgroundPicker } from "@/components/video-editor/AnimatedBackgroundPicker";
 import { generateAiComposition } from "@/lib/ai/aiCinematicEngine";
 import { applyCritiqueMutations, critiqueSceneProject } from "@/lib/ai/designCritique";
 import { DESIGN_STYLE_LIST, type DesignStyleId } from "@/lib/ai/designStyles";
-import { generateSceneProject, SCENE_TEMPLATES } from "@/lib/ai/sceneGenerator";
+import { generateSceneProject } from "@/lib/ai/sceneGenerator";
 import { aiPolishSceneProject, polishSceneProject } from "@/lib/ai/scenePolish";
 import { generateCustomMusic, type MusicMood } from "@/lib/audio/musicCatalog";
 import { type AiCompositionData, consumePendingDemoProject } from "@/lib/demoProjectStore";
@@ -137,7 +136,6 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	const [transitionFromCanvas, setTransitionFromCanvas] = useState<HTMLCanvasElement | null>(null);
 	const [aiPrompt, setAiPrompt] = useState("");
 	const [isAiGenerating, setIsAiGenerating] = useState(false);
-	const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
 	const [isPolishing, setIsPolishing] = useState(false);
 	const [isCritiquing, setIsCritiquing] = useState(false);
 	const [musicPath, _setMusicPath] = useState<string | null>(
@@ -173,7 +171,9 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		}
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 	const [isGeneratingMusic, setIsGeneratingMusic] = useState(false);
-	const [rightPanelTab, setRightPanelTab] = useState<"layers" | "music" | "background">("layers");
+	const [rightPanelTab, setRightPanelTab] = useState<"layers" | "tools" | "music" | "background">(
+		"layers",
+	);
 	const [selectedStyle, setSelectedStyle] = useState<DesignStyleId | null>(null);
 	const [projectPath, setProjectPath] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -531,7 +531,6 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 				setIsPlaying(false);
 				setActiveTransition(null);
 				setTransitionFromCanvas(null);
-				setAiPopoverOpen(false);
 				setAiPrompt("");
 				const styleName = selectedStyle
 					? (DESIGN_STYLE_LIST.find((s) => s.id === selectedStyle)?.name ?? "")
@@ -829,169 +828,6 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 				<div className="w-px h-5 bg-white/10 mx-1" />
 
-				{/* AI Generate */}
-				<Popover open={aiPopoverOpen} onOpenChange={setAiPopoverOpen}>
-					<PopoverTrigger asChild>
-						<button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-purple-400/70 hover:text-purple-300 hover:bg-purple-400/10 transition-colors text-xs">
-							<Sparkles size={14} />
-							AI Generate
-						</button>
-					</PopoverTrigger>
-					<PopoverContent className="w-[440px] bg-[#141417] border-white/10" align="start">
-						<div className="space-y-3">
-							<div className="text-xs text-white/60 font-medium">
-								Generate Scene Project with AI
-							</div>
-
-							{/* Style selector grid */}
-							<div>
-								<div className="text-[10px] text-white/40 mb-1.5">Design Style</div>
-								<div className="grid grid-cols-4 gap-1.5">
-									{DESIGN_STYLE_LIST.map((style) => (
-										<button
-											key={style.id}
-											onClick={() =>
-												setSelectedStyle(
-													selectedStyle === style.id ? null : (style.id as DesignStyleId),
-												)
-											}
-											className={`flex flex-col items-center gap-1 px-1.5 py-1.5 rounded-md border transition-colors ${
-												selectedStyle === style.id
-													? "border-purple-500/60 bg-purple-500/10 text-purple-300"
-													: "border-white/5 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/10 text-white/50 hover:text-white/70"
-											}`}
-											title={style.description}
-										>
-											<div
-												className="w-full h-5 rounded-sm"
-												style={{ background: style.previewGradient }}
-											/>
-											<span className="text-[9px] leading-tight text-center truncate w-full">
-												{style.name}
-											</span>
-										</button>
-									))}
-								</div>
-							</div>
-
-							{/* Template chips */}
-							<div className="flex flex-wrap gap-1.5">
-								{SCENE_TEMPLATES.map((t) => (
-									<button
-										key={t.id}
-										onClick={() => setAiPrompt(t.prompt)}
-										className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/15 text-[10px] text-white/60 hover:text-white/80 transition-colors"
-										title={t.description}
-									>
-										<span>{t.thumbnail}</span>
-										{t.name}
-									</button>
-								))}
-							</div>
-
-							<textarea
-								value={aiPrompt}
-								onChange={(e) => setAiPrompt(e.target.value)}
-								placeholder="Describe your video, or pick a template above..."
-								className="w-full h-20 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-white/90 placeholder:text-white/25 resize-none focus:outline-none focus:border-[#2563eb]/50"
-								onKeyDown={(e) => {
-									if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-										e.preventDefault();
-										handleAiGenerate();
-									}
-									e.stopPropagation(); // prevent space from toggling playback
-								}}
-							/>
-							<div className="flex items-center justify-between">
-								<span className="text-[10px] text-white/30">
-									{navigator.platform.includes("Mac") ? "Cmd" : "Ctrl"}+Enter to generate
-								</span>
-								<button
-									onClick={handleAiGenerate}
-									disabled={!aiPrompt.trim() || isAiGenerating}
-									className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-								>
-									{isAiGenerating ? (
-										<>
-											<Loader2 size={12} className="animate-spin" />
-											Generating...
-										</>
-									) : (
-										<>
-											<Sparkles size={12} />
-											Generate
-										</>
-									)}
-								</button>
-							</div>
-						</div>
-					</PopoverContent>
-				</Popover>
-
-				{/* AI Regenerate — text input + button for refinement instructions */}
-				{aiComposition && (
-					<div className="flex items-center gap-1.5">
-						<input
-							type="text"
-							value={regenInput}
-							onChange={(e) => setRegenInput(e.target.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter" && !isRegenerating) {
-									e.preventDefault();
-									handleRegenerate(regenInput);
-								}
-							}}
-							placeholder="Make it more dramatic..."
-							disabled={isRegenerating}
-							className="w-48 px-2 py-1.5 rounded-md bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 focus:outline-none focus:border-emerald-500/50 disabled:opacity-40"
-						/>
-						<button
-							onClick={() => handleRegenerate(regenInput)}
-							disabled={isRegenerating}
-							className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-emerald-400/70 hover:text-emerald-300 hover:bg-emerald-400/10 transition-colors text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-							title="Regenerate with instructions (or leave empty for fresh take)"
-						>
-							{isRegenerating ? (
-								<Loader2 size={14} className="animate-spin" />
-							) : (
-								<RotateCcw size={14} />
-							)}
-							Regenerate
-						</button>
-					</div>
-				)}
-
-				{/* Polish buttons */}
-				<button
-					onClick={() => handlePolish(false)}
-					disabled={isPolishing || project.scenes.length === 0}
-					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-amber-400/70 hover:text-amber-300 hover:bg-amber-400/10 transition-colors text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-					title="Quick polish — instant heuristic enhancements"
-				>
-					{isPolishing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
-					Polish
-				</button>
-				<button
-					onClick={() => handlePolish(true)}
-					disabled={isPolishing || project.scenes.length === 0}
-					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-purple-400/70 hover:text-purple-300 hover:bg-purple-400/10 transition-colors text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-					title="AI polish — vision model analyzes each screenshot for smart enhancements"
-				>
-					<Sparkles size={14} />
-					AI Polish
-				</button>
-
-				{/* AI Critique */}
-				<button
-					onClick={handleCritique}
-					disabled={isCritiquing || project.scenes.length === 0}
-					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-teal-400/70 hover:text-teal-300 hover:bg-teal-400/10 transition-colors text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-					title="AI critique — scores each scene against design principles and auto-applies improvements"
-				>
-					{isCritiquing ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />}
-					Critique
-				</button>
-
 				{/* AI Settings */}
 				<AISettingsButton />
 
@@ -1167,6 +1003,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 								{(
 									[
 										{ id: "layers" as const, label: "Layers" },
+										{ id: "tools" as const, label: "Tools" },
 										{ id: "background" as const, label: "BG" },
 										{ id: "music" as const, label: "Music" },
 									] as const
@@ -1195,6 +1032,142 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										onUpdateLayer={updateLayer}
 										onSelectLayer={setSelectedLayerId}
 									/>
+								)}
+
+								{rightPanelTab === "tools" && (
+									<div className="p-3 space-y-4">
+										{/* AI Generate */}
+										<div className="space-y-2">
+											<div className="text-xs text-white/60 font-medium">AI Generate</div>
+											<div className="text-[10px] text-white/40 mb-1.5">Design Style</div>
+											<div className="grid grid-cols-3 gap-1.5">
+												{DESIGN_STYLE_LIST.map((style) => (
+													<button
+														key={style.id}
+														onClick={() =>
+															setSelectedStyle(
+																selectedStyle === style.id ? null : (style.id as DesignStyleId),
+															)
+														}
+														className={`flex flex-col items-center gap-1 px-1.5 py-1.5 rounded-md border transition-colors ${
+															selectedStyle === style.id
+																? "border-purple-500/60 bg-purple-500/10 text-purple-300"
+																: "border-white/5 bg-white/[0.03] hover:bg-white/[0.06] text-white/50"
+														}`}
+														title={style.description}
+													>
+														<div
+															className="w-full h-4 rounded-sm"
+															style={{ background: style.previewGradient }}
+														/>
+														<span className="text-[8px] truncate w-full text-center">
+															{style.name}
+														</span>
+													</button>
+												))}
+											</div>
+											<textarea
+												value={aiPrompt}
+												onChange={(e) => setAiPrompt(e.target.value)}
+												placeholder="Describe your video..."
+												className="w-full h-16 bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-xs text-white/90 placeholder:text-white/25 resize-none focus:outline-none focus:border-[#2563eb]/50"
+												onKeyDown={(e) => {
+													if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+														e.preventDefault();
+														handleAiGenerate();
+													}
+													e.stopPropagation();
+												}}
+											/>
+											<button
+												onClick={handleAiGenerate}
+												disabled={!aiPrompt.trim() || isAiGenerating}
+												className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors text-xs disabled:opacity-50"
+											>
+												{isAiGenerating ? (
+													<>
+														<Loader2 size={12} className="animate-spin" />
+														Generating...
+													</>
+												) : (
+													<>
+														<Sparkles size={12} />
+														Generate
+													</>
+												)}
+											</button>
+										</div>
+
+										{/* Regenerate (AI Cinematic only) */}
+										{aiComposition && (
+											<div className="space-y-2 pt-2 border-t border-white/5">
+												<div className="text-xs text-white/60 font-medium">Regenerate</div>
+												<input
+													type="text"
+													value={regenInput}
+													onChange={(e) => setRegenInput(e.target.value)}
+													onKeyDown={(e) => {
+														if (e.key === "Enter" && !isRegenerating) {
+															e.preventDefault();
+															handleRegenerate(regenInput);
+														}
+													}}
+													placeholder="Make it more dramatic..."
+													disabled={isRegenerating}
+													className="w-full px-2 py-1.5 rounded-md bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 focus:outline-none focus:border-emerald-500/50 disabled:opacity-40"
+												/>
+												<button
+													onClick={() => handleRegenerate(regenInput)}
+													disabled={isRegenerating}
+													className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors text-xs disabled:opacity-40"
+												>
+													{isRegenerating ? (
+														<Loader2 size={12} className="animate-spin" />
+													) : (
+														<RotateCcw size={12} />
+													)}
+													Regenerate
+												</button>
+											</div>
+										)}
+
+										{/* Polish & Critique */}
+										<div className="space-y-2 pt-2 border-t border-white/5">
+											<div className="text-xs text-white/60 font-medium">Enhance</div>
+											<button
+												onClick={() => handlePolish(false)}
+												disabled={isPolishing || project.scenes.length === 0}
+												className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-amber-400/70 hover:text-amber-300 hover:bg-amber-400/10 transition-colors text-xs disabled:opacity-40"
+											>
+												{isPolishing ? (
+													<Loader2 size={12} className="animate-spin" />
+												) : (
+													<Wand2 size={12} />
+												)}
+												Quick Polish
+											</button>
+											<button
+												onClick={() => handlePolish(true)}
+												disabled={isPolishing || project.scenes.length === 0}
+												className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-purple-400/70 hover:text-purple-300 hover:bg-purple-400/10 transition-colors text-xs disabled:opacity-40"
+											>
+												<Sparkles size={12} />
+												AI Polish
+											</button>
+											<button
+												onClick={handleCritique}
+												disabled={isCritiquing || project.scenes.length === 0}
+												className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-teal-400/70 hover:text-teal-300 hover:bg-teal-400/10 transition-colors text-xs disabled:opacity-40"
+											>
+												{isCritiquing ? (
+													<Loader2 size={12} className="animate-spin" />
+												) : (
+													<Eye size={12} />
+												)}
+												Critique & Fix
+											</button>
+										</div>
+									</div>
 								)}
 
 								{rightPanelTab === "background" && (
