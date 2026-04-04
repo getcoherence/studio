@@ -71,7 +71,9 @@ export const AnimatedText: React.FC<{
 	const { fps } = useVideoConfig();
 	const localFrame = Math.max(0, frame - delay);
 
-	const words = text.split(" ");
+	// Sanitize: replace literal \n with spaces (AI sometimes puts these in)
+	const cleanText = text.replace(/\\n/g, " ").replace(/\n/g, " ");
+	const words = cleanText.split(" ").filter(Boolean);
 
 	if (animation === "scale") {
 		const progress = spring({
@@ -95,7 +97,7 @@ export const AnimatedText: React.FC<{
 					transform: `scale(${0.6 + progress * 0.4})`,
 				}}
 			>
-				{text}
+				{cleanText}
 			</div>
 		);
 	}
@@ -121,7 +123,7 @@ export const AnimatedText: React.FC<{
 					clipPath: `inset(0 0 ${(1 - progress) * 100}% 0)`,
 				}}
 			>
-				{text}
+				{cleanText}
 			</div>
 		);
 	}
