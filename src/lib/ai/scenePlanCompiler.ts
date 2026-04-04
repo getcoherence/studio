@@ -76,16 +76,23 @@ function generateSceneContent(
 			return `<GlitchText text={${JSON.stringify(scene.headline)}} fontSize={${scene.fontSize || 120}} color="${color}" intensity={0.8} durationFrames={12} delay={3} />
         ${effects}`;
 
-		case "split-layout":
+		case "split-layout": {
+			const rightContent = generateRightContent(scene, accent);
+			// If no right content, render as full-width hero text instead of empty split
+			if (!rightContent.trim()) {
+				return `${generateTextComponent(scene, accent, fontFamily, color)}
+        ${effects}`;
+			}
 			return `<div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'center', gap: 80 }}>
           <div style={{ flex: 1, maxWidth: 700 }}>
             ${generateTextComponent(scene, accent, fontFamily, color)}
           </div>
           <div style={{ flex: 1, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            ${generateRightContent(scene, accent)}
+            ${rightContent}
           </div>
         </div>
         ${effects}`;
+		}
 
 		case "cards":
 			return `${generateTextComponent(scene, accent, fontFamily, color)}
@@ -135,10 +142,11 @@ function generateTextComponent(
 		return `<GlitchText text={${JSON.stringify(scene.headline)}} fontSize={${Math.max(80, scene.fontSize || 120)}} color="${color}" />`;
 	}
 
-	const size = Math.max(80, scene.fontSize || 120);
+	const size = Math.max(100, scene.fontSize || 120);
 	return `<AnimatedText
           text={${JSON.stringify(scene.headline)}}
           fontSize={${size}}
+          fontWeight={900}
           color="${color}"
           fontFamily="${fontFamily}"
           animation="${scene.animation || "chars"}"
