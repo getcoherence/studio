@@ -10,7 +10,7 @@
 import type { DemoStep } from "@/components/demo-studio/types";
 import type { BrandInfo } from "./cinematicCompositionEngine";
 import type { ScenePlan } from "./scenePlan";
-import { compileScenePlan } from "./scenePlanCompiler";
+import { compileScenePlan, expandSceneToLayers } from "./scenePlanCompiler";
 import { generateScenePlan } from "./scenePlanGenerator";
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -59,6 +59,8 @@ export async function generateAiComposition(
 
 			if (planResult.plan) {
 				opts?.onStatus?.("Compiling scene plan to video code...");
+				// Expand scene-level properties into explicit layers
+				normalizePlan(planResult.plan);
 				const code = compileScenePlan(planResult.plan);
 				return {
 					code,
@@ -453,4 +455,17 @@ function extractCode(response: string): string | null {
 	}
 
 	return null;
+}
+
+/**
+ * Expand scene-level properties (headline, subtitle, cards, effects)
+ * into explicit layers. After this, the UI only needs to show layers.
+ */
+function normalizePlan(plan: ScenePlan): void {
+	const accent = plan.accentColor || "#2563eb";
+	for (const scene of plan.scenes) {
+		if (!scene.layers || scene.layers.length === 0) {
+			scene.layers = expandSceneToLayers(scene, accent);
+		}
+	}
 }

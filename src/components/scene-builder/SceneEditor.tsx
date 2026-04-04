@@ -32,7 +32,6 @@ import { aiPolishSceneProject, polishSceneProject } from "@/lib/ai/scenePolish";
 import { generateCustomMusic, type MusicMood } from "@/lib/audio/musicCatalog";
 import { type AiCompositionData, consumePendingDemoProject } from "@/lib/demoProjectStore";
 import { DynamicPreview } from "@/lib/remotion/DynamicPreview";
-import { LOTTIE_CATALOG } from "@/lib/remotion/helpers/LottieHelper";
 import { RemotionPreview } from "@/lib/remotion/RemotionPreview";
 import {
 	captureCanvas,
@@ -1350,59 +1349,9 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 														</button>
 													</div>
 													<select
-														value={scene.type}
-														onChange={(e) =>
-															updateScenePlan(i, {
-																type: e.target.value as ScenePlanItem["type"],
-															})
-														}
-														className="text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
-													>
-														<option value="hero-text">Hero Text</option>
-														<option value="full-bleed">Full Bleed</option>
-														<option value="stacked-text">Stacked Text</option>
-														<option value="split-layout">Split Layout</option>
-														<option value="cards">Cards</option>
-														<option value="screenshot">Screenshot</option>
-														<option value="cta">CTA</option>
-														<option value="glitch-intro">Glitch Intro</option>
-													</select>
-												</div>
-
-												{/* Headline */}
-												<input
-													type="text"
-													value={scene.headline}
-													onChange={(e) => updateScenePlan(i, { headline: e.target.value })}
-													className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-[#2563eb]/50"
-													placeholder="Headline text"
-												/>
-
-												{/* Animation + Background row */}
-												<div className="flex gap-2">
-													<select
-														value={scene.animation}
-														onChange={(e) =>
-															updateScenePlan(i, {
-																animation: e.target.value as ScenePlanItem["animation"],
-															})
-														}
-														className="flex-1 text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-1 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
-													>
-														<option value="chars">Per-Character</option>
-														<option value="words">Word Slam</option>
-														<option value="scale">Scale Up</option>
-														<option value="clip">Clip Reveal</option>
-														<option value="gradient">Gradient</option>
-														<option value="glitch">Glitch</option>
-														<option value="blur-in">Blur In</option>
-														<option value="bounce">Bounce</option>
-														<option value="wave">Wave</option>
-													</select>
-													<select
 														value={scene.background}
 														onChange={(e) => updateScenePlan(i, { background: e.target.value })}
-														className="flex-1 text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-1 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
+														className="w-24 text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
 													>
 														{BACKGROUND_NAMES.map((bg) => (
 															<option key={bg} value={bg}>
@@ -1411,147 +1360,6 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 														))}
 													</select>
 												</div>
-
-												{/* Font size + accent word */}
-												<div className="flex gap-2">
-													<select
-														value={scene.font || "sans-serif"}
-														onChange={(e) =>
-															updateScenePlan(i, { font: e.target.value as ScenePlanItem["font"] })
-														}
-														className="text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-1 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
-													>
-														<option value="serif">Serif</option>
-														<option value="sans-serif">Sans</option>
-														<option value="mono">Mono</option>
-														<option value="condensed">Condensed</option>
-														<option value="wide">Wide</option>
-													</select>
-													<input
-														type="number"
-														value={scene.fontSize}
-														onChange={(e) =>
-															updateScenePlan(i, { fontSize: Number(e.target.value) })
-														}
-														className="w-16 px-1 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-white/60 focus:outline-none"
-														title="Font size"
-													/>
-													<input
-														type="text"
-														value={scene.accentWord || ""}
-														onChange={(e) =>
-															updateScenePlan(i, {
-																accentWord: e.target.value || undefined,
-															})
-														}
-														className="flex-1 px-2 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-white/60 focus:outline-none"
-														placeholder="Accent word"
-													/>
-												</div>
-												{/* Subtitle */}
-												<input
-													type="text"
-													value={scene.subtitle || ""}
-													onChange={(e) =>
-														updateScenePlan(i, { subtitle: e.target.value || undefined })
-													}
-													className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-white/40 focus:outline-none focus:border-[#2563eb]/50"
-													placeholder="Subtitle (optional)"
-												/>
-												{/* Cards */}
-												{scene.type === "cards" && (
-													<div className="space-y-1 pt-1 border-t border-white/5">
-														<div className="flex items-center justify-between">
-															<span className="text-[11px] text-white/30">Cards</span>
-															<button
-																onClick={() =>
-																	updateScenePlan(i, {
-																		cards: [
-																			...(scene.cards || []),
-																			{ title: "New Card", description: "Description" },
-																		],
-																	})
-																}
-																className="text-[11px] text-[#2563eb] hover:text-[#60a5fa]"
-															>
-																+ Add Card
-															</button>
-														</div>
-														{scene.cards.map((card, ci) => (
-															<div key={ci} className="flex gap-1 items-center">
-																<input
-																	type="text"
-																	value={card.title}
-																	onChange={(e) => {
-																		const c = [...(scene.cards || [])];
-																		c[ci] = { ...c[ci], title: e.target.value };
-																		updateScenePlan(i, { cards: c });
-																	}}
-																	onKeyDown={(e) => e.stopPropagation()}
-																	className="flex-1 px-1.5 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-white/60 focus:outline-none"
-																	placeholder="Title"
-																/>
-																<input
-																	type="text"
-																	value={card.description}
-																	onChange={(e) => {
-																		const c = [...(scene.cards || [])];
-																		c[ci] = { ...c[ci], description: e.target.value };
-																		updateScenePlan(i, { cards: c });
-																	}}
-																	onKeyDown={(e) => e.stopPropagation()}
-																	className="flex-1 px-1.5 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-white/40 focus:outline-none"
-																	placeholder="Desc"
-																/>
-																<button
-																	onClick={() => {
-																		const c = (scene.cards || []).filter((_, idx) => idx !== ci);
-																		updateScenePlan(i, { cards: c });
-																	}}
-																	className="text-[11px] text-red-400/30 hover:text-red-400 px-0.5"
-																>
-																	✕
-																</button>
-															</div>
-														))}
-													</div>
-												)}
-												{/* Effects */}
-												<div className="flex gap-1 pt-1">
-													{(["vignette", "light-streak", "clip-reveal"] as const).map((fx) => {
-														const on = (scene.effects || []).includes(fx);
-														return (
-															<button
-																key={fx}
-																onClick={() =>
-																	updateScenePlan(i, {
-																		effects: on
-																			? (scene.effects || []).filter((e) => e !== fx)
-																			: [...(scene.effects || []), fx],
-																	})
-																}
-																className={`px-1.5 py-0.5 rounded text-[11px] transition-colors ${on ? "bg-[#2563eb]/20 text-[#60a5fa] border border-[#2563eb]/30" : "bg-white/5 text-white/30 border border-white/5"}`}
-															>
-																{fx}
-															</button>
-														);
-													})}
-												</div>
-												{/* Lottie */}
-												<select
-													value={scene.lottieOverlay || ""}
-													onChange={(e) =>
-														updateScenePlan(i, { lottieOverlay: e.target.value || undefined })
-													}
-													className="w-full text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-white/40 [&>option]:bg-[#141417] [&>option]:text-white"
-												>
-													<option value="">No Lottie overlay</option>
-													{LOTTIE_CATALOG.map((l) => (
-														<option key={l.id} value={l.src}>
-															{l.name} ({l.category})
-														</option>
-													))}
-												</select>
 												<SceneLayerEditor scene={scene} sceneIndex={i} onUpdate={updateScenePlan} />
 											</div>
 										))}
