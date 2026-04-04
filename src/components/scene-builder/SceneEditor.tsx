@@ -664,6 +664,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 	// ── Scene Plan editing ──────────────────────────────────────────
 
+	const recompileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 	const updateScenePlan = useCallback(
 		(sceneIndex: number, updates: Partial<ScenePlanItem>) => {
 			if (!scenePlan) return;
@@ -672,16 +674,20 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 				scenes: scenePlan.scenes.map((s, i) => (i === sceneIndex ? { ...s, ...updates } : s)),
 			};
 			setScenePlan(newPlan);
-			// Recompile and update preview
-			const newCode = compileScenePlan(newPlan);
-			setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
-			(project as any)._aiCode = newCode;
 			(project as any)._aiPlan = newPlan;
-			// Seek player to the edited scene's start frame
-			const startFrame = newPlan.scenes
-				.slice(0, sceneIndex)
-				.reduce((sum, s) => sum + (s.durationFrames || 90), 0);
-			setSeekToFrame(startFrame);
+
+			// Debounce recompile so typing doesn't steal focus
+			if (recompileTimerRef.current) clearTimeout(recompileTimerRef.current);
+			recompileTimerRef.current = setTimeout(() => {
+				const newCode = compileScenePlan(newPlan);
+				setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
+				(project as any)._aiCode = newCode;
+				// Seek player to the edited scene
+				const startFrame = newPlan.scenes
+					.slice(0, sceneIndex)
+					.reduce((sum, s) => sum + (s.durationFrames || 90), 0);
+				setSeekToFrame(startFrame);
+			}, 500);
 		},
 		[scenePlan, project],
 	);
