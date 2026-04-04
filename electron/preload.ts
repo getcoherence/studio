@@ -85,6 +85,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	autoSaveProject: (projectData: unknown, fileName: string) => {
 		return ipcRenderer.invoke("auto-save-project", projectData, fileName);
 	},
+	mergeVideoAudio: (videoPath: string, audioPath: string) => {
+		return ipcRenderer.invoke("merge-video-audio", videoPath, audioPath);
+	},
 	loadProjectFile: () => {
 		return ipcRenderer.invoke("load-project-file");
 	},

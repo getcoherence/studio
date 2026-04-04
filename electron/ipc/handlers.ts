@@ -17,6 +17,7 @@ import {
 	type RecordingSession,
 	type StoreRecordedSessionInput,
 } from "../../src/lib/recordingSession";
+import { mergeVideoWithAudio } from "../ffmpeg";
 import { mainT } from "../i18n";
 import { InputMonitor } from "../input/inputMonitor";
 import { RECORDINGS_DIR } from "../main";
@@ -761,6 +762,12 @@ export function registerIpcHandlers(
 			}
 		},
 	);
+
+	// Merge video with background music
+	ipcMain.handle("merge-video-audio", async (_, videoPath: string, audioPath: string) => {
+		const outputPath = videoPath.replace(/\.[^.]+$/, "_with_music.webm");
+		return mergeVideoWithAudio(videoPath, audioPath, outputPath);
+	});
 
 	// Silent auto-save — saves directly to recordings dir without dialog
 	ipcMain.handle("auto-save-project", async (_, projectData: unknown, fileName: string) => {
