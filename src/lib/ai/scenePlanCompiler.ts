@@ -128,16 +128,17 @@ function generateTextComponent(
 	color: string,
 ): string {
 	if (scene.animation === "gradient") {
-		return `<GradientText text={${JSON.stringify(scene.headline)}} fontSize={${scene.fontSize || 120}} />`;
+		return `<GradientText text={${JSON.stringify(scene.headline)}} fontSize={${Math.max(100, scene.fontSize || 140)}} />`;
 	}
 
 	if (scene.animation === "glitch") {
-		return `<GlitchText text={${JSON.stringify(scene.headline)}} fontSize={${scene.fontSize || 100}} color="${color}" />`;
+		return `<GlitchText text={${JSON.stringify(scene.headline)}} fontSize={${Math.max(80, scene.fontSize || 120)}} color="${color}" />`;
 	}
 
+	const size = Math.max(80, scene.fontSize || 120);
 	return `<AnimatedText
           text={${JSON.stringify(scene.headline)}}
-          fontSize={${scene.fontSize || 100}}
+          fontSize={${size}}
           color="${color}"
           fontFamily="${fontFamily}"
           animation="${scene.animation || "chars"}"

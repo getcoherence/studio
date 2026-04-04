@@ -323,7 +323,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 							messages={messages}
 							status={agent.status}
 							onStart={handleStart}
-							onOpenInEditor={handleOpenInEditor}
+							onOpenInEditor={outputStyle === "ai-cinematic" ? undefined : handleOpenInEditor}
 							onGenerateVoiceover={handleGenerateVoiceover}
 							isGeneratingVoiceover={isGeneratingVoiceover || isGeneratingAi}
 						/>
