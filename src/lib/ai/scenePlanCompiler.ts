@@ -1,15 +1,19 @@
 // ── Scene Plan Compiler ─────────────────────────────────────────────────
 //
 // Converts a ScenePlan (editable JSON) to Remotion React code.
-// Uses the pre-built cinematic helper components for safe rendering.
+// ALL content is layer-based — headlines, subtitles, cards, effects
+// are all converted to positioned, timed layers.
 // This is DETERMINISTIC — same plan always produces same code.
 
-import { BACKGROUND_PRESETS, type ScenePlan, type ScenePlanItem } from "./scenePlan";
+import {
+	BACKGROUND_PRESETS,
+	type SceneLayer,
+	type ScenePlan,
+	type ScenePlanItem,
+} from "./scenePlan";
 
-/**
- * Compile a ScenePlan to Remotion React code string.
- * The output uses Scene, AnimatedText, Card, Pill, GradientText, etc.
- */
+// ── Main compiler ───────────────────────────────────────────────────────
+
 export function compileScenePlan(plan: ScenePlan): string {
 	const scenes = plan.scenes;
 	const accent = plan.accentColor || "#2563eb";
@@ -22,29 +26,13 @@ export function compileScenePlan(plan: ScenePlan): string {
 			.reduce((sum, s) => sum + (s.durationFrames || framesPerScene), 0);
 		const dur = scene.durationFrames || framesPerScene;
 		const bg = resolveBackground(scene.background);
-		const fontFamily = (() => {
-			switch (scene.font) {
-				case "serif":
-					return "Georgia, 'Times New Roman', serif";
-				case "mono":
-					return "'SF Mono', 'Fira Code', 'Courier New', monospace";
-				case "condensed":
-					return "'Arial Narrow', 'Impact', sans-serif";
-				case "wide":
-					return "'Trebuchet MS', 'Arial Black', sans-serif";
-				default:
-					return "'Inter', 'Helvetica Neue', sans-serif";
-			}
-		})();
-		const color = isLightBg(scene.background) ? "#050505" : "#ffffff";
 
-		const inner = generateSceneContent(scene, accent, fontFamily, color, i);
-
-		const layerCode = generateLayers(scene, dur);
+		// Expand scene content into layers (headline, subtitle, cards, effects, etc.)
+		const allLayers = expandSceneToLayers(scene, accent);
+		const layerCode = allLayers.map((layer) => compileLayer(layer, dur, accent)).join("\n        ");
 
 		return `    <Sequence from={${from}} durationInFrames={${dur}}>
       <Scene bg="${bg}">
-        ${inner}
         ${layerCode}
       </Scene>
     </Sequence>`;
@@ -62,6 +50,255 @@ ${sceneCode.join("\n")}
 };`;
 }
 
+// ── Expand scene to layers ──────────────────────────────────────────────
+
+/**
+ * Convert a scene's properties (headline, subtitle, cards, effects, etc.)
+ * into explicit layers. This makes EVERYTHING editable and repositionable.
+ */
+export function expandSceneToLayers(scene: ScenePlanItem, accent: string): SceneLayer[] {
+	const layers: SceneLayer[] = [];
+	const fontFamily = resolveFontFamily(scene.font);
+	const color = isLightBg(scene.background) ? "#050505" : "#ffffff";
+	const dur = scene.durationFrames || 90;
+
+	// ── Headline layer ──
+	if (scene.headline) {
+		const headlineSize = Math.max(100, scene.fontSize || 120);
+		layers.push({
+			id: `headline-${scene.headline.slice(0, 10)}`,
+			type: "text",
+			content: scene.headline,
+			position: scene.type === "split-layout" ? "left" : "center",
+			size: scene.type === "full-bleed" ? 95 : 80,
+			startFrame: 0,
+			endFrame: -1,
+			settings: {
+				fontSize: scene.type === "full-bleed" ? Math.max(160, headlineSize) : headlineSize,
+				color,
+				animation:
+					scene.animation === "gradient"
+						? "gradient"
+						: scene.animation === "glitch"
+							? "glitch"
+							: scene.animation || "chars",
+				fontFamily,
+				accentWord: scene.accentWord,
+				accentColor: accent,
+			},
+		});
+	}
+
+	// ── Subtitle layer ──
+	if (scene.subtitle) {
+		layers.push({
+			id: `subtitle-${scene.subtitle.slice(0, 10)}`,
+			type: "text",
+			content: scene.subtitle,
+			position: "center",
+			size: 60,
+			startFrame: 10,
+			endFrame: -1,
+			settings: {
+				fontSize: 32,
+				color: `${color}99`,
+				animation: "none",
+				fontFamily,
+			},
+		});
+	}
+
+	// ── Cards layers ──
+	if (scene.cards && scene.cards.length > 0) {
+		scene.cards.forEach((card, ci) => {
+			layers.push({
+				id: `card-${ci}-${card.title.slice(0, 8)}`,
+				type: "card" as any,
+				content: JSON.stringify(card),
+				position: "center",
+				size: 30,
+				startFrame: ci * 8,
+				endFrame: -1,
+				settings: {
+					fontSize: 28,
+					color: "#ffffff",
+				},
+			});
+		});
+	}
+
+	// ── Screenshot layer ──
+	if (scene.type === "screenshot" && scene.screenshotIndex !== undefined) {
+		layers.push({
+			id: `screenshot-${scene.screenshotIndex}`,
+			type: "image",
+			content: `screenshots[${scene.screenshotIndex}]`,
+			position: "center",
+			size: 70,
+			startFrame: 5,
+			endFrame: -1,
+		});
+	}
+
+	// ── CTA pill layer ──
+	if (scene.type === "cta") {
+		layers.push({
+			id: "cta-pill",
+			type: "text",
+			content: "Get Started",
+			position: "center",
+			size: 30,
+			startFrame: 15,
+			endFrame: -1,
+			settings: {
+				fontSize: 18,
+				animation: "pill",
+			},
+		});
+	}
+
+	// ── Effect layers ──
+	if (scene.effects?.includes("vignette")) {
+		layers.push({
+			id: "fx-vignette",
+			type: "shape",
+			content: "vignette",
+			position: "center",
+			size: 100,
+			startFrame: 0,
+			endFrame: -1,
+			settings: { opacity: 0.4 },
+		});
+	}
+	if (scene.effects?.includes("light-streak")) {
+		layers.push({
+			id: "fx-lightstreak",
+			type: "shape",
+			content: "light-streak",
+			position: "center",
+			size: 100,
+			startFrame: 15,
+			endFrame: 40,
+		});
+	}
+
+	// ── Lottie layers ──
+	if (scene.lottieOverlay) {
+		layers.push({
+			id: "lottie-overlay",
+			type: "lottie",
+			content: scene.lottieOverlay,
+			position: "center",
+			size: 50,
+			startFrame: 0,
+			endFrame: -1,
+			settings: { opacity: 0.8, loop: true },
+		});
+	}
+	if (scene.lottieBackground) {
+		layers.push({
+			id: "lottie-bg",
+			type: "lottie",
+			content: scene.lottieBackground,
+			position: "center",
+			size: 100,
+			startFrame: 0,
+			endFrame: -1,
+			settings: { opacity: 0.2, loop: true },
+		});
+	}
+
+	// ── Explicit user-added layers ──
+	if (scene.layers) {
+		layers.push(...scene.layers);
+	}
+
+	return layers;
+}
+
+// ── Compile a single layer ──────────────────────────────────────────────
+
+function compileLayer(layer: SceneLayer, sceneDuration: number, accent: string): string {
+	const endFrame = layer.endFrame === -1 ? sceneDuration : layer.endFrame;
+	const dur = Math.max(1, endFrame - layer.startFrame);
+	const s = layer.settings || {};
+
+	let content = "";
+
+	switch (layer.type) {
+		case "text": {
+			const fontSize = Math.max(32, s.fontSize || 60);
+			const fontFamily = s.fontFamily || "'Inter', 'Helvetica Neue', sans-serif";
+			const color = s.color || "#ffffff";
+			const animation = s.animation || "words";
+
+			if (animation === "gradient") {
+				content = `<GradientText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} />`;
+			} else if (animation === "glitch") {
+				content = `<GlitchText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} color="${color}" />`;
+			} else if (animation === "pill") {
+				content = `<Pill text={${JSON.stringify(layer.content)}} delay={0} color="#fff" bg="rgba(255,255,255,0.1)" />`;
+			} else if (animation === "none") {
+				content = `<div style={{ fontSize: ${fontSize}, fontFamily: "${fontFamily}", color: "${color}", textAlign: "center", maxWidth: 1000 }}>{${JSON.stringify(layer.content)}}</div>`;
+			} else {
+				content = `<AnimatedText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} color="${color}" fontFamily="${fontFamily}" animation="${animation}" ${s.accentWord ? `accentWord="${s.accentWord}" accentColor="${s.accentColor || accent}"` : ""} />`;
+			}
+			break;
+		}
+
+		case "card" as any: {
+			try {
+				const card = JSON.parse(layer.content);
+				content = `<Card width={380} delay={${layer.startFrame}}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: '#fff', fontFamily: "'Inter', sans-serif", marginBottom: 8 }}>${card.title}</div>
+            <div style={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter', sans-serif" }}>${card.description}</div>
+          </Card>`;
+			} catch {
+				content = `<Card width={380}><div style={{ color: '#fff' }}>${layer.content}</div></Card>`;
+			}
+			break;
+		}
+
+		case "lottie":
+			content = `<LottieOverlay src="${layer.content}" position="${layer.position}" size={${layer.size}} opacity={${s.opacity || 0.8}} loop={${s.loop ?? true}} />`;
+			// LottieOverlay handles its own positioning
+			return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>${content}</Sequence>`;
+
+		case "image":
+			content = `<div style={{ borderRadius: 20, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxWidth: 1200 }}><Img src={${layer.content.startsWith("screenshots") ? layer.content : JSON.stringify(layer.content)}} style={{ width: '100%', height: 'auto' }} /></div>`;
+			break;
+
+		case "shape":
+			if (layer.content === "vignette") {
+				return `<Vignette intensity={${s.opacity || 0.4}} />`;
+			}
+			if (layer.content === "light-streak") {
+				return `<LightStreak startFrame={${layer.startFrame}} durationFrames={${dur}} color="rgba(255,220,150,0.6)" />`;
+			}
+			content = `<div style={{ width: '100%', height: '100%', borderRadius: 12, backgroundColor: '${s.color || "rgba(255,255,255,0.1)"}', opacity: ${s.opacity || 0.5} }} />`;
+			break;
+
+		default:
+			content = `<div>${layer.content}</div>`;
+	}
+
+	// Cards render inline (stacked), not absolutely positioned
+	if ((layer.type as string) === "card") {
+		return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>${content}</Sequence>`;
+	}
+
+	// Effects (vignette, light-streak) are already returned above
+	// Regular layers get absolute positioning
+	const pos = getLayerPosition(layer.position, layer.size);
+	return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>
+          <div style={{ position: 'absolute', ${pos}, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            ${content}
+          </div>
+        </Sequence>`;
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────
+
 function resolveBackground(bg: string): string {
 	return BACKGROUND_PRESETS[bg] || bg;
 }
@@ -70,160 +307,19 @@ function isLightBg(bg: string): boolean {
 	return ["white", "cream", "#fafafa", "#f5f0e8", "#ffffff"].includes(bg);
 }
 
-function generateSceneContent(
-	scene: ScenePlanItem,
-	accent: string,
-	fontFamily: string,
-	color: string,
-	_index: number,
-): string {
-	const effects = generateEffects(scene);
-
-	switch (scene.type) {
-		case "hero-text":
-			return `${generateTextComponent(scene, accent, fontFamily, color)}
-        ${scene.subtitle ? `<div style={{ fontSize: 32, color: '${color}99', fontFamily: "${fontFamily}", marginTop: 16, textAlign: 'center', maxWidth: 1000 }}>{${JSON.stringify(scene.subtitle)}}</div>` : ""}
-        ${effects}`;
-
-		case "full-bleed":
-			return `<div style={{ overflow: 'hidden', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          ${generateTextComponent({ ...scene, fontSize: Math.max(160, scene.fontSize || 200) }, accent, fontFamily, color)}
-        </div>
-        ${effects}`;
-
-		case "stacked-text": {
-			const lines = scene.headline
-				.split(/[.!?]+/)
-				.filter(Boolean)
-				.map((s) => s.trim());
-			return `<div style={{ display: 'flex', flexDirection: 'column', alignItems: '${scene.font === "serif" ? "center" : "flex-start"}', gap: 8, maxWidth: 1600 }}>
-          ${lines.map((line, li) => `<AnimatedText text={${JSON.stringify(line + ".")}} fontSize={${Math.max(80, (scene.fontSize || 100) - li * 10)}} color="${color}" fontFamily="${fontFamily}" animation="${scene.animation || "words"}" delay={${li * 8}} ${scene.accentWord && li === lines.length - 1 ? `accentWord="${scene.accentWord}" accentColor="${accent}"` : ""} />`).join("\n          ")}
-        </div>
-        ${effects}`;
-		}
-
-		case "glitch-intro":
-			return `<GlitchText text={${JSON.stringify(scene.headline)}} fontSize={${scene.fontSize || 120}} color="${color}" intensity={0.8} durationFrames={12} delay={3} />
-        ${effects}`;
-
-		case "split-layout": {
-			const rightContent = generateRightContent(scene, accent);
-			// If no right content, render as full-width hero text instead of empty split
-			if (!rightContent.trim()) {
-				return `${generateTextComponent(scene, accent, fontFamily, color)}
-        ${effects}`;
-			}
-			return `<div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'center', gap: 80 }}>
-          <div style={{ flex: 1, maxWidth: 700 }}>
-            ${generateTextComponent(scene, accent, fontFamily, color)}
-          </div>
-          <div style={{ flex: 1, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            ${rightContent}
-          </div>
-        </div>
-        ${effects}`;
-		}
-
-		case "cards":
-			return `${generateTextComponent(scene, accent, fontFamily, color)}
-        <div style={{ display: 'flex', gap: 20, marginTop: 40, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 1400 }}>
-          ${(scene.cards || [])
-						.map(
-							(card, ci) =>
-								`<Card width={380} delay={${ci * 8}}>
-              <div style={{ fontSize: 28, fontWeight: 700, color: '#fff', fontFamily: "'Inter', sans-serif", marginBottom: 8 }}>${card.title}</div>
-              <div style={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter', sans-serif" }}>${card.description}</div>
-            </Card>`,
-						)
-						.join("\n          ")}
-        </div>
-        ${effects}`;
-
-		case "screenshot":
-			return `${generateTextComponent(scene, accent, fontFamily, color)}
-        <div style={{ marginTop: 30, borderRadius: 20, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxWidth: 1200 }}>
-          <Img src={screenshots[${scene.screenshotIndex || 0}]} style={{ width: '100%', height: 'auto' }} />
-        </div>
-        ${effects}`;
-
-		case "cta":
-			return `${generateTextComponent(scene, accent, fontFamily, color)}
-        <div style={{ marginTop: 30 }}>
-          <Pill text="Get Started" delay={15} color="#fff" bg="rgba(255,255,255,0.1)" />
-        </div>
-        ${effects}`;
-
+function resolveFontFamily(font?: string): string {
+	switch (font) {
+		case "serif":
+			return "Georgia, 'Times New Roman', serif";
+		case "mono":
+			return "'SF Mono', 'Fira Code', 'Courier New', monospace";
+		case "condensed":
+			return "'Arial Narrow', 'Impact', sans-serif";
+		case "wide":
+			return "'Trebuchet MS', 'Arial Black', sans-serif";
 		default:
-			return generateTextComponent(scene, accent, fontFamily, color) + effects;
+			return "'Inter', 'Helvetica Neue', sans-serif";
 	}
-}
-
-function generateTextComponent(
-	scene: ScenePlanItem,
-	accent: string,
-	fontFamily: string,
-	color: string,
-): string {
-	if (scene.animation === "gradient") {
-		return `<GradientText text={${JSON.stringify(scene.headline)}} fontSize={${Math.max(100, scene.fontSize || 140)}} />`;
-	}
-
-	if (scene.animation === "glitch") {
-		return `<GlitchText text={${JSON.stringify(scene.headline)}} fontSize={${Math.max(80, scene.fontSize || 120)}} color="${color}" />`;
-	}
-
-	const size = Math.max(100, scene.fontSize || 120);
-	return `<AnimatedText
-          text={${JSON.stringify(scene.headline)}}
-          fontSize={${size}}
-          fontWeight={900}
-          color="${color}"
-          fontFamily="${fontFamily}"
-          animation="${scene.animation || "chars"}"
-          ${scene.accentWord ? `accentWord="${scene.accentWord}"` : ""}
-          ${scene.accentWord ? `accentColor="${accent}"` : ""}
-        />`;
-}
-
-function generateLayers(scene: ScenePlanItem, sceneDuration: number): string {
-	if (!scene.layers || scene.layers.length === 0) return "";
-
-	return scene.layers
-		.map((layer) => {
-			const endFrame = layer.endFrame === -1 ? sceneDuration : layer.endFrame;
-			const dur = Math.max(1, endFrame - layer.startFrame);
-			const pos = getLayerPosition(layer.position, layer.size);
-
-			let content = "";
-			switch (layer.type) {
-				case "text":
-					content = `<AnimatedText text={${JSON.stringify(layer.content)}} fontSize={${layer.settings?.fontSize || 60}} color="${layer.settings?.color || "#ffffff"}" animation="${layer.settings?.animation || "words"}" />`;
-					break;
-				case "lottie":
-					content = `<LottieOverlay src="${layer.content}" position="${layer.position}" size={${layer.size}} opacity={${layer.settings?.opacity || 0.8}} loop={${layer.settings?.loop ?? true}} />`;
-					break;
-				case "image":
-					content = `<Img src={${layer.content.startsWith("screenshots") ? layer.content : JSON.stringify(layer.content)}} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />`;
-					break;
-				case "shape":
-					content = `<div style={{ width: '100%', height: '100%', borderRadius: ${layer.content === "circle" ? "'50%'" : "12"}, backgroundColor: '${layer.settings?.color || "rgba(255,255,255,0.1)"}', opacity: ${layer.settings?.opacity || 0.5} }} />`;
-					break;
-			}
-
-			// For lottie type, don't wrap in positioned div — LottieOverlay handles its own positioning
-			if (layer.type === "lottie") {
-				return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>
-          ${content}
-        </Sequence>`;
-			}
-
-			return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>
-          <div style={{ position: 'absolute', ${pos}, overflow: 'hidden' }}>
-            ${content}
-          </div>
-        </Sequence>`;
-		})
-		.join("\n        ");
 }
 
 function getLayerPosition(position: string, size: number): string {
@@ -251,49 +347,4 @@ function getLayerPosition(position: string, size: number): string {
 		default:
 			return `left: '${offset}', top: '${offset}', width: '${s}', height: '${s}'`;
 	}
-}
-
-function generateRightContent(scene: ScenePlanItem, _accent: string): string {
-	if (scene.cards && scene.cards.length > 0) {
-		return scene.cards
-			.map(
-				(card, ci) =>
-					`<Card width={500} delay={${ci * 8}}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#fff', fontFamily: "'Inter', sans-serif", marginBottom: 6 }}>${card.title}</div>
-              <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter', sans-serif" }}>${card.description}</div>
-            </Card>`,
-			)
-			.join("\n            ");
-	}
-	return "";
-}
-
-function generateEffects(scene: ScenePlanItem): string {
-	const parts: string[] = [];
-	for (const effect of scene.effects || []) {
-		switch (effect) {
-			case "vignette":
-				parts.push("<Vignette intensity={0.4} />");
-				break;
-			case "light-streak":
-				parts.push(
-					'<LightStreak startFrame={15} durationFrames={20} color="rgba(255,220,150,0.6)" />',
-				);
-				break;
-			case "clip-reveal":
-				// ClipReveal wraps the whole scene — handled at scene level
-				break;
-		}
-	}
-	// Lottie overlays
-	if (scene.lottieOverlay) {
-		parts.push(
-			`<LottieOverlay src="${scene.lottieOverlay}" position="center" size={50} opacity={0.8} />`,
-		);
-	}
-	if (scene.lottieBackground) {
-		parts.push(`<LottieBackground src="${scene.lottieBackground}" opacity={0.2} speed={0.5} />`);
-	}
-
-	return parts.join("\n        ");
 }
