@@ -25,12 +25,15 @@ interface RemotionPreviewProps {
 	isPlaying?: boolean;
 	/** Optional background music URL */
 	musicSrc?: string;
+	/** Increment to reset playback to frame 0 */
+	resetSignal?: number;
 }
 
 export const RemotionPreview: React.FC<RemotionPreviewProps> = ({
 	project,
 	isPlaying,
 	musicSrc,
+	resetSignal,
 }) => {
 	const playerRef = useRef<PlayerRef>(null);
 	const fps = project.fps || 30;
@@ -45,6 +48,13 @@ export const RemotionPreview: React.FC<RemotionPreviewProps> = ({
 			playerRef.current.pause();
 		}
 	}, [isPlaying]);
+
+	// Reset to frame 0 when resetSignal changes
+	useEffect(() => {
+		if (resetSignal && playerRef.current) {
+			playerRef.current.seekTo(0);
+		}
+	}, [resetSignal]);
 
 	return (
 		<div

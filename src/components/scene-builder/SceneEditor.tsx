@@ -450,12 +450,15 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		setCurrentTimeMs(timeMs);
 	}, []);
 
+	const [resetSignal, setResetSignal] = useState(0);
+
 	const resetPlayback = useCallback(() => {
 		setSelectedSceneIndex(0);
 		setCurrentTimeMs(0);
 		setIsPlaying(false);
 		setActiveTransition(null);
 		setTransitionFromCanvas(null);
+		setResetSignal((s) => s + 1);
 	}, []);
 
 	// ── Export ──────────────────────────────────────────────────────────
@@ -919,12 +922,14 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										screenshots={aiComposition.screenshots}
 										isPlaying={isPlaying}
 										musicSrc={musicDataUrl ?? undefined}
+										resetSignal={resetSignal}
 									/>
 								) : previewMode === "remotion" ? (
 									<RemotionPreview
 										project={project}
 										isPlaying={isPlaying}
 										musicSrc={musicDataUrl ?? undefined}
+										resetSignal={resetSignal}
 									/>
 								) : (
 									<SceneCanvas
