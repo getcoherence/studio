@@ -184,13 +184,21 @@ export const AnimatedText: React.FC<{
 				gap: `0 ${fontSize * 0.25}px`,
 				maxWidth,
 				overflow: "hidden",
+				fontSize,
+				fontFamily,
+				fontWeight,
+				letterSpacing,
+				lineHeight,
 			}}
 		>
 			{words.map((word, wi) => {
 				const isAccent =
 					accentWord && word.replace(/[^\w]/g, "") === accentWord.replace(/[^\w]/g, "");
 				const wordNode = (
-					<span key={wi} style={{ display: "inline-block", whiteSpace: "nowrap" }}>
+					<span
+						key={wi}
+						style={{ display: "inline-block", whiteSpace: "nowrap", fontSize, fontWeight }}
+					>
 						{word.split("").map((char, ci) => {
 							const charDelay = charIndex * 2;
 							charIndex++;
@@ -204,6 +212,7 @@ export const AnimatedText: React.FC<{
 									key={ci}
 									style={{
 										display: "inline-block",
+										fontSize,
 										opacity: progress,
 										transform: `translateY(${(1 - progress) * 24}px)`,
 										color: isAccent && accentColor ? accentColor : color,
