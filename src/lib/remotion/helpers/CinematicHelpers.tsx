@@ -335,3 +335,274 @@ export const Underline: React.FC<{
 		/>
 	);
 };
+
+// ── GradientText ────────────────────────────────────────────────────────
+
+/** Animated gradient/shimmer text — Apple/Linear style */
+export const GradientText: React.FC<{
+	text: string;
+	fontSize?: number;
+	fontFamily?: string;
+	fontWeight?: number;
+	colors?: string[];
+	speed?: number;
+	delay?: number;
+	align?: "center" | "left" | "right";
+	maxWidth?: number;
+}> = ({
+	text,
+	fontSize = 120,
+	fontFamily = "'Inter', 'Helvetica Neue', sans-serif",
+	fontWeight = 900,
+	colors = ["#ff6b6b", "#feca57", "#48dbfb", "#ff9ff3", "#ff6b6b"],
+	speed = 4,
+	delay = 0,
+	align = "center",
+	maxWidth = 1400,
+}) => {
+	const frame = useCurrentFrame();
+	const localFrame = Math.max(0, frame - delay);
+	const angle = localFrame * speed;
+	const opacity = interpolate(localFrame, [0, 15], [0, 1], {
+		extrapolateLeft: "clamp",
+		extrapolateRight: "clamp",
+	});
+	const scale = interpolate(localFrame, [0, 20], [0.9, 1], {
+		extrapolateLeft: "clamp",
+		extrapolateRight: "clamp",
+	});
+
+	return (
+		<div
+			style={{
+				fontSize,
+				fontFamily,
+				fontWeight,
+				letterSpacing: "-0.04em",
+				lineHeight: 1.0,
+				textAlign: align,
+				maxWidth,
+				overflow: "hidden",
+				background: `linear-gradient(${angle}deg, ${colors.join(", ")})`,
+				backgroundSize: "200% 200%",
+				backgroundClip: "text",
+				WebkitBackgroundClip: "text",
+				WebkitTextFillColor: "transparent",
+				opacity,
+				transform: `scale(${scale})`,
+			}}
+		>
+			{text}
+		</div>
+	);
+};
+
+// ── ClipReveal ──────────────────────────────────────────────────────────
+
+/** Reveal children through an expanding shape — circle, wipe, diamond, iris */
+export const ClipReveal: React.FC<{
+	children: React.ReactNode;
+	shape?: "circle" | "wipe" | "diamond" | "iris";
+	delay?: number;
+}> = ({ children, shape = "circle", delay = 0 }) => {
+	const frame = useCurrentFrame();
+	const { fps } = useVideoConfig();
+	const progress = spring({
+		frame: Math.max(0, frame - delay),
+		fps,
+		config: { damping: 18, stiffness: 80 },
+	});
+
+	const clipPath = (() => {
+		switch (shape) {
+			case "circle":
+				return `circle(${progress * 75}% at 50% 50%)`;
+			case "wipe":
+				return `inset(0 ${(1 - progress) * 100}% 0 0)`;
+			case "diamond": {
+				const s = (1 - progress) * 50;
+				return `polygon(50% ${s}%, ${100 - s}% 50%, 50% ${100 - s}%, ${s}% 50%)`;
+			}
+			case "iris":
+				return `circle(${progress * 80}% at 50% 50%)`;
+			default:
+				return "none";
+		}
+	})();
+
+	return (
+		<div style={{ clipPath, WebkitClipPath: clipPath, width: "100%", height: "100%" }}>
+			{children}
+		</div>
+	);
+};
+
+// ── LightStreak ─────────────────────────────────────────────────────────
+
+/** Cinematic lens flare / light streak overlay */
+export const LightStreak: React.FC<{
+	startFrame?: number;
+	durationFrames?: number;
+	color?: string;
+	yPosition?: number;
+}> = ({ startFrame = 0, durationFrames = 25, color = "rgba(255,255,255,0.8)", yPosition = 45 }) => {
+	const frame = useCurrentFrame();
+	const localFrame = frame - startFrame;
+	if (localFrame < 0 || localFrame > durationFrames) return null;
+
+	const x = interpolate(localFrame, [0, durationFrames], [-20, 120], {
+		extrapolateLeft: "clamp",
+		extrapolateRight: "clamp",
+	});
+	const intensity = interpolate(
+		localFrame,
+		[0, durationFrames * 0.3, durationFrames * 0.7, durationFrames],
+		[0, 1, 1, 0],
+		{ extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+	);
+
+	return (
+		<div
+			style={{
+				position: "absolute",
+				inset: 0,
+				pointerEvents: "none",
+				mixBlendMode: "screen" as const,
+			}}
+		>
+			<div
+				style={{
+					position: "absolute",
+					left: `${x}%`,
+					top: `${yPosition}%`,
+					width: "40%",
+					height: 3,
+					transform: "translateX(-50%)",
+					background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
+					opacity: intensity,
+					filter: "blur(2px)",
+				}}
+			/>
+			<div
+				style={{
+					position: "absolute",
+					left: `${x}%`,
+					top: `${yPosition}%`,
+					width: 180,
+					height: 180,
+					transform: "translate(-50%, -50%)",
+					background: `radial-gradient(circle, ${color} 0%, transparent 70%)`,
+					opacity: intensity * 0.5,
+					filter: "blur(15px)",
+				}}
+			/>
+		</div>
+	);
+};
+
+// ── GlitchText ──────────────────────────────────────────────────────────
+
+/** Chromatic aberration glitch effect on text */
+export const GlitchText: React.FC<{
+	text: string;
+	fontSize?: number;
+	color?: string;
+	intensity?: number;
+	durationFrames?: number;
+	delay?: number;
+}> = ({
+	text,
+	fontSize = 100,
+	color = "#fff",
+	intensity = 0.7,
+	durationFrames = 15,
+	delay = 0,
+}) => {
+	const frame = useCurrentFrame();
+	const localFrame = frame - delay;
+	const active = localFrame >= 0 && localFrame < durationFrames;
+
+	// Deterministic pseudo-random from frame
+	const seed = localFrame * 9301 + 49297;
+	const rand = (offset: number) => ((seed + offset * 1000) % 233280) / 233280;
+
+	const offsetX1 = active ? (rand(1) * 20 - 10) * intensity : 0;
+	const offsetX2 = active ? (rand(2) * 20 - 10) * intensity : 0;
+	const skew = active ? (rand(3) - 0.5) * 6 * intensity : 0;
+
+	const baseStyle: React.CSSProperties = {
+		fontSize,
+		fontWeight: 900,
+		fontFamily: "'Inter', sans-serif",
+		position: "absolute" as const,
+		whiteSpace: "nowrap" as const,
+		letterSpacing: "-0.04em",
+	};
+
+	// After glitch, show clean text
+	const { fps } = useVideoConfig();
+	const cleanProgress = spring({
+		frame: Math.max(0, localFrame - durationFrames),
+		fps,
+		config: { damping: 14, stiffness: 180 },
+	});
+	const showClean = localFrame >= durationFrames;
+
+	return (
+		<div style={{ position: "relative", display: "inline-block" }}>
+			{active && (
+				<>
+					<div
+						style={{
+							...baseStyle,
+							color: "rgba(255,0,0,0.6)",
+							transform: `translateX(${offsetX1}px) skewX(${skew}deg)`,
+							mixBlendMode: "screen" as const,
+						}}
+					>
+						{text}
+					</div>
+					<div
+						style={{
+							...baseStyle,
+							color: "rgba(0,255,255,0.6)",
+							transform: `translateX(${offsetX2}px) skewX(${-skew}deg)`,
+							mixBlendMode: "screen" as const,
+						}}
+					>
+						{text}
+					</div>
+				</>
+			)}
+			<div
+				style={{
+					...baseStyle,
+					color,
+					position: "relative",
+					opacity: showClean ? cleanProgress : 1,
+					transform: showClean
+						? `scale(${0.95 + cleanProgress * 0.05})`
+						: active
+							? `skewX(${skew * 0.3}deg)`
+							: "none",
+				}}
+			>
+				{text}
+			</div>
+		</div>
+	);
+};
+
+// ── Vignette ────────────────────────────────────────────────────────────
+
+/** Cinematic vignette overlay — darkens edges */
+export const Vignette: React.FC<{ intensity?: number }> = ({ intensity = 0.6 }) => (
+	<div
+		style={{
+			position: "absolute",
+			inset: 0,
+			pointerEvents: "none",
+			background: `radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,${intensity}) 100%)`,
+		}}
+	/>
+);
