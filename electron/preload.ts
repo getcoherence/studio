@@ -82,6 +82,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	saveProjectFile: (projectData: unknown, suggestedName?: string, existingProjectPath?: string) => {
 		return ipcRenderer.invoke("save-project-file", projectData, suggestedName, existingProjectPath);
 	},
+	autoSaveProject: (projectData: unknown, fileName: string) => {
+		return ipcRenderer.invoke("auto-save-project", projectData, fileName);
+	},
 	loadProjectFile: () => {
 		return ipcRenderer.invoke("load-project-file");
 	},
@@ -157,6 +160,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	aiTtsSynthesize: (text: string, voice?: string) => {
 		return ipcRenderer.invoke("ai-tts-synthesize", text, voice);
+	},
+	aiGenerateMusic: (mood: string, customPrompt?: string, videoDurationSec?: number) => {
+		return ipcRenderer.invoke("ai-generate-music", mood, customPrompt, videoDurationSec);
 	},
 
 	setMicrophoneExpanded: (expanded: boolean) => {

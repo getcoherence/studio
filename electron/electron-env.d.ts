@@ -98,6 +98,10 @@ interface Window {
 			error?: string;
 		}>;
 		clearCurrentVideoPath: () => Promise<{ success: boolean }>;
+		autoSaveProject: (
+			projectData: unknown,
+			fileName: string,
+		) => Promise<{ success: boolean; path?: string; error?: string }>;
 		saveProjectFile: (
 			projectData: unknown,
 			suggestedName?: string,
@@ -167,6 +171,11 @@ interface Window {
 			text: string,
 			voice?: string,
 		) => Promise<{ success: boolean; audioPath?: string; error?: string }>;
+		aiGenerateMusic: (
+			mood: string,
+			customPrompt?: string,
+			videoDurationSec?: number,
+		) => Promise<{ success: boolean; audioPath?: string; durationSec?: number; error?: string }>;
 
 		setMicrophoneExpanded: (expanded: boolean) => void;
 		setHasUnsavedChanges: (hasChanges: boolean) => void;

@@ -139,6 +139,12 @@ export function useDemoAgent(
 	const [currentStepIndex, setCurrentStepIndex] = useState(0);
 	const [elapsedMs, setElapsedMs] = useState(0);
 	const [storyboardTitle, setStoryboardTitle] = useState("");
+	const [brandInfo, setBrandInfo] = useState<{
+		primaryColor: string | null;
+		accentColor: string | null;
+		fontFamily: string | null;
+		productName: string | null;
+	} | null>(null);
 
 	const stoppedRef = useRef(false);
 	const resumeResolverRef = useRef<(() => void) | null>(null);
@@ -158,6 +164,10 @@ export function useDemoAgent(
 		const landingHeadings = await driver.getSectionHeadings();
 		visitedUrls.add(normalizeUrl(landingInfo.url));
 		siteMap.push(pageInfoToSiteMapPage(landingInfo, landingHeadings));
+
+		// Extract brand identity from the landing page (colors, fonts, product name)
+		const brand = await driver.getBrandInfo();
+		setBrandInfo(brand);
 
 		onMessage(createMessage("system", `📍 Discovered: ${landingInfo.title || landingInfo.url}`));
 
@@ -211,12 +221,29 @@ export function useDemoAgent(
 
 		const reconSystemPrompt = `${RECON_SYSTEM_PROMPT}\n\nADDITIONAL FOCUS:\n${mode.reconFocus}`;
 
-		for (let i = 0; i < maxReconSteps; i++) {
+		const exploringMessages = [
+			"Poking around the site...",
+			"Clicking things so you don't have to...",
+			"Mapping the terrain...",
+			"Hunting for the good stuff...",
+			"Reading every pixel...",
+			"Almost done snooping...",
+			"Finding the hidden gems...",
+			"One more corner to check...",
+			"Your personal site detective, at your service...",
+			"Exploring like a caffeinated intern...",
+		];
+
+		// Dynamic step limit: if we already found enough pages, wrap up sooner
+		const effectiveMaxSteps = Math.min(maxReconSteps, Math.max(6, siteMap.length * 3));
+
+		for (let i = 0; i < effectiveMaxSteps; i++) {
 			if (stoppedRef.current) break;
 
 			const pageInfo = await driver.getPageInfo();
 
-			onMessage(createMessage("thinking", `Exploring (${i + 1}/${maxReconSteps})...`));
+			const funMsg = exploringMessages[i % exploringMessages.length];
+			onMessage(createMessage("thinking", `${funMsg} (${siteMap.length} pages found)`));
 
 			// Get next recon action from AI
 			const visitedList = siteMap.map((p) => `- ${p.title}: ${p.url}`).join("\n");
@@ -226,7 +253,7 @@ export function useDemoAgent(
 				.map((e) => `- [${e.type}] "${e.text}" (${e.selector})`)
 				.join("\n");
 
-			const prompt = `PAGES VISITED SO FAR:\n${visitedList}\n\nCURRENT PAGE: ${pageInfo.url} — "${pageInfo.title}"\n\nVisible text:\n${pageInfo.visibleText.slice(0, 400)}\n\nInteractive elements:\n${elementsList || "(none)"}\n\nStep ${i + 1} of ${maxReconSteps}. ${maxReconSteps - i <= 3 ? "⚠️ WRAPPING UP — use 'done' soon." : ""}\n\nWhat next? JSON only.`;
+			const prompt = `PAGES VISITED SO FAR:\n${visitedList}\n\nCURRENT PAGE: ${pageInfo.url} — "${pageInfo.title}"\n\nVisible text:\n${pageInfo.visibleText.slice(0, 400)}\n\nInteractive elements:\n${elementsList || "(none)"}\n\nStep ${i + 1} of ${effectiveMaxSteps}. ${effectiveMaxSteps - i <= 3 ? "⚠️ WRAPPING UP — use 'done' soon." : ""}\n\nWhat next? JSON only.`;
 
 			const result = await window.electronAPI.aiAnalyze(prompt, reconSystemPrompt);
 			if (!result?.success || !result.text) {
@@ -691,7 +718,6 @@ export function useDemoAgent(
 				}
 			}
 		},
-		// biome-ignore lint/correctness/useExhaustiveDependencies: internal functions are stable
 		[webviewRef, onMessage],
 	);
 
@@ -714,7 +740,17 @@ export function useDemoAgent(
 		}
 	}, []);
 
-	return { start, stop, resume, status, steps, currentStepIndex, elapsedMs, storyboardTitle };
+	return {
+		start,
+		stop,
+		resume,
+		status,
+		steps,
+		currentStepIndex,
+		elapsedMs,
+		storyboardTitle,
+		brandInfo,
+	};
 }
 
 // ── Utilities ────────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ import {
 	loadAIConfig,
 	saveAIConfig,
 } from "../ai/aiService";
+import { generateMusic, type MusicMood } from "../ai/musicService";
 import { synthesize, type TTSVoice } from "../ai/ttsService";
 
 export function registerAIHandlers(): void {
@@ -50,4 +51,11 @@ export function registerAIHandlers(): void {
 	ipcMain.handle("ai-tts-synthesize", async (_event, text: string, voice?: TTSVoice) => {
 		return synthesize(text, voice);
 	});
+
+	ipcMain.handle(
+		"ai-generate-music",
+		async (_event, mood: MusicMood, customPrompt?: string, videoDurationSec?: number) => {
+			return generateMusic(mood, customPrompt, videoDurationSec);
+		},
+	);
 }

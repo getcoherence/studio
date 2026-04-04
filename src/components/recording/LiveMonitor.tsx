@@ -33,7 +33,9 @@ export function LiveMonitor({ screenStream, webcamStream, onStop, onMinimize }: 
 		const video = screenVideoRef.current;
 		if (video && screenStream) {
 			video.srcObject = screenStream;
-			video.play().catch(() => {});
+			video.play().catch(() => {
+				/* autoplay may fail */
+			});
 		}
 		return () => {
 			if (video) video.srcObject = null;
@@ -45,7 +47,9 @@ export function LiveMonitor({ screenStream, webcamStream, onStop, onMinimize }: 
 		const video = webcamVideoRef.current;
 		if (video && webcamStream) {
 			video.srcObject = webcamStream;
-			video.play().catch(() => {});
+			video.play().catch(() => {
+				/* autoplay may fail */
+			});
 		}
 		return () => {
 			if (video) video.srcObject = null;

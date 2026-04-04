@@ -5,6 +5,7 @@ import {
 	Eye,
 	ImagePlus,
 	Loader2,
+	Music,
 	Palette,
 	Pause,
 	Play,
@@ -22,11 +23,14 @@ import { AISettingsButton } from "@/components/ui/AISettingsDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { AnimatedBackgroundPicker } from "@/components/video-editor/AnimatedBackgroundPicker";
+import { generateAiComposition } from "@/lib/ai/aiCinematicEngine";
 import { applyCritiqueMutations, critiqueSceneProject } from "@/lib/ai/designCritique";
 import { DESIGN_STYLE_LIST, type DesignStyleId } from "@/lib/ai/designStyles";
 import { generateSceneProject, SCENE_TEMPLATES } from "@/lib/ai/sceneGenerator";
 import { aiPolishSceneProject, polishSceneProject } from "@/lib/ai/scenePolish";
-import { consumePendingDemoProject } from "@/lib/demoProjectStore";
+import { generateCustomMusic, type MusicMood } from "@/lib/audio/musicCatalog";
+import { type AiCompositionData, consumePendingDemoProject } from "@/lib/demoProjectStore";
+import { DynamicPreview } from "@/lib/remotion/DynamicPreview";
 import { RemotionPreview } from "@/lib/remotion/RemotionPreview";
 import {
 	captureCanvas,
@@ -60,6 +64,44 @@ function formatTime(ms: number): string {
 	return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+// ── Inline music preview player ──────────────────────────────────────
+
+function MusicPreviewPlayer({ audioPath }: { audioPath: string }) {
+	const [playing, setPlaying] = useState(false);
+	const audioRef = useRef<HTMLAudioElement | null>(null);
+
+	function toggle() {
+		if (!audioRef.current) {
+			const cleaned = audioPath.replace(/^file:\/\//, "");
+			const src = `lucid://file/${cleaned.replace(/\\/g, "/")}`;
+			audioRef.current = new Audio(src);
+			audioRef.current.onended = () => setPlaying(false);
+			audioRef.current.onerror = () => {
+				setPlaying(false);
+				toast.error("Failed to play audio");
+			};
+		}
+		if (playing) {
+			audioRef.current.pause();
+			audioRef.current.currentTime = 0;
+			setPlaying(false);
+		} else {
+			audioRef.current.play().catch(() => setPlaying(false));
+			setPlaying(true);
+		}
+	}
+
+	return (
+		<button
+			onClick={toggle}
+			className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-emerald-400/70 hover:text-emerald-300 hover:bg-emerald-400/5 transition-colors"
+		>
+			{playing ? <Square size={10} /> : <Play size={10} />}
+			{playing ? "Stop preview" : "Preview music"}
+		</button>
+	);
+}
+
 interface SceneEditorProps {
 	onBack: () => void;
 	initialProject?: SceneProject;
@@ -80,7 +122,18 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	const [isExporting, setIsExporting] = useState(false);
 	const [exportProgress, setExportProgress] = useState<SceneExportProgress | null>(null);
 	const [aspectRatio, setAspectRatio] = useState("16/9");
-	const [previewMode, setPreviewMode] = useState<"canvas" | "remotion">("canvas");
+	const [aiComposition, setAiComposition] = useState<AiCompositionData | null>(() => {
+		const proj = project as any;
+		if (project.styleId === "ai-cinematic" && proj._aiCode) {
+			return { code: proj._aiCode, screenshots: proj._aiScreenshots || [] };
+		}
+		return null;
+	});
+	const [isRegenerating, setIsRegenerating] = useState(false);
+	const [previewMode, setPreviewMode] = useState<"canvas" | "remotion">(
+		// Default to Remotion for cinematic/AI projects
+		project.styleId === "cinematic" || project.styleId === "ai-cinematic" ? "remotion" : "canvas",
+	);
 	const [activeTransition, setActiveTransition] = useState<SceneTransition | null>(null);
 	const [transitionFromCanvas, setTransitionFromCanvas] = useState<HTMLCanvasElement | null>(null);
 	const [aiPrompt, setAiPrompt] = useState("");
@@ -88,6 +141,40 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
 	const [isPolishing, setIsPolishing] = useState(false);
 	const [isCritiquing, setIsCritiquing] = useState(false);
+	const [musicPath, _setMusicPath] = useState<string | null>(
+		() => (project as any)._musicPath ?? null,
+	);
+	const [musicDataUrl, setMusicDataUrl] = useState<string | null>(null);
+	const setMusicPath = useCallback((path: string | null) => {
+		_setMusicPath(path);
+		// Update project with new reference so auto-save triggers
+		setProject((prev) => ({ ...prev, _musicPath: path }) as any);
+		// Load the audio file as a data URL for Remotion (needs seekable media)
+		if (path) {
+			window.electronAPI
+				?.readBinaryFile(path)
+				.then((result: any) => {
+					if (result?.success && result.data) {
+						const base64 = btoa(
+							new Uint8Array(result.data).reduce((s, b) => s + String.fromCharCode(b), ""),
+						);
+						setMusicDataUrl(`data:audio/mpeg;base64,${base64}`);
+					}
+				})
+				.catch(() => setMusicDataUrl(null));
+		} else {
+			setMusicDataUrl(null);
+		}
+	}, []);
+
+	// Load music data URL on mount if musicPath exists
+	useEffect(() => {
+		if (musicPath && !musicDataUrl) {
+			setMusicPath(musicPath);
+		}
+	}, []); // eslint-disable-line react-hooks/exhaustive-deps
+	const [isGeneratingMusic, setIsGeneratingMusic] = useState(false);
+	const [showMusicMenu, setShowMusicMenu] = useState(false);
 	const [selectedStyle, setSelectedStyle] = useState<DesignStyleId | null>(null);
 	const [projectPath, setProjectPath] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -96,7 +183,45 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	const currentScene = project.scenes[selectedSceneIndex];
 	const selectedLayer = currentScene?.layers.find((l) => l.id === selectedLayerId) ?? null;
 
-	// ── Save project (responds to File > Save menu) ────────────────────
+	// ── Auto-save ───────────────────────────────────────────────────────
+
+	const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const doAutoSave = useCallback(async (proj: SceneProject, path: string | null) => {
+		try {
+			if (path) {
+				// Save to existing path silently
+				await window.electronAPI?.saveProjectFile(proj, proj.name, path);
+			} else {
+				// First save — auto-generate filename from project name
+				const fileName = (proj.name || "Untitled").replace(/[^a-zA-Z0-9-_ ]/g, "_");
+				const result = await window.electronAPI?.autoSaveProject(proj, fileName);
+				if (result?.success && result.path) {
+					setProjectPath(result.path);
+				}
+			}
+		} catch {
+			// Silent — don't bother user with auto-save failures
+		}
+	}, []);
+
+	// Auto-save on mount (initial save)
+	useEffect(() => {
+		doAutoSave(project, projectPath);
+	}, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Debounced auto-save on project changes (15s after last change)
+	useEffect(() => {
+		if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+		autoSaveTimerRef.current = setTimeout(() => {
+			doAutoSave(project, projectPath);
+		}, 15_000);
+		return () => {
+			if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+		};
+	}, [project, projectPath, doAutoSave]);
+
+	// ── Manual save (responds to File > Save menu) ──────────────────────
 
 	const saveProject = useCallback(async () => {
 		try {
@@ -526,6 +651,86 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		}
 	}, [project, isCritiquing]);
 
+	// ── Music ────────────────────────────────────────────────────────
+
+	const handleGenerateMusic = useCallback(async (mood: MusicMood) => {
+		setIsGeneratingMusic(true);
+		setShowMusicMenu(false);
+		toast.loading("Composing your soundtrack... this takes ~30 seconds", { id: "music" });
+		try {
+			// Calculate video duration from project scenes
+			const totalMs = project.scenes.reduce((sum, s) => sum + s.durationMs, 0);
+			const videoDurationSec = Math.round(totalMs / 1000);
+			console.log("[Music] Requesting", mood, "music for", videoDurationSec, "second video");
+			const result = await generateCustomMusic(mood, undefined, videoDurationSec);
+			console.log("[Music] Result:", result);
+			toast.dismiss("music");
+			if (result.success && result.audioPath) {
+				setMusicPath(result.audioPath);
+				toast.success(`Music generated! (${mood})`);
+			} else {
+				console.error("[Music] Generation failed:", result.error);
+				toast.error(result.error || "Music generation failed");
+			}
+		} catch (err) {
+			console.error("[Music] Exception:", err);
+			toast.dismiss("music");
+			toast.error("Music generation failed");
+		}
+		setIsGeneratingMusic(false);
+	}, []);
+
+	// ── AI Regenerate ────────────────────────────────────────────────
+
+	const [regenInput, setRegenInput] = useState("");
+
+	const handleRegenerate = useCallback(
+		async (instructions?: string) => {
+			if (isRegenerating || !aiComposition) return;
+			setIsRegenerating(true);
+			const proj = project as any;
+
+			// Use original steps if available, otherwise reconstruct from project scenes
+			const steps =
+				proj._aiSteps ??
+				project.scenes.map((scene: Scene, i: number) => {
+					const textLayer = scene.layers.find((l: SceneLayer) => l.type === "text");
+					const headline = textLayer ? (textLayer.content as any).text : "";
+					return {
+						action: { action: "navigate" as const, narration: headline },
+						timestamp: 0,
+						screenshotDataUrl: aiComposition.screenshots[i],
+						headline,
+					};
+				});
+
+			try {
+				const result = await generateAiComposition(steps, {
+					title: project.name,
+					brand: proj._aiBrand ?? { primaryColor: "#2563eb" },
+					instructions: instructions || undefined,
+					onStatus: (msg) => toast.loading(msg, { id: "regen" }),
+				});
+
+				toast.dismiss("regen");
+
+				if (result.error) {
+					toast.error(`Regeneration failed: ${result.error}`);
+				} else {
+					setAiComposition({ code: result.code, screenshots: result.screenshots });
+					proj._aiCode = result.code;
+					setRegenInput("");
+					toast.success("Composition regenerated!");
+				}
+			} catch (_err) {
+				toast.dismiss("regen");
+				toast.error("Regeneration failed");
+			}
+			setIsRegenerating(false);
+		},
+		[isRegenerating, aiComposition, project],
+	);
+
 	// ── Keyboard shortcuts ─────────────────────────────────────────────
 
 	const handleKeyDown = useCallback(
@@ -759,6 +964,39 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 					</PopoverContent>
 				</Popover>
 
+				{/* AI Regenerate — text input + button for refinement instructions */}
+				{aiComposition && (
+					<div className="flex items-center gap-1.5">
+						<input
+							type="text"
+							value={regenInput}
+							onChange={(e) => setRegenInput(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" && !isRegenerating) {
+									e.preventDefault();
+									handleRegenerate(regenInput);
+								}
+							}}
+							placeholder="Make it more dramatic..."
+							disabled={isRegenerating}
+							className="w-48 px-2 py-1.5 rounded-md bg-white/5 border border-white/10 text-xs text-white placeholder-white/25 focus:outline-none focus:border-emerald-500/50 disabled:opacity-40"
+						/>
+						<button
+							onClick={() => handleRegenerate(regenInput)}
+							disabled={isRegenerating}
+							className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-emerald-400/70 hover:text-emerald-300 hover:bg-emerald-400/10 transition-colors text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+							title="Regenerate with instructions (or leave empty for fresh take)"
+						>
+							{isRegenerating ? (
+								<Loader2 size={14} className="animate-spin" />
+							) : (
+								<RotateCcw size={14} />
+							)}
+							Regenerate
+						</button>
+					</div>
+				)}
+
 				{/* Polish buttons */}
 				<button
 					onClick={() => handlePolish(false)}
@@ -807,6 +1045,57 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 					</button>
 				)}
 
+				{/* Music button */}
+				<div className="relative">
+					<button
+						onClick={() => setShowMusicMenu(!showMusicMenu)}
+						disabled={isGeneratingMusic}
+						className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors text-xs disabled:opacity-40"
+						title={musicPath ? "Music added" : "Add background music"}
+					>
+						{isGeneratingMusic ? (
+							<Loader2 size={14} className="animate-spin" />
+						) : (
+							<Music size={14} />
+						)}
+						{musicPath ? "Music ✓" : "Music"}
+					</button>
+
+					{showMusicMenu && (
+						<div className="absolute top-full right-0 mt-1 w-52 bg-[#141417] border border-white/10 rounded-lg shadow-xl p-2 z-50">
+							<div className="text-[10px] text-white/40 font-medium px-2 py-1 mb-1">
+								AI Generate (MiniMax)
+							</div>
+							{(["energetic", "ambient", "dramatic", "minimal", "upbeat"] as MusicMood[]).map(
+								(mood) => (
+									<button
+										key={mood}
+										onClick={() => handleGenerateMusic(mood)}
+										className="w-full text-left px-2 py-1.5 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors capitalize"
+									>
+										{mood}
+									</button>
+								),
+							)}
+							{musicPath && (
+								<>
+									<div className="border-t border-white/5 my-1" />
+									<MusicPreviewPlayer audioPath={musicPath} />
+									<button
+										onClick={() => {
+											setMusicPath(null);
+											setShowMusicMenu(false);
+										}}
+										className="w-full text-left px-2 py-1.5 rounded text-xs text-red-400/70 hover:text-red-400 hover:bg-red-400/5 transition-colors"
+									>
+										Remove music
+									</button>
+								</>
+							)}
+						</div>
+					)}
+				</div>
+
 				{/* Export button */}
 				<button
 					onClick={handleExport}
@@ -852,30 +1141,42 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 									))}
 								</div>
 
-								{[
-									{ label: "16:9", ratio: "16/9" },
-									{ label: "9:16", ratio: "9/16" },
-									{ label: "1:1", ratio: "1/1" },
-									{ label: "4:3", ratio: "4/3" },
-								].map((preset) => (
-									<button
-										key={preset.label}
-										onClick={() => setAspectRatio(preset.ratio)}
-										className={`px-2.5 py-1 rounded text-[10px] font-medium transition-colors ${
-											aspectRatio === preset.ratio
-												? "text-[#2563eb] bg-[#2563eb]/10"
-												: "text-white/40 hover:text-white/70 hover:bg-white/10"
-										}`}
-										title={preset.ratio}
-									>
-										{preset.label}
-									</button>
-								))}
+								{previewMode === "canvas" &&
+									[
+										{ label: "16:9", ratio: "16/9" },
+										{ label: "9:16", ratio: "9/16" },
+										{ label: "1:1", ratio: "1/1" },
+										{ label: "4:3", ratio: "4/3" },
+									].map((preset) => (
+										<button
+											key={preset.label}
+											onClick={() => setAspectRatio(preset.ratio)}
+											className={`px-2.5 py-1 rounded text-[10px] font-medium transition-colors ${
+												aspectRatio === preset.ratio
+													? "text-[#2563eb] bg-[#2563eb]/10"
+													: "text-white/40 hover:text-white/70 hover:bg-white/10"
+											}`}
+											title={preset.ratio}
+										>
+											{preset.label}
+										</button>
+									))}
 							</div>
 							{/* Preview area */}
 							<div className="flex-1 p-4 flex flex-col min-h-0 overflow-hidden">
-								{previewMode === "remotion" ? (
-									<RemotionPreview project={project} isPlaying={isPlaying} />
+								{previewMode === "remotion" && aiComposition ? (
+									<DynamicPreview
+										code={aiComposition.code}
+										screenshots={aiComposition.screenshots}
+										isPlaying={isPlaying}
+										musicSrc={musicDataUrl ?? undefined}
+									/>
+								) : previewMode === "remotion" ? (
+									<RemotionPreview
+										project={project}
+										isPlaying={isPlaying}
+										musicSrc={musicDataUrl ?? undefined}
+									/>
 								) : (
 									<SceneCanvas
 										scene={currentScene}

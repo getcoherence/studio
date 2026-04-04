@@ -21,7 +21,7 @@ import { AISettingsButton } from "@/components/ui/AISettingsDialog";
 import { DEMO_MODE_LIST, type DemoModeId } from "@/lib/ai/demoModes";
 import { AI_PROVIDERS, type AIProvider, type AIServiceConfig } from "@/lib/ai/types";
 import { getPromptHistory, type PromptHistoryEntry } from "./promptHistory";
-import type { DemoAgentStatus, DemoChatMessage, DemoConfig } from "./types";
+import type { DemoAgentStatus, DemoChatMessage, DemoConfig, OutputStyle } from "./types";
 
 // ── Message renderers ─────────────────────────────────────────────────
 
@@ -244,6 +244,7 @@ export function DemoChatPanel({
 	const [input, setInput] = useState("");
 	const [maxSteps, setMaxSteps] = useState(20);
 	const [selectedMode, setSelectedMode] = useState<DemoModeId>("evangelist");
+	const [outputStyle, setOutputStyle] = useState<OutputStyle>("cinematic");
 	const [history, setHistory] = useState<PromptHistoryEntry[]>([]);
 	const [showHistory, setShowHistory] = useState(false);
 	const [currentProvider, setCurrentProvider] = useState<AIProvider>("openai");
@@ -264,9 +265,10 @@ export function DemoChatPanel({
 	}, []);
 
 	// Auto-scroll on new messages
+	const messageCount = messages.length;
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, []);
+	}, [messageCount]);
 
 	// Focus input when idle
 	useEffect(() => {
@@ -289,7 +291,7 @@ export function DemoChatPanel({
 
 		setInput("");
 		setShowHistory(false);
-		onStart({ url, prompt: finalPrompt, maxSteps, mode: selectedMode });
+		onStart({ url, prompt: finalPrompt, maxSteps, mode: selectedMode, outputStyle });
 	}
 
 	function handleHistorySelect(entry: PromptHistoryEntry) {
@@ -355,6 +357,44 @@ export function DemoChatPanel({
 								>
 									<span>{mode.icon}</span>
 									{mode.name}
+								</button>
+							))}
+						</div>
+
+						{/* Output style selector */}
+						<div className="flex gap-1.5 mb-2">
+							{[
+								{
+									id: "product-demo" as const,
+									label: "Product Demo",
+									icon: "📸",
+									desc: "Screenshot-heavy layouts (Canvas)",
+								},
+								{
+									id: "cinematic" as const,
+									label: "Cinematic",
+									icon: "🎬",
+									desc: "Bold typography, fast cuts (Remotion)",
+								},
+								{
+									id: "ai-cinematic" as const,
+									label: "AI Cinematic",
+									icon: "✨",
+									desc: "AI generates custom motion graphics (experimental)",
+								},
+							].map((style) => (
+								<button
+									key={style.id}
+									onClick={() => setOutputStyle(style.id)}
+									className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-[11px] transition-colors ${
+										outputStyle === style.id
+											? "border-purple-500/50 bg-purple-500/10 text-purple-300"
+											: "border-white/5 bg-white/[0.02] text-white/40 hover:text-white/60 hover:border-white/10"
+									}`}
+									title={style.desc}
+								>
+									<span>{style.icon}</span>
+									{style.label}
 								</button>
 							))}
 						</div>

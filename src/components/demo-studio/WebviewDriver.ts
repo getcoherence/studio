@@ -519,6 +519,92 @@ export class WebviewDriver {
 		);
 	}
 
+	/**
+	 * Extract brand identity from the current page: primary colors, fonts, product name.
+	 * Inspects computed styles of key elements (headings, buttons, links, logo).
+	 */
+	async getBrandInfo(): Promise<{
+		primaryColor: string | null;
+		accentColor: string | null;
+		fontFamily: string | null;
+		productName: string | null;
+	}> {
+		return safeExec(
+			this.wv,
+			`(function() {
+				var colors = {};
+				var fonts = {};
+
+				function addColor(c) {
+					if (!c || c === 'rgba(0, 0, 0, 0)' || c === 'transparent') return;
+					// Parse to rgb
+					var m = c.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/);
+					if (!m) return;
+					var r = +m[1], g = +m[2], b = +m[3];
+					// Skip near-black, near-white, grey
+					if (r < 30 && g < 30 && b < 30) return;
+					if (r > 225 && g > 225 && b > 225) return;
+					var diff = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
+					if (diff < 20) return;
+					var hex = '#' + [r, g, b].map(function(v) { return v.toString(16).padStart(2, '0'); }).join('');
+					colors[hex] = (colors[hex] || 0) + 1;
+				}
+
+				function addFont(f) {
+					if (!f) return;
+					var name = f.split(',')[0].trim().replace(/['"]/g, '');
+					if (['system-ui', 'serif', 'sans-serif', 'monospace', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI'].includes(name)) return;
+					fonts[name] = (fonts[name] || 0) + 1;
+				}
+
+				// Sample key elements
+				var selectors = ['a', 'button', '[role="button"]', 'h1', 'h2', '.btn', '[class*="cta"]', '[class*="primary"]', 'nav a'];
+				selectors.forEach(function(sel) {
+					document.querySelectorAll(sel).forEach(function(el) {
+						var s = getComputedStyle(el);
+						addColor(s.backgroundColor);
+						addColor(s.color);
+						addColor(s.borderColor);
+						addFont(s.fontFamily);
+					});
+				});
+
+				// Heading fonts specifically
+				document.querySelectorAll('h1, h2, h3').forEach(function(el) {
+					addFont(getComputedStyle(el).fontFamily);
+				});
+
+				// Sort by frequency
+				var sortedColors = Object.entries(colors).sort(function(a, b) { return b[1] - a[1]; });
+				var sortedFonts = Object.entries(fonts).sort(function(a, b) { return b[1] - a[1]; });
+
+				// Product name: try og:site_name, then title tag, then h1
+				var productName = null;
+				var ogName = document.querySelector('meta[property="og:site_name"]');
+				if (ogName) productName = ogName.getAttribute('content');
+				if (!productName) {
+					var h1 = document.querySelector('h1');
+					if (h1) {
+						var t = h1.innerText.trim();
+						if (t.length < 30) productName = t;
+					}
+				}
+				if (!productName) {
+					var title = document.title.split(/[|\\-–—]/)[0].trim();
+					if (title.length < 30) productName = title;
+				}
+
+				return {
+					primaryColor: sortedColors[0] ? sortedColors[0][0] : null,
+					accentColor: sortedColors[1] ? sortedColors[1][0] : null,
+					fontFamily: sortedFonts[0] ? sortedFonts[0][0] : null,
+					productName: productName
+				};
+			})()`,
+			{ primaryColor: null, accentColor: null, fontFamily: null, productName: null },
+		);
+	}
+
 	getURL(): string {
 		return this.wv.getURL();
 	}

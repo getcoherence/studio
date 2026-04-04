@@ -8,9 +8,10 @@ import { RemotionLayer } from "./RemotionLayer";
 
 interface RemotionSceneProps {
 	scene: Scene;
+	styleId?: string;
 }
 
-export const RemotionScene: React.FC<RemotionSceneProps> = ({ scene }) => {
+export const RemotionScene: React.FC<RemotionSceneProps> = ({ scene, styleId }) => {
 	const { fps, width, height } = useVideoConfig();
 
 	// Sort layers by zIndex
@@ -33,6 +34,7 @@ export const RemotionScene: React.FC<RemotionSceneProps> = ({ scene }) => {
 							compositionWidth={width}
 							compositionHeight={height}
 							sceneDurationFrames={layerDuration}
+							styleId={styleId}
 						/>
 					</Sequence>
 				);

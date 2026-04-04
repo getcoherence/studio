@@ -579,6 +579,16 @@ export default function VideoEditor() {
 			return;
 		}
 
+		// Check if this is a SceneProject (has scenes array) — open in Scene Editor
+		const candidate = result.project as any;
+		if (candidate?.scenes && Array.isArray(candidate.scenes) && candidate.resolution) {
+			sceneEditorInitialRef.current = candidate;
+			setSceneEditorKey((k) => k + 1);
+			setShowSceneEditor(true);
+			toast.success(`Scene project loaded from ${result.path}`);
+			return;
+		}
+
 		const restored = await applyLoadedProject(result.project, result.path ?? null);
 		if (!restored) {
 			toast.error("Invalid project file format");

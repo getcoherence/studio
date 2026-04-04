@@ -704,7 +704,9 @@ export function registerIpcHandlers(
 						"utf-8",
 					);
 					currentProjectPath = trustedExistingProjectPath;
-					addRecentProject(trustedExistingProjectPath).catch(() => {});
+					addRecentProject(trustedExistingProjectPath).catch(() => {
+						/* fire-and-forget */
+					});
 					return {
 						success: true,
 						path: trustedExistingProjectPath,
@@ -740,7 +742,9 @@ export function registerIpcHandlers(
 
 				await fs.writeFile(result.filePath, JSON.stringify(projectData, null, 2), "utf-8");
 				currentProjectPath = result.filePath;
-				addRecentProject(result.filePath).catch(() => {});
+				addRecentProject(result.filePath).catch(() => {
+					/* fire-and-forget */
+				});
 
 				return {
 					success: true,
@@ -757,6 +761,29 @@ export function registerIpcHandlers(
 			}
 		},
 	);
+
+	// Silent auto-save — saves directly to recordings dir without dialog
+	ipcMain.handle("auto-save-project", async (_, projectData: unknown, fileName: string) => {
+		try {
+			const safeName = fileName.replace(/[^a-zA-Z0-9-_. ]/g, "_");
+			const fullName = safeName.endsWith(`.${PROJECT_FILE_EXTENSION}`)
+				? safeName
+				: `${safeName}.${PROJECT_FILE_EXTENSION}`;
+			const filePath = path.join(RECORDINGS_DIR, fullName);
+
+			await fs.mkdir(RECORDINGS_DIR, { recursive: true });
+			await fs.writeFile(filePath, JSON.stringify(projectData, null, 2), "utf-8");
+			currentProjectPath = filePath;
+			addRecentProject(filePath).catch(() => {
+				/* fire-and-forget */
+			});
+
+			return { success: true, path: filePath };
+		} catch (error) {
+			console.error("Auto-save failed:", error);
+			return { success: false, error: String(error) };
+		}
+	});
 
 	ipcMain.handle("load-project-file", async () => {
 		try {
@@ -782,7 +809,9 @@ export function registerIpcHandlers(
 			const content = await fs.readFile(filePath, "utf-8");
 			const project = JSON.parse(content);
 			currentProjectPath = filePath;
-			addRecentProject(filePath).catch(() => {});
+			addRecentProject(filePath).catch(() => {
+				/* fire-and-forget */
+			});
 			if (project && typeof project === "object") {
 				const rawProject = project as { media?: unknown; videoPath?: unknown };
 				const media =

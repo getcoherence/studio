@@ -16,3 +16,22 @@ export function consumePendingDemoProject(): SceneProject | null {
 	pending = null;
 	return p;
 }
+
+// ── AI Composition store ────────────────────────────────────────────────
+
+export interface AiCompositionData {
+	code: string;
+	screenshots: string[];
+}
+
+let pendingAi: AiCompositionData | null = null;
+
+export function setPendingAiComposition(data: AiCompositionData): void {
+	pendingAi = data;
+}
+
+export function consumePendingAiComposition(): AiCompositionData | null {
+	const d = pendingAi;
+	pendingAi = null;
+	return d;
+}

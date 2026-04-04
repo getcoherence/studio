@@ -4,16 +4,34 @@
 // Consumes SceneProject and provides playback controls.
 
 import { Player, type PlayerRef } from "@remotion/player";
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
+import { AbsoluteFill, Audio } from "remotion";
 import type { SceneProject } from "@/lib/scene-renderer/types";
 import { calculateProjectDuration, SceneProjectComposition } from "./SceneProjectComposition";
+
+/** Wrapper that adds background music to the scene composition */
+const SceneProjectWithMusic: React.FC<{ project: SceneProject; musicSrc: string }> = ({
+	project,
+	musicSrc,
+}) => (
+	<AbsoluteFill>
+		<SceneProjectComposition project={project} />
+		<Audio src={musicSrc} volume={0.25} />
+	</AbsoluteFill>
+);
 
 interface RemotionPreviewProps {
 	project: SceneProject;
 	isPlaying?: boolean;
+	/** Optional background music URL */
+	musicSrc?: string;
 }
 
-export const RemotionPreview: React.FC<RemotionPreviewProps> = ({ project, isPlaying }) => {
+export const RemotionPreview: React.FC<RemotionPreviewProps> = ({
+	project,
+	isPlaying,
+	musicSrc,
+}) => {
 	const playerRef = useRef<PlayerRef>(null);
 	const fps = project.fps || 30;
 	const durationInFrames = calculateProjectDuration(project);
@@ -41,8 +59,8 @@ export const RemotionPreview: React.FC<RemotionPreviewProps> = ({ project, isPla
 		>
 			<Player
 				ref={playerRef}
-				component={SceneProjectComposition}
-				inputProps={{ project }}
+				component={(musicSrc ? SceneProjectWithMusic : SceneProjectComposition) as React.FC<any>}
+				inputProps={musicSrc ? { project, musicSrc } : { project }}
 				durationInFrames={Math.max(1, durationInFrames)}
 				compositionWidth={project.resolution?.width || 1920}
 				compositionHeight={project.resolution?.height || 1080}
