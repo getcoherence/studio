@@ -20,6 +20,7 @@ import {
 	useVideoConfig,
 } from "remotion";
 import { transform } from "sucrase";
+import { AnimatedText, Card, Pill, Scene, Underline } from "./helpers/CinematicHelpers";
 
 interface DynamicCompositionProps {
 	/** AI-generated TSX code string */
@@ -142,6 +143,12 @@ const MODULE_SCOPE = {
 	Series,
 	AbsoluteFill,
 	Img,
+	// Pre-built cinematic helpers — safe, responsive, animated
+	Scene,
+	AnimatedText,
+	Card,
+	Pill,
+	Underline,
 };
 
 /**
