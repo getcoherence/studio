@@ -128,6 +128,132 @@ export const AnimatedText: React.FC<{
 		);
 	}
 
+	if (animation === "blur-in") {
+		const progress = spring({
+			frame: localFrame,
+			fps,
+			config: { damping: 18, stiffness: 80 },
+		});
+		return (
+			<div
+				style={{
+					fontSize,
+					fontFamily,
+					fontWeight,
+					letterSpacing,
+					lineHeight,
+					color,
+					textAlign: align,
+					maxWidth,
+					overflow: "hidden",
+					opacity: progress,
+					filter: `blur(${(1 - progress) * 20}px)`,
+				}}
+			>
+				{cleanText}
+			</div>
+		);
+	}
+
+	if (animation === "bounce") {
+		return (
+			<div
+				style={{
+					display: "flex",
+					flexWrap: "wrap",
+					justifyContent: align === "center" ? "center" : "flex-start",
+					gap: `0 ${fontSize * 0.25}px`,
+					maxWidth,
+					overflow: "hidden",
+				}}
+			>
+				{words.map((word, wi) => {
+					const wordDelay = wi * 5;
+					const progress = spring({
+						frame: Math.max(0, localFrame - wordDelay),
+						fps,
+						config: { damping: 8, stiffness: 200, mass: 0.6 },
+					});
+					const isAccent =
+						accentWord && word.replace(/[^\w]/g, "") === accentWord.replace(/[^\w]/g, "");
+					const bounceY =
+						progress < 1 ? (1 - progress) * -60 : Math.sin((localFrame - wordDelay) * 0.3) * 3;
+					return (
+						<span
+							key={wi}
+							style={{
+								display: "inline-block",
+								whiteSpace: "nowrap",
+								fontSize,
+								fontFamily,
+								fontWeight,
+								letterSpacing,
+								lineHeight,
+								color: isAccent && accentColor ? accentColor : color,
+								opacity: Math.min(1, progress * 2),
+								transform: `translateY(${bounceY}px) scale(${0.8 + progress * 0.2})`,
+							}}
+						>
+							{word}
+						</span>
+					);
+				})}
+			</div>
+		);
+	}
+
+	if (animation === "wave") {
+		return (
+			<div
+				style={{
+					display: "flex",
+					flexWrap: "wrap",
+					justifyContent: align === "center" ? "center" : "flex-start",
+					gap: `0 ${fontSize * 0.25}px`,
+					maxWidth,
+					overflow: "hidden",
+					fontSize,
+					fontFamily,
+					fontWeight,
+					letterSpacing,
+					lineHeight,
+				}}
+			>
+				{words.map((word, wi) => {
+					const isAccent =
+						accentWord && word.replace(/[^\w]/g, "") === accentWord.replace(/[^\w]/g, "");
+					return (
+						<span key={wi} style={{ display: "inline-block", whiteSpace: "nowrap" }}>
+							{word.split("").map((char, ci) => {
+								const charIdx = words.slice(0, wi).join("").length + ci;
+								const waveOffset = Math.sin(localFrame * 0.15 + charIdx * 0.5) * 12;
+								const fadeIn = spring({
+									frame: Math.max(0, localFrame - charIdx * 1.5),
+									fps,
+									config: { damping: 14, stiffness: 180 },
+								});
+								return (
+									<span
+										key={ci}
+										style={{
+											display: "inline-block",
+											fontSize,
+											color: isAccent && accentColor ? accentColor : color,
+											opacity: fadeIn,
+											transform: `translateY(${waveOffset * fadeIn}px)`,
+										}}
+									>
+										{char}
+									</span>
+								);
+							})}
+						</span>
+					);
+				})}
+			</div>
+		);
+	}
+
 	if (animation === "words") {
 		return (
 			<div
