@@ -98,6 +98,10 @@ interface Window {
 			error?: string;
 		}>;
 		clearCurrentVideoPath: () => Promise<{ success: boolean }>;
+		mergeVideoAudio: (
+			videoPath: string,
+			audioPath: string,
+		) => Promise<{ success: boolean; error?: string }>;
 		autoSaveProject: (
 			projectData: unknown,
 			fileName: string,

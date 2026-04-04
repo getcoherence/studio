@@ -50,6 +50,83 @@ function getBundledFfmpegPath(): string | null {
 	return path.join(resourcesPath, "ffmpeg", binaryName);
 }
 
+/**
+ * Merge a video file with an audio file using ffmpeg.
+ * The audio is mixed at the specified volume and trimmed to the video duration.
+ */
+export async function mergeVideoWithAudio(
+	videoPath: string,
+	audioPath: string,
+	outputPath: string,
+	audioVolume = 0.25,
+): Promise<{ success: boolean; error?: string }> {
+	const ffmpegPath = await getFfmpegPath();
+	if (!ffmpegPath) {
+		return { success: false, error: "FFmpeg not found" };
+	}
+
+	const { execFile } = await import("node:child_process");
+	const { promisify } = await import("node:util");
+	const execFileAsync = promisify(execFile);
+
+	try {
+		await execFileAsync(
+			ffmpegPath,
+			[
+				"-i",
+				videoPath,
+				"-i",
+				audioPath,
+				"-filter_complex",
+				`[1:a]volume=${audioVolume}[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=3[aout]`,
+				"-map",
+				"0:v",
+				"-map",
+				"[aout]",
+				"-c:v",
+				"copy",
+				"-c:a",
+				"aac",
+				"-shortest",
+				"-y",
+				outputPath,
+			],
+			{ timeout: 120_000 },
+		);
+		return { success: true };
+	} catch (_err) {
+		// If video has no audio track, use simpler merge
+		try {
+			await execFileAsync(
+				ffmpegPath,
+				[
+					"-i",
+					videoPath,
+					"-i",
+					audioPath,
+					"-filter_complex",
+					`[1:a]volume=${audioVolume}[aout]`,
+					"-map",
+					"0:v",
+					"-map",
+					"[aout]",
+					"-c:v",
+					"copy",
+					"-c:a",
+					"aac",
+					"-shortest",
+					"-y",
+					outputPath,
+				],
+				{ timeout: 120_000 },
+			);
+			return { success: true };
+		} catch (err2) {
+			return { success: false, error: `FFmpeg merge failed: ${err2}` };
+		}
+	}
+}
+
 async function findSystemFfmpeg(): Promise<string | null> {
 	const { execFile } = await import("node:child_process");
 	const { promisify } = await import("node:util");

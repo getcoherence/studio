@@ -490,7 +490,17 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 			const fileName = `${project.name || "scene-export"}.webm`;
 			const result = await window.electronAPI.saveExportedVideo(arrayBuffer, fileName);
 
-			if (result.success) {
+			if (result.success && result.path && musicPath) {
+				// Merge music with the exported video
+				toast.loading("Adding background music...", { id: "merge" });
+				const mergeResult = await window.electronAPI.mergeVideoAudio(result.path, musicPath);
+				toast.dismiss("merge");
+				if (mergeResult.success) {
+					toast.success("Video exported with music!");
+				} else {
+					toast.success("Video exported (music merge failed — video saved without music)");
+				}
+			} else if (result.success) {
 				toast.success("Video exported successfully");
 			} else if (!result.canceled) {
 				toast.error(result.message || "Failed to save video");
@@ -502,7 +512,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 			setIsExporting(false);
 			setExportProgress(null);
 		}
-	}, [isExporting, project]);
+	}, [isExporting, project, musicPath]);
 
 	// ── Background ─────────────────────────────────────────────────────
 
