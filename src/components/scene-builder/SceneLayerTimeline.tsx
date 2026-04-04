@@ -106,6 +106,36 @@ export function SceneLayerTimeline({
 		}
 	}, []);
 
+	// ── Grab to pan (middle-click or long-hold) ──
+	const isGrabbingRef = useRef(false);
+	const grabStartXRef = useRef(0);
+	const grabScrollRef = useRef(0);
+
+	const handleMouseDown = useCallback((e: React.MouseEvent) => {
+		// Middle-click or hold for grab-to-pan
+		if (e.button === 1 || e.altKey) {
+			e.preventDefault();
+			isGrabbingRef.current = true;
+			grabStartXRef.current = e.clientX;
+			grabScrollRef.current = scrollRef.current?.scrollLeft || 0;
+			document.body.style.cursor = "grabbing";
+
+			const handleMove = (me: MouseEvent) => {
+				if (!isGrabbingRef.current || !scrollRef.current) return;
+				const delta = grabStartXRef.current - me.clientX;
+				scrollRef.current.scrollLeft = grabScrollRef.current + delta;
+			};
+			const handleUp = () => {
+				isGrabbingRef.current = false;
+				document.body.style.cursor = "";
+				document.removeEventListener("mousemove", handleMove);
+				document.removeEventListener("mouseup", handleUp);
+			};
+			document.addEventListener("mousemove", handleMove);
+			document.addEventListener("mouseup", handleUp);
+		}
+	}, []);
+
 	// ── Click to seek ──
 	const handleClick = useCallback(
 		(e: React.MouseEvent<HTMLDivElement>) => {
@@ -141,6 +171,7 @@ export function SceneLayerTimeline({
 				className="overflow-x-auto overflow-y-auto"
 				style={{ height }}
 				onWheel={handleWheel}
+				onMouseDown={handleMouseDown}
 			>
 				<div style={{ width: timelineWidth, minWidth: "100%" }}>
 					{/* Time ruler */}
