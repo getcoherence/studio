@@ -1252,7 +1252,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 																type: e.target.value as ScenePlanItem["type"],
 															})
 														}
-														className="text-[10px] bg-white/5 border border-white/10 rounded px-1 py-0.5 text-white/60"
+														className="text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
 													>
 														<option value="hero-text">Hero Text</option>
 														<option value="split-layout">Split Layout</option>
@@ -1281,7 +1281,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 																animation: e.target.value as ScenePlanItem["animation"],
 															})
 														}
-														className="flex-1 text-[10px] bg-white/5 border border-white/10 rounded px-1 py-1 text-white/60"
+														className="flex-1 text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-1 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
 													>
 														<option value="chars">Per-Character</option>
 														<option value="words">Word Slam</option>
@@ -1293,7 +1293,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 													<select
 														value={scene.background}
 														onChange={(e) => updateScenePlan(i, { background: e.target.value })}
-														className="flex-1 text-[10px] bg-white/5 border border-white/10 rounded px-1 py-1 text-white/60"
+														className="flex-1 text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-1 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
 													>
 														{BACKGROUND_NAMES.map((bg) => (
 															<option key={bg} value={bg}>
