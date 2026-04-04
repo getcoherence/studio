@@ -127,6 +127,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 		const proj = fallbackProject as Record<string, any>;
 		proj._aiCode = result.code;
 		proj._aiScreenshots = result.screenshots;
+		proj._aiPlan = result.plan ?? null;
 		proj._aiSteps = agent.steps.map((s) => ({
 			action: s.action,
 			headline: s.headline,
