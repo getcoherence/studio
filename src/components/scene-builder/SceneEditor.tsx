@@ -49,6 +49,7 @@ import { exportSceneProject, type SceneExportProgress } from "@/lib/scene-render
 import { renderScene } from "@/lib/scene-renderer/sceneRenderer";
 import { LayerPanel } from "./LayerPanel";
 import { SceneCanvas } from "./SceneCanvas";
+import { LottieBrowser } from "./LottieBrowser";
 import { SceneLayerEditor } from "./SceneLayerEditor";
 import { SceneLayerTimeline } from "./SceneLayerTimeline";
 import { SceneTimeline } from "./SceneTimeline";
@@ -1292,6 +1293,17 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 												)}
 												Critique & Fix
 											</button>
+										</div>
+										{/* Lottie Browser */}
+										<div className="space-y-2 pt-2 border-t border-white/5">
+											<div className="text-xs text-white/60 font-medium">LottieFiles Browser</div>
+											<LottieBrowser
+												onSelect={(filename) =>
+													toast.success(
+														`Lottie downloaded: ${filename}. Add it as a layer in the Scenes tab.`,
+													)
+												}
+											/>
 										</div>
 									</div>
 								)}
