@@ -675,6 +675,61 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 	// ── Scene Plan editing ──────────────────────────────────────────
 
+	const addSceneToPlan = useCallback(
+		(afterIndex: number) => {
+			if (!scenePlan) return;
+			const newScene: ScenePlanItem = {
+				type: "hero-text",
+				headline: "New Scene",
+				background: "black",
+				animation: "words",
+				font: "sans-serif",
+				fontSize: 120,
+				durationFrames: 90,
+				effects: [],
+			};
+			const newScenes = [...scenePlan.scenes];
+			newScenes.splice(afterIndex + 1, 0, newScene);
+			const newPlan = { ...scenePlan, scenes: newScenes };
+			setScenePlan(newPlan);
+			const newCode = compileScenePlan(newPlan);
+			setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
+			(project as any)._aiCode = newCode;
+			(project as any)._aiPlan = newPlan;
+		},
+		[scenePlan, project],
+	);
+
+	const deleteSceneFromPlan = useCallback(
+		(index: number) => {
+			if (!scenePlan || scenePlan.scenes.length <= 1) return;
+			const newPlan = { ...scenePlan, scenes: scenePlan.scenes.filter((_, i) => i !== index) };
+			setScenePlan(newPlan);
+			const newCode = compileScenePlan(newPlan);
+			setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
+			(project as any)._aiCode = newCode;
+			(project as any)._aiPlan = newPlan;
+		},
+		[scenePlan, project],
+	);
+
+	const moveSceneInPlan = useCallback(
+		(fromIndex: number, direction: "up" | "down") => {
+			if (!scenePlan) return;
+			const toIndex = direction === "up" ? fromIndex - 1 : fromIndex + 1;
+			if (toIndex < 0 || toIndex >= scenePlan.scenes.length) return;
+			const newScenes = [...scenePlan.scenes];
+			[newScenes[fromIndex], newScenes[toIndex]] = [newScenes[toIndex], newScenes[fromIndex]];
+			const newPlan = { ...scenePlan, scenes: newScenes };
+			setScenePlan(newPlan);
+			const newCode = compileScenePlan(newPlan);
+			setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
+			(project as any)._aiCode = newCode;
+			(project as any)._aiPlan = newPlan;
+		},
+		[scenePlan, project],
+	);
+
 	const recompileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const updateScenePlan = useCallback(
@@ -1266,9 +1321,32 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 												className="p-3 rounded-lg bg-white/[0.03] border border-white/5 space-y-2"
 											>
 												<div className="flex items-center justify-between">
-													<span className="text-[10px] text-white/30 font-medium">
-														Scene {i + 1} — {scene.type}
-													</span>
+													<div className="flex items-center gap-1">
+														<span className="text-[10px] text-white/30 font-medium">
+															Scene {i + 1}
+														</span>
+														<button
+															onClick={() => moveSceneInPlan(i, "up")}
+															disabled={i === 0}
+															className="text-[10px] text-white/20 hover:text-white/50 disabled:opacity-20"
+														>
+															▲
+														</button>
+														<button
+															onClick={() => moveSceneInPlan(i, "down")}
+															disabled={i === scenePlan.scenes.length - 1}
+															className="text-[10px] text-white/20 hover:text-white/50 disabled:opacity-20"
+														>
+															▼
+														</button>
+														<button
+															onClick={() => deleteSceneFromPlan(i)}
+															disabled={scenePlan.scenes.length <= 1}
+															className="text-[10px] text-red-400/30 hover:text-red-400/70 disabled:opacity-20 ml-1"
+														>
+															✕
+														</button>
+													</div>
 													<select
 														value={scene.type}
 														onChange={(e) =>
@@ -1448,6 +1526,13 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 												</select>
 											</div>
 										))}
+										{/* Add Scene button */}
+										<button
+											onClick={() => addSceneToPlan(scenePlan.scenes.length - 1)}
+											className="w-full py-2 rounded-lg border-2 border-dashed border-white/10 hover:border-[#2563eb]/40 text-white/30 hover:text-white/50 text-xs transition-colors"
+										>
+											+ Add Scene
+										</button>
 									</div>
 								)}
 
