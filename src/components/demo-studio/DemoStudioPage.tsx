@@ -60,6 +60,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 		(config: DemoConfig) => {
 			setMaxSteps(config.maxSteps);
 			setOutputStyle(config.outputStyle);
+			aiGenerationStartedRef.current = false; // Reset for new demo
 			setMessages([]);
 			addToPromptHistory({ url: config.url, prompt: config.prompt });
 
@@ -79,6 +80,83 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 	);
 
 	const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+	const aiGenerationStartedRef = useRef(false);
+
+	// ── Auto-generate AI cinematic when demo completes ──
+	const generateAndOpenAiCinematic = useCallback(async () => {
+		if (agent.steps.length === 0 || isGeneratingAi) return;
+		const title = agent.storyboardTitle;
+		const brand = {
+			primaryColor: agent.brandInfo?.primaryColor || "#2563eb",
+			accentColor: agent.brandInfo?.accentColor ?? undefined,
+			fontFamily: agent.brandInfo?.fontFamily ?? undefined,
+			productName: agent.brandInfo?.productName ?? undefined,
+		};
+
+		setIsGeneratingAi(true);
+
+		const result = await generateAiComposition(agent.steps, {
+			title,
+			brand,
+			onStatus: (msg) => {
+				handleMessage({
+					id: `ai-status-${Date.now()}`,
+					type: "thinking",
+					content: msg,
+					timestamp: Date.now(),
+				});
+			},
+		});
+
+		setIsGeneratingAi(false);
+
+		if (result.error) {
+			toast.error(`AI generation failed: ${result.error}`);
+			handleMessage({
+				id: `ai-err-${Date.now()}`,
+				type: "error",
+				content: `AI composition failed: ${result.error}. Try "Cinematic" mode as fallback.`,
+				timestamp: Date.now(),
+			});
+			return;
+		}
+
+		const fallbackProject = composeCinematicProject(agent.steps, { title, brand });
+		fallbackProject.styleId = "ai-cinematic";
+		// biome-ignore lint/suspicious/noExplicitAny: AI cinematic extends SceneProject with runtime fields
+		const proj = fallbackProject as Record<string, any>;
+		proj._aiCode = result.code;
+		proj._aiScreenshots = result.screenshots;
+		proj._aiSteps = agent.steps.map((s) => ({
+			action: s.action,
+			headline: s.headline,
+			screenshotDataUrl: s.screenshotDataUrl,
+			uiElements: s.uiElements,
+			timestamp: s.timestamp,
+		}));
+		proj._aiBrand = brand;
+		onOpenInEditor(fallbackProject);
+	}, [
+		agent.steps,
+		agent.storyboardTitle,
+		agent.brandInfo,
+		isGeneratingAi,
+		handleMessage,
+		onOpenInEditor,
+	]);
+
+	// Auto-trigger when demo completes in AI Cinematic mode
+	useEffect(() => {
+		if (
+			outputStyle === "ai-cinematic" &&
+			agent.status === "complete" &&
+			agent.steps.length > 0 &&
+			!aiGenerationStartedRef.current
+		) {
+			aiGenerationStartedRef.current = true;
+			generateAndOpenAiCinematic();
+		}
+	}, [agent.status, outputStyle, agent.steps.length, generateAndOpenAiCinematic]);
 
 	const handleOpenInEditor = useCallback(async () => {
 		if (agent.steps.length === 0) return;
@@ -91,58 +169,11 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 		};
 
 		if (outputStyle === "ai-cinematic") {
-			// AI-generated composition — async, shows loading state
-			setIsGeneratingAi(true);
-			handleMessage({
-				id: `ai-gen-${Date.now()}`,
-				type: "thinking",
-				content: "Generating cinematic composition with AI...",
-				timestamp: Date.now(),
-			});
-
-			const result = await generateAiComposition(agent.steps, {
-				title,
-				brand,
-				onStatus: (msg) => {
-					handleMessage({
-						id: `ai-status-${Date.now()}`,
-						type: "thinking",
-						content: msg,
-						timestamp: Date.now(),
-					});
-				},
-			});
-
-			setIsGeneratingAi(false);
-
-			if (result.error) {
-				toast.error(`AI generation failed: ${result.error}`);
-				handleMessage({
-					id: `ai-err-${Date.now()}`,
-					type: "error",
-					content: `AI composition failed: ${result.error}. Try "Cinematic" mode as fallback.`,
-					timestamp: Date.now(),
-				});
-				return;
+			// Already auto-generating or done — trigger manually if needed
+			if (!isGeneratingAi) {
+				aiGenerationStartedRef.current = true;
+				generateAndOpenAiCinematic();
 			}
-
-			// Store AI composition data on the project object itself
-			// (module-level stores get consumed by React StrictMode double-mounting)
-			const fallbackProject = composeCinematicProject(agent.steps, { title, brand });
-			fallbackProject.styleId = "ai-cinematic";
-			// biome-ignore lint/suspicious/noExplicitAny: AI cinematic extends SceneProject with runtime fields
-			const proj = fallbackProject as Record<string, any>;
-			proj._aiCode = result.code;
-			proj._aiScreenshots = result.screenshots;
-			proj._aiSteps = agent.steps.map((s) => ({
-				action: s.action,
-				headline: s.headline,
-				screenshotDataUrl: s.screenshotDataUrl,
-				uiElements: s.uiElements,
-				timestamp: s.timestamp,
-			}));
-			proj._aiBrand = brand;
-			onOpenInEditor(fallbackProject);
 			return;
 		}
 
