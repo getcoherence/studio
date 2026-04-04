@@ -1136,7 +1136,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 													: "text-white/40 hover:text-white/70"
 											}`}
 										>
-											{mode === "canvas" ? "Canvas" : "Remotion"}
+											{mode === "canvas" ? "Canvas" : "Motion"}
 										</button>
 									))}
 								</div>

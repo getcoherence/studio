@@ -374,7 +374,7 @@ export function DemoChatPanel({
 									id: "cinematic" as const,
 									label: "Cinematic",
 									icon: "🎬",
-									desc: "Bold typography, fast cuts (Remotion)",
+									desc: "Bold typography, fast cuts, motion graphics",
 								},
 								{
 									id: "ai-cinematic" as const,
