@@ -168,6 +168,7 @@ function buildSystemPrompt(): string {
 		"## IMPORTANT: Prefer helpers over raw HTML",
 		"USE Scene + AnimatedText + Card + Pill for 90% of scenes. Only use raw divs for truly custom layouts.",
 		"The helpers handle overflow, padding, word-wrapping, and animation automatically.",
+		"DO NOT redefine Scene, AnimatedText, Card, Pill, or Underline — they are already provided in scope.",
 		"",
 		"## Critical Rules",
 		"",

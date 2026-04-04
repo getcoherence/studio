@@ -178,6 +178,16 @@ function compileCode(tsxCode: string): React.FC<{ screenshots: string[] }> {
 		.replace(/import\s+['"][^'"]+['"];?/g, "")
 		.trim();
 
+	// Step 1b: Remove declarations that shadow our injected helpers.
+	// The AI sometimes redefines Scene, Card, etc. — our injected versions are safer.
+	// Approach: rename AI's declarations to _AI_Scene, _AI_Card etc. so they don't conflict.
+	const injectedNames = ["Scene", "AnimatedText", "Card", "Pill", "Underline"];
+	for (const name of injectedNames) {
+		// Rename: "const Scene" → "const _AI_Scene", "function Scene" → "function _AI_Scene"
+		code = code.replace(new RegExp(`\\bconst ${name}\\b\\s*=`, "g"), `const _AI_${name} =`);
+		code = code.replace(new RegExp(`\\bfunction ${name}\\b\\s*\\(`, "g"), `function _AI_${name}(`);
+	}
+
 	// Step 2: Transform TSX → JS
 	const result = transform(code, {
 		transforms: ["jsx", "typescript"],
