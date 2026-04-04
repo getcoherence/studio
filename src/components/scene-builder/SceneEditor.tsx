@@ -172,7 +172,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 	const [isGeneratingMusic, setIsGeneratingMusic] = useState(false);
 	const [rightPanelTab, setRightPanelTab] = useState<"layers" | "tools" | "music" | "background">(
-		"layers",
+		project.styleId === "ai-cinematic" ? "tools" : "layers",
 	);
 	const [selectedStyle, setSelectedStyle] = useState<DesignStyleId | null>(null);
 	const [projectPath, setProjectPath] = useState<string | null>(null);
@@ -876,22 +876,24 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 						<div className="flex flex-col h-full min-w-0 min-h-0">
 							{/* Responsive size toolbar */}
 							<div className="flex-shrink-0 flex items-center justify-center gap-1 px-4 py-1.5 border-b border-white/5">
-								{/* Preview mode toggle */}
-								<div className="flex gap-0.5 p-0.5 rounded bg-white/5 mr-3">
-									{(["canvas", "remotion"] as const).map((mode) => (
-										<button
-											key={mode}
-											onClick={() => setPreviewMode(mode)}
-											className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-												previewMode === mode
-													? "bg-[#2563eb]/20 text-[#2563eb]"
-													: "text-white/40 hover:text-white/70"
-											}`}
-										>
-											{mode === "canvas" ? "Canvas" : "Motion"}
-										</button>
-									))}
-								</div>
+								{/* Preview mode toggle — hidden for AI Cinematic (always Motion) */}
+								{!aiComposition && (
+									<div className="flex gap-0.5 p-0.5 rounded bg-white/5 mr-3">
+										{(["canvas", "remotion"] as const).map((mode) => (
+											<button
+												key={mode}
+												onClick={() => setPreviewMode(mode)}
+												className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+													previewMode === mode
+														? "bg-[#2563eb]/20 text-[#2563eb]"
+														: "text-white/40 hover:text-white/70"
+												}`}
+											>
+												{mode === "canvas" ? "Canvas" : "Motion"}
+											</button>
+										))}
+									</div>
+								)}
 
 								{previewMode === "canvas" &&
 									[
@@ -1007,9 +1009,9 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 							<div className="flex border-b border-white/5 px-1 pt-1">
 								{(
 									[
-										{ id: "layers" as const, label: "Layers" },
+										// Hide Layers + BG for AI Cinematic (not editable)
+										...(!aiComposition ? [{ id: "layers" as const, label: "Layers" }] : []),
 										{ id: "tools" as const, label: "Tools" },
-										// Hide BG tab for AI cinematic — backgrounds are baked into AI code
 										...(!aiComposition ? [{ id: "background" as const, label: "BG" }] : []),
 										{ id: "music" as const, label: "Music" },
 									] as const
