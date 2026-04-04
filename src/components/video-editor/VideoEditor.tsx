@@ -611,6 +611,8 @@ export default function VideoEditor() {
 			if (result.canceled) return;
 			if (result.success && result.path) {
 				await window.electronAPI.setCurrentVideoPath(result.path);
+				setShowSceneEditor(false);
+				setShowDemoStudio(false);
 				setError(null);
 				setReloadTrigger((prev) => prev + 1);
 			}
@@ -688,6 +690,9 @@ export default function VideoEditor() {
 		if (result.canceled) return;
 		if (result.success && result.path) {
 			await window.electronAPI.setCurrentVideoPath(result.path);
+			setShowSceneEditor(false);
+			setShowDemoStudio(false);
+			setError(null);
 			setReloadTrigger((prev) => prev + 1);
 		}
 	}, []);
