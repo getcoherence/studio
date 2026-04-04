@@ -177,6 +177,7 @@ function buildSystemPrompt(): string {
 		"3. NEVER use Math.random().",
 		"4. Export a component called VideoComposition accepting { screenshots: string[] } props.",
 		"5. Canvas is 1920x1080 at 30fps.",
+		"6. NEVER use literal \\n in text strings. For multi-line text, use SEPARATE AnimatedText or div elements for each line. Example: <AnimatedText text='Line one' /><AnimatedText text='Line two' delay={10} />",
 		"6. NEVER import external fonts or CSS files. Use system font stacks only.",
 		"",
 		"## Typography — THIS IS CRITICAL FOR QUALITY",
