@@ -1526,37 +1526,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 														</option>
 													))}
 												</select>
+												<SceneLayerEditor scene={scene} sceneIndex={i} onUpdate={updateScenePlan} />
 											</div>
-														{/* Scene Layers */}
-														<div className="space-y-1 pt-2 border-t border-white/5 mt-2">
-															<div className="flex items-center justify-between">
-																<span className="text-[9px] text-white/30">Layers ({(scene.layers || []).length})</span>
-																<button onClick={() => { const nl = { id: 'l-'+Date.now(), type: 'text' as const, content: 'New Layer', position: 'center' as const, size: 40, startFrame: 0, endFrame: -1 }; updateScenePlan(i, { layers: [...(scene.layers||[]), nl] }); }} className="text-[9px] text-[#2563eb] hover:text-[#60a5fa]">+ Add</button>
-															</div>
-															{(scene.layers || []).map((layer, li) => (
-																<div key={layer.id} className="flex gap-1 items-center">
-																	<select value={layer.type} onChange={(e) => { const ls = [...(scene.layers||[])]; ls[li] = {...ls[li], type: e.target.value as any}; updateScenePlan(i, {layers: ls}); }} className="w-12 text-[8px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-white/50 [&>option]:bg-[#141417] [&>option]:text-white">
-																		<option value="text">Text</option>
-																		<option value="lottie">Lottie</option>
-																		<option value="image">Image</option>
-																		<option value="shape">Shape</option>
-																	</select>
-																	<input type="text" value={layer.content} onChange={(e) => { const ls = [...(scene.layers||[])]; ls[li] = {...ls[li], content: e.target.value}; updateScenePlan(i, {layers: ls}); }} className="flex-1 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[8px] text-white/50 focus:outline-none" />
-																	<select value={layer.position} onChange={(e) => { const ls = [...(scene.layers||[])]; ls[li] = {...ls[li], position: e.target.value as any}; updateScenePlan(i, {layers: ls}); }} className="w-14 text-[8px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-white/50 [&>option]:bg-[#141417] [&>option]:text-white">
-																		<option value="center">Center</option>
-																		<option value="top-left">Top-L</option>
-																		<option value="top-right">Top-R</option>
-																		<option value="bottom-left">Bot-L</option>
-																		<option value="bottom-right">Bot-R</option>
-																		<option value="top">Top</option>
-																		<option value="bottom">Bottom</option>
-																	</select>
-																	<button onClick={() => { const ls = (scene.layers||[]).filter((_, idx) => idx !== li); updateScenePlan(i, {layers: ls}); }} className="text-[9px] text-red-400/30 hover:text-red-400">✕</button>
-																
-														<SceneLayerEditor scene={scene} sceneIndex={i} onUpdate={updateScenePlan} />
-													</div>
-															))}
-														</div>
 										))}
 										{/* Add Scene button */}
 										<button
@@ -1647,47 +1618,43 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 				</PanelGroup>
 			</div>
 
-	{
-		/* ── Bottom: Scene Layer Timeline (AI Cinematic) or Scene Thumbnails */
-	}
-	{
-		scenePlan ? (
-			<SceneLayerTimeline
-				plan={scenePlan}
-				currentFrame={seekToFrame ?? 0}
-				onSeekToFrame={setSeekToFrame}
-				onAddLayer={(si) => {
-					// Add a default text layer to the scene
-					const newLayer = {
-						id: `layer-${Date.now()}`,
-						type: "text" as const,
-						content: "New Text",
-						position: "center" as const,
-						size: 50,
-						startFrame: 0,
-						endFrame: -1,
-					};
-					const currentLayers = scenePlan.scenes[si]?.layers || [];
-					updateScenePlan(si, { layers: [...currentLayers, newLayer] });
-				}}
-				onSelectLayer={(si, _li) => {
-					const startFrame = scenePlan.scenes
-						.slice(0, si)
-						.reduce((sum, s) => sum + (s.durationFrames || 90), 0);
-					setSeekToFrame(startFrame);
-				}}
-			/>
-		) : (
-			<SceneTimeline
-				scenes={project.scenes}
-				selectedIndex={selectedSceneIndex}
-				onSelectScene={selectScene}
-				onAddScene={addScene}
-				onDeleteScene={deleteScene}
-				onUpdateTransition={(sceneIndex, transition) => updateScene(sceneIndex, { transition })}
-			/>
-		);
-	}
-	</div>
-	)
+			{/* ── Bottom: Scene Layer Timeline (AI Cinematic) or Scene Thumbnails */}
+			{scenePlan ? (
+				<SceneLayerTimeline
+					plan={scenePlan}
+					currentFrame={seekToFrame ?? 0}
+					onSeekToFrame={setSeekToFrame}
+					onAddLayer={(si) => {
+						// Add a default text layer to the scene
+						const newLayer = {
+							id: `layer-${Date.now()}`,
+							type: "text" as const,
+							content: "New Text",
+							position: "center" as const,
+							size: 50,
+							startFrame: 0,
+							endFrame: -1,
+						};
+						const currentLayers = scenePlan.scenes[si]?.layers || [];
+						updateScenePlan(si, { layers: [...currentLayers, newLayer] });
+					}}
+					onSelectLayer={(si, _li) => {
+						const startFrame = scenePlan.scenes
+							.slice(0, si)
+							.reduce((sum, s) => sum + (s.durationFrames || 90), 0);
+						setSeekToFrame(startFrame);
+					}}
+				/>
+			) : (
+				<SceneTimeline
+					scenes={project.scenes}
+					selectedIndex={selectedSceneIndex}
+					onSelectScene={selectScene}
+					onAddScene={addScene}
+					onDeleteScene={deleteScene}
+					onUpdateTransition={(sceneIndex, transition) => updateScene(sceneIndex, { transition })}
+				/>
+			)}
+		</div>
+	);
 }
