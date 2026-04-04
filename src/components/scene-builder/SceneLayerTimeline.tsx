@@ -4,9 +4,9 @@
 // Shows scenes as proportional blocks with layers as sub-tracks.
 // Clicking a scene/layer seeks the player to that position.
 
-import { Plus } from "lucide-react";
 import React, { useCallback, useMemo } from "react";
-import type { SceneLayer, ScenePlan } from "@/lib/ai/scenePlan";
+import type { ScenePlan } from "@/lib/ai/scenePlan";
+import { expandSceneToLayers } from "@/lib/ai/scenePlanCompiler";
 
 interface SceneLayerTimelineProps {
 	plan: ScenePlan;
@@ -71,7 +71,10 @@ export function SceneLayerTimeline({
 	const playheadPercent = totalFrames > 0 ? (currentFrame / totalFrames) * 100 : 0;
 
 	// Max layers across all scenes (for track count)
-	const maxLayers = Math.max(1, ...plan.scenes.map((s) => (s.layers?.length || 0) + 1));
+	const maxLayers = Math.max(
+		1,
+		...plan.scenes.map((s) => expandSceneToLayers(s, plan.accentColor || "#2563eb").length),
+	);
 
 	return (
 		<div className="flex flex-col border-t border-white/5 bg-[#09090b]/90">
@@ -135,7 +138,7 @@ export function SceneLayerTimeline({
 			</div>
 
 			{/* Layer tracks */}
-			{Array.from({ length: Math.min(maxLayers, 4) }, (_, trackIndex) => (
+			{Array.from({ length: Math.min(maxLayers, 8) }, (_, trackIndex) => (
 				<div
 					key={trackIndex}
 					className="relative border-t border-white/5 cursor-pointer"
@@ -148,7 +151,7 @@ export function SceneLayerTimeline({
 					)}
 
 					{plan.scenes.map((scene, si) => {
-						const layers = scene.layers || [];
+						const layers = expandSceneToLayers(scene, plan.accentColor || "#2563eb");
 						const layer = layers[trackIndex];
 						if (!layer) return null;
 

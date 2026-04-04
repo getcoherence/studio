@@ -84,6 +84,9 @@ export interface SceneLayer {
 		fontSize?: number;
 		color?: string;
 		animation?: string;
+		fontFamily?: string;
+		accentWord?: string;
+		accentColor?: string;
 		opacity?: number;
 		loop?: boolean;
 	};
