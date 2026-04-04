@@ -192,7 +192,9 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 				await window.electronAPI?.saveProjectFile(proj, proj.name, path);
 				console.log("[AutoSave] Saved to existing path:", path);
 			} else {
-				const fileName = (proj.name || "Untitled").replace(/[^a-zA-Z0-9-_ ]/g, "_");
+				const baseName = (proj.name || "Untitled").replace(/[^a-zA-Z0-9-_ ]/g, "_");
+				const timestamp = new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-");
+				const fileName = `${baseName}_${timestamp}`;
 				console.log("[AutoSave] First save, filename:", fileName);
 				const result = await window.electronAPI?.autoSaveProject(proj, fileName);
 				console.log("[AutoSave] Result:", result);
