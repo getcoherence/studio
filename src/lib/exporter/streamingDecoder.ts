@@ -16,9 +16,10 @@ function buildAV1CodecString(description?: BufferSource): string {
 
 	if (!description) return fallback;
 
-	const bytes = new Uint8Array(
-		description instanceof ArrayBuffer ? description : description.buffer,
-	);
+	const bytes =
+		description instanceof ArrayBuffer
+			? new Uint8Array(description)
+			: new Uint8Array(description.buffer, description.byteOffset, description.byteLength);
 
 	// AV1CodecConfigurationRecord layout (4+ bytes):
 	//   Byte 0: marker (1) | version (7)
