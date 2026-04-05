@@ -291,7 +291,7 @@ function compileLayer(layer: SceneLayer, sceneDuration: number, accent: string):
 
 	// Effects (vignette, light-streak) are already returned above
 
-	// Center layers flow in the Scene's flex column (natural vertical stacking)
+	// Center layers flow in Scene's flex column (natural vertical stacking)
 	if (layer.position === "center") {
 		return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>
           ${content}
