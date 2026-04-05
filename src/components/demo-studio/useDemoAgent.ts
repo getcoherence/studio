@@ -157,7 +157,7 @@ export function useDemoAgent(
 	async function runRecon(driver: WebviewDriver, config: DemoConfig): Promise<SiteMapPage[]> {
 		const siteMap: SiteMapPage[] = [];
 		const visitedUrls = new Set<string>();
-		const maxReconSteps = Math.min(config.maxSteps, 30);
+		const maxReconSteps = Math.min(config.maxSteps, 12); // Cap at 12 — more pages doesn't improve video quality
 		const mode = getDemoMode(config.mode);
 
 		// Capture the landing page first — scroll to bottom to discover all sections
@@ -176,7 +176,7 @@ export function useDemoAgent(
 		// This guarantees we find pages like /pro, /features even if the AI gets stuck scrolling
 		const navLinks = await driver.getNavLinks();
 		const baseOrigin = new URL(config.url).origin;
-		for (const link of navLinks) {
+		for (const link of navLinks.slice(0, 8)) { // Cap at 8 nav links
 			if (stoppedRef.current) break;
 			try {
 				const linkUrl = new URL(link.href, config.url);
