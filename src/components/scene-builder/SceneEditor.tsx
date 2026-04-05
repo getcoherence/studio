@@ -215,7 +215,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 			setMusicPath(musicPath);
 		}
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
-	const [isGeneratingMusic, setIsGeneratingMusic] = useState(false);
+	const [generatingMusicMood, setGeneratingMusicMood] = useState<string | null>(null);
 	const [rightPanelTab, setRightPanelTab] = useState<
 		"layers" | "tools" | "music" | "background" | "code" | "plan"
 	>(project.styleId === "ai-cinematic" ? "plan" : "layers");
@@ -862,7 +862,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	// ── Music ────────────────────────────────────────────────────────
 
 	const handleGenerateMusic = useCallback(async (mood: MusicMood) => {
-		setIsGeneratingMusic(true);
+		setGeneratingMusicMood(mood);
 		toast.loading("Composing your soundtrack... this takes ~30 seconds", { id: "music" });
 		try {
 			// Calculate video duration from project scenes
@@ -884,7 +884,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 			toast.dismiss("music");
 			toast.error("Music generation failed");
 		}
-		setIsGeneratingMusic(false);
+		setGeneratingMusicMood(null);
 	}, []);
 
 	// ── AI Regenerate ────────────────────────────────────────────────
@@ -1475,17 +1475,28 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 															✕
 														</button>
 													</div>
-													<select
-														value={scene.background}
-														onChange={(e) => updateScenePlan(i, { background: e.target.value })}
-														className="w-24 text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
-													>
-														{BACKGROUND_NAMES.map((bg) => (
-															<option key={bg} value={bg}>
-																{bg}
-															</option>
-														))}
-													</select>
+													<div className="flex items-center gap-1">
+														<select
+															value={scene.background}
+															onChange={(e) => updateScenePlan(i, { background: e.target.value })}
+															className="text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
+														>
+															{BACKGROUND_NAMES.map((bg) => (
+																<option key={bg} value={bg}>
+																	{bg}
+																</option>
+															))}
+														</select>
+														<input
+															type="number"
+															value={scene.durationFrames || 90}
+															onChange={(e) => updateScenePlan(i, { durationFrames: Number(e.target.value) })}
+															className="w-12 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/40 focus:outline-none"
+															title="Duration (frames, 30 = 1 second)"
+															step={15}
+														/>
+														<span className="text-[9px] text-white/20">f</span>
+													</div>
 												</div>
 												<SceneLayerEditor scene={scene} sceneIndex={i} onUpdate={updateScenePlan} />
 											</div>
@@ -1557,10 +1568,10 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 												<button
 													key={mood}
 													onClick={() => handleGenerateMusic(mood)}
-													disabled={isGeneratingMusic}
+													disabled={generatingMusicMood !== null}
 													className="w-full text-left px-2 py-1.5 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors capitalize disabled:opacity-40"
 												>
-													{isGeneratingMusic ? (
+													{generatingMusicMood === mood ? (
 														<span className="flex items-center gap-2">
 															<Loader2 size={10} className="animate-spin" />
 															Generating...

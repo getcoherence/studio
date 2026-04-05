@@ -102,8 +102,8 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEdit
 			</div>
 
 			{layers.map((layer, li) => (
+				<div key={layer.id}>
 				<div
-					key={layer.id}
 					draggable
 					onDragStart={(e) => handleDragStart(e, li)}
 					onDragEnd={handleDragEnd}
@@ -131,6 +131,7 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEdit
 						className="w-12 text-[11px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-white/50 [&>option]:bg-[#141417] [&>option]:text-white"
 					>
 						<option value="text">Text</option>
+						<option value="card">Card</option>
 						<option value="lottie">Lottie</option>
 						<option value="image">Image</option>
 						<option value="shape">Shape</option>
@@ -166,6 +167,21 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEdit
 						title="Size %"
 					/>
 
+					<input
+						type="number"
+						value={layer.startFrame}
+						onChange={(e) => updateLayer(li, { startFrame: Number(e.target.value) })}
+						className="w-8 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-emerald-400/40 focus:outline-none"
+						title="Start frame"
+					/>
+					<input
+						type="number"
+						value={layer.endFrame}
+						onChange={(e) => updateLayer(li, { endFrame: Number(e.target.value) })}
+						className="w-8 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-amber-400/40 focus:outline-none"
+						title="End frame (-1 = scene end)"
+					/>
+
 					<button
 						onClick={() => deleteLayer(li)}
 						className="text-[11px] text-red-400/30 hover:text-red-400 px-0.5"
@@ -173,6 +189,63 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEdit
 						✕
 					</button>
 				</div>
+				{/* Settings row for card layers */}
+				{layer.type === "card" && (() => {
+					let card = { title: "", description: "" };
+					try { card = JSON.parse(layer.content); } catch {}
+					return (
+						<div className="flex gap-1 items-center pl-5 pb-1">
+							<input type="text" value={card.title} onChange={(e) => updateLayer(li, { content: JSON.stringify({ ...card, title: e.target.value }) })} onKeyDown={(e) => e.stopPropagation()} className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/60 focus:outline-none" placeholder="Card title" />
+							<input type="text" value={card.description} onChange={(e) => updateLayer(li, { content: JSON.stringify({ ...card, description: e.target.value }) })} onKeyDown={(e) => e.stopPropagation()} className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/40 focus:outline-none" placeholder="Description" />
+						</div>
+					);
+				})()}
+				{/* Settings row for text layers */}
+				{layer.type === "text" && (
+					<div className="flex gap-1 items-center pl-5 pb-1">
+						<select
+							value={layer.settings?.animation || "chars"}
+							onChange={(e) => updateLayer(li, { settings: { ...layer.settings, animation: e.target.value } })}
+							className="text-[10px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-purple-400/60 [&>option]:bg-[#141417] [&>option]:text-white"
+						>
+							<option value="chars">Per-Char</option>
+							<option value="words">Word Slam</option>
+							<option value="scale">Scale Up</option>
+							<option value="clip">Clip</option>
+							<option value="gradient">Gradient</option>
+							<option value="glitch">Glitch</option>
+							<option value="blur-in">Blur In</option>
+							<option value="bounce">Bounce</option>
+							<option value="wave">Wave</option>
+							<option value="none">None</option>
+						</select>
+						<input
+							type="number"
+							value={layer.settings?.fontSize || 100}
+							onChange={(e) => updateLayer(li, { settings: { ...layer.settings, fontSize: Number(e.target.value) } })}
+							className="w-10 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-white/40 focus:outline-none"
+							title="Font size"
+							step={4}
+						/>
+						<input
+							type="color"
+							value={layer.settings?.color || "#ffffff"}
+							onChange={(e) => updateLayer(li, { settings: { ...layer.settings, color: e.target.value } })}
+							className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent"
+							title="Text color"
+						/>
+						<input
+							type="text"
+							value={layer.settings?.accentWord || ""}
+							onChange={(e) => updateLayer(li, { settings: { ...layer.settings, accentWord: e.target.value || undefined } })}
+							onKeyDown={(e) => e.stopPropagation()}
+							className="w-16 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-[#60a5fa]/50 focus:outline-none"
+							placeholder="Accent"
+							title="Accent word (highlighted in brand color)"
+						/>
+					</div>
+				)}
+			</div>
 			))}
 		</div>
 	);

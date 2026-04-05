@@ -115,7 +115,7 @@ export function expandSceneToLayers(scene: ScenePlanItem, accent: string): Scene
 		scene.cards.forEach((card, ci) => {
 			layers.push({
 				id: `card-${ci}-${card.title.slice(0, 8)}`,
-				type: "card" as any,
+				type: "card",
 				content: JSON.stringify(card),
 				position: "center",
 				size: 30,
@@ -284,16 +284,21 @@ function compileLayer(layer: SceneLayer, sceneDuration: number, accent: string):
 			content = `<div>${layer.content}</div>`;
 	}
 
-	// Cards render inline (stacked), not absolutely positioned
-	if ((layer.type as string) === "card") {
-		return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>${content}</Sequence>`;
+	// Cards flow inline with flex layout
+	if (layer.type === "card") {
+		return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}} layout="none">
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            ${content}
+          </div>
+        </Sequence>`;
 	}
 
 	// Effects (vignette, light-streak) are already returned above
 
 	// Center layers flow in Scene's flex column (natural vertical stacking)
+	// layout="none" prevents Sequence from using absolute positioning
 	if (layer.position === "center") {
-		return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>
+		return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}} layout="none">
           <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             ${content}
           </div>
