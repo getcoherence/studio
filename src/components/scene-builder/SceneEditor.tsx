@@ -220,7 +220,13 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		"layers" | "tools" | "music" | "background" | "code" | "plan"
 	>(project.styleId === "ai-cinematic" ? "plan" : "layers");
 	const [selectedStyle, setSelectedStyle] = useState<DesignStyleId | null>(null);
-	const [projectPath, setProjectPath] = useState<string | null>(null);
+	const [projectPath, _setProjectPath] = useState<string | null>(
+		() => (project as any)._projectPath ?? null,
+	);
+	const setProjectPath = useCallback((path: string | null) => {
+		_setProjectPath(path);
+		(project as any)._projectPath = path;
+	}, [project]);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const canvasRefOut = useRef<HTMLCanvasElement | null>(null);
 
