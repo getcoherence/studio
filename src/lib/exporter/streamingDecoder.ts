@@ -3,6 +3,51 @@ import type { SpeedRegion, TrimRegion } from "@/components/video-editor/types";
 
 const SOURCE_LOAD_TIMEOUT_MS = 60_000;
 
+/**
+ * Build a full WebCodecs-compatible AV1 codec string from the AV1CodecConfigurationRecord.
+ * web-demuxer may return a bare "av01" when the WASM-side parser fails to read
+ * the extradata (e.g. raw OBU sequence header from WebM instead of ISOBMFF av1C box).
+ * This function parses the record if present, otherwise returns a safe default.
+ *
+ * @see https://aomediacodec.github.io/av1-isobmff/#av1codecconfigurationbox-section
+ */
+function buildAV1CodecString(description?: BufferSource): string {
+	const fallback = "av01.0.01M.08";
+
+	if (!description) return fallback;
+
+	const bytes = new Uint8Array(
+		description instanceof ArrayBuffer ? description : description.buffer,
+	);
+
+	// AV1CodecConfigurationRecord layout (4+ bytes):
+	//   Byte 0: marker (1) | version (7)
+	//   Byte 1: seq_profile (3) | seq_level_idx_0 (5)
+	//   Byte 2: seq_tier_0 (1) | high_bitdepth (1) | twelve_bit (1) | ...
+	// The spec says version should be 1, but Chrome/Electron's MediaRecorder
+	// may write version 127 (0xFF first byte). We accept any version as long
+	// as the marker bit is set and the record is long enough.
+	if (bytes.length < 4) return fallback;
+	if (!(bytes[0] & 0x80)) return fallback; // marker bit must be 1
+
+	// Byte 1: seq_profile (3) | seq_level_idx_0 (5)
+	const profile = (bytes[1] >> 5) & 0x07;
+	const level = bytes[1] & 0x1f;
+
+	// Byte 2: seq_tier_0 (1) | high_bitdepth (1) | twelve_bit (1) | monochrome (1) | ...
+	const tier = (bytes[2] >> 7) & 0x01;
+	const highBitdepth = (bytes[2] >> 6) & 0x01;
+	const twelveBit = (bytes[2] >> 5) & 0x01;
+	let bitdepth = 8;
+	if (highBitdepth) bitdepth = twelveBit ? 12 : 10;
+
+	const tierChar = tier ? "H" : "M";
+	const levelStr = level.toString().padStart(2, "0");
+	const bitdepthStr = bitdepth.toString().padStart(2, "0");
+
+	return `av01.${profile}.${levelStr}${tierChar}.${bitdepthStr}`;
+}
+
 export interface DecodedVideoInfo {
 	width: number;
 	height: number;
@@ -183,7 +228,17 @@ export class StreamingVideoDecoder {
 		}
 
 		const decoderConfig = await this.demuxer.getDecoderConfig("video");
-		const codec = this.metadata.codec.toLowerCase();
+
+		// web-demuxer may return a bare "av01" for AV1 in WebM containers when the
+		// extradata isn't in the expected ISOBMFF format. WebCodecs requires the
+		// full parametrized form (e.g. "av01.0.05M.08").
+		if (/^av01$/i.test(decoderConfig.codec)) {
+			decoderConfig.codec = buildAV1CodecString(
+				decoderConfig.description as BufferSource | undefined,
+			);
+		}
+
+		const codec = decoderConfig.codec.toLowerCase();
 		const shouldPreferSoftwareDecode = codec.includes("av01") || codec.includes("av1");
 		const segments = this.splitBySpeed(
 			this.computeSegments(this.metadata.duration, trimRegions),
