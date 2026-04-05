@@ -91,6 +91,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 			accentColor: agent.brandInfo?.accentColor ?? undefined,
 			fontFamily: agent.brandInfo?.fontFamily ?? undefined,
 			productName: agent.brandInfo?.productName ?? undefined,
+			logoUrl: agent.brandInfo?.logoUrl ?? undefined,
 		};
 
 		setIsGeneratingAi(true);
@@ -167,6 +168,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 			accentColor: agent.brandInfo?.accentColor ?? undefined,
 			fontFamily: agent.brandInfo?.fontFamily ?? undefined,
 			productName: agent.brandInfo?.productName ?? undefined,
+			logoUrl: agent.brandInfo?.logoUrl ?? undefined,
 		};
 
 		if (outputStyle === "ai-cinematic") {

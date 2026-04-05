@@ -528,6 +528,7 @@ export class WebviewDriver {
 		accentColor: string | null;
 		fontFamily: string | null;
 		productName: string | null;
+		logoUrl: string | null;
 	}> {
 		return safeExec(
 			this.wv,
@@ -594,14 +595,27 @@ export class WebviewDriver {
 					if (title.length < 30) productName = title;
 				}
 
+				// Find logo
+				var logoUrl = null;
+				var logoSels = ['a[class*="logo"] img','[class*="logo"] img','header img[src*="logo"]','a[href="/"] img','header img:first-of-type','img[alt*="logo"]','img[alt*="Logo"]'];
+				for (var si = 0; si < logoSels.length && !logoUrl; si++) {
+					var logoEl = document.querySelector(logoSels[si]);
+					if (logoEl && logoEl.src && logoEl.naturalWidth > 20) logoUrl = logoEl.src;
+				}
+				if (!logoUrl) {
+					var svgLogo = document.querySelector('a[class*="logo"] svg, [class*="logo"] svg, header svg:first-of-type');
+					if (svgLogo) logoUrl = 'data:image/svg+xml;base64,' + btoa(new XMLSerializer().serializeToString(svgLogo));
+				}
+
 				return {
 					primaryColor: sortedColors[0] ? sortedColors[0][0] : null,
 					accentColor: sortedColors[1] ? sortedColors[1][0] : null,
 					fontFamily: sortedFonts[0] ? sortedFonts[0][0] : null,
-					productName: productName
+					productName: productName,
+					logoUrl: logoUrl
 				};
 			})()`,
-			{ primaryColor: null, accentColor: null, fontFamily: null, productName: null },
+			{ primaryColor: null, accentColor: null, fontFamily: null, productName: null, logoUrl: null },
 		);
 	}
 

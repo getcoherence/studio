@@ -144,6 +144,7 @@ export function useDemoAgent(
 		accentColor: string | null;
 		fontFamily: string | null;
 		productName: string | null;
+		logoUrl: string | null;
 	} | null>(null);
 
 	const stoppedRef = useRef(false);
