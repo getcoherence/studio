@@ -59,7 +59,7 @@ export interface ScenePlanItem {
 /** A positioned, timed layer within a scene */
 export interface SceneLayer {
 	id: string;
-	type: "text" | "lottie" | "image" | "shape";
+	type: "text" | "card" | "lottie" | "image" | "shape";
 	/** Content — text string, lottie filename, image URL, or shape type */
 	content: string;
 	/** Position preset or custom coordinates */
@@ -89,6 +89,12 @@ export interface SceneLayer {
 		accentColor?: string;
 		opacity?: number;
 		loop?: boolean;
+		/** Spring damping — lower = bouncier (default 14) */
+		damping?: number;
+		/** Spring stiffness — higher = faster (default 180) */
+		stiffness?: number;
+		/** Stagger delay between elements in frames (default 2) */
+		stagger?: number;
 	};
 }
 

@@ -50,6 +50,12 @@ export const AnimatedText: React.FC<{
 	maxWidth?: number;
 	/** Animation style */
 	animation?: "chars" | "words" | "scale" | "clip" | "blur-in" | "bounce" | "wave" | "none";
+	/** Spring damping — lower = bouncier (default 14) */
+	damping?: number;
+	/** Spring stiffness — higher = faster (default 180) */
+	stiffness?: number;
+	/** Stagger between elements in frames (default 2 for chars, 6 for words) */
+	stagger?: number;
 	/** Delay in frames before animation starts */
 	delay?: number;
 }> = ({
@@ -100,7 +106,6 @@ export const AnimatedText: React.FC<{
 					color,
 					textAlign: align,
 					maxWidth,
-					overflow: "hidden",
 					opacity: progress,
 					transform: `scale(${0.6 + progress * 0.4})`,
 				}}
@@ -127,7 +132,6 @@ export const AnimatedText: React.FC<{
 					color,
 					textAlign: align,
 					maxWidth,
-					overflow: "hidden",
 					clipPath: `inset(0 0 ${(1 - progress) * 100}% 0)`,
 				}}
 			>
@@ -153,7 +157,6 @@ export const AnimatedText: React.FC<{
 					color,
 					textAlign: align,
 					maxWidth,
-					overflow: "hidden",
 					opacity: progress,
 					filter: `blur(${(1 - progress) * 20}px)`,
 				}}
@@ -172,7 +175,6 @@ export const AnimatedText: React.FC<{
 					justifyContent: align === "center" ? "center" : "flex-start",
 					gap: `0 ${effectiveFontSize * 0.18}px`,
 					maxWidth,
-					overflow: "hidden",
 				}}
 			>
 				{words.map((word, wi) => {
@@ -219,7 +221,6 @@ export const AnimatedText: React.FC<{
 					justifyContent: align === "center" ? "center" : "flex-start",
 					gap: `0 ${effectiveFontSize * 0.18}px`,
 					maxWidth,
-					overflow: "hidden",
 					fontSize: effectiveFontSize,
 					fontFamily,
 					fontWeight,
@@ -271,7 +272,6 @@ export const AnimatedText: React.FC<{
 					justifyContent: align === "center" ? "center" : "flex-start",
 					gap: `0 ${fontSize * 0.3}px`,
 					maxWidth,
-					overflow: "hidden",
 				}}
 			>
 				{words.map((word, wi) => {
@@ -317,7 +317,6 @@ export const AnimatedText: React.FC<{
 				justifyContent: align === "center" ? "center" : "flex-start",
 				gap: `0 ${effectiveFontSize * 0.18}px`,
 				maxWidth,
-				overflow: "hidden",
 				fontSize: effectiveFontSize,
 				fontFamily,
 				fontWeight,
