@@ -118,7 +118,8 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate }: SceneLayerEdit
 
 						{/* Row 2: Card description */}
 						{layer.type === "card" && (
-							<input type="text" value={card?.description || ""} onChange={(e) => updateLayer(li, { content: JSON.stringify({ ...card, description: e.target.value }) })} onKeyDown={(e) => e.stopPropagation()} className="w-full px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/40 focus:outline-none" placeholder="Card description" /><input type="color" value={layer.settings?.color || "#16181f"} onChange={(e) => updateLayer(li, { settings: { ...layer.settings, color: e.target.value } })} className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent" title="Card bg color" />
+							<div className="flex gap-1 items-center"><input type="text" value={card?.description || ""} onChange={(e) => updateLayer(li, { content: JSON.stringify({ ...card, description: e.target.value }) })} onKeyDown={(e) => e.stopPropagation()} className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/40 focus:outline-none" placeholder="Card description" /><input type="color" value={layer.settings?.color || "#16181f"} onChange={(e) => updateLayer(li, { settings: { ...layer.settings, color: e.target.value } })} className="w-8 h-7 rounded border border-white/10 cursor-pointer bg-transparent p-0" title="Card background color" /></div>
+						
 						)}
 
 						{/* Row 2/3: Layout + Timing */}

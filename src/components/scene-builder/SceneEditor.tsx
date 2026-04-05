@@ -505,6 +505,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	}, []);
 
 	const [resetSignal, setResetSignal] = useState(0);
+	const [currentPlayerFrame, setCurrentPlayerFrame] = useState(0);
 	const [seekToFrame, setSeekToFrame] = useState<number | undefined>(undefined);
 
 	const resetPlayback = useCallback(() => {
@@ -853,7 +854,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 				const startFrame = newPlan.scenes
 					.slice(0, sceneIndex)
 					.reduce((sum, s) => sum + (s.durationFrames || 90), 0);
-				setSeekToFrame(startFrame);
+				// Delay seek to happen AFTER Player remounts from code change
+				setTimeout(() => setSeekToFrame(startFrame + Math.random() * 0.001), 300);
 			}, 500);
 		},
 		[scenePlan, project],
@@ -1136,6 +1138,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										musicSrc={musicDataUrl ?? undefined}
 										resetSignal={resetSignal}
 										seekToFrame={seekToFrame}
+										onFrameUpdate={setCurrentPlayerFrame}
 									/>
 								) : previewMode === "remotion" ? (
 									<RemotionPreview
@@ -1175,8 +1178,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 								)}
 							</div>
 
-							{/* Playback controls bar */}
-							<div className="flex-shrink-0 flex items-center justify-center gap-4 px-4 py-2 border-t border-white/5">
+							{/* Playback controls bar — hidden in Motion mode (Remotion Player has its own) */}
+							<div className={`flex-shrink-0 flex items-center justify-center gap-4 px-4 py-2 border-t border-white/5 ${previewMode === "remotion" ? "hidden" : ""}`}>
 								<button
 									onClick={resetPlayback}
 									className="p-1.5 rounded text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
@@ -1594,8 +1597,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 			{scenePlan ? (
 				<SceneLayerTimeline
 					plan={scenePlan}
-					currentFrame={seekToFrame ?? 0}
-					onSeekToFrame={setSeekToFrame}
+					currentFrame={currentPlayerFrame}
+					onSeekToFrame={(f) => setSeekToFrame(f + Math.random() * 0.001)}
 					onAddLayer={(si) => {
 						// Add a default text layer to the scene
 						const newLayer = {

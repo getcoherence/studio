@@ -22,6 +22,8 @@ interface DynamicPreviewProps {
 	resetSignal?: number;
 	/** Seek to a specific frame */
 	seekToFrame?: number;
+	/** Callback with current frame during playback */
+	onFrameUpdate?: (frame: number) => void;
 }
 
 /** Wrapper composition that layers DynamicComposition + background music */
@@ -45,6 +47,7 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 	musicSrc,
 	resetSignal,
 	seekToFrame,
+	onFrameUpdate,
 }) => {
 	const playerRef = useRef<PlayerRef>(null);
 	const fps = 30;
@@ -67,10 +70,21 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 		}
 	}, [resetSignal]);
 
+	// Sync frame position to parent for timeline playhead
+	useEffect(() => {
+		if (!onFrameUpdate || !playerRef.current) return;
+		const interval = setInterval(() => {
+			if (playerRef.current) {
+				onFrameUpdate(playerRef.current.getCurrentFrame());
+			}
+		}, 100);
+		return () => clearInterval(interval);
+	}, [onFrameUpdate]);
+
 	// Seek to specific frame when seekToFrame changes
 	useEffect(() => {
 		if (seekToFrame !== undefined && playerRef.current) {
-			playerRef.current.seekTo(seekToFrame);
+			playerRef.current.seekTo(Math.round(seekToFrame));
 		}
 	}, [seekToFrame]);
 
