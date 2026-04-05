@@ -294,7 +294,9 @@ function compileLayer(layer: SceneLayer, sceneDuration: number, accent: string):
 	// Center layers flow in Scene's flex column (natural vertical stacking)
 	if (layer.position === "center") {
 		return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>
-          ${content}
+          <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            ${content}
+          </div>
         </Sequence>`;
 	}
 
