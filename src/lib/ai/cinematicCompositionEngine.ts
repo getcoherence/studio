@@ -25,6 +25,8 @@ export interface BrandInfo {
 	fontFamily?: string;
 	/** Product name */
 	productName?: string;
+	/** Logo URL (data URL or remote URL) */
+	logoUrl?: string;
 }
 
 type CinematicTemplateId =

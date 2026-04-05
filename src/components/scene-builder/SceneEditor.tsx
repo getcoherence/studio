@@ -1585,6 +1585,14 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 												</button>
 											),
 										)}
+									{/* Custom music prompt */}
+									<div className="mt-3 pt-2 border-t border-white/5">
+										<div className="text-[11px] text-white/30 mb-1">Custom Prompt</div>
+										<div className="flex gap-1">
+											<input type="text" id="custom-music-prompt" placeholder="Upbeat tech video with synths..." onKeyDown={(e) => e.stopPropagation()} className="flex-1 px-2 py-1.5 rounded bg-white/5 border border-white/10 text-[11px] text-white placeholder-white/25 focus:outline-none focus:border-[#2563eb]/50" />
+											<button onClick={async () => { const input = document.getElementById("custom-music-prompt") as HTMLInputElement; if (!input?.value.trim()) return; toast.loading("Generating...", { id: "cmusic" }); const r = await generateCustomMusic("custom" as any, input.value.trim(), Math.round(project.scenes.reduce((s, sc) => s + sc.durationMs, 0) / 1000)); toast.dismiss("cmusic"); if (r.success && r.audioPath) { setMusicPath(r.audioPath); toast.success("Custom music generated!"); } else { toast.error(r.error || "Failed"); } }} className="px-2 py-1.5 rounded bg-[#2563eb]/20 text-[#60a5fa] hover:bg-[#2563eb]/30 text-[11px] whitespace-nowrap">Go</button>
+										</div>
+									</div>
 									</div>
 								)}
 							</div>
