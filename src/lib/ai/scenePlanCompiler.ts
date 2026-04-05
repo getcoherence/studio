@@ -31,11 +31,22 @@ export function compileScenePlan(plan: ScenePlan): string {
 		// Use scene.layers if it exists (even if empty — user may have deleted all layers)
 		// Only fall back to expansion if layers was never set
 		const allLayers = scene.layers !== undefined ? scene.layers : expandSceneToLayers(scene, accent);
-		const layerCode = allLayers.map((layer) => compileLayer(layer, dur, accent)).join("\n        ");
+		const centerLayers = allLayers.filter((l) => l.position === "center" && l.type !== "shape");
+		const otherLayers = allLayers.filter((l) => l.position !== "center" || l.type === "shape");
+		// Group cards together in a horizontal flex-wrap row
+		const nonCardCenter = centerLayers.filter((l) => l.type !== "card");
+		const cardCenter = centerLayers.filter((l) => l.type === "card");
+		const nonCardCode = nonCardCenter.map((l) => compileCenterLayer(l, accent)).join("\n            ");
+		const cardCode = cardCenter.length > 0
+			? `<div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center', maxWidth: 1400 }}>\n              ${cardCenter.map((l) => compileCenterLayer(l, accent)).join("\n              ")}\n            </div>`
+			: "";
+		const centerCode = [nonCardCode, cardCode].filter(Boolean).join("\n            ");
+		const otherCode = otherLayers.map((l) => compileLayer(l, dur, accent)).join("\n        ");
 
 		return `    <Sequence from={${from}} durationInFrames={${dur}}>
       <Scene bg="${bg}">
-        ${layerCode}
+        ${centerLayers.length > 0 ? `<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, width: '100%', flex: 1 }}>\n            ${centerCode}\n          </div>` : ""}
+        ${otherCode}
       </Scene>
     </Sequence>`;
 	});
@@ -71,7 +82,7 @@ export function expandSceneToLayers(scene: ScenePlanItem, accent: string): Scene
 			id: `headline-${scene.headline.slice(0, 10)}`,
 			type: "text",
 			content: scene.headline,
-			position: scene.type === "split-layout" ? "left" : "center",
+			position: "center",
 			size: scene.type === "full-bleed" ? 95 : 80,
 			startFrame: 0,
 			endFrame: -1,
@@ -115,7 +126,7 @@ export function expandSceneToLayers(scene: ScenePlanItem, accent: string): Scene
 		scene.cards.forEach((card, ci) => {
 			layers.push({
 				id: `card-${ci}-${card.title.slice(0, 8)}`,
-				type: "card",
+				type: "card" as any,
 				content: JSON.stringify(card),
 				position: "center",
 				size: 30,
@@ -220,6 +231,32 @@ export function expandSceneToLayers(scene: ScenePlanItem, accent: string): Scene
 
 // ── Compile a single layer ──────────────────────────────────────────────
 
+function compileCenterLayer(layer: SceneLayer, accent: string): string {
+	const s = layer.settings || {};
+	const delay = layer.startFrame || 0;
+
+	if (layer.type === "text") {
+		const fontSize = Math.max(32, s.fontSize || 60);
+		const fontFamily = s.fontFamily || "'Inter', 'Helvetica Neue', sans-serif";
+		const color = s.color || "#ffffff";
+		const animation = s.animation || "words";
+		if (animation === "gradient") return `<GradientText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} delay={${delay}} />`;
+		if (animation === "glitch") return `<GlitchText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} color="${color}" delay={${delay}} />`;
+		if (animation === "none") return `<div style={{ fontSize: ${fontSize}, fontFamily: "${fontFamily}", color: "${color}", textAlign: "center", maxWidth: 1400 }}>{${JSON.stringify(layer.content)}}</div>`;
+		return `<AnimatedText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} color="${color}" fontFamily="${fontFamily}" animation="${animation}" delay={${delay}} ${s.accentWord ? `accentWord="${s.accentWord}" accentColor="${s.accentColor || accent}"` : ""} />`;
+	}
+	if (layer.type === "card") {
+		try {
+			const card = JSON.parse(layer.content);
+			return `<Card width={380} delay={${delay}}><div style={{ fontSize: 28, fontWeight: 700, color: '#fff', fontFamily: "'Inter', sans-serif", marginBottom: 8 }}>${card.title}</div><div style={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter', sans-serif" }}>${card.description}</div></Card>`;
+		} catch { return `<Card width={380}><div style={{ color: '#fff' }}>${layer.content}</div></Card>`; }
+	}
+	if (layer.type === "image") {
+		return `<div style={{ borderRadius: 20, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxWidth: 1200 }}><Img src={${layer.content.startsWith("screenshots") ? layer.content : JSON.stringify(layer.content)}} style={{ width: '100%', height: 'auto' }} /></div>`;
+	}
+	return `<div>${layer.content}</div>`;
+}
+
 function compileLayer(layer: SceneLayer, sceneDuration: number, accent: string): string {
 	const endFrame = layer.endFrame === -1 ? sceneDuration : layer.endFrame;
 	const dur = Math.max(1, endFrame - layer.startFrame);
@@ -284,24 +321,17 @@ function compileLayer(layer: SceneLayer, sceneDuration: number, accent: string):
 			content = `<div>${layer.content}</div>`;
 	}
 
-	// Cards flow inline with flex layout
+	// Cards render inline (stacked), not absolutely positioned
 	if (layer.type === "card") {
-		return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}} layout="none">
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            ${content}
-          </div>
-        </Sequence>`;
+		return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>${content}</Sequence>`;
 	}
 
 	// Effects (vignette, light-streak) are already returned above
 
 	// Center layers flow in Scene's flex column (natural vertical stacking)
-	// layout="none" prevents Sequence from using absolute positioning
 	if (layer.position === "center") {
-		return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}} layout="none">
-          <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            ${content}
-          </div>
+		return `<Sequence from={${layer.startFrame}} durationInFrames={${dur}}>
+          ${content}
         </Sequence>`;
 	}
 
@@ -340,28 +370,29 @@ function resolveFontFamily(font?: string): string {
 }
 
 function getLayerPosition(position: string, size: number): string {
-	const s = `${size}%`;
+	const w = `${size}%`;
 	const offset = `${(100 - size) / 2}%`;
+	// No explicit height — content determines height. Only set width + position.
 	switch (position) {
 		case "center":
-			return `left: '${offset}', top: '${offset}', width: '${s}', height: '${s}'`;
+			return `left: '${offset}', top: '50%', transform: 'translateY(-50%)', width: '${w}'`;
 		case "top-left":
-			return `left: '5%', top: '5%', width: '${s}', height: '${s}'`;
+			return `left: '5%', top: '5%', width: '${w}'`;
 		case "top-right":
-			return `right: '5%', top: '5%', width: '${s}', height: '${s}'`;
+			return `right: '5%', top: '5%', width: '${w}'`;
 		case "bottom-left":
-			return `left: '5%', bottom: '5%', width: '${s}', height: '${s}'`;
+			return `left: '5%', bottom: '5%', width: '${w}'`;
 		case "bottom-right":
-			return `right: '5%', bottom: '5%', width: '${s}', height: '${s}'`;
+			return `right: '5%', bottom: '5%', width: '${w}'`;
 		case "top":
-			return `left: '${offset}', top: '5%', width: '${s}', height: '${s}'`;
+			return `left: '${offset}', top: '5%', width: '${w}'`;
 		case "bottom":
-			return `left: '${offset}', bottom: '5%', width: '${s}', height: '${s}'`;
+			return `left: '${offset}', bottom: '5%', width: '${w}'`;
 		case "left":
-			return `left: '5%', top: '${offset}', width: '${s}', height: '${s}'`;
+			return `left: '5%', top: '50%', transform: 'translateY(-50%)', width: '${w}'`;
 		case "right":
-			return `right: '5%', top: '${offset}', width: '${s}', height: '${s}'`;
+			return `right: '5%', top: '50%', transform: 'translateY(-50%)', width: '${w}'`;
 		default:
-			return `left: '${offset}', top: '${offset}', width: '${s}', height: '${s}'`;
+			return `left: '${offset}', top: '50%', transform: 'translateY(-50%)', width: '${w}'`;
 	}
 }

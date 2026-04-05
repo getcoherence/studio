@@ -376,7 +376,8 @@ export const Card: React.FC<{
 	width?: number;
 	delay?: number;
 	borderColor?: string;
-}> = ({ children, width = 420, delay = 0, borderColor = "rgba(255,255,255,0.08)" }) => {
+	bg?: string;
+}> = ({ children, width = 420, delay = 0, borderColor = "rgba(255,255,255,0.08)", bg }) => {
 	const frame = useCurrentFrame();
 	const { fps } = useVideoConfig();
 	const progress = spring({
@@ -390,7 +391,7 @@ export const Card: React.FC<{
 			style={{
 				width,
 				borderRadius: 24,
-				background: "linear-gradient(180deg, #16181f 0%, #0c0e14 100%)",
+				background: bg || "linear-gradient(180deg, #16181f 0%, #0c0e14 100%)",
 				border: `1px solid ${borderColor}`,
 				boxShadow: "0 16px 48px rgba(0,0,0,0.3)",
 				padding: 24,

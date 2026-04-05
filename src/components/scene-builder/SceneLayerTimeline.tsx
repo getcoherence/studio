@@ -7,6 +7,11 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { ScenePlan } from "@/lib/ai/scenePlan";
 import { expandSceneToLayers } from "@/lib/ai/scenePlanCompiler";
 
+function getLayerLabel(layer: { type: string; content: string }) {
+	if (layer.type === "card") { try { return JSON.parse(layer.content).title; } catch { return layer.content; } }
+	return layer.content;
+}
+
 interface SceneLayerTimelineProps {
 	plan: ScenePlan;
 	currentFrame: number;
@@ -276,10 +281,10 @@ export function SceneLayerTimeline({
 											onSelectLayer(si, trackIndex);
 											onSeekToFrame(layerStart);
 										}}
-										title={`${layer.type}: ${layer.content.slice(0, 40)}`}
+										title={`${layer.type}: ${getLayerLabel(layer).slice(0, 40)}`}
 									>
 										<span className="text-[11px] text-white/70 truncate select-none">
-											{layer.content.slice(0, 25)}
+											{getLayerLabel(layer).slice(0, 25)}
 										</span>
 									</div>
 								);
