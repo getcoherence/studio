@@ -23,7 +23,8 @@ export async function generateScenePlan(
 
 	opts?.onStatus?.("Planning your cinematic video...");
 
-	const sceneDescriptions = stepsWithScreenshots.map((step, i) => {
+	// Only use first 10 steps — more data doesn't improve video quality
+	const sceneDescriptions = stepsWithScreenshots.slice(0, 10).map((step, i) => {
 		const headline = step.headline || "";
 		const narration = step.action.narration || "";
 		const uiEls = step.uiElements ?? [];
@@ -77,19 +78,30 @@ export async function generateScenePlan(
 		`  ]`,
 		`}`,
 		"",
-		"## Creative Direction",
+		"## Creative Direction — TELL A STORY, NOT A FEATURE LIST",
 		"",
-		"- 10-12 scenes total. Each scene 90 frames (3 seconds).",
-		"- OPENING: Use 'glitch-intro' or 'hero-text' with 'gradient' animation. Make it dramatic.",
-		"- BODY: Mix 'hero-text' and 'cards' types. Vary backgrounds — alternate white/cream with dark/navy.",
-		"- Cards scenes: headline should be smaller (80-100px) to leave room for cards below.",
-		"- Use 'screenshot' type for AT MOST 1 scene.",
-		"- CLOSING: Use 'cta' type with product name.",
-		"- Effects: use 'clip-reveal' on the opening only. Use 'light-streak' on at most 1 scene. Use 'vignette' on 1-2 dark scenes.",
-		"- Vary animation styles: never repeat the same animation twice in a row.",
-		"- Font: use 'serif' on light backgrounds, 'sans-serif' on dark backgrounds.",
-		"- fontSize: 120-160 for hero text, 100-120 for other scenes. MINIMUM 100. Text must be LARGE and impactful.",
-		"- LESS IS MORE. Clean typography beats cluttered effects.",
+		"CRITICAL: This video must have a NARRATIVE ARC, not just list features. Structure:",
+		"",
+		"1. HOOK (1-2 scenes): Bold statement that identifies the viewer's problem or desire. NOT the product name.",
+		"   Example: 'Your tools work against each other.' or 'What if work organized itself?'",
+		"2. PROMISE (1-2 scenes): What the product makes possible. Aspirational, not technical.",
+		"   Example: 'One workspace. Every team. Total clarity.'",
+		"3. PROOF (3-4 scenes): Show 2-3 key capabilities with short headlines. MAX 1 scene with cards (2-3 cards max).",
+		"   Use 1 screenshot scene here — choose the MOST impressive product view.",
+		"4. DIFFERENTIATION (1-2 scenes): What makes this unique. Price, openness, speed, AI.",
+		"5. CTA (1 scene): Product name + call to action.",
+		"",
+		"## Design Rules",
+		"",
+		"- 10-11 scenes total. Each scene 90 frames (3 seconds).",
+		"- ANIMATION VARIETY: Use 'gradient' for AT MOST 1 scene (the opening or closing). Use at least 4 DIFFERENT animation types across the video. Never repeat the same animation twice in a row.",
+		"- CARDS: Maximum 1 scene with cards in the entire video. Max 3 cards per scene. Cards headline should be 80-100px.",
+		"- BACKGROUNDS: Alternate between light (white, cream) and dark (black, charcoal, navy, brand-dark). Never use the same background twice in a row.",
+		"- FONTS: serif on light backgrounds, sans-serif on dark backgrounds.",
+		"- FONT SIZE: 120-160 for hero text, 100-120 for other headlines. MINIMUM 100.",
+		"- SCREENSHOTS: AT MOST 1 scene. The screenshot should match what the headline describes.",
+		"- EFFECTS: vignette on max 2 dark scenes. light-streak on max 1 scene. Less is more.",
+		"- SUBTITLES: Short, punchy (under 12 words). Not every scene needs one.",
 		"",
 		"Return ONLY the JSON.",
 	].join("\n");
