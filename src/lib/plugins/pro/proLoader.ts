@@ -1,21 +1,62 @@
 // ── Pro Plugin Loader ───────────────────────────────────────────────────
 //
-// Handles authentication with Coherence and loading the pro plugin bundle.
-// The pro plugin code is NOT in this repo — it's downloaded from the
-// Coherence CDN at runtime, only for authenticated subscribers.
+// Handles authentication and loading premium plugin bundles.
+// By default configured for Coherence, but fully configurable for
+// self-hosted or custom auth providers.
 //
-// Open source users see "Upgrade to Pro" prompts. Pro subscribers get
-// the full plugin loaded automatically after login.
+// To disable pro features entirely: don't call activatePro().
+// To use your own auth: call configureProAuth({ ... }) before activatePro().
 
 import { pluginRegistry } from "../registry";
 import type { LucidPlugin } from "../types";
 
-const COHERENCE_URL = "https://app.getcoherence.io";
-const PRO_BUNDLE_URL = `${COHERENCE_URL}/api/lucid/pro-bundle.js`;
-const AUTH_URL = `${COHERENCE_URL}/auth/lucid`;
-const SUBSCRIPTION_URL = `${COHERENCE_URL}/api/lucid/subscription`;
+// ── Configuration (swappable by self-hosters) ───────────────────────────
 
-const TOKEN_KEY = "lucid-pro-token";
+interface ProAuthConfig {
+	/** Base URL of the auth provider */
+	baseUrl: string;
+	/** OAuth login page URL (opens in popup) */
+	authUrl: string;
+	/** Subscription check endpoint (GET, needs Bearer token) */
+	subscriptionUrl: string;
+	/** Pro plugin bundle URL (GET, needs Bearer token) */
+	bundleUrl: string;
+	/** localStorage key for storing the JWT */
+	tokenKey: string;
+	/** Display name of the auth provider (shown in UI) */
+	providerName: string;
+}
+
+const DEFAULT_CONFIG: ProAuthConfig = {
+	baseUrl: "https://app.getcoherence.io",
+	authUrl: "https://app.getcoherence.io/auth/lucid",
+	subscriptionUrl: "https://app.getcoherence.io/api/lucid/subscription",
+	bundleUrl: "https://app.getcoherence.io/api/lucid/pro-bundle.js",
+	tokenKey: "lucid-pro-token",
+	providerName: "Coherence",
+};
+
+let config: ProAuthConfig = { ...DEFAULT_CONFIG };
+
+/**
+ * Configure the pro auth provider. Call this before activatePro()
+ * to use a custom auth backend instead of Coherence.
+ *
+ * Self-hosters: you can point this at your own server that implements
+ * the same 3 endpoints (auth, subscription check, bundle download).
+ *
+ * To disable pro entirely: simply don't call activatePro() or
+ * configureProAuth() — all pro features will show upgrade prompts
+ * that do nothing.
+ */
+export function configureProAuth(custom: Partial<ProAuthConfig>): void {
+	config = { ...DEFAULT_CONFIG, ...custom };
+}
+
+/** Get current config (for display in settings UI) */
+export function getProAuthConfig(): ProAuthConfig {
+	return { ...config };
+}
 
 /** Current pro status */
 let proStatus: "unknown" | "checking" | "active" | "inactive" | "error" = "unknown";
@@ -34,7 +75,7 @@ export function getProStatus(): typeof proStatus {
 /** Get stored token */
 function getStoredToken(): string | null {
 	try {
-		return localStorage.getItem(TOKEN_KEY);
+		return localStorage.getItem(config.tokenKey);
 	} catch {
 		return null;
 	}
@@ -43,14 +84,14 @@ function getStoredToken(): string | null {
 /** Store token */
 function storeToken(token: string): void {
 	try {
-		localStorage.setItem(TOKEN_KEY, token);
+		localStorage.setItem(config.tokenKey, token);
 	} catch { /* ignore */ }
 }
 
 /** Clear stored token */
 function clearToken(): void {
 	try {
-		localStorage.removeItem(TOKEN_KEY);
+		localStorage.removeItem(config.tokenKey);
 	} catch { /* ignore */ }
 }
 
@@ -68,7 +109,7 @@ export async function authenticatePro(): Promise<{ success: boolean; error?: str
 		const top = Math.round((window.screen.height - height) / 2);
 
 		const popup = window.open(
-			`${AUTH_URL}?redirect=lucid-desktop&t=${Date.now()}`,
+			`${config.authUrl}?redirect=lucid-desktop&t=${Date.now()}`,
 			"coherence-login",
 			`width=${width},height=${height},left=${left},top=${top}`,
 		);
@@ -80,7 +121,7 @@ export async function authenticatePro(): Promise<{ success: boolean; error?: str
 
 		// Listen for the auth callback message
 		const handler = (event: MessageEvent) => {
-			if (event.origin !== COHERENCE_URL) return;
+			if (event.origin !== config.baseUrl) return;
 			const data = event.data;
 			if (data?.type === "lucid-auth-success" && data.token) {
 				window.removeEventListener("message", handler);
@@ -127,7 +168,7 @@ export async function checkSubscription(): Promise<{
 	if (!token) return { active: false };
 
 	try {
-		const res = await fetch(SUBSCRIPTION_URL, {
+		const res = await fetch(config.subscriptionUrl, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
 
@@ -155,7 +196,7 @@ async function loadProBundle(): Promise<void> {
 	const token = proToken || getStoredToken();
 	if (!token) throw new Error("Not authenticated");
 
-	const res = await fetch(PRO_BUNDLE_URL, {
+	const res = await fetch(config.bundleUrl, {
 		headers: { Authorization: `Bearer ${token}` },
 	});
 
