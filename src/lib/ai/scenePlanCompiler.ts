@@ -380,6 +380,30 @@ function renderSceneByType(
 			raw = wrapSceneContentInSequence(raw, startFrame, duration);
 		}
 	}
+	// Inject text effects (glow, shadow, outline, bold, italic, etc.) from layer settings
+	// into the first <AnimatedText in the output. This covers ALL scene types.
+	if (headlineLayer?.settings) {
+		const s = headlineLayer.settings;
+		const styles: string[] = [];
+		if (s.glow) styles.push(`textShadow: '${s.glow}'`);
+		else if (s.shadow) styles.push(`textShadow: '${s.shadow}'`);
+		if (s.outline) styles.push(`WebkitTextStroke: '${s.outline} rgba(0,0,0,0.6)'`);
+		if (s.fontWeight) styles.push(`fontWeight: '${s.fontWeight}'`);
+		if (s.fontStyle) styles.push(`fontStyle: '${s.fontStyle}'`);
+		if (s.textDecoration) styles.push(`textDecoration: '${s.textDecoration}'`);
+		if (styles.length > 0) {
+			// Wrap the first AnimatedText in a styled div
+			raw = raw.replace(
+				/<AnimatedText /,
+				`<div style={{ ${styles.join(", ")} }}><AnimatedText `,
+			);
+			// Close the wrapper after the AnimatedText's closing />
+			raw = raw.replace(
+				/(<div style=\{\{[^}]+\}\}><AnimatedText [^/]*\/>)/,
+				"$1</div>",
+			);
+		}
+	}
 	// Inject any user-added "extra" layers as overlays inside the <Scene>.
 	// Skip for legacy types — they already render ALL layers via compileLayer().
 	// Skip for renderers without <Scene> (e.g. CameraText) — user layers for those
