@@ -1664,9 +1664,10 @@ function renderAvatarConstellation(scene: ScenePlanItem, accent: string, bg: str
 	const count = scene.avatarCount || 8;
 	const headline = JSON.stringify(scene.headline || "Trusted by thousands");
 	const fontSize = scene.fontSize || 110;
+	const textColor = resolveTextColor(scene);
 	return `<Scene bg="${bg}">
         <AvatarConstellation avatarCount={${count}} colors={["${accent}", "${accentPalette(accent).w}", "${accentPalette(accent).c}", "${accentPalette(accent).t}", "${accentPalette(accent).k}"]}>
-          <AnimatedText text={${headline}} fontSize={${fontSize}} color="#ffffff" fontFamily="'Inter', sans-serif" animation="words" />
+          <AnimatedText text={${headline}} fontSize={${fontSize}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="words" />
         </AvatarConstellation>
       </Scene>`;
 }
