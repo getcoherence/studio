@@ -1681,13 +1681,13 @@ function renderGradientMeshHero(scene: ScenePlanItem, _accent: string, _bg: stri
 	const meshColorArr = scene.meshColors || ["#ffd6e7", "#e0d4ff", "#d4fff1", "#ffefd6"];
 	const isDark = isDarkHex(meshColorArr[0]);
 	const textColor = resolveTextColor(scene);
-	const subtitleColor = isDark ? "rgba(255,255,255,0.7)" : "rgba(26,26,26,0.6)";
 	const dots = !isDark;
 	const colors = JSON.stringify(meshColorArr);
 	const headline = JSON.stringify(scene.headline || "Premium, by default.");
 	// Read subtitle from layer if available, fall back to scene.subtitle
 	const subtitleLayer = scene.layers?.find((l) => l.id.startsWith("subtitle-"));
 	const subtitleText = subtitleLayer?.content || scene.subtitle;
+	const subtitleColor = subtitleLayer?.settings?.color || (textColor === "#ffffff" ? "rgba(255,255,255,0.7)" : "rgba(26,26,26,0.6)");
 	const subtitle = subtitleText ? JSON.stringify(subtitleText) : null;
 	const fontSize = scene.fontSize || 130;
 	return `<Scene bg="transparent">
