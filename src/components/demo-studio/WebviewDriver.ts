@@ -638,17 +638,42 @@ export class WebviewDriver {
 					if (title.length < 30) productName = title;
 				}
 
-				// Find logo
+				// Find logo — try many selectors, including common patterns
 				var logoUrl = null;
-				var logoSels = ['a[class*="logo"] img','[class*="logo"] img','header img[src*="logo"]','a[href="/"] img','header img:first-of-type','img[alt*="logo"]','img[alt*="Logo"]'];
-				for (var si = 0; si < logoSels.length && !logoUrl; si++) {
-					var logoEl = document.querySelector(logoSels[si]);
-					if (logoEl && logoEl.src && logoEl.naturalWidth > 20) logoUrl = logoEl.src;
+				var logoImgSels = [
+					'a[class*="logo"] img', '[class*="logo"] img',
+					'header img[src*="logo"]', 'a[href="/"] img',
+					'header img:first-of-type', 'img[alt*="logo"]', 'img[alt*="Logo"]',
+					'nav img:first-of-type', '[class*="brand"] img',
+					'img[src*="logo"]', 'img[src*="brand"]',
+					// Favicon/icon as last resort
+					'link[rel="icon"]', 'link[rel="shortcut icon"]',
+				];
+				for (var si = 0; si < logoImgSels.length && !logoUrl; si++) {
+					var logoEl = document.querySelector(logoImgSels[si]);
+					if (logoEl) {
+						if (logoEl.tagName === 'LINK') {
+							logoUrl = logoEl.href;
+						} else if (logoEl.src && logoEl.naturalWidth > 20) {
+							logoUrl = logoEl.src;
+						}
+					}
 				}
+				// Try SVG logos
 				if (!logoUrl) {
-					var svgLogo = document.querySelector('a[class*="logo"] svg, [class*="logo"] svg, header svg:first-of-type');
-					if (svgLogo) logoUrl = 'data:image/svg+xml;base64,' + btoa(new XMLSerializer().serializeToString(svgLogo));
+					var svgSels = [
+						'a[class*="logo"] svg', '[class*="logo"] svg',
+						'header svg:first-of-type', 'nav svg:first-of-type',
+						'a[href="/"] svg', '[class*="brand"] svg',
+					];
+					for (var ssi = 0; ssi < svgSels.length && !logoUrl; ssi++) {
+						var svgLogo = document.querySelector(svgSels[ssi]);
+						if (svgLogo) {
+							try { logoUrl = 'data:image/svg+xml;base64,' + btoa(new XMLSerializer().serializeToString(svgLogo)); } catch(e) {}
+						}
+					}
 				}
+				console.log('[BrandInfo] Logo found:', !!logoUrl, logoUrl?.slice(0, 60));
 
 				return {
 					primaryColor: sortedColors[0] ? sortedColors[0][0] : null,
