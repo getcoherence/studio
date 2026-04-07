@@ -25,6 +25,8 @@ export interface AiCompositionResult {
 	plan?: ScenePlan;
 	/** Any error during generation */
 	error?: string;
+	/** Music path if early generation completed during the pipeline */
+	earlyMusicPath?: string;
 }
 
 // ── Main entry point ─────────────────────────────────────────────────────
@@ -83,6 +85,32 @@ export async function generateAiComposition(
 			});
 
 			if (planResult.plan) {
+				// Start music generation in parallel with review + compilation.
+				// By the time the editor opens, music is ready or nearly done.
+				let earlyMusicPath: string | undefined;
+				if (planResult.plan.musicMood) {
+					const totalMs = planResult.plan.scenes.reduce(
+						(sum, s) => sum + ((s.durationFrames || 90) / 30) * 1000,
+						0,
+					);
+					const durationSec = Math.round(totalMs / 1000);
+					opts?.onStatus?.("Generating background music...");
+					// Fire and forget — don't block the pipeline
+					const musicPromise = window.electronAPI
+						?.aiGenerateMusic(planResult.plan.musicMood, undefined, durationSec)
+						.then((result) => {
+							if (result.success && result.audioPath) {
+								earlyMusicPath = result.audioPath;
+								console.log("[AI] Early music ready:", result.audioPath);
+							}
+						})
+						.catch(() => {
+							// Music failed — no problem, user can generate later
+						});
+					// Don't await — let it run in parallel
+					void musicPromise;
+				}
+
 				opts?.onStatus?.("Creative director reviewing the story arc...");
 				const reviewedPlan = await reviewScenePlan(planResult.plan, opts?.onStatus);
 				opts?.onStatus?.("Compiling scene plan to video code...");
@@ -92,6 +120,7 @@ export async function generateAiComposition(
 					code,
 					screenshots: stepsWithScreenshots.map((s) => s.screenshotDataUrl!),
 					plan: reviewedPlan,
+					earlyMusicPath,
 				};
 			}
 			opts?.onStatus?.("Plan generation failed, trying direct code generation...");
