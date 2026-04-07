@@ -352,7 +352,7 @@ function renderSceneByType(
 		const colors = JSON.stringify(scene.backgroundEffectColors || [pal.a, pal.w, pal.k, pal.c]);
 		raw = raw.replace(
 			/<Scene\s+bg="([^"]*)"/,
-			`<Scene bg="$1" bgEffect="${effect}" bgEffectColors={${colors}} bgEffectIntensity={0.7}`,
+			`<Scene bg="$1" bgEffect="${effect}" bgEffectColors={${colors}} bgEffectIntensity={${scene.backgroundEffectIntensity ?? 0.7}}`,
 		);
 	}
 	// Apply headline-layer overrides: position (wrap in absolutely-positioned
@@ -742,7 +742,7 @@ function renderCinematicTitle(
 	const textColor = resolveTextColor(scene);
 	const pal = accentPalette(accent);
 	const effect = scene.backgroundEffect || "sakura";
-	return `<Scene bg="${bg}" bgEffect="${effect}" bgEffectColors={["${accent}","${pal.w}","${pal.k}"]} bgEffectIntensity={0.8}>
+	return `<Scene bg="${bg}" bgEffect="${effect}" bgEffectColors={["${accent}","${pal.w}","${pal.k}"]} bgEffectIntensity={${scene.backgroundEffectIntensity ?? 0.8}}>
         <AnimatedText text={${headline}} fontSize={${scene.fontSize || 200}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="${scene.animation || "gradient"}" gradientColors={["${accent}","${pal.w}","${pal.k}"]} />
         ${scene.subtitle ? `<div style={{ marginTop: 20 }}><AnimatedText text={${JSON.stringify(scene.subtitle)}} fontSize={36} color="${textColor}80" fontFamily="'Inter', sans-serif" animation="words" delay={12} /></div>` : ""}
       </Scene>`;
@@ -1692,10 +1692,13 @@ function renderGradientMeshHero(scene: ScenePlanItem, _accent: string, bg: strin
 	const fontSize = scene.fontSize || 130;
 	const effect = scene.backgroundEffect && scene.backgroundEffect !== "none" ? scene.backgroundEffect : null;
 	const pal = accentPalette(_accent);
-	return `<Scene bg="${bg}"${effect ? ` bgEffect="${effect}" bgEffectColors={["${_accent}","${pal.w}","${pal.k}"]} bgEffectIntensity={0.7}` : ""}>
-        <GradientMesh colors={${colors}} dots={${dots}} />
+	const intensity = scene.backgroundEffectIntensity ?? 0.7;
+	return `<Scene bg="${bg}"${effect ? ` bgEffect="${effect}" bgEffectColors={["${_accent}","${pal.w}","${pal.k}"]} bgEffectIntensity={${intensity}}` : ""}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}><GradientMesh colors={${colors}} dots={${dots}} /></div>
+        <div style={{ position: 'relative', zIndex: 1 }}>
           <AnimatedText text={${headline}} fontSize={${fontSize}} color="${textColor}" fontFamily="Georgia, serif" animation="blur-in" />
           ${subtitle ? `<div style={{ marginTop: 24 }}><AnimatedText text={${subtitle}} fontSize={36} color="${subtitleColor}" fontFamily="'Inter', sans-serif" animation="words" delay={12} /></div>` : ""}
+        </div>
       </Scene>`;
 }
 

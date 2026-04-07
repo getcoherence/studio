@@ -2446,6 +2446,20 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 																	</button>
 																);
 															})}
+															{scene.backgroundEffect && scene.backgroundEffect !== "none" && (
+																<div className="flex items-center gap-1 w-full mt-1">
+																	<span className="text-[9px] text-white/20 shrink-0">Opacity</span>
+																	<input
+																		type="range"
+																		min={0}
+																		max={100}
+																		value={Math.round((scene.backgroundEffectIntensity ?? 0.7) * 100)}
+																		onChange={(e) => updateScenePlan(i, { backgroundEffectIntensity: Number(e.target.value) / 100 })}
+																		className="flex-1 h-1 accent-violet-500 cursor-pointer"
+																	/>
+																	<span className="text-[9px] text-white/25 w-7 text-right">{Math.round((scene.backgroundEffectIntensity ?? 0.7) * 100)}%</span>
+																</div>
+															)}
 														</div>
 													</div>
 													<SceneLayerEditor

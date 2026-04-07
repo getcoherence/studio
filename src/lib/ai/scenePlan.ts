@@ -198,6 +198,8 @@ export interface ScenePlanItem {
 		| "flowing-gradient";
 	/** Colors for the animated background effect (defaults to brand accent + complementary) */
 	backgroundEffectColors?: string[];
+	/** Intensity/opacity of the background effect (0-1, default 0.7) */
+	backgroundEffectIntensity?: number;
 	/** Transition TO the next scene. The compiler injects real TransitionSeries.Transition
 	 * elements between scenes using the type specified here. If omitted, a smart default
 	 * is picked based on the scene type. */
