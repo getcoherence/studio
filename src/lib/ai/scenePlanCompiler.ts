@@ -760,8 +760,6 @@ function renderCountdown(
         {React.createElement(() => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const sceneDur = ${clampDuration(scene)};
           const countDur = Math.floor(sceneDur * 0.6);
           const progress = Math.min(1, frame / countDur);
@@ -1015,8 +1013,6 @@ function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: 
         {React.createElement(() => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const wipe = spring({ frame: Math.max(0, frame - ${wipeDelay}), fps, config: { damping: 20, stiffness: 30 } });
           // Both sides always 50% width — the divider slides and content cross-fades
           return (
@@ -1068,8 +1064,6 @@ function renderBeforeAfterStackedMorph(scene: ScenePlanItem, accent: string, bg:
         {React.createElement(() => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const pairs = ${pairs};
           const midFrame = ${Math.floor(clampDuration(scene) * 0.4)};
           return (
@@ -1117,8 +1111,6 @@ function renderBeforeAfterToggleSwitch(scene: ScenePlanItem, accent: string, bg:
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 40 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="words" /></div>` : ""}
         {React.createElement(() => {
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const toggle = spring({ frame: Math.max(0, frame - ${toggleFrame}), fps, config: { damping: 18, stiffness: 80 } });
@@ -1224,8 +1216,6 @@ function renderMetricsBarChart(scene: ScenePlanItem, accent: string, bg: string)
         {React.createElement(() => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const metrics = ${metricsJson};
           const maxVal = ${maxVal};
           const barH = 340;
@@ -1267,8 +1257,6 @@ function renderMetricsPieRadial(scene: ScenePlanItem, accent: string, bg: string
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 50 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 90}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="blur-in" /></div>` : ""}
         {React.createElement(() => {
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const metrics = ${metricsJson};
@@ -1318,8 +1306,6 @@ function renderMetricsTickerTape(scene: ScenePlanItem, _accent: string, bg: stri
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 50 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 90}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="blur-in" /></div>` : ""}
         {React.createElement(() => {
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const metrics = ${metricsJson};
@@ -1797,8 +1783,6 @@ function renderAppIconCloud(scene: ScenePlanItem, accent: string, bg: string): s
         {React.createElement(() => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const icons = ${iconsJson};
           const cols = ${cols};
           return (
@@ -1933,8 +1917,6 @@ function renderDataFlowCircles(scene: ScenePlanItem, accent: string, bg: string)
         {React.createElement(() => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const nodes = ${nodesJson};
           const n = nodes.length;
           const getY = (i) => {
@@ -1997,8 +1979,6 @@ function renderDataFlowTimelineArrows(scene: ScenePlanItem, accent: string, bg: 
         {React.createElement(() => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const nodes = ${nodesJson};
           const n = nodes.length;
           return (
@@ -2052,8 +2032,6 @@ function renderDataFlowHexGrid(scene: ScenePlanItem, accent: string, bg: string)
 	// Hexagonal staggered grid: odd nodes shift down
 	return `<Scene bg="${bg}">
         {React.createElement(() => {
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const nodes = ${nodesJson};
@@ -2121,8 +2099,6 @@ function renderDataFlowIsometricBlocks(scene: ScenePlanItem, accent: string, bg:
         {React.createElement(() => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const nodes = ${nodesJson};
           const n = nodes.length;
           const blockW = 200;
@@ -2185,8 +2161,6 @@ function renderDataFlowOrbitalRings(scene: ScenePlanItem, accent: string, bg: st
 	const textColor = light ? "#1a1a1a" : "#ffffff";
 	return `<Scene bg="${bg}">
         {React.createElement(() => {
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const nodes = ${nodesJson};
