@@ -1003,34 +1003,35 @@ function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: 
 	const headlineColor = isDarkHex(bg) ? "#ffffff" : "#1a1a1a";
 	const beforeLines = JSON.stringify(beforeArr);
 	const afterLines = JSON.stringify(afterArr);
-	// Wipe at 40% of scene duration so "before" gets reading time
-	const wipeDelay = Math.floor(clampDuration(scene) * 0.4);
-	// Use width-based reveal instead of clipPath (clipPath doesn't render
-	// reliably in all Remotion environments)
+	// Wipe at 50% of scene duration so "before" gets plenty of reading time
+	const wipeDelay = Math.floor(clampDuration(scene) * 0.5);
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 40 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="words" /></div>` : ""}
         {(() => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
-          const wipe = spring({ frame: Math.max(0, frame - ${wipeDelay}), fps, config: { damping: 28, stiffness: 40 } });
-          const wipePct = wipe * 100;
+          const wipe = spring({ frame: Math.max(0, frame - ${wipeDelay}), fps, config: { damping: 20, stiffness: 30 } });
+          // Both sides always 50% width — the divider slides and content cross-fades
           return (
-            <div style={{ display: 'flex', width: 1300, height: 400, borderRadius: 28, overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.35)' }}>
-              <div style={{ width: (100 - wipePct) + '%', background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)', padding: '48px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16, overflow: 'hidden', flexShrink: 0 }}>
+            <div style={{ display: 'flex', width: 1300, height: 420, borderRadius: 28, overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.35)' }}>
+              <div style={{ width: '50%', background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)', padding: '48px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16, overflow: 'hidden', opacity: 1 - wipe * 0.3 }}>
                 <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.55, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fff', fontFamily: "'Inter', sans-serif" }}>Before</div>
                 {${beforeLines}.map((l, i) => (
-                  <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: 'rgba(255,255,255,0.85)', fontFamily: "'Inter', sans-serif", textDecoration: 'line-through', textDecorationColor: 'rgba(239,68,68,0.6)', letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>{l}</div>
+                  <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: 'rgba(255,255,255,0.85)', fontFamily: "'Inter', sans-serif", textDecoration: wipe > 0.5 ? 'line-through' : 'none', textDecorationColor: 'rgba(239,68,68,0.6)', letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>{l}</div>
                 ))}
               </div>
               <div style={{ width: 4, background: '${accent}', boxShadow: '0 0 20px ${accent}80', flexShrink: 0, zIndex: 2 }} />
-              <div style={{ flex: 1, background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)', padding: '48px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16, overflow: 'hidden' }}>
-                <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '${accent}', fontFamily: "'Inter', sans-serif" }}>After</div>
-                {${afterLines}.map((l, i) => (
-                  <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: '#0f172a', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 12, letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>
-                    <span style={{ color: '${accent}', fontSize: ${lineSize * 0.5}, flexShrink: 0 }}>✓</span>
-                    {l}
-                  </div>
-                ))}
+              <div style={{ width: '50%', background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)', padding: '48px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16, overflow: 'hidden' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '${accent}', fontFamily: "'Inter', sans-serif", opacity: wipe }}>After</div>
+                {${afterLines}.map((l, i) => {
+                  const stagger = spring({ frame: Math.max(0, frame - ${wipeDelay} - i * 6), fps, config: { damping: 14, stiffness: 120 } });
+                  return (
+                    <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: '#0f172a', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 12, letterSpacing: '-0.03em', whiteSpace: 'nowrap', opacity: stagger, transform: 'translateY(' + ((1 - stagger) * 20) + 'px)' }}>
+                      <span style={{ color: '${accent}', fontSize: ${lineSize * 0.5}, flexShrink: 0 }}>✓</span>
+                      {l}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
