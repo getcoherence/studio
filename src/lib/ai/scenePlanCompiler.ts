@@ -856,7 +856,7 @@ function renderImpactWord(scene: ScenePlanItem, accent: string, bg: string): str
 	const fontSize = scene.fontSize || 280;
 	const animation = scene.animation || "scale";
 	const fontFamily = resolveFontFamily(scene.font);
-	const color = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const color = resolveTextColor(scene);
 	const headline = JSON.stringify(scene.headline || "Finally.");
 	const accentWord = scene.accentWord
 		? `accentWord=${JSON.stringify(scene.accentWord)} accentColor="${accent}"`
@@ -3048,6 +3048,13 @@ function isDarkHex(color: string): boolean {
 	const b = Number.parseInt(hex.slice(4, 6), 16);
 	const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 	return luminance < 0.5;
+}
+
+/** Resolve text color: prefer the headline layer's explicit color, fall back to auto-contrast. */
+function resolveTextColor(scene: ScenePlanItem): string {
+	const headlineLayer = scene.layers?.find((l) => l.id.startsWith("headline-"));
+	if (headlineLayer?.settings?.color) return headlineLayer.settings.color;
+	return isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
 }
 
 function resolveFontFamily(font?: string): string {
