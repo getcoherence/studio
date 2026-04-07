@@ -11,36 +11,61 @@ import type { SceneLayer, ScenePlanItem } from "@/lib/ai/scenePlan";
 function DebouncedInput({
 	value,
 	onChange,
-	debounceMs = 400,
+	debounceMs = 600,
 	...props
 }: {
 	value: string;
 	onChange: (val: string) => void;
 	debounceMs?: number;
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
-	const [local, setLocal] = useState(value);
+	// Use an uncontrolled input with a ref to completely avoid React
+	// re-render cycles stealing the cursor. The parent's value prop only
+	// sets the initial value and updates when the input isn't focused.
+	const inputRef = useRef<HTMLInputElement>(null);
+	const focusedRef = useRef(false);
 	const timerRef = useRef<ReturnType<typeof setTimeout>>();
 	const onChangeRef = useRef(onChange);
 	onChangeRef.current = onChange;
+	const lastPushedRef = useRef(value);
 
-	// Sync external value changes (e.g., undo/redo) into local state
+	// Sync external value (undo/redo, parent changes) only when unfocused
 	useEffect(() => {
-		setLocal(value);
+		if (!focusedRef.current && inputRef.current && value !== lastPushedRef.current) {
+			inputRef.current.value = value;
+			lastPushedRef.current = value;
+		}
 	}, [value]);
 
-	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const val = e.target.value;
-		setLocal(val);
+	const handleInput = () => {
+		const val = inputRef.current?.value ?? "";
 		clearTimeout(timerRef.current);
-		timerRef.current = setTimeout(() => onChangeRef.current(val), debounceMs);
+		timerRef.current = setTimeout(() => {
+			lastPushedRef.current = val;
+			onChangeRef.current(val);
+		}, debounceMs);
 	};
 
+	const handleFocus = () => { focusedRef.current = true; };
 	const handleBlur = () => {
+		focusedRef.current = false;
 		clearTimeout(timerRef.current);
-		if (local !== value) onChangeRef.current(local);
+		const val = inputRef.current?.value ?? "";
+		if (val !== lastPushedRef.current) {
+			lastPushedRef.current = val;
+			onChangeRef.current(val);
+		}
 	};
 
-	return <input {...props} value={local} onChange={handleChange} onBlur={handleBlur} />;
+	return (
+		<input
+			{...props}
+			ref={inputRef}
+			defaultValue={value}
+			onInput={handleInput}
+			onFocus={handleFocus}
+			onBlur={handleBlur}
+		/>
+	);
 }
 
 /** Curated icon palette for icon-showcase / app-icon-cloud layers */
@@ -366,15 +391,6 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 				>
 					Layers ({layers.length})
 				</span>
-				{!ro && (
-					<button
-						onClick={addLayer}
-						title="Add a new text layer to this scene. Extra layers render as absolute-positioned overlays on top of the scene's primary content."
-						className="text-[11px] text-[#2563eb] hover:text-[#60a5fa]"
-					>
-						+ Add
-					</button>
-				)}
 			</div>
 			{ro && (
 				<div className="text-[10px] text-white/30 leading-snug">
@@ -713,6 +729,15 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 					</div>
 				);
 			})}
+			{!ro && (
+				<button
+					onClick={addLayer}
+					title="Add a new layer to this scene"
+					className="w-full py-1.5 rounded-lg border border-dashed border-white/10 hover:border-[#2563eb]/40 text-white/30 hover:text-white/50 text-[11px] transition-colors"
+				>
+					+ Add Layer
+				</button>
+			)}
 		</div>
 	);
 }

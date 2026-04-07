@@ -1436,8 +1436,14 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 					if (recompileTimerRef.current) clearTimeout(recompileTimerRef.current);
 					recompileTimerRef.current = setTimeout(() => {
 						const latestCode = (project as any)._aiCode as string;
+						const activeEl = document.activeElement as HTMLElement | null;
 						setSeekToFrame(currentPlayerFrameRef.current + Math.random() * 0.001);
 						setAiComposition((prev) => (prev ? { ...prev, code: latestCode } : prev));
+						requestAnimationFrame(() => {
+							if (activeEl && activeEl !== document.activeElement && activeEl.isConnected) {
+								activeEl.focus();
+							}
+						});
 					}, 300);
 				}
 				return;
@@ -1456,8 +1462,11 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 					return;
 				}
 				(project as any)._aiCode = newCode;
-				// Set seek frame BEFORE updating composition so the Player
-				// mounts at the correct position (no flash to frame 0).
+
+				// Save focused element before recompile — the Player remount steals focus
+				const activeEl = document.activeElement as HTMLElement | null;
+				console.log("[recompile] active element before:", activeEl?.tagName, activeEl?.className?.slice(0, 40));
+
 				if (shouldSeek) {
 					const offsets = computeSceneOffsets(newPlan.scenes);
 					const start = offsets[sceneIndex] ?? 0;
@@ -1467,6 +1476,16 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 					setSeekToFrame(currentPlayerFrameRef.current + Math.random() * 0.001);
 				}
 				setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
+
+				// Restore focus after React processes the state updates
+				requestAnimationFrame(() => {
+					const nowActive = document.activeElement as HTMLElement | null;
+					console.log("[recompile] active element after:", nowActive?.tagName, nowActive?.className?.slice(0, 40));
+					if (activeEl && activeEl !== nowActive && activeEl.isConnected) {
+						console.log("[recompile] restoring focus to:", activeEl.tagName);
+						activeEl.focus();
+					}
+				});
 			}, 500);
 		},
 		[scenePlan, project],

@@ -779,14 +779,19 @@ function renderCTA(
 	const logoImg = logoUrl
 		? `<div style={{ marginBottom: 28 }}><Img src="${logoUrl}" style={{ height: 60, objectFit: 'contain' }} /></div>`
 		: "";
+	// Read CTA button text from layer if it exists, otherwise default
+	const ctaPillLayer = scene.layers?.find((l) => l.id === "cta-pill");
+	const ctaButtonText = ctaPillLayer?.content || "Get Started";
+	const hasCtaPill = !scene.layers || scene.layers.some((l) => l.id === "cta-pill");
+
 	return `<Scene bg="${bg}">
         ${logoImg}
         <AnimatedText text={${headline}} fontSize={${fontSize}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="blur-in" />
         ${subtitle ? `<div style={{ marginTop: 16 }}><AnimatedText text={${subtitle}} fontSize={36} color="${dimColor}" fontFamily="'Inter', sans-serif" animation="words" delay={8} /></div>` : ""}
         ${displayUrl ? `<div style={{ marginTop: 12, fontSize: 24, fontWeight: 500, color: '${dimColor}', fontFamily: "'Inter', sans-serif", letterSpacing: '0.02em' }}>${displayUrl}</div>` : ""}
-        <div style={{ marginTop: 32, padding: '14px 44px', borderRadius: 50, background: '${accent}', color: '#ffffff', fontSize: 26, fontWeight: 700, fontFamily: "'Inter', sans-serif", boxShadow: '0 8px 30px ${pal.a}40', letterSpacing: '-0.01em' }}>
-          Get Started
-        </div>
+        ${hasCtaPill ? `<div style={{ marginTop: 32, padding: '14px 44px', borderRadius: 50, background: '${accent}', color: '#ffffff', fontSize: 26, fontWeight: 700, fontFamily: "'Inter', sans-serif", boxShadow: '0 8px 30px ${pal.a}40', letterSpacing: '-0.01em' }}>
+          ${ctaButtonText}
+        </div>` : ""}
         <Vignette intensity={0.3} />
       </Scene>`;
 }
