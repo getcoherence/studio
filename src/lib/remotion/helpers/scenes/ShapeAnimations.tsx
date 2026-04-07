@@ -3,7 +3,6 @@
 // https://github.com/lifeprompt-team/remotion-scenes
 
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, random, Easing } from "remotion";
 
 const C = { black: "#0a0a0a", white: "#fafafa", gray: { 50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a", 600: "#52525b", 700: "#3f3f46", 800: "#27272a", 900: "#18181b", 950: "#0c0c0d" }, accent: "#6366f1", secondary: "#ec4899", tertiary: "#14b8a6", success: "#22c55e", warning: "#f59e0b", danger: "#ef4444", orange: "#f97316", yellow: "#eab308", gold: "#fbbf24", red: "#dc2626", cyan: "#06b6d4" };
 const font = "Inter, system-ui, sans-serif";
@@ -16,8 +15,6 @@ const EASE = { out: Easing.bezier(0.16, 1, 0.3, 1), inFn: Easing.bezier(0.7, 0, 
  * Shape3DCube - 3D回転キューブ
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const Shape3DCube = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -118,8 +115,6 @@ export const Shape3DCube = ({ startDelay = 0 }: {
  * ShapeCircularProgress - 円形プログレス
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ShapeCircularProgress = ({ percentage = 75, startDelay = 0 }: {
   percentage?: number;
@@ -217,9 +212,6 @@ export const ShapeCircularProgress = ({ percentage = 75, startDelay = 0 }: {
  * ShapeExplosion - 爆発するシェイプ
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, random, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ShapeExplosion = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -313,9 +305,6 @@ export const ShapeExplosion = ({ startDelay = 0 }: {
  * ShapeHelix - DNA風らせん構造
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ShapeHelix = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -424,8 +413,6 @@ export const ShapeHelix = ({ startDelay = 0 }: {
  * ShapeHexGrid - 六角形グリッド - ハニカム構造
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, random, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ShapeHexGrid = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -514,8 +501,6 @@ export const ShapeHexGrid = ({ startDelay = 0 }: {
  * ShapeMandala - 幾何学パターン - マンダラ風
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const ShapeMandala = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -632,8 +617,6 @@ export const ShapeMandala = ({ startDelay = 0 }: {
  * ShapeMorphing - モーフィングシェイプ - 形が変化
  */
 
-import { AbsoluteFill, useCurrentFrame, interpolate } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ShapeMorphing = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -720,9 +703,6 @@ export const ShapeMorphing = ({ startDelay = 0 }: {
  * ShapeParticleField - パーティクルフィールド - 浮遊する点
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, random } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ShapeParticleField = ({ particleCount = 60, startDelay = 0 }: {
   particleCount?: number;
@@ -794,8 +774,6 @@ export const ShapeParticleField = ({ particleCount = 60, startDelay = 0 }: {
  * ShapeRipples - 波紋エフェクト - 水面の波紋
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ShapeRipples = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -869,8 +847,6 @@ export const ShapeRipples = ({ startDelay = 0 }: {
  * ShapeSpinningRings - 回転する円環 - ローディング風
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const ShapeSpinningRings = ({ startDelay = 0 }: {
   startDelay?: number;

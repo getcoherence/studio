@@ -3,7 +3,6 @@
 // https://github.com/lifeprompt-team/remotion-scenes
 
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, random, Easing } from "remotion";
 
 const C = { black: "#0a0a0a", white: "#fafafa", gray: { 50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a", 600: "#52525b", 700: "#3f3f46", 800: "#27272a", 900: "#18181b", 950: "#0c0c0d" }, accent: "#6366f1", secondary: "#ec4899", tertiary: "#14b8a6", success: "#22c55e", warning: "#f59e0b", danger: "#ef4444", orange: "#f97316", yellow: "#eab308", gold: "#fbbf24", red: "#dc2626", cyan: "#06b6d4" };
 const font = "Inter, system-ui, sans-serif";
@@ -16,8 +15,6 @@ const EASE = { out: Easing.bezier(0.16, 1, 0.3, 1), inFn: Easing.bezier(0.7, 0, 
  * ListAsymmetric3 - 非対称3要素（1大+2小）- 最重要を大きく
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ListAsymmetric3 = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -209,8 +206,6 @@ export const ListAsymmetric3 = ({ startDelay = 0 }: {
  * ListFullscreenSequence - フルスクリーン順次表示（1要素ずつ）
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ListFullscreenSequence = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -325,8 +320,6 @@ export const ListFullscreenSequence = ({ startDelay = 0 }: {
  * ListHeroWithList - 強調1つ + リスト
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ListHeroWithList = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -449,8 +442,6 @@ export const ListHeroWithList = ({ startDelay = 0 }: {
  * ListHorizontalPeek - 横スクロール風（見切れ表現）
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ListHorizontalPeek = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -606,8 +597,6 @@ export const ListHorizontalPeek = ({ startDelay = 0 }: {
  * ListMinimalLeft - 左寄せミニマルリスト
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ListMinimalLeft = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -730,8 +719,6 @@ export const ListMinimalLeft = ({ startDelay = 0 }: {
  * ListNumberedVertical - 縦積み番号リスト（左揃え、番号強調）
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ListNumberedVertical = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -860,8 +847,6 @@ export const ListNumberedVertical = ({ startDelay = 0 }: {
  * ListSimpleText - アイコンなしシンプルリスト
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ListSimpleText = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -972,8 +957,6 @@ export const ListSimpleText = ({ startDelay = 0 }: {
  * ListStaggered - ジグザグ/スタッガード配置
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ListStaggered = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1085,8 +1068,6 @@ export const ListStaggered = ({ startDelay = 0 }: {
  * ListStatsFocused - 数字強調型（統計リスト）
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ListStatsFocused = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1238,8 +1219,6 @@ export const ListStatsFocused = ({ startDelay = 0 }: {
  * ListTimeline - タイムライン風縦リスト
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ListTimeline = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1407,8 +1386,6 @@ export const ListTimeline = ({ startDelay = 0 }: {
  * ListTwoColumnCompare - 特徴比較（2カラム）
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ListTwoColumnCompare = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1532,8 +1509,6 @@ export const ListTwoColumnCompare = ({ startDelay = 0 }: {
  * ListUnevenGrid - 非均等グリッド（1大+2小）
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const ListUnevenGrid = ({ startDelay = 0 }: {
   startDelay?: number;

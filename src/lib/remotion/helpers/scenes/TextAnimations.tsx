@@ -3,7 +3,6 @@
 // https://github.com/lifeprompt-team/remotion-scenes
 
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, random, Easing } from "remotion";
 
 const C = { black: "#0a0a0a", white: "#fafafa", gray: { 50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a", 600: "#52525b", 700: "#3f3f46", 800: "#27272a", 900: "#18181b", 950: "#0c0c0d" }, accent: "#6366f1", secondary: "#ec4899", tertiary: "#14b8a6", success: "#22c55e", warning: "#f59e0b", danger: "#ef4444", orange: "#f97316", yellow: "#eab308", gold: "#fbbf24", red: "#dc2626", cyan: "#06b6d4" };
 const font = "Inter, system-ui, sans-serif";
@@ -16,8 +15,6 @@ const EASE = { out: Easing.bezier(0.16, 1, 0.3, 1), inFn: Easing.bezier(0.7, 0, 
  * Text3DFlip - 3Dフリップテキスト - Y軸回転で登場
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const Text3DFlip = ({ text = "FLIP", startDelay = 0 }: {
   text?: string;
@@ -103,8 +100,6 @@ export const Text3DFlip = ({ text = "FLIP", startDelay = 0 }: {
  * TextCounter - カウンターテキスト - 数字がカウントアップ
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TextCounter = ({
   targetNumber = 10000,
@@ -191,8 +186,6 @@ export const TextCounter = ({
  * TextExplode - 爆発テキスト - 中心から文字が散らばる
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TextExplode = ({ text = "BOOM", startDelay = 0 }: {
   text?: string;
@@ -313,8 +306,6 @@ export const TextExplode = ({ text = "BOOM", startDelay = 0 }: {
  * TextGlitch - グリッチテキスト - デジタルグリッチ効果
  */
 
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TextGlitch = ({ text = "GLITCH", startDelay = 0 }: {
   text?: string;
@@ -432,8 +423,6 @@ export const TextGlitch = ({ text = "GLITCH", startDelay = 0 }: {
  * TextGradient - グラデーションテキスト - 動くグラデーション
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TextGradient = ({ text = "GRADIENT", startDelay = 0 }: {
   text?: string;
@@ -504,8 +493,6 @@ export const TextGradient = ({ text = "GRADIENT", startDelay = 0 }: {
  * TextKinetic - キネティックタイポグラフィ - 文字が踊る
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TextKinetic = ({ text = "KINETIC", startDelay = 0 }: {
   text?: string;
@@ -584,8 +571,6 @@ export const TextKinetic = ({ text = "KINETIC", startDelay = 0 }: {
  * TextMaskReveal - マスクリビールテキスト - マスクで1文字ずつ表示
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TextMaskReveal = ({ text = "MASKED", startDelay = 0 }: {
   text?: string;
@@ -661,8 +646,6 @@ export const TextMaskReveal = ({ text = "MASKED", startDelay = 0 }: {
  * TextNeon - ネオンテキスト - グロウ効果
  */
 
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TextNeon = ({ text = "NEON", startDelay = 0 }: {
   text?: string;
@@ -744,8 +727,6 @@ export const TextNeon = ({ text = "NEON", startDelay = 0 }: {
  * TextScramble - スクランブルテキスト - ランダム文字から確定
  */
 
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const TextScramble = ({ text = "SCRAMBLE", startDelay = 0 }: {
   text?: string;
@@ -829,8 +810,6 @@ export const TextScramble = ({ text = "SCRAMBLE", startDelay = 0 }: {
  * TextSplit - スプリットテキスト - 上下に分割して登場
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TextSplit = ({ textTop = "SPLIT", textBottom = "REVEAL", startDelay = 0 }: {
   textTop?: string;
@@ -918,8 +897,6 @@ export const TextSplit = ({ textTop = "SPLIT", textBottom = "REVEAL", startDelay
  * TextTypewriter - タイプライターテキスト - カーソル付き
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const TextTypewriter = ({ text = "TYPING EFFECT...", startDelay = 0 }: {
   text?: string;
@@ -1005,8 +982,6 @@ export const TextTypewriter = ({ text = "TYPING EFFECT...", startDelay = 0 }: {
  * TextWave - 波形テキスト - 文字が波のように動く
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const TextWave = ({ text = "WAVE MOTION", startDelay = 0 }: {
   text?: string;

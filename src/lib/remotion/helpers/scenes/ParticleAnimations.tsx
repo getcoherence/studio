@@ -3,7 +3,6 @@
 // https://github.com/lifeprompt-team/remotion-scenes
 
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, random, Easing } from "remotion";
 
 const C = { black: "#0a0a0a", white: "#fafafa", gray: { 50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a", 600: "#52525b", 700: "#3f3f46", 800: "#27272a", 900: "#18181b", 950: "#0c0c0d" }, accent: "#6366f1", secondary: "#ec4899", tertiary: "#14b8a6", success: "#22c55e", warning: "#f59e0b", danger: "#ef4444", orange: "#f97316", yellow: "#eab308", gold: "#fbbf24", red: "#dc2626", cyan: "#06b6d4" };
 const font = "Inter, system-ui, sans-serif";
@@ -16,9 +15,6 @@ const EASE = { out: Easing.bezier(0.16, 1, 0.3, 1), inFn: Easing.bezier(0.7, 0, 
  * ParticleBubbles - 泡エフェクト
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, font } from "../../common";
 
 export const ParticleBubbles = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -95,9 +91,6 @@ export const ParticleBubbles = ({ startDelay = 0 }: {
  * ParticleConfetti - 紙吹雪エフェクト
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, random } from "remotion";
-import { C, font } from "../../common";
 
 export const ParticleConfetti = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -174,9 +167,6 @@ export const ParticleConfetti = ({ startDelay = 0 }: {
  * ParticleFireworks - ファイヤーワークス
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ParticleFireworks = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -285,8 +275,6 @@ export const ParticleFireworks = ({ startDelay = 0 }: {
  * ParticleLightning - 電気/雷エフェクト
  */
 
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, font } from "../../common";
 
 export const ParticleLightning = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -391,8 +379,6 @@ export const ParticleLightning = ({ startDelay = 0 }: {
  * ParticleMagneticField - 磁気フィールド
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ParticleMagneticField = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -510,9 +496,6 @@ export const ParticleMagneticField = ({ startDelay = 0 }: {
  * ParticleSakura - 桜吹雪エフェクト
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, random } from "remotion";
-import { lerp, font } from "../../common";
 
 export const ParticleSakura = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -592,9 +575,6 @@ export const ParticleSakura = ({ startDelay = 0 }: {
  * ParticleShootingStars - 流れ星エフェクト
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ParticleShootingStars = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -690,9 +670,6 @@ export const ParticleShootingStars = ({ startDelay = 0 }: {
  * ParticleSmoke - 煙エフェクト
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ParticleSmoke = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -766,9 +743,6 @@ export const ParticleSmoke = ({ startDelay = 0 }: {
  * ParticleSnow - 雪エフェクト
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, random } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ParticleSnow = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -861,9 +835,6 @@ export const ParticleSnow = ({ startDelay = 0 }: {
  * ParticleSparks - 火花エフェクト
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ParticleSparks = ({ startDelay = 0 }: {
   startDelay?: number;

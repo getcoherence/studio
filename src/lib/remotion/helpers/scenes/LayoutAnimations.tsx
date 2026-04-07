@@ -3,7 +3,6 @@
 // https://github.com/lifeprompt-team/remotion-scenes
 
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, random, Easing } from "remotion";
 
 const C = { black: "#0a0a0a", white: "#fafafa", gray: { 50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a", 600: "#52525b", 700: "#3f3f46", 800: "#27272a", 900: "#18181b", 950: "#0c0c0d" }, accent: "#6366f1", secondary: "#ec4899", tertiary: "#14b8a6", success: "#22c55e", warning: "#f59e0b", danger: "#ef4444", orange: "#f97316", yellow: "#eab308", gold: "#fbbf24", red: "#dc2626", cyan: "#06b6d4" };
 const font = "Inter, system-ui, sans-serif";
@@ -16,8 +15,6 @@ const EASE = { out: Easing.bezier(0.16, 1, 0.3, 1), inFn: Easing.bezier(0.7, 0, 
  * LayoutAsymmetric - 極端な非対称レイアウト - 左に巨大テキスト、右に小さな情報
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LayoutAsymmetric = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -157,8 +154,6 @@ export const LayoutAsymmetric = ({ startDelay = 0 }: {
  * LayoutDiagonal - 対角線構成 - ダイナミックな斜め配置
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LayoutDiagonal = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -251,8 +246,6 @@ export const LayoutDiagonal = ({ startDelay = 0 }: {
  * LayoutFrameInFrame - フレーム・イン・フレーム
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const LayoutFrameInFrame = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -366,8 +359,6 @@ export const LayoutFrameInFrame = ({ startDelay = 0 }: {
  * LayoutFullscreenType - フルスクリーンタイポグラフィ - 画面いっぱいの文字
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LayoutFullscreenType = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -462,8 +453,6 @@ export const LayoutFullscreenType = ({ startDelay = 0 }: {
  * LayoutGiantNumber - 巨大数字 + テキスト - データ強調レイアウト
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LayoutGiantNumber = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -563,8 +552,6 @@ export const LayoutGiantNumber = ({ startDelay = 0 }: {
  * LayoutGridBreak - グリッドブレイク - 規則性を崩す
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const LayoutGridBreak = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -646,8 +633,6 @@ export const LayoutGridBreak = ({ startDelay = 0 }: {
  * LayoutLayered - レイヤード構成 - 奥行き感
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LayoutLayered = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -750,8 +735,6 @@ export const LayoutLayered = ({ startDelay = 0 }: {
  * LayoutMultiColumn - マルチコラムレイアウト - 情報の並列配置
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const LayoutMultiColumn = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -875,8 +858,6 @@ export const LayoutMultiColumn = ({ startDelay = 0 }: {
  * LayoutOffGrid - オフグリッドレイアウト - 意図的にずらした配置
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LayoutOffGrid = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -960,8 +941,6 @@ export const LayoutOffGrid = ({ startDelay = 0 }: {
  * LayoutSplitContrast - スプリットスクリーン - 左右で対比
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LayoutSplitContrast = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1091,8 +1070,6 @@ export const LayoutSplitContrast = ({ startDelay = 0 }: {
  * LayoutVerticalMix - 縦書き + 横書きミックス
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LayoutVerticalMix = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1189,8 +1166,6 @@ export const LayoutVerticalMix = ({ startDelay = 0 }: {
  * LayoutWhitespace - ホワイトスペース活用 - ミニマル極致
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LayoutWhitespace = ({ startDelay = 0 }: {
   startDelay?: number;
