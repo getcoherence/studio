@@ -1,0 +1,21 @@
+// ── Core Plugin Loader ──────────────────────────────────────────────────
+//
+// Loads all built-in plugins into the registry. This runs once at app start.
+// Pro/community plugins are loaded separately after this.
+
+import { pluginRegistry } from "../registry";
+import { coreAnimationsPlugin } from "./animations";
+import { coreEffectsPlugin } from "./effects";
+import { coreTransitionsPlugin } from "./transitions";
+
+export function loadCorePlugins(): void {
+	pluginRegistry.loadPlugin(coreTransitionsPlugin);
+	pluginRegistry.loadPlugin(coreEffectsPlugin);
+	pluginRegistry.loadPlugin(coreAnimationsPlugin);
+
+	console.log(
+		`[Plugins] Core loaded: ${pluginRegistry.getTransitions().length} transitions, ` +
+		`${pluginRegistry.getEffects().length} effects, ` +
+		`${pluginRegistry.getAnimations().length} animations`,
+	);
+}
