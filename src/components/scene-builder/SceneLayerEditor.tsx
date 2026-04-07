@@ -407,27 +407,30 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 					<div
 						key={layer.id}
 						data-layer-row={`${sceneIndex}-${li}`}
-						draggable={!ro}
-						onDragStart={(e) => !ro && handleDragStart(e, li)}
-						onDragEnd={handleDragEnd}
 						onDragOver={(e) => !ro && handleDragOver(e, li)}
 						onDrop={(e) => !ro && handleDrop(e, li)}
-						className={`rounded border p-1.5 space-y-1 transition-colors ${ro ? "" : "cursor-grab active:cursor-grabbing"} ${
+						className={`flex rounded border transition-colors ${
 							dropIndex === li && dragIndex !== null && dragIndex !== li
 								? "border-[#2563eb]/30 bg-[#2563eb]/10"
 								: "border-white/5 bg-white/[0.02]"
 						}`}
 					>
+						{/* Grab handle — left edge only */}
+						{!ro && (
+							<div
+								draggable
+								onDragStart={(e) => handleDragStart(e, li)}
+								onDragEnd={handleDragEnd}
+								className="flex items-center px-1 cursor-grab active:cursor-grabbing hover:bg-white/5 rounded-l shrink-0"
+								title="Drag to reorder"
+							>
+								<span className="text-white/15 text-[11px] select-none">⠿</span>
+							</div>
+						)}
+						{/* Layer content */}
+						<div className="flex-1 p-1.5 space-y-1 min-w-0">
 						{/* Row 1: Type + Content/Title + Delete */}
 						<div className="flex gap-1 items-center">
-							{!ro && (
-								<span
-									className="text-white/15 cursor-grab text-[11px] select-none"
-									title="Drag to reorder"
-								>
-									⠿
-								</span>
-							)}
 							<select
 								value={layer.type}
 								onChange={(e) => changeLayerType(li, e.target.value as SceneLayer["type"])}
@@ -745,8 +748,30 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 								>
 									Outline
 								</button>
+								<span className="text-white/10">|</span>
+								<button
+									onClick={() => updateLayer(li, { settings: { ...layer.settings, fontWeight: layer.settings?.fontWeight === "bold" ? undefined : "bold" } })}
+									title="Bold"
+									className={`w-6 h-6 rounded border flex items-center justify-center font-bold text-[11px] transition-colors ${layer.settings?.fontWeight === "bold" ? "bg-white/10 border-white/20 text-white/70" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+								>B</button>
+								<button
+									onClick={() => updateLayer(li, { settings: { ...layer.settings, fontStyle: layer.settings?.fontStyle === "italic" ? undefined : "italic" } })}
+									title="Italic"
+									className={`w-6 h-6 rounded border flex items-center justify-center italic text-[11px] transition-colors ${layer.settings?.fontStyle === "italic" ? "bg-white/10 border-white/20 text-white/70" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+								>I</button>
+								<button
+									onClick={() => updateLayer(li, { settings: { ...layer.settings, textDecoration: layer.settings?.textDecoration === "underline" ? undefined : "underline" } })}
+									title="Underline"
+									className={`w-6 h-6 rounded border flex items-center justify-center underline text-[11px] transition-colors ${layer.settings?.textDecoration === "underline" ? "bg-white/10 border-white/20 text-white/70" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+								>U</button>
+								<button
+									onClick={() => updateLayer(li, { settings: { ...layer.settings, textDecoration: layer.settings?.textDecoration === "line-through" ? undefined : "line-through" } })}
+									title="Strikethrough"
+									className={`w-6 h-6 rounded border flex items-center justify-center line-through text-[11px] transition-colors ${layer.settings?.textDecoration === "line-through" ? "bg-white/10 border-white/20 text-white/70" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+								>S</button>
 							</div>
 						)}
+					</div>
 					</div>
 				);
 			})}
