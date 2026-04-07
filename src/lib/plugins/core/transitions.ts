@@ -95,5 +95,82 @@ export const coreTransitionsPlugin: LucidPlugin = {
 			codeExpression: 'wipe({ direction: "from-top" })',
 			create: () => wipe({ direction: "from-top" }),
 		});
+		// Zoom morph (uses zoomMorph from CinematicHelpers via MODULE_SCOPE)
+		registry.registerTransition({
+			id: "zoom-morph",
+			name: "Zoom Morph",
+			description: "Cinematic fly-through zoom",
+			energy: "high",
+			defaultDuration: 16,
+			useSpringTiming: true,
+			codeExpression: "zoomMorph()",
+			create: () => fade(), // placeholder — actual uses code path
+		});
+		// Custom transitions
+		registry.registerTransition({
+			id: "striped-slam",
+			name: "Striped Slam",
+			description: "Horizontal bars slam in from both sides",
+			energy: "maximum",
+			defaultDuration: 50,
+			codeExpression: "stripedSlam()",
+			create: () => fade(),
+		});
+		registry.registerTransition({
+			id: "zoom-punch",
+			name: "Zoom Punch",
+			description: "Old retreats, new punches in",
+			energy: "high",
+			defaultDuration: 35,
+			useSpringTiming: true,
+			codeExpression: "zoomPunch()",
+			create: () => fade(),
+		});
+		registry.registerTransition({
+			id: "diagonal-reveal",
+			name: "Diagonal Reveal",
+			description: "Dark panel sweeps with accent line",
+			energy: "high",
+			defaultDuration: 40,
+			codeExpression: "diagonalReveal()",
+			create: () => fade(),
+		});
+		registry.registerTransition({
+			id: "color-burst",
+			name: "Color Burst",
+			description: "Sharp radial flash at the cut",
+			energy: "high",
+			defaultDuration: 40,
+			codeExpression: "colorBurst()",
+			create: () => fade(),
+		});
+		registry.registerTransition({
+			id: "vertical-shutter",
+			name: "Vertical Shutter",
+			description: "Venetian blind panels snap shut/open",
+			energy: "high",
+			defaultDuration: 35,
+			codeExpression: "verticalShutter()",
+			create: () => fade(),
+		});
+		registry.registerTransition({
+			id: "glitch-slam",
+			name: "Glitch Slam",
+			description: "Horizontal shake + RGB strip tears",
+			energy: "maximum",
+			defaultDuration: 30,
+			codeExpression: "glitchSlam()",
+			create: () => fade(),
+		});
+		// Cut
+		registry.registerTransition({
+			id: "cut",
+			name: "Cut (instant)",
+			description: "No transition, instant cut",
+			energy: "low",
+			defaultDuration: 1,
+			codeExpression: "fade()",
+			create: () => fade(),
+		});
 	},
 };
