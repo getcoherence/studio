@@ -59,6 +59,7 @@
 		"emoji-picker-react": "^4.16.1",
 		"fix-webm-duration": "^1.0.6",
 		"gif.js": "^0.2.0",
+		"googleapis": "^171.4.0",
 		"gsap": "^3.13.0",
 		"html2canvas": "^1.4.1",
 		"lottie-web": "^5.13.0",

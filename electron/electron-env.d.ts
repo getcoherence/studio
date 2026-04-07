@@ -253,6 +253,19 @@ interface Window {
 		}>;
 		onExportRemotionProgress: (callback: (percent: number) => void) => () => void;
 
+		// YouTube
+		youtubeIsConnected: () => Promise<boolean>;
+		youtubeConnect: () => Promise<{ success: boolean; error?: string }>;
+		youtubeDisconnect: () => Promise<{ success: boolean }>;
+		youtubeSetCredentials: (clientId: string, clientSecret: string) => Promise<{ success: boolean }>;
+		youtubeUpload: (opts: {
+			filePath: string;
+			title: string;
+			description?: string;
+			privacy: "public" | "unlisted" | "private";
+		}) => Promise<{ success: boolean; videoId?: string; url?: string; error?: string }>;
+		onYoutubeUploadProgress: (callback: (percent: number) => void) => () => void;
+
 		setMicrophoneExpanded: (expanded: boolean) => void;
 		setHasUnsavedChanges: (hasChanges: boolean) => void;
 		onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => () => void;

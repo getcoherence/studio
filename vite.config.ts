@@ -19,6 +19,7 @@ export default defineConfig({
 								"@remotion/bundler",
 								"@remotion/renderer",
 								"@remotion/cli",
+								"googleapis",
 							],
 						},
 					},
