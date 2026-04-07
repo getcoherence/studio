@@ -113,6 +113,10 @@ export const AnimatedText: React.FC<{
 		| "split"
 		| "drop"
 		| "scramble"
+		| "gradient"
+		| "matrix"
+		| "rotate-3d"
+		| "glitch-in"
 		| "none";
 	/** Spring damping — lower = bouncier (default 14) */
 	damping?: number;
@@ -122,6 +126,9 @@ export const AnimatedText: React.FC<{
 	stagger?: number;
 	/** Delay in frames before animation starts */
 	delay?: number;
+	/** Gradient colors for "gradient" animation or gradient text fill.
+	 *  When set, text uses background-clip: text with an animated gradient. */
+	gradientColors?: string[];
 }> = ({
 	text,
 	fontSize = 100,
@@ -136,6 +143,7 @@ export const AnimatedText: React.FC<{
 	maxWidth = 1760,
 	animation = "chars",
 	delay = 0,
+	gradientColors,
 }) => {
 	const frame = useCurrentFrame();
 	const { fps } = useVideoConfig();
@@ -152,6 +160,155 @@ export const AnimatedText: React.FC<{
 		estimatedWidth > maxWidth
 			? Math.max(48, Math.floor(fontSize * (maxWidth / estimatedWidth)))
 			: fontSize;
+
+	// Gradient text fill: animated gradient that shifts over time.
+	// Applied as a wrapper style when gradientColors is set or animation === "gradient".
+	const useGradient = animation === "gradient" || (gradientColors && gradientColors.length >= 2);
+	const gradientStyle: React.CSSProperties | undefined = useGradient
+		? (() => {
+				const colors = gradientColors || [color, accentColor || "#7c3aed", "#ec4899"];
+				const angle = 90 + Math.sin(frame * 0.03) * 30;
+				const shift = frame * 2;
+				return {
+					background: `linear-gradient(${angle}deg, ${colors.map((c, i) => `${c} ${(i / (colors.length - 1)) * 100 + shift}%`).join(", ")})`,
+					backgroundSize: "200% 200%",
+					backgroundClip: "text",
+					WebkitBackgroundClip: "text",
+					WebkitTextFillColor: "transparent",
+					color: "transparent",
+				};
+			})()
+		: undefined;
+
+	if (animation === "gradient") {
+		// Gradient animation: words fade in with gradient fill
+		const progress = spring({ frame: localFrame, fps, config: { damping: 14, stiffness: 120 } });
+		return (
+			<div
+				style={{
+					fontSize: effectiveFontSize,
+					fontFamily,
+					fontWeight,
+					letterSpacing,
+					lineHeight,
+					textAlign: align,
+					maxWidth,
+					opacity: progress,
+					transform: `scale(${0.85 + progress * 0.15})`,
+					...gradientStyle,
+				}}
+			>
+				{cleanText}
+			</div>
+		);
+	}
+
+	// ── Matrix decode: characters cycle through random glyphs before settling ──
+	if (animation === "matrix") {
+		const chars = cleanText.split("");
+		const matrixGlyphs = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+		return (
+			<div
+				style={{
+					fontSize: effectiveFontSize, fontFamily: "'Courier New', monospace", fontWeight,
+					letterSpacing: "0.05em", lineHeight, color: gradientStyle ? undefined : color,
+					textAlign: align, maxWidth, ...gradientStyle,
+				}}
+			>
+				{chars.map((char, i) => {
+					const settleFrame = i * 2 + 8;
+					const settled = localFrame >= settleFrame;
+					const displayChar = char === " " ? "\u00A0"
+						: settled ? char
+						: matrixGlyphs[Math.floor((localFrame * 7 + i * 13) % matrixGlyphs.length)];
+					const opacity = localFrame < i * 2 ? 0 : settled ? 1 : 0.6;
+					return (
+						<span key={i} style={{ opacity, color: settled ? undefined : (accentColor || "#22c55e") }}>
+							{displayChar}
+						</span>
+					);
+				})}
+			</div>
+		);
+	}
+
+	// ── 3D rotate: each character rotates in from 3D perspective ──
+	if (animation === "rotate-3d") {
+		const chars = cleanText.split("");
+		return (
+			<div
+				style={{
+					fontSize: effectiveFontSize, fontFamily, fontWeight, letterSpacing, lineHeight,
+					textAlign: align, maxWidth, perspective: 800, display: "flex",
+					flexWrap: "wrap", justifyContent: align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start",
+				}}
+			>
+				{chars.map((char, i) => {
+					const progress = spring({
+						frame: Math.max(0, localFrame - i * 1.5),
+						fps, config: { damping: 16, stiffness: 140 },
+					});
+					const rotateY = (1 - progress) * 90;
+					const rotateX = (1 - progress) * -20;
+					return (
+						<span
+							key={i}
+							style={{
+								display: "inline-block",
+								color: gradientStyle ? undefined : color,
+								opacity: progress,
+								transform: `rotateY(${rotateY}deg) rotateX(${rotateX}deg)`,
+								transformOrigin: "center center",
+								...gradientStyle,
+							}}
+						>
+							{char === " " ? "\u00A0" : char}
+						</span>
+					);
+				})}
+			</div>
+		);
+	}
+
+	// ── Glitch in: text appears with chromatic aberration and offset layers ──
+	if (animation === "glitch-in") {
+		const revealProgress = spring({ frame: localFrame, fps, config: { damping: 10, stiffness: 200 } });
+		const glitchIntensity = Math.max(0, 1 - revealProgress) * 15;
+		const offsetR = Math.sin(localFrame * 0.7) * glitchIntensity;
+		const offsetB = Math.cos(localFrame * 0.9) * glitchIntensity;
+		const clipLeft = (1 - revealProgress) * 100;
+		return (
+			<div style={{ position: "relative", fontSize: effectiveFontSize, fontFamily, fontWeight, letterSpacing, lineHeight, textAlign: align, maxWidth }}>
+				{/* Red channel offset */}
+				{glitchIntensity > 0.5 && (
+					<div style={{
+						position: "absolute", inset: 0, color: "#ff000060",
+						transform: `translate(${offsetR}px, ${-offsetR * 0.5}px)`,
+						clipPath: `inset(0 ${clipLeft}% 0 0)`, ...gradientStyle,
+					}}>
+						{cleanText}
+					</div>
+				)}
+				{/* Blue channel offset */}
+				{glitchIntensity > 0.5 && (
+					<div style={{
+						position: "absolute", inset: 0, color: "#0000ff60",
+						transform: `translate(${offsetB}px, ${offsetB * 0.5}px)`,
+						clipPath: `inset(0 ${clipLeft}% 0 0)`, ...gradientStyle,
+					}}>
+						{cleanText}
+					</div>
+				)}
+				{/* Main text */}
+				<div style={{
+					position: "relative", color: gradientStyle ? undefined : color,
+					clipPath: `inset(0 ${clipLeft}% 0 0)`, ...gradientStyle,
+				}}>
+					{cleanText}
+				</div>
+			</div>
+		);
+	}
 
 	if (animation === "scale") {
 		const progress = spring({
@@ -172,6 +329,7 @@ export const AnimatedText: React.FC<{
 					maxWidth,
 					opacity: progress,
 					transform: `scale(${0.6 + progress * 0.4})`,
+					...gradientStyle,
 				}}
 			>
 				{cleanText}
@@ -1712,6 +1870,124 @@ export const ViewfinderFrame: React.FC<{
 					}}
 				/>
 			))}
+		</div>
+	);
+};
+
+// ── GlassmorphismCard ──────────────────────────────────────────────────
+
+/**
+ * Frosted glass card with backdrop blur, subtle border, and inner glow.
+ * Works on both light and dark backgrounds.
+ */
+export const GlassCard: React.FC<{
+	children: React.ReactNode;
+	width?: number;
+	padding?: number;
+	borderRadius?: number;
+	blur?: number;
+	opacity?: number;
+	borderColor?: string;
+	tilt?: number;
+}> = ({
+	children,
+	width = 600,
+	padding = 40,
+	borderRadius = 24,
+	blur = 20,
+	opacity = 0.15,
+	borderColor = "rgba(255,255,255,0.18)",
+	tilt = 0,
+}) => {
+	return (
+		<div
+			style={{
+				width,
+				padding,
+				borderRadius,
+				background: `rgba(255, 255, 255, ${opacity})`,
+				backdropFilter: `blur(${blur}px)`,
+				WebkitBackdropFilter: `blur(${blur}px)`,
+				border: `1px solid ${borderColor}`,
+				boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+				transform: tilt ? `rotate(${tilt}deg)` : undefined,
+			}}
+		>
+			{children}
+		</div>
+	);
+};
+
+// ── DeviceMockup ──────────────────────────────────────────────────────
+
+/**
+ * Wraps content in a laptop/phone device frame for product screenshots.
+ * Creates the "3D floating device" look from professional product videos.
+ */
+export const DeviceMockup: React.FC<{
+	children: React.ReactNode;
+	device?: "laptop" | "phone";
+	tilt?: number;
+	shadow?: boolean;
+}> = ({ children, device = "laptop", tilt = -3, shadow = true }) => {
+	const frame = useCurrentFrame();
+	const { fps } = useVideoConfig();
+	const enter = spring({ frame, fps, config: { damping: 14, stiffness: 100 } });
+	const float = Math.sin(frame / fps * 1.2) * 4;
+
+	if (device === "phone") {
+		return (
+			<div style={{
+				transform: `perspective(1200px) rotateY(${tilt}deg) translateY(${(1 - enter) * 60 + float}px)`,
+				opacity: enter,
+				width: 320, borderRadius: 40,
+				background: "#1a1a1a", padding: "12px 8px",
+				boxShadow: shadow ? "0 40px 80px rgba(0,0,0,0.4)" : undefined,
+			}}>
+				<div style={{ borderRadius: 28, overflow: "hidden", aspectRatio: "9/19.5" }}>
+					{children}
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div style={{
+			transform: `perspective(1600px) rotateX(${tilt * 0.5}deg) rotateY(${tilt}deg) translateY(${(1 - enter) * 80 + float}px)`,
+			opacity: enter,
+		}}>
+			{/* Screen */}
+			<div style={{
+				width: 900, borderRadius: "16px 16px 0 0",
+				background: "#0a0a0a", padding: "8px 8px 0",
+				boxShadow: shadow ? "0 40px 100px rgba(0,0,0,0.5)" : undefined,
+			}}>
+				{/* Browser chrome */}
+				<div style={{
+					height: 32, background: "#1a1a1a", borderRadius: "8px 8px 0 0",
+					display: "flex", alignItems: "center", gap: 6, padding: "0 12px",
+				}}>
+					<div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
+					<div style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
+					<div style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840" }} />
+					<div style={{
+						flex: 1, height: 20, borderRadius: 4, background: "#0a0a0a",
+						marginLeft: 8, display: "flex", alignItems: "center", padding: "0 8px",
+						fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "'Inter', sans-serif",
+					}}>
+						getlucid.studio
+					</div>
+				</div>
+				<div style={{ overflow: "hidden", borderRadius: "0 0 0 0" }}>
+					{children}
+				</div>
+			</div>
+			{/* Keyboard base */}
+			<div style={{
+				width: 980, height: 14, margin: "0 auto",
+				background: "linear-gradient(180deg, #2a2a2a, #1a1a1a)",
+				borderRadius: "0 0 12px 12px",
+			}} />
 		</div>
 	);
 };

@@ -65,6 +65,8 @@ import {
 	WordCarousel,
 	WordSlotMachine,
 	zoomMorph,
+	GlassCard,
+	DeviceMockup,
 } from "./helpers/CinematicHelpers";
 import { LottieBackground, LottieOverlay } from "./helpers/LottieHelper";
 import {
@@ -156,6 +158,8 @@ export const MODULE_SCOPE = {
 	zoomMorph,
 	CameraText,
 	AnimatedBackground,
+	GlassCard,
+	DeviceMockup,
 	// Audio-reactive
 	useAudioPulse,
 	AudioPulse,

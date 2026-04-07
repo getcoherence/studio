@@ -663,6 +663,9 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 									<option value="split">Split</option>
 									<option value="drop">Drop</option>
 									<option value="scramble">Scramble</option>
+									<option value="matrix">Matrix</option>
+									<option value="rotate-3d">3D Rotate</option>
+									<option value="glitch-in">Glitch In</option>
 									<option value="none">None</option>
 								</select>
 								<span

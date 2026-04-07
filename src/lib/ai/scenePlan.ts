@@ -69,7 +69,10 @@ export interface ScenePlanItem {
 		| "staccato"
 		| "split"
 		| "drop"
-		| "scramble";
+		| "scramble"
+		| "matrix"
+		| "rotate-3d"
+		| "glitch-in";
 	/** Font family preset */
 	font: "serif" | "sans-serif" | "mono" | "condensed" | "wide";
 	/** Font size for the headline */
