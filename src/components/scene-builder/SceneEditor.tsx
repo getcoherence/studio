@@ -2462,6 +2462,39 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 															)}
 														</div>
 													</div>
+													{/* Before/After panel color controls */}
+													{scene.type === "before-after" && (
+														<div className="flex items-center gap-2 flex-wrap">
+															<span className="text-[9px] text-white/25 shrink-0">Panels</span>
+															<label className="flex items-center gap-1 cursor-pointer">
+																<input
+																	type="color"
+																	value={scene.beforeBgColor?.startsWith("#") ? scene.beforeBgColor : "#1e1b4b"}
+																	onChange={(e) => updateScenePlan(i, { beforeBgColor: e.target.value })}
+																	className="w-5 h-5 rounded border border-white/10 bg-transparent p-0 cursor-pointer"
+																/>
+																<span className="text-[9px] text-white/30">Before</span>
+															</label>
+															<label className="flex items-center gap-1 cursor-pointer">
+																<input
+																	type="color"
+																	value={scene.afterBgColor?.startsWith("#") ? scene.afterBgColor : "#f0f9ff"}
+																	onChange={(e) => updateScenePlan(i, { afterBgColor: e.target.value })}
+																	className="w-5 h-5 rounded border border-white/10 bg-transparent p-0 cursor-pointer"
+																/>
+																<span className="text-[9px] text-white/30">After</span>
+															</label>
+															<label className="flex items-center gap-1 cursor-pointer">
+																<input
+																	type="color"
+																	value={scene.afterAccentColor || scenePlan.accentColor || "#2563eb"}
+																	onChange={(e) => updateScenePlan(i, { afterAccentColor: e.target.value })}
+																	className="w-5 h-5 rounded border border-white/10 bg-transparent p-0 cursor-pointer"
+																/>
+																<span className="text-[9px] text-white/30">Accent</span>
+															</label>
+														</div>
+													)}
 													<SceneLayerEditor
 														scene={scene}
 														sceneIndex={i}
