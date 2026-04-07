@@ -2355,15 +2355,14 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 														<div className="flex items-center gap-1 flex-wrap">
 															{BACKGROUND_NAMES.map((name) => {
 																const css = BACKGROUND_PRESETS[name];
-																const isGradient = css.startsWith("linear-gradient");
 																const active = scene.background === name;
 																return (
 																	<button
 																		key={name}
 																		onClick={() => updateScenePlan(i, { background: name })}
 																		title={name}
-																		className={`w-6 h-6 rounded border-2 transition-all shrink-0 ${active ? "border-[#2563eb] ring-1 ring-[#2563eb]/50 scale-110" : "border-white/20 hover:border-white/40"}`}
-																		style={{ background: isGradient ? css : css }}
+																		className={`w-7 h-7 rounded transition-all shrink-0 ${active ? "ring-2 ring-[#2563eb] ring-offset-1 ring-offset-[#0c0c0f] scale-110" : "hover:scale-105"}`}
+																		style={{ background: css, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.2), 0 1px 3px rgba(0,0,0,0.5)" }}
 																	/>
 																);
 															})}
