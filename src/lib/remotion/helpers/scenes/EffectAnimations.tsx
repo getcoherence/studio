@@ -3,7 +3,6 @@
 // https://github.com/lifeprompt-team/remotion-scenes
 
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, random, Easing } from "remotion";
 
 const C = { black: "#0a0a0a", white: "#fafafa", gray: { 50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a", 600: "#52525b", 700: "#3f3f46", 800: "#27272a", 900: "#18181b", 950: "#0c0c0d" }, accent: "#6366f1", secondary: "#ec4899", tertiary: "#14b8a6", success: "#22c55e", warning: "#f59e0b", danger: "#ef4444", orange: "#f97316", yellow: "#eab308", gold: "#fbbf24", red: "#dc2626", cyan: "#06b6d4" };
 const font = "Inter, system-ui, sans-serif";
@@ -16,8 +15,6 @@ const EASE = { out: Easing.bezier(0.16, 1, 0.3, 1), inFn: Easing.bezier(0.7, 0, 
  * EffectChromaticAberration - 色収差 - クロマティックアベレーション
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const EffectChromaticAberration = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -123,8 +120,6 @@ export const EffectChromaticAberration = ({ startDelay = 0 }: {
  * EffectDepthOfField - ぼかし深度 - デプスオブフィールド
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const EffectDepthOfField = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -256,8 +251,6 @@ export const EffectDepthOfField = ({ startDelay = 0 }: {
  * EffectDuotone - デュオトーン効果
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const EffectDuotone = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -367,8 +360,6 @@ export const EffectDuotone = ({ startDelay = 0 }: {
  * EffectFilmGrain - フィルムグレイン - 映画風ノイズ
  */
 
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const EffectFilmGrain = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -473,8 +464,6 @@ export const EffectFilmGrain = ({ startDelay = 0 }: {
  * EffectGlow - グロー効果 - 発光
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const EffectGlow = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -570,8 +559,6 @@ export const EffectGlow = ({ startDelay = 0 }: {
  * EffectKaleidoscope - 万華鏡エフェクト
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const EffectKaleidoscope = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -684,8 +671,6 @@ export const EffectKaleidoscope = ({ startDelay = 0 }: {
  * EffectLightLeak - ライトリーク - 光漏れ効果
  */
 
-import { AbsoluteFill, useCurrentFrame, interpolate } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const EffectLightLeak = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -783,9 +768,6 @@ export const EffectLightLeak = ({ startDelay = 0 }: {
  * EffectMatrix - マトリックス風
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, random } from "remotion";
-import { lerp, font } from "../../common";
 
 export const EffectMatrix = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -877,8 +859,6 @@ export const EffectMatrix = ({ startDelay = 0 }: {
  * EffectNoise - ノイズテクスチャ - TVノイズ
  */
 
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const EffectNoise = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -967,8 +947,6 @@ export const EffectNoise = ({ startDelay = 0 }: {
  * EffectVHS - VHSエフェクト
  */
 
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, font } from "../../common";
 
 export const EffectVHS = ({ startDelay = 0 }: {
   startDelay?: number;

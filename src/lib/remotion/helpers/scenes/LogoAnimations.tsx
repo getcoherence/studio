@@ -3,7 +3,6 @@
 // https://github.com/lifeprompt-team/remotion-scenes
 
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, random, Easing } from "remotion";
 
 const C = { black: "#0a0a0a", white: "#fafafa", gray: { 50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a", 600: "#52525b", 700: "#3f3f46", 800: "#27272a", 900: "#18181b", 950: "#0c0c0d" }, accent: "#6366f1", secondary: "#ec4899", tertiary: "#14b8a6", success: "#22c55e", warning: "#f59e0b", danger: "#ef4444", orange: "#f97316", yellow: "#eab308", gold: "#fbbf24", red: "#dc2626", cyan: "#06b6d4" };
 const font = "Inter, system-ui, sans-serif";
@@ -16,8 +15,6 @@ const EASE = { out: Easing.bezier(0.16, 1, 0.3, 1), inFn: Easing.bezier(0.7, 0, 
  * Logo3DRotate - ロゴ3D回転
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion";
-import { C, font } from "../../common";
 
 export const Logo3DRotate = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -91,8 +88,6 @@ export const Logo3DRotate = ({ startDelay = 0 }: {
  * LogoGlitch - ロゴグリッチ
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, random } from "remotion";
-import { C, font } from "../../common";
 
 export const LogoGlitch = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -188,8 +183,6 @@ export const LogoGlitch = ({ startDelay = 0 }: {
  * LogoLightTrail - ロゴライトトレイル
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LogoLightTrail = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -267,8 +260,6 @@ export const LogoLightTrail = ({ startDelay = 0 }: {
  * LogoMaskReveal - ロゴマスクリビール
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LogoMaskReveal = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -340,8 +331,6 @@ export const LogoMaskReveal = ({ startDelay = 0 }: {
  * LogoMorph - ロゴモーフィング
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LogoMorph = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -419,8 +408,6 @@ export const LogoMorph = ({ startDelay = 0 }: {
  * LogoNeonSign - ロゴネオンサイン
  */
 
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const LogoNeonSign = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -527,9 +514,6 @@ export const LogoNeonSign = ({ startDelay = 0 }: {
  * LogoParticles - ロゴパーティクル集合
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate, random } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const LogoParticles = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -615,8 +599,6 @@ export const LogoParticles = ({ startDelay = 0 }: {
  * LogoSplitScreen - ロゴスプリットスクリーン
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LogoSplitScreen = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -695,8 +677,6 @@ export const LogoSplitScreen = ({ startDelay = 0 }: {
  * LogoStamp - ロゴスタンプ
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate, random } from "remotion";
-import { C, font } from "../../common";
 
 export const LogoStamp = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -795,8 +775,6 @@ export const LogoStamp = ({ startDelay = 0 }: {
  * LogoStroke - ロゴストロークアニメーション
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LogoStroke = ({ startDelay = 0 }: {
   startDelay?: number;

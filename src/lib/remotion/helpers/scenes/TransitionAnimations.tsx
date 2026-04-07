@@ -3,7 +3,6 @@
 // https://github.com/lifeprompt-team/remotion-scenes
 
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, random, Easing } from "remotion";
 
 const C = { black: "#0a0a0a", white: "#fafafa", gray: { 50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a", 600: "#52525b", 700: "#3f3f46", 800: "#27272a", 900: "#18181b", 950: "#0c0c0d" }, accent: "#6366f1", secondary: "#ec4899", tertiary: "#14b8a6", success: "#22c55e", warning: "#f59e0b", danger: "#ef4444", orange: "#f97316", yellow: "#eab308", gold: "#fbbf24", red: "#dc2626", cyan: "#06b6d4" };
 const font = "Inter, system-ui, sans-serif";
@@ -16,8 +15,6 @@ const EASE = { out: Easing.bezier(0.16, 1, 0.3, 1), inFn: Easing.bezier(0.7, 0, 
  * TransitionBlinds - ブラインドトランジション - 縦ブラインド
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TransitionBlinds = ({ startDelay = 0, direction = "vertical" }: {
   startDelay?: number;
@@ -133,8 +130,6 @@ export const TransitionBlinds = ({ startDelay = 0, direction = "vertical" }: {
  * TransitionBoxReveal - ボックスリビール - グリッド状に表示
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const TransitionBoxReveal = ({ startDelay = 0, gridSize = 6 }: {
   startDelay?: number;
@@ -205,8 +200,6 @@ export const TransitionBoxReveal = ({ startDelay = 0, gridSize = 6 }: {
  * TransitionCircleWipe - サークルワイプ - 円形に広がる
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TransitionCircleWipe = ({ startDelay = 0, originX = 50, originY = 50 }: {
   startDelay?: number;
@@ -278,8 +271,6 @@ export const TransitionCircleWipe = ({ startDelay = 0, originX = 50, originY = 5
  * TransitionDiagonalSlice - 斜めスライス - 斜線で切り替え
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TransitionDiagonalSlice = ({ startDelay = 0, angle = 15 }: {
   startDelay?: number;
@@ -354,8 +345,6 @@ export const TransitionDiagonalSlice = ({ startDelay = 0, angle = 15 }: {
  * TransitionFlash - フラッシュトランジション
  */
 
-import { AbsoluteFill, useCurrentFrame, interpolate } from "remotion";
-import { C, font } from "../../common";
 
 export const TransitionFlash = ({ startDelay = 0, flashColor = C.white }: {
   startDelay?: number;
@@ -429,8 +418,6 @@ export const TransitionFlash = ({ startDelay = 0, flashColor = C.white }: {
  * TransitionGlitch - グリッチトランジション
  */
 
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, font } from "../../common";
 
 export const TransitionGlitch = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -535,8 +522,6 @@ export const TransitionGlitch = ({ startDelay = 0 }: {
  * TransitionLineSweep - ラインスイープ - 複数の線が横切る
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TransitionLineSweep = ({ startDelay = 0, lineCount = 5 }: {
   startDelay?: number;
@@ -618,8 +603,6 @@ export const TransitionLineSweep = ({ startDelay = 0, lineCount = 5 }: {
  * TransitionLiquidMorph - リキッドモーフ - 液体状に変形
  */
 
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TransitionLiquidMorph = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -737,8 +720,6 @@ export const TransitionLiquidMorph = ({ startDelay = 0 }: {
  * TransitionShutter - シャッタートランジション - カメラシャッター風
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TransitionShutter = ({ startDelay = 0, bladeCount = 8 }: {
   startDelay?: number;
@@ -842,8 +823,6 @@ export const TransitionShutter = ({ startDelay = 0, bladeCount = 8 }: {
  * TransitionZoomBlur - ズームブラートランジション
  */
 
-import { AbsoluteFill, useCurrentFrame, interpolate } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const TransitionZoomBlur = ({ startDelay = 0 }: {
   startDelay?: number;

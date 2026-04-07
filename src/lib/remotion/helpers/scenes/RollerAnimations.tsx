@@ -3,7 +3,6 @@
 // https://github.com/lifeprompt-team/remotion-scenes
 
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, random, Easing } from "remotion";
 
 const C = { black: "#0a0a0a", white: "#fafafa", gray: { 50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a", 600: "#52525b", 700: "#3f3f46", 800: "#27272a", 900: "#18181b", 950: "#0c0c0d" }, accent: "#6366f1", secondary: "#ec4899", tertiary: "#14b8a6", success: "#22c55e", warning: "#f59e0b", danger: "#ef4444", orange: "#f97316", yellow: "#eab308", gold: "#fbbf24", red: "#dc2626", cyan: "#06b6d4" };
 const font = "Inter, system-ui, sans-serif";
@@ -16,8 +15,6 @@ const EASE = { out: Easing.bezier(0.16, 1, 0.3, 1), inFn: Easing.bezier(0.7, 0, 
  * Roller3DCarousel - 3Dカルーセル - 円筒状に回転するテキスト
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, Easing } from "remotion";
-import { C, font } from "../../common";
 
 export const Roller3DCarousel = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -139,8 +136,6 @@ export const Roller3DCarousel = ({ startDelay = 0 }: {
  * RollerBlur - ブラー切り替え
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const RollerBlur = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -211,8 +206,6 @@ export const RollerBlur = ({ startDelay = 0 }: {
  * RollerCountdown - カウントダウンリビール
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const RollerCountdown = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -501,8 +494,6 @@ export const RollerCountdown = ({ startDelay = 0 }: {
  * RollerDramaticStop - ドラマチックストップ - 一度止まりそうになってまた回る
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, Easing } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const RollerDramaticStop = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -730,8 +721,6 @@ export const RollerDramaticStop = ({ startDelay = 0 }: {
  * RollerDrum - 回転ドラム
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const RollerDrum = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -833,8 +822,6 @@ export const RollerDrum = ({ startDelay = 0 }: {
  * RollerFadeSlide - フェードスライド（上からフェードイン）
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const RollerFadeSlide = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -943,8 +930,6 @@ export const RollerFadeSlide = ({ startDelay = 0 }: {
  * RollerFlip - フリップ（カードめくり風）
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { font } from "../../common";
 
 const C = {
   light: "#fafafa",
@@ -1028,8 +1013,6 @@ export const RollerFlip = ({ startDelay = 0 }: {
  * RollerGlitch - グリッチ切り替え
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, font } from "../../common";
 
 export const RollerGlitch = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1145,8 +1128,6 @@ export const RollerGlitch = ({ startDelay = 0 }: {
  * RollerGradientWave - グラデーションウェーブ - 色が波のように流れながら変化
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const RollerGradientWave = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1271,8 +1252,6 @@ export const RollerGradientWave = ({ startDelay = 0 }: {
  * RollerLiquid - 流体モーフィング
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const RollerLiquid = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1387,8 +1366,6 @@ export const RollerLiquid = ({ startDelay = 0 }: {
  * RollerMaskSlide - マスクスライド
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const RollerMaskSlide = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1497,8 +1474,6 @@ export const RollerMaskSlide = ({ startDelay = 0 }: {
  * RollerMultiSlot - マルチスロット - 複数列が順番に止まる
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, Easing } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const RollerMultiSlot = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1735,8 +1710,6 @@ export const RollerMultiSlot = ({ startDelay = 0 }: {
  * RollerOutlineHighlight - アウトラインハイライト - 縦に並んだ同じワード、1つだけ塗りつぶし
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, Easing } from "remotion";
-import { C, font } from "../../common";
 
 export const RollerOutlineHighlight = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1829,8 +1802,6 @@ export const RollerOutlineHighlight = ({ startDelay = 0 }: {
  * RollerPerspectiveStripes - パースペクティブストライプ - 斜めに流れるテキスト帯
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const RollerPerspectiveStripes = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1963,8 +1934,6 @@ export const RollerPerspectiveStripes = ({ startDelay = 0 }: {
  * RollerScaleBounce - スケールバウンス
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const RollerScaleBounce = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2040,8 +2009,6 @@ export const RollerScaleBounce = ({ startDelay = 0 }: {
  * RollerShuffle - シャッフルリビール - 文字がシャッフルされて収束
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const RollerShuffle = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2172,8 +2139,6 @@ export const RollerShuffle = ({ startDelay = 0 }: {
  * RollerSlotMachine - 高速縦ロール（スロットマシン風）
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { font } from "../../common";
 
 const C = {
   black: "#0a0a0a",
@@ -2301,8 +2266,6 @@ export const RollerSlotMachine = ({ startDelay = 0 }: {
  * RollerSlotReveal - スロットリビール - 「New [X]」形式でゆっくり→高速→キャッチコピー
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const RollerSlotReveal = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2491,8 +2454,6 @@ export const RollerSlotReveal = ({ startDelay = 0 }: {
  * RollerSplitFlap - スプリットフラップ（空港案内板風）
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const RollerSplitFlap = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2648,8 +2609,6 @@ export const RollerSplitFlap = ({ startDelay = 0 }: {
  * RollerTypewriter - タイプライター置換
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, font } from "../../common";
 
 export const RollerTypewriter = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2731,8 +2690,6 @@ export const RollerTypewriter = ({ startDelay = 0 }: {
  * RollerVerticalList - 縦スクロール（リスト風）
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const RollerVerticalList = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2849,8 +2806,6 @@ export const RollerVerticalList = ({ startDelay = 0 }: {
  * RollerWave - 波形スライド
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const RollerWave = ({ startDelay = 0 }: {
   startDelay?: number;

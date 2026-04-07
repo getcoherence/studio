@@ -3,7 +3,6 @@
 // https://github.com/lifeprompt-team/remotion-scenes
 
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, random, Easing } from "remotion";
 
 const C = { black: "#0a0a0a", white: "#fafafa", gray: { 50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a", 600: "#52525b", 700: "#3f3f46", 800: "#27272a", 900: "#18181b", 950: "#0c0c0d" }, accent: "#6366f1", secondary: "#ec4899", tertiary: "#14b8a6", success: "#22c55e", warning: "#f59e0b", danger: "#ef4444", orange: "#f97316", yellow: "#eab308", gold: "#fbbf24", red: "#dc2626", cyan: "#06b6d4" };
 const font = "Inter, system-ui, sans-serif";
@@ -16,8 +15,6 @@ const EASE = { out: Easing.bezier(0.16, 1, 0.3, 1), inFn: Easing.bezier(0.7, 0, 
  * BackgroundAurora - オーロラ効果
  */
 
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const BackgroundAurora = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -119,9 +116,6 @@ export const BackgroundAurora = ({ startDelay = 0 }: {
  * BackgroundBokeh - ボケ効果
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const BackgroundBokeh = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -192,8 +186,6 @@ export const BackgroundBokeh = ({ startDelay = 0 }: {
  * BackgroundFlowingGradient - 流れるグラデーション
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const BackgroundFlowingGradient = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -244,9 +236,6 @@ export const BackgroundFlowingGradient = ({ startDelay = 0 }: {
  * BackgroundGeometric - ジオメトリックパターン
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const BackgroundGeometric = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -317,8 +306,6 @@ export const BackgroundGeometric = ({ startDelay = 0 }: {
  * BackgroundGrid - グリッドアニメーション
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const BackgroundGrid = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -385,8 +372,6 @@ export const BackgroundGrid = ({ startDelay = 0 }: {
  * BackgroundMeshGradient - メッシュグラデーション
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const BackgroundMeshGradient = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -476,8 +461,6 @@ export const BackgroundMeshGradient = ({ startDelay = 0 }: {
  * BackgroundNoiseTexture - ノイズテクスチャ
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const BackgroundNoiseTexture = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -541,8 +524,6 @@ export const BackgroundNoiseTexture = ({ startDelay = 0 }: {
  * BackgroundPerspectiveGrid - パースペクティブグリッド
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const BackgroundPerspectiveGrid = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -626,8 +607,6 @@ export const BackgroundPerspectiveGrid = ({ startDelay = 0 }: {
  * BackgroundRadial - 放射状パターン
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const BackgroundRadial = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -708,8 +687,6 @@ export const BackgroundRadial = ({ startDelay = 0 }: {
  * BackgroundWaves - 波形背景
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const BackgroundWaves = ({ startDelay = 0 }: {
   startDelay?: number;

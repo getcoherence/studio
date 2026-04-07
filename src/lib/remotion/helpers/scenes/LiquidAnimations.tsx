@@ -3,7 +3,6 @@
 // https://github.com/lifeprompt-team/remotion-scenes
 
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, random, Easing } from "remotion";
 
 const C = { black: "#0a0a0a", white: "#fafafa", gray: { 50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a", 600: "#52525b", 700: "#3f3f46", 800: "#27272a", 900: "#18181b", 950: "#0c0c0d" }, accent: "#6366f1", secondary: "#ec4899", tertiary: "#14b8a6", success: "#22c55e", warning: "#f59e0b", danger: "#ef4444", orange: "#f97316", yellow: "#eab308", gold: "#fbbf24", red: "#dc2626", cyan: "#06b6d4" };
 const font = "Inter, system-ui, sans-serif";
@@ -16,8 +15,6 @@ const EASE = { out: Easing.bezier(0.16, 1, 0.3, 1), inFn: Easing.bezier(0.7, 0, 
  * LiquidBlob - 有機的ブロブモーション - 複数レイヤーの巨大ブロブ
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, random } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LiquidBlob = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -163,10 +160,6 @@ export const LiquidBlob = ({ startDelay = 0 }: {
  * LiquidCalligraphyInk - 墨/書道風インク - ダイナミックな筆致と飛沫
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, random } from "remotion";
-import { EASE, lerp, font } from "../../common";
-import { generateBlobPath } from "./shared/blobUtils";
 
 export const LiquidCalligraphyInk = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -343,9 +336,6 @@ export const LiquidCalligraphyInk = ({ startDelay = 0 }: {
  * LiquidFluidWave - 流体ウェーブ - 画面を覆う巨大な波
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, random } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LiquidFluidWave = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -503,9 +493,6 @@ export const LiquidFluidWave = ({ startDelay = 0 }: {
  * LiquidInkSplash - インクスプラッシュリビール（Spotify風）
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, random } from "remotion";
-import { C, font } from "../../common";
-import { generateBlobPath } from "./shared/blobUtils";
 
 export const LiquidInkSplash = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -612,9 +599,6 @@ export const LiquidInkSplash = ({ startDelay = 0 }: {
  * LiquidMorphBlob - モーフィングブロブ - 巨大な変形するブロブ群
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, random } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LiquidMorphBlob = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -784,8 +768,6 @@ export const LiquidMorphBlob = ({ startDelay = 0 }: {
  * LiquidOilSpill - オイルスピル風 - 虹色に輝く巨大な油膜
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, random } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LiquidOilSpill = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -950,9 +932,6 @@ export const LiquidOilSpill = ({ startDelay = 0 }: {
  * LiquidPaintDrip - ペイントドリップ - 画面を覆うカラフルなペイント
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, random } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LiquidPaintDrip = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1135,10 +1114,6 @@ export const LiquidPaintDrip = ({ startDelay = 0 }: {
  * LiquidSplatter - スプラッターエフェクト - 画面を覆う大胆なスプラッシュ
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, random } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
-import { generateBlobPath } from "./shared/blobUtils";
 
 export const LiquidSplatter = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1328,8 +1303,6 @@ export const LiquidSplatter = ({ startDelay = 0 }: {
  * LiquidSwirl - 渦巻きスワール - 巨大な液体渦巻き
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, random } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LiquidSwirl = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1496,9 +1469,6 @@ export const LiquidSwirl = ({ startDelay = 0 }: {
  * LiquidWaterDrop - 水滴リップルエフェクト - 巨大な波紋と水柱
  */
 
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, random } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const LiquidWaterDrop = ({ startDelay = 0 }: {
   startDelay?: number;

@@ -3,7 +3,6 @@
 // https://github.com/lifeprompt-team/remotion-scenes
 
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, random, Easing } from "remotion";
 
 const C = { black: "#0a0a0a", white: "#fafafa", gray: { 50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a", 600: "#52525b", 700: "#3f3f46", 800: "#27272a", 900: "#18181b", 950: "#0c0c0d" }, accent: "#6366f1", secondary: "#ec4899", tertiary: "#14b8a6", success: "#22c55e", warning: "#f59e0b", danger: "#ef4444", orange: "#f97316", yellow: "#eab308", gold: "#fbbf24", red: "#dc2626", cyan: "#06b6d4" };
 const font = "Inter, system-ui, sans-serif";
@@ -16,8 +15,6 @@ const EASE = { out: Easing.bezier(0.16, 1, 0.3, 1), inFn: Easing.bezier(0.7, 0, 
  * Theme3DGlass - 3D Glass - 液体ガラス効果（透明感と流動性）
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const Theme3DGlass = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -562,13 +559,6 @@ export const Theme3DGlass = ({ startDelay = 0 }: {
  * MeshTransmissionMaterial使用
  */
 
-import { useRef, useMemo, Suspense, useEffect } from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { ThreeCanvas } from "@remotion/three";
-import { useThree } from "@react-three/fiber";
-import * as THREE from "three";
-import { MeshTransmissionMaterial, Environment, Text } from "@react-three/drei";
-import { font } from "../../common";
 
 // ガラスマテリアルを持つ角丸ボックス
 const GlassBox3D = ({ position, rotation, scale, progress }: {
@@ -840,8 +830,6 @@ export const Theme3DGlassThreeJS = ({ startDelay = 0 }: {
  * ThemeArtDeco - Art Deco - アールデコ
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ThemeArtDeco = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -987,8 +975,6 @@ export const ThemeArtDeco = ({ startDelay = 0 }: {
  * ThemeBauhaus - Bauhaus - バウハウス
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ThemeBauhaus = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1119,8 +1105,6 @@ export const ThemeBauhaus = ({ startDelay = 0 }: {
  * ThemeBoho - ボーホー/ボヘミアン - 暖色、パターン
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { lerp, font } from "../../common";
 
 export const ThemeBoho = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1246,8 +1230,6 @@ export const ThemeBoho = ({ startDelay = 0 }: {
  * ThemeBrutalistWeb - Brutalist Web - ブルータリストウェブ
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ThemeBrutalistWeb = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1401,8 +1383,6 @@ export const ThemeBrutalistWeb = ({ startDelay = 0 }: {
  * ThemeCosmic - Cosmic/Space - 宇宙
  */
 
-import { AbsoluteFill, useCurrentFrame, random } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ThemeCosmic = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1541,8 +1521,6 @@ export const ThemeCosmic = ({ startDelay = 0 }: {
  * ThemeCyberpunk - サイバーパンク - ネオン、グリッチ
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, font } from "../../common";
 
 export const ThemeCyberpunk = ({ startDelay: _startDelay = 0 }: {
   startDelay?: number;
@@ -1665,8 +1643,6 @@ export const ThemeCyberpunk = ({ startDelay: _startDelay = 0 }: {
  * ThemeDarkMode - ダークモード - 深い黒、微妙なグラデ
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ThemeDarkMode = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1791,8 +1767,6 @@ export const ThemeDarkMode = ({ startDelay = 0 }: {
  * ThemeDuotone - Duotone - デュオトーン
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ThemeDuotone = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -1902,8 +1876,6 @@ export const ThemeDuotone = ({ startDelay = 0 }: {
  * ThemeGeometricAbstract - Geometric Abstraction - 幾何学抽象
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ThemeGeometricAbstract = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2005,8 +1977,6 @@ export const ThemeGeometricAbstract = ({ startDelay = 0 }: {
  * ThemeGlassmorphism - グラスモーフィズム - 半透明、ブラー
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const ThemeGlassmorphism = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2102,8 +2072,6 @@ export const ThemeGlassmorphism = ({ startDelay = 0 }: {
  * ThemeGradient - グラデーション - カラフルなグラデ
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ThemeGradient = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2173,8 +2141,6 @@ export const ThemeGradient = ({ startDelay = 0 }: {
  * ThemeHolographic - Holographic - ホログラフィック
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { lerp, font } from "../../common";
 
 export const ThemeHolographic = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2282,8 +2248,6 @@ export const ThemeHolographic = ({ startDelay = 0 }: {
  * ThemeIndustrial - Industrial - 工業的
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ThemeIndustrial = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2451,8 +2415,6 @@ export const ThemeIndustrial = ({ startDelay = 0 }: {
  * ThemeIsometric - 3D/イソメトリック
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, random } from "remotion";
-import { C, font } from "../../common";
 
 export const ThemeIsometric = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2555,8 +2517,6 @@ export const ThemeIsometric = ({ startDelay = 0 }: {
  * ThemeJapanese - 和風/ジャパニーズ - 余白、縦書き
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ThemeJapanese = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2655,8 +2615,6 @@ export const ThemeJapanese = ({ startDelay = 0 }: {
  * ThemeLuxury - ラグジュアリー - ゴールド、高級感
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ThemeLuxury = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2772,8 +2730,6 @@ export const ThemeLuxury = ({ startDelay = 0 }: {
  * ThemeMemphis - Memphis - メンフィスデザイン
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const ThemeMemphis = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2916,8 +2872,6 @@ export const ThemeMemphis = ({ startDelay = 0 }: {
  * ThemeMinimalist - ミニマリスト - 極限のシンプル
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ThemeMinimalist = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -2980,8 +2934,6 @@ export const ThemeMinimalist = ({ startDelay = 0 }: {
  * ThemeMonochrome - モノクローム - 白黒の美学
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ThemeMonochrome = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -3072,8 +3024,6 @@ export const ThemeMonochrome = ({ startDelay = 0 }: {
  * ThemeNatural - ナチュラル/オーガニック - 自然、アースカラー
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { lerp, font } from "../../common";
 
 export const ThemeNatural = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -3186,8 +3136,6 @@ export const ThemeNatural = ({ startDelay = 0 }: {
  * ThemeNeobrutalism - ネオブルタリズム - 太い枠線、原色、影
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const ThemeNeobrutalism = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -3282,8 +3230,6 @@ export const ThemeNeobrutalism = ({ startDelay = 0 }: {
  * ThemeNeon - Neon - ネオン
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ThemeNeon = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -3401,8 +3347,6 @@ export const ThemeNeon = ({ startDelay = 0 }: {
  * ThemeNeumorphism - ニューモーフィズム - ソフトな凹凸
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, font } from "../../common";
 
 export const ThemeNeumorphism = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -3511,8 +3455,6 @@ export const ThemeNeumorphism = ({ startDelay = 0 }: {
  * ThemeOrganic - Organic - オーガニック/流動的
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ThemeOrganic = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -3601,8 +3543,6 @@ export const ThemeOrganic = ({ startDelay = 0 }: {
  * ThemePaperCut - Paper Cut - ペーパーカット
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ThemePaperCut = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -3715,8 +3655,6 @@ export const ThemePaperCut = ({ startDelay = 0 }: {
  * ThemePop - ポップ/カラフル - 鮮やかな色
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ThemePop = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -3778,8 +3716,6 @@ export const ThemePop = ({ startDelay = 0 }: {
  * ThemeRetro - レトロ/ヴィンテージ - セピア、ノイズ
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { EASE, lerp, font } from "../../common";
 
 export const ThemeRetro = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -3889,8 +3825,6 @@ export const ThemeRetro = ({ startDelay = 0 }: {
  * ThemeSwiss - Swiss/International - スイスデザイン
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, EASE, lerp, font } from "../../common";
 
 export const ThemeSwiss = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -4029,8 +3963,6 @@ export const ThemeSwiss = ({ startDelay = 0 }: {
  * ThemeTech - テック/スタートアップ - モダン、クリーン
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ThemeTech = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -4215,8 +4147,6 @@ export const ThemeTech = ({ startDelay = 0 }: {
  * ThemeWatercolor - Watercolor - 水彩
  */
 
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { C, lerp, font } from "../../common";
 
 export const ThemeWatercolor = ({ startDelay = 0 }: {
   startDelay?: number;
@@ -4329,8 +4259,6 @@ export const ThemeWatercolor = ({ startDelay = 0 }: {
  * ThemeY2K - Y2K / Millennium - 2000年代初頭のグロッシー&メタリック
  */
 
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { font } from "../../common";
 
 export const ThemeY2K = ({ startDelay = 0 }: {
   startDelay?: number;
