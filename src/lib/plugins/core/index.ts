@@ -6,6 +6,7 @@
 import { pluginRegistry } from "../registry";
 import { coreAnimationsPlugin } from "./animations";
 import { coreEffectsPlugin } from "./effects";
+import { sceneLibraryPlugin } from "./sceneLibrary";
 import { coreSceneTypesPlugin } from "./sceneTypes";
 import { coreTransitionsPlugin } from "./transitions";
 
@@ -14,6 +15,7 @@ export function loadCorePlugins(): void {
 	pluginRegistry.loadPlugin(coreTransitionsPlugin);
 	pluginRegistry.loadPlugin(coreEffectsPlugin);
 	pluginRegistry.loadPlugin(coreAnimationsPlugin);
+	pluginRegistry.loadPlugin(sceneLibraryPlugin);
 
 	console.log(
 		`[Plugins] Core loaded: ${pluginRegistry.getSceneTypes().length} scene types, ` +
