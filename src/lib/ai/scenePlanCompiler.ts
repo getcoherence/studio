@@ -1677,7 +1677,7 @@ function renderAvatarConstellation(scene: ScenePlanItem, accent: string, bg: str
       </Scene>`;
 }
 
-function renderGradientMeshHero(scene: ScenePlanItem, _accent: string, bg: string): string {
+function renderGradientMeshHero(scene: ScenePlanItem, _accent: string, _bg: string): string {
 	const meshColorArr = scene.meshColors || ["#ffd6e7", "#e0d4ff", "#d4fff1", "#ffefd6"];
 	const isDark = isDarkHex(meshColorArr[0]);
 	const textColor = resolveTextColor(scene);
@@ -1693,13 +1693,14 @@ function renderGradientMeshHero(scene: ScenePlanItem, _accent: string, bg: strin
 	const effect = scene.backgroundEffect && scene.backgroundEffect !== "none" ? scene.backgroundEffect : null;
 	const pal = accentPalette(_accent);
 	const intensity = scene.backgroundEffectIntensity ?? 0.7;
-	return `<Scene bg="${bg}"${effect ? ` bgEffect="${effect}" bgEffectColors={["${_accent}","${pal.w}","${pal.k}"]} bgEffectIntensity={${intensity}}` : ""}>
-        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}><GradientMesh colors={${colors}} dots={${dots}} /></div>
-        <div style={{ position: 'relative', zIndex: 1 }}>
+	return `<AbsoluteFill>
+        <AbsoluteFill style={{ opacity: ${intensity} }}><GradientMesh colors={${colors}} dots={${dots}} /></AbsoluteFill>
+        ${effect ? `<AbsoluteFill style={{ pointerEvents: 'none' }}><AnimatedBackground variant="${effect}" colors={["${_accent}","${pal.w}","${pal.k}"]} intensity={${intensity}} /></AbsoluteFill>` : ""}
+        <AbsoluteFill style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 80 }}>
           <AnimatedText text={${headline}} fontSize={${fontSize}} color="${textColor}" fontFamily="Georgia, serif" animation="blur-in" />
           ${subtitle ? `<div style={{ marginTop: 24 }}><AnimatedText text={${subtitle}} fontSize={36} color="${subtitleColor}" fontFamily="'Inter', sans-serif" animation="words" delay={12} /></div>` : ""}
-        </div>
-      </Scene>`;
+        </AbsoluteFill>
+      </AbsoluteFill>`;
 }
 
 function renderDashboardDeconstructed(scene: ScenePlanItem, _accent: string, bg: string): string {
