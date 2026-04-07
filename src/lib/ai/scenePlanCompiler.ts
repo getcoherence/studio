@@ -17,22 +17,26 @@ import {
 // Minimum durations per scene type — scenes shorter than this don't give the viewer
 // enough time to read the content (ghost-hook and stacked-hierarchy especially).
 const MIN_DURATION_BY_TYPE: Record<string, number> = {
-	"ghost-hook": 50,
-	"stacked-hierarchy": 60,
-	"scrolling-list": 85, // needs time for ALL lines to reveal + hold
-	"camera-text": 65,
-	"before-after": 75,
-	"metrics-dashboard": 70,
-	"dashboard-deconstructed": 70,
-	"data-flow-network": 70,
-	"icon-showcase": 65,
-	"chat-narrative": 70,
-	"notification-chaos": 60,
-	"browser-tabs-chaos": 60,
-	"typewriter-prompt": 60,
-	"word-slot-machine": 70,
-	"radial-vortex": 55,
-	cards: 70,
+	"ghost-hook": 90,
+	"stacked-hierarchy": 110,
+	"scrolling-list": 150,
+	"camera-text": 120,
+	"before-after": 140,
+	"metrics-dashboard": 130,
+	"dashboard-deconstructed": 130,
+	"data-flow-network": 130,
+	"icon-showcase": 110,
+	"chat-narrative": 130,
+	"notification-chaos": 110,
+	"browser-tabs-chaos": 110,
+	"typewriter-prompt": 110,
+	"word-slot-machine": 130,
+	"radial-vortex": 100,
+	"glass-stats": 130,
+	"device-showcase": 120,
+	"cinematic-title": 100,
+	"countdown": 150,
+	cards: 130,
 };
 
 /** Clamp scene duration based on type. Enforces MINIMUM only — no max cap
