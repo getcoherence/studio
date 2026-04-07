@@ -2214,7 +2214,7 @@ export function expandSceneToLayers(scene: ScenePlanItem, accent: string): Scene
 	if (scene.headline && !skipHeadline) {
 		const headlineSize = Math.max(100, scene.fontSize || 120);
 		layers.push({
-			id: `headline-${scene.headline.slice(0, 10)}`,
+			id: "headline-0",
 			type: "text",
 			content: scene.headline,
 			position: "center",
@@ -2241,7 +2241,7 @@ export function expandSceneToLayers(scene: ScenePlanItem, accent: string): Scene
 	// Skipped for scene types that don't render subtitles (same list as headline).
 	if (scene.subtitle && !skipHeadline) {
 		layers.push({
-			id: `subtitle-${scene.subtitle.slice(0, 10)}`,
+			id: "subtitle-0",
 			type: "text",
 			content: scene.subtitle,
 			position: "center",
