@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SceneLayer, ScenePlanItem } from "@/lib/ai/scenePlan";
+import { pluginRegistry } from "@/lib/plugins";
 
 /**
  * Text input that maintains local state during typing and only pushes
@@ -665,24 +666,9 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 									title="Text animation. Per-Char = letter-by-letter fade, Words = word-by-word entrance, Scale = grow from 0.5x, Clip = diagonal reveal, Gradient = gradient wipe, Glitch = RGB split jitter, Blur = defocus→sharp, Bounce = spring drop, Wave = sinusoidal bob, Typewriter = character reveal with cursor, Staccato = rhythmic punch, Split = top/bottom halves slide together, Drop = fall from above, Scramble = random chars resolving to final, None = static."
 									className="text-[10px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-purple-400/60 [&>option]:bg-[#141417] [&>option]:text-white"
 								>
-									<option value="chars">Per-Char</option>
-									<option value="words">Words</option>
-									<option value="scale">Scale</option>
-									<option value="clip">Clip</option>
-									<option value="gradient">Gradient</option>
-									<option value="glitch">Glitch</option>
-									<option value="blur-in">Blur</option>
-									<option value="bounce">Bounce</option>
-									<option value="wave">Wave</option>
-									<option value="typewriter">Typewriter</option>
-									<option value="staccato">Staccato</option>
-									<option value="split">Split</option>
-									<option value="drop">Drop</option>
-									<option value="scramble">Scramble</option>
-									<option value="matrix">Matrix</option>
-									<option value="rotate-3d">3D Rotate</option>
-									<option value="glitch-in">Glitch In</option>
-									<option value="none">None</option>
+									{pluginRegistry.getAnimations().map((a) => (
+										<option key={a.id} value={a.id}>{a.name}</option>
+									))}
 								</select>
 								<span
 									className="text-white/20"

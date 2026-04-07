@@ -66,83 +66,9 @@ const BG_EFFECT_OPTIONS = [
 	"flowing-gradient",
 ] as const;
 
-const SCENE_TEMPLATE_CATALOG = [
-	// Text
-	{ type: "hero-text", icon: "T", label: "Hero Text", description: "Large centered headline with animation", defaultHeadline: "Your headline" },
-	{ type: "impact-word", icon: "!", label: "Impact Word", description: "Single massive word, 240-320px", defaultHeadline: "Finally." },
-	{ type: "ghost-hook", icon: "👻", label: "Ghost Hook", description: "Sentence fragmentation with ghost future words" },
-	{ type: "camera-text", icon: "🎥", label: "Camera Text", description: "Cinematic camera zoom through appearing words" },
-	{ type: "stacked-hierarchy", icon: "📊", label: "Stacked Hierarchy", description: "Text lines with dramatic size hierarchy" },
-	{ type: "outline-hero", icon: "O", label: "Outline Hero", description: "Hollow stroke-only typography" },
-	{ type: "echo-hero", icon: "🔊", label: "Echo Hero", description: "Text with motion-blur zoom trail" },
-	{ type: "typewriter-prompt", icon: "⌨️", label: "Typewriter", description: "Animated typing input with glow" },
-	{ type: "word-slot-machine", icon: "🎰", label: "Slot Machine", description: "Vertical word list with selection checkmark" },
-	{ type: "cinematic-title", icon: "✨", label: "Cinematic Title", description: "Gradient text with particle effects" },
-	// Data & stats
-	{ type: "metrics-dashboard", icon: "📈", label: "Metrics", description: "Animated metric counters with labels" },
-	{ type: "glass-stats", icon: "🧊", label: "Glass Stats", description: "Glassmorphism cards with animated counters" },
-	{ type: "countdown", icon: "🔢", label: "Countdown", description: "Animated number counting up with confetti burst" },
-	{ type: "data-flow-network", icon: "🔗", label: "Data Flow", description: "Nodes connected by animated lines" },
-	{ type: "dashboard-deconstructed", icon: "📊", label: "Dashboard", description: "Floating metric cards with chart line" },
-	// Visual
-	{ type: "product-glow", icon: "📱", label: "Product Glow", description: "Tilted screenshot with perspective glow frame" },
-	{ type: "device-showcase", icon: "💻", label: "Device Showcase", description: "Screenshot in laptop/phone mockup" },
-	{ type: "gradient-mesh-hero", icon: "🎨", label: "Gradient Mesh", description: "Soft pastel mesh background with centered text" },
-	{ type: "avatar-constellation", icon: "👥", label: "Avatar Cloud", description: "Social proof avatars orbiting a claim" },
-	{ type: "scrolling-list", icon: "📜", label: "Scrolling List", description: "Lines scrolling up sequentially" },
-	// Chaos & social proof
-	{ type: "before-after", icon: "⚡", label: "Before/After", description: "Split-screen problem vs solution" },
-	{ type: "notification-chaos", icon: "🔔", label: "Notifications", description: "Platform notification cards scattered around" },
-	{ type: "browser-tabs-chaos", icon: "🌐", label: "Browser Tabs", description: "Too many tabs — overwhelm then solution" },
-	{ type: "chat-narrative", icon: "💬", label: "Chat Narrative", description: "Progressive chat UI with urgent messages" },
-	{ type: "app-icon-cloud", icon: "📱", label: "App Icons", description: "Floating 3D app icons in space" },
-	{ type: "icon-showcase", icon: "⚡", label: "Icon Showcase", description: "Feature icons in a grid layout" },
-	// CTA & branding
-	{ type: "cta", icon: "🚀", label: "Call to Action", description: "Headline + button + optional logo", defaultHeadline: "Get Started" },
-	{ type: "logo-reveal", icon: "✨", label: "Logo Reveal", description: "Brand moment with gradient text + glow" },
-] as const;
-
-const SCENE_TYPE_OPTIONS: ScenePlanItem["type"][] = [
-	"app-icon-cloud",
-	"avatar-constellation",
-	"before-after",
-	"browser-tabs-chaos",
-	"camera-text",
-	"cards",
-	"chat-narrative",
-	"collapse",
-	"cta",
-	"dashboard-deconstructed",
-	"data-flow-network",
-	"echo-hero",
-	"full-bleed",
-	"ghost-hook",
-	"glitch-intro",
-	"gradient-mesh-hero",
-	"hero-text",
-	"icon-showcase",
-	"impact-word",
-	"logo-reveal",
-	"metrics-dashboard",
-	"notification-chaos",
-	"outline-hero",
-	"process-ladder",
-	"product-glow",
-	"radial-vortex",
-	"scrolling-list",
-	"screenshot",
-	"split-layout",
-	"stacked-hierarchy",
-	"stacked-text",
-	"timeline-chaos",
-	"typewriter-prompt",
-	"word-slot-machine",
-	// Phase 3
-	"device-showcase",
-	"glass-stats",
-	"cinematic-title",
-	"countdown",
-];
+// Scene types, transitions, effects, and animations are now loaded from
+// the plugin registry (see src/lib/plugins/). Adding a plugin automatically
+// adds its features to all dropdowns and the template browser.
 
 /** Visual variant options per scene type. Types not listed here have no variants. */
 const SCENE_VARIANT_OPTIONS: Partial<Record<ScenePlanItem["type"], string[]>> = {
@@ -160,6 +86,7 @@ const SCENE_VARIANT_OPTIONS: Partial<Record<ScenePlanItem["type"], string[]>> = 
 };
 
 import { pruneLayersForType, seedFieldsForType, syncLayersToData } from "@/lib/ai/sceneLayerSync";
+import { pluginRegistry } from "@/lib/plugins";
 import {
 	compileScenePlan,
 	computeSceneOffsets,
@@ -2266,15 +2193,14 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 												<div className="text-xs text-white/60 font-medium">Scene Templates</div>
 												<div className="text-[10px] text-white/25 mb-1">Click to add a scene</div>
 												<div className="grid grid-cols-2 gap-1.5">
-													{SCENE_TEMPLATE_CATALOG.map((t) => (
+													{pluginRegistry.getSceneTypes().filter(t => t.category !== "legacy").map((t) => (
 														<button
-															key={t.type}
+															key={t.id}
 															onClick={() => {
 																addSceneToPlan(scenePlan.scenes.length - 1);
-																// Update the newly added scene's type
 																setTimeout(() => {
 																	const idx = scenePlan.scenes.length;
-																	updateScenePlan(idx, { type: t.type as any, headline: (t as any).defaultHeadline || "" });
+																	updateScenePlan(idx, { type: t.id as any, headline: t.defaultHeadline || "" });
 																}, 50);
 															}}
 															className="flex flex-col items-start gap-1 px-2 py-2 rounded-md border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/15 transition-colors text-left"
@@ -2282,7 +2208,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 														>
 															<div className="flex items-center gap-1.5 w-full">
 																<span className="text-[14px]">{t.icon}</span>
-																<span className="text-[10px] text-white/60 font-medium truncate">{t.label}</span>
+																<span className="text-[10px] text-white/60 font-medium truncate">{t.name}</span>
 															</div>
 															<span className="text-[9px] text-white/25 line-clamp-2">{t.description}</span>
 														</button>
@@ -2387,7 +2313,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 															title="Scene template"
 															className="text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-purple-400/70 [&>option]:bg-[#141417] [&>option]:text-white max-w-[130px] truncate"
 														>
-															{SCENE_TYPE_OPTIONS.map((t) => (
+															{pluginRegistry.getSceneTypeIds().map((t) => (
 																<option key={t} value={t}>
 																	{t}
 																</option>
@@ -2516,23 +2442,9 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 															className="text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-amber-400/60 [&>option]:bg-[#141417] [&>option]:text-white flex-1"
 														>
 															<option value="">Auto</option>
-															<option value="fade">Fade</option>
-															<option value="slide-left">Slide Left</option>
-															<option value="slide-right">Slide Right</option>
-															<option value="slide-up">Slide Up</option>
-															<option value="slide-down">Slide Down</option>
-															<option value="wipe-left">Wipe Left</option>
-															<option value="wipe-right">Wipe Right</option>
-															<option value="wipe-up">Wipe Up</option>
-															<option value="wipe-down">Wipe Down</option>
-															<option value="zoom-morph">Zoom Morph</option>
-															<option value="striped-slam">Striped Slam</option>
-															<option value="zoom-punch">Zoom Punch</option>
-															<option value="diagonal-reveal">Diagonal Reveal</option>
-															<option value="color-burst">Color Burst</option>
-															<option value="vertical-shutter">Vertical Shutter</option>
-															<option value="glitch-slam">Glitch Slam</option>
-															<option value="cut">Cut (instant)</option>
+															{pluginRegistry.getTransitions().map((t) => (
+																<option key={t.id} value={t.id}>{t.name}</option>
+															))}
 														</select>
 														<input
 															type="number"
