@@ -135,6 +135,10 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 		proj._aiCode = result.code;
 		proj._aiScreenshots = result.screenshots;
 		proj._aiPlan = result.plan ?? null;
+		// If music was generated during the pipeline, set it immediately
+		if (result.earlyMusicPath) {
+			proj._musicPath = result.earlyMusicPath;
+		}
 		proj._aiSteps = agent.steps.map((s) => ({
 			action: s.action,
 			headline: s.headline,
