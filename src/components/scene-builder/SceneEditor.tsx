@@ -2377,6 +2377,12 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 															<option value="wipe-up">Wipe Up</option>
 															<option value="wipe-down">Wipe Down</option>
 															<option value="zoom-morph">Zoom Morph</option>
+															<option value="striped-slam">Striped Slam</option>
+															<option value="zoom-punch">Zoom Punch</option>
+															<option value="diagonal-reveal">Diagonal Reveal</option>
+															<option value="color-burst">Color Burst</option>
+															<option value="vertical-shutter">Vertical Shutter</option>
+															<option value="glitch-slam">Glitch Slam</option>
 															<option value="cut">Cut (instant)</option>
 														</select>
 														<input

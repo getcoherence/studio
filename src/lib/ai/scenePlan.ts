@@ -212,6 +212,12 @@ export interface ScenePlanItem {
 		| "wipe-up"
 		| "wipe-down"
 		| "zoom-morph" // fly THROUGH the current scene into the next
+		| "striped-slam" // horizontal bars slam in from both sides
+		| "zoom-punch" // old retreats, new punches in with cubic ease
+		| "diagonal-reveal" // dark panel sweeps with accent line
+		| "color-burst" // sharp radial flash at the cut
+		| "vertical-shutter" // venetian blind panels snap shut/open
+		| "glitch-slam" // horizontal shake + RGB strip tears
 		| "cut"; // instant, no transition
 	/** Transition duration in frames (default 10, or 15 for zoom-morph) */
 	transitionDurationFrames?: number;

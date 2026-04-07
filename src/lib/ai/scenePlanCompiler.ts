@@ -154,10 +154,10 @@ function buildTransition(
 	}
 
 	const presentation = getTransitionPresentation(type);
-	const timing =
-		type === "zoom-morph"
-			? `springTiming({ config: { damping: 20, stiffness: 90, mass: 1 }, durationInFrames: ${duration} })`
-			: `linearTiming({ durationInFrames: ${duration} })`;
+	const SPRING_TRANSITIONS = new Set(["zoom-morph", "zoom-punch"]);
+	const timing = SPRING_TRANSITIONS.has(type)
+		? `springTiming({ config: { damping: 20, stiffness: 90, mass: 1 }, durationInFrames: ${duration} })`
+		: `linearTiming({ durationInFrames: ${duration} })`;
 
 	return `    <TransitionSeries.Transition presentation={${presentation}} timing={${timing}} />`;
 }
@@ -229,6 +229,18 @@ function getTransitionPresentation(type: string): string {
 			return 'wipe({ direction: "from-top" })';
 		case "zoom-morph":
 			return "zoomMorph()";
+		case "striped-slam":
+			return "stripedSlam()";
+		case "zoom-punch":
+			return "zoomPunch()";
+		case "diagonal-reveal":
+			return "diagonalReveal()";
+		case "color-burst":
+			return "colorBurst()";
+		case "vertical-shutter":
+			return "verticalShutter()";
+		case "glitch-slam":
+			return "glitchSlam()";
 		default:
 			return "fade()";
 	}
@@ -248,6 +260,17 @@ function getTransitionDuration(type: string): number {
 		case "slide-up":
 		case "slide-down":
 			return 10;
+		case "striped-slam":
+			return 50; // needs time for slam + retract
+		case "vertical-shutter":
+			return 35;
+		case "diagonal-reveal":
+		case "color-burst":
+			return 40;
+		case "zoom-punch":
+			return 35;
+		case "glitch-slam":
+			return 30;
 		case "fade":
 			return 8;
 		default:
