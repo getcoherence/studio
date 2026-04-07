@@ -1352,7 +1352,8 @@ function renderIconShowcase(scene: ScenePlanItem, _accent: string, bg: string): 
 		],
 	);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
-	const columns = Math.min(3, scene.iconItems?.length || 6);
+	const itemCount = scene.iconItems?.length || 6;
+	const columns = itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : itemCount % 3 === 0 ? 3 : itemCount % 2 === 0 ? 2 : 3;
 	const textColor = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 50 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${textColor}" fontFamily="Georgia, serif" animation="clip" /></div>` : ""}
@@ -1774,7 +1775,8 @@ function renderAppIconCloud(scene: ScenePlanItem, accent: string, bg: string): s
 	// Generate positions dynamically based on icon count — spread evenly across
 	// the frame with alternating vertical offsets so they don't overlap
 	const n = Math.min(icons.length, 9);
-	const cols = Math.min(n, 3);
+	// Choose columns that avoid orphans: prefer even rows
+	const cols = n <= 2 ? n : n <= 4 ? 2 : n % 3 === 0 ? 3 : n % 2 === 0 ? 2 : 3;
 	const iconsJson = JSON.stringify(icons.slice(0, n));
 	const headline = JSON.stringify(scene.headline || "Every tool. One flow.");
 	const fontSize = scene.fontSize || 120;
@@ -1786,7 +1788,7 @@ function renderAppIconCloud(scene: ScenePlanItem, accent: string, bg: string): s
           const icons = ${iconsJson};
           const cols = ${cols};
           return (
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', display: 'grid', gridTemplateColumns: 'repeat(' + cols + ', 1fr)', gap: 20, padding: '60px 100px', alignContent: 'center', justifyItems: 'center', pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignContent: 'center', gap: 24, padding: '60px 80px', pointerEvents: 'none' }}>
               {icons.map((icon, i) => {
                 const enter = spring({ frame: Math.max(0, frame - i * 4), fps, config: { damping: 12, stiffness: 120 } });
                 const float = Math.sin((frame / fps) * 1.5 + i * 2.1) * 8;
