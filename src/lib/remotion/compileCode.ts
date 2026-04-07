@@ -88,6 +88,23 @@ import {
 } from "./helpers/ParticleEffects";
 
 /**
+ * Render-prop component that provides the Sequence-local frame.
+ * Use this instead of calling useCurrentFrame() in an IIFE — IIFEs
+ * execute in the parent component's context and get the GLOBAL frame,
+ * not the TransitionSeries.Sequence-local frame.
+ *
+ * Usage in compiled code:
+ *   <FrameScope>{(frame, fps) => <div>Frame: {frame}</div>}</FrameScope>
+ */
+const FrameScope: React.FC<{
+	children: (frame: number, fps: number, videoConfig: ReturnType<typeof useVideoConfig>) => React.ReactNode;
+}> = ({ children }) => {
+	const frame = useCurrentFrame();
+	const config = useVideoConfig();
+	return React.createElement(React.Fragment, null, children(frame, config.fps, config));
+};
+
+/**
  * The module scope provided to AI-generated code.
  * These are the imports available via destructuring.
  */
@@ -101,6 +118,7 @@ export const MODULE_SCOPE = {
 	// Remotion
 	useCurrentFrame,
 	useVideoConfig,
+	FrameScope,
 	interpolate,
 	spring,
 	random,
