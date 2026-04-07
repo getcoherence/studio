@@ -2005,9 +2005,32 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 							{/* Undo/Redo toolbar — visible on Scenes tab */}
 							{rightPanelTab === "plan" && scenePlan && (
 								<div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5">
-									<span className="text-[11px] text-white/30">
-										Scenes ({scenePlan.scenes.length})
-									</span>
+									<div className="flex items-center gap-2">
+										<span className="text-[11px] text-white/30">
+											Scenes ({scenePlan.scenes.length})
+										</span>
+										{/* Global accent color */}
+										<label className="flex items-center gap-1 cursor-pointer" title="Brand accent color — used across all scenes">
+											<div className="w-4 h-4 rounded-sm" style={{ background: scenePlan.accentColor || "#2563eb", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.2)" }} />
+											<span className="text-[9px] text-white/25">Brand</span>
+											<input
+												type="color"
+												value={scenePlan.accentColor || "#2563eb"}
+												onChange={(e) => {
+													const newPlan = { ...scenePlan, accentColor: e.target.value };
+													setScenePlan(newPlan);
+													(project as any)._aiPlan = newPlan;
+													if (!scenePlan.readonly) {
+														const newCode = compileScenePlan(newPlan);
+														setSeekToFrame(currentPlayerFrameRef.current + Math.random() * 0.001);
+														setAiComposition((prev) => prev ? { ...prev, code: newCode } : prev);
+														(project as any)._aiCode = newCode;
+													}
+												}}
+												className="w-0 h-0 opacity-0 absolute"
+											/>
+										</label>
+									</div>
 									<div className="flex items-center gap-0.5">
 										<button
 											onClick={undo}
@@ -2353,6 +2376,16 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 													{/* Row 3: Background color swatches + custom picker */}
 													<div className="space-y-1.5">
 														<div className="flex items-center gap-1 flex-wrap">
+															{scenePlan.accentColor && (
+																<button
+																	onClick={() => updateScenePlan(i, { background: scenePlan.accentColor! })}
+																	title={`Brand: ${scenePlan.accentColor}`}
+																	className={`w-7 h-7 rounded transition-all shrink-0 relative ${scene.background === scenePlan.accentColor ? "ring-2 ring-white ring-offset-1 ring-offset-[#0c0c0f] scale-110" : "hover:scale-105"}`}
+																	style={{ background: scenePlan.accentColor, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.3), 0 1px 3px rgba(0,0,0,0.5)" }}
+																>
+																	<span className="absolute inset-0 flex items-center justify-center text-[8px] text-white font-bold drop-shadow-sm">B</span>
+																</button>
+															)}
 															{BACKGROUND_NAMES.map((name) => {
 																const css = BACKGROUND_PRESETS[name];
 																const active = scene.background === name;
