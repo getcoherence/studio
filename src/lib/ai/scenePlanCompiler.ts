@@ -1616,12 +1616,15 @@ function renderSlotFlipCards(scene: ScenePlanItem, accent: string, bg: string): 
 function renderSlotGlitchSwap(scene: ScenePlanItem, accent: string, bg: string): string {
 	const { prefix, words, selected } = slotData(scene);
 	const wordsJson = JSON.stringify(words);
-	const fontSize = scene.fontSize || 140;
+	// Auto-scale font based on longest word + prefix
+	const longestWord = Math.max(...words.map((w: string) => w.length));
+	const totalChars = (prefix?.length || 0) + longestWord;
+	const fontSize = scene.fontSize || (totalChars > 30 ? 72 : totalChars > 20 ? 90 : totalChars > 12 ? 108 : 140);
 	const light = isLightBg(scene.background);
 	const color = light ? "#1a1a1a" : "#ffffff";
 	const dur = clampDuration(scene);
-	const cycleFrames = Math.floor(dur * 0.6);
-	const framesPerWord = Math.max(10, Math.floor(cycleFrames / Math.max(1, selected + 1)));
+	// Give each word enough time to be read (min 25 frames = ~0.8s each)
+	const framesPerWord = Math.max(25, Math.floor((dur * 0.65) / Math.max(1, selected + 1)));
 	return `<Scene bg="${bg}">
         {(() => {
           const frame = useCurrentFrame();
@@ -1634,22 +1637,23 @@ function renderSlotGlitchSwap(scene: ScenePlanItem, accent: string, bg: string):
           const displayWord = isSettled ? words[selected] : words[currentIdx];
           const transitionPhase = (frame % framesPerWord) / framesPerWord;
           const isTransitioning = !isSettled && transitionPhase > 0.7;
-          const glitchX = isTransitioning ? Math.sin(frame * 8) * 6 : 0;
-          const glitchY = isTransitioning ? Math.cos(frame * 11) * 3 : 0;
-          const skew = isTransitioning ? Math.sin(frame * 13) * 4 : 0;
+          const glitchX = isTransitioning ? Math.sin(frame * 8) * 8 : 0;
+          const glitchY = isTransitioning ? Math.cos(frame * 11) * 4 : 0;
+          const skew = isTransitioning ? Math.sin(frame * 13) * 5 : 0;
           return (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 24, fontFamily: "'Inter', sans-serif" }}>
-              <span style={{ fontSize: ${fontSize}, fontWeight: 300, color: '${color}' }}>${prefix}</span>
-              <div style={{ position: 'relative' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, fontFamily: "'Inter', sans-serif", maxWidth: 1600 }}>
+              <span style={{ fontSize: ${Math.round(fontSize * 0.6)}, fontWeight: 300, color: '${color}', opacity: 0.6 }}>${prefix}</span>
+              <div style={{ position: 'relative', textAlign: 'center' }}>
                 <span style={{
                   fontSize: ${fontSize}, fontWeight: 800,
                   color: isSettled ? '${accent}' : '${color}',
                   transform: 'translate(' + glitchX + 'px, ' + glitchY + 'px) skewX(' + skew + 'deg)',
                   display: 'inline-block',
                   textShadow: isTransitioning ? (-glitchX) + 'px 0 #ef4444, ' + glitchX + 'px 0 #3b82f6' : 'none',
+                  letterSpacing: '-0.03em',
                 }}>{displayWord}</span>
                 {isSettled && (
-                  <span style={{ fontSize: ${fontSize * 0.4}, color: '${accent}', marginLeft: 16, fontWeight: 900, display: 'inline-block',
+                  <span style={{ fontSize: ${Math.round(fontSize * 0.35)}, color: '${accent}', marginLeft: 16, fontWeight: 900, display: 'inline-block',
                     opacity: spring({ frame: Math.max(0, frame - selected * framesPerWord - 3), fps, config: { damping: 10, stiffness: 150 } }),
                   }}>✓</span>
                 )}
