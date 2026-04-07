@@ -401,20 +401,33 @@ async function generateMiniMaxMusic(
 		body.is_instrumental = true;
 	}
 
-	const response = await fetch("https://api.minimax.io/v1/music_generation", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${apiKey}`,
-		},
-		body: JSON.stringify(body),
-		signal: AbortSignal.timeout(180_000),
-	});
+	// Retry once on timeout — MiniMax can be slow under load
+	let response: Response | null = null;
+	for (let attempt = 0; attempt < 2; attempt++) {
+		try {
+			response = await fetch("https://api.minimax.io/v1/music_generation", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${apiKey}`,
+				},
+				body: JSON.stringify(body),
+				signal: AbortSignal.timeout(240_000),
+			});
+			break;
+		} catch (err: any) {
+			if (attempt === 0 && err?.name === "TimeoutError") {
+				console.warn("[Music] Attempt 1 timed out, retrying...");
+				continue;
+			}
+			throw err;
+		}
+	}
 
-	if (!response.ok) {
-		const body = await response.text().catch(() => "");
-		console.error("[Music] API error:", response.status, body.slice(0, 300));
-		throw new Error(`MiniMax Music API ${response.status}: ${body.slice(0, 200)}`);
+	if (!response || !response.ok) {
+		const errBody = await response?.text().catch(() => "") || "";
+		console.error("[Music] API error:", response?.status, errBody.slice(0, 300));
+		throw new Error(`MiniMax Music API ${response?.status}: ${errBody.slice(0, 200)}`);
 	}
 
 	const data = (await response.json()) as {
