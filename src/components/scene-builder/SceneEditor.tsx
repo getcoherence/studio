@@ -334,6 +334,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [currentTimeMs, setCurrentTimeMs] = useState(0);
 	const [isExporting, setIsExporting] = useState(false);
+	const [lastExportPath, setLastExportPath] = useState<string | null>(null);
+	const [isUploadingYT, setIsUploadingYT] = useState(false);
 	const [exportProgress, setExportProgress] = useState<SceneExportProgress | null>(null);
 	const [aspectRatio, setAspectRatio] = useState("16/9");
 	const [aiComposition, setAiComposition] = useState<AiCompositionData | null>(() => {
@@ -1015,6 +1017,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 					}
 
 					if (result.success) {
+						setLastExportPath(result.path || null);
 						toast.success(musicPath ? "Video exported with music!" : "Video exported successfully");
 					} else if (!result.canceled) {
 						toast.error(result.error || "Failed to export video");
@@ -1824,6 +1827,64 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 						</>
 					)}
 				</button>
+				{lastExportPath && (
+					<button
+						onClick={async () => {
+							if (isUploadingYT) return;
+							const connected = await window.electronAPI.youtubeIsConnected();
+							if (!connected) {
+								toast.loading("Connecting to YouTube...", { id: "yt" });
+								const auth = await window.electronAPI.youtubeConnect();
+								toast.dismiss("yt");
+								if (!auth.success) {
+									toast.error(auth.error || "YouTube connection failed");
+									return;
+								}
+								toast.success("YouTube connected!");
+							}
+							const title = project.name || scenePlan?.title || "Untitled Video";
+							const privacy = await new Promise<"public" | "unlisted" | "private" | null>((resolve) => {
+								// Simple prompt for privacy — could be a proper modal later
+								const choice = window.prompt(
+									"YouTube upload privacy:\n1 = Public\n2 = Unlisted\n3 = Private\n\nEnter 1, 2, or 3:",
+									"2"
+								);
+								if (!choice) return resolve(null);
+								resolve(choice === "1" ? "public" : choice === "3" ? "private" : "unlisted");
+							});
+							if (!privacy) return;
+
+							setIsUploadingYT(true);
+							toast.loading("Uploading to YouTube...", { id: "yt-upload" });
+							const unsub = window.electronAPI.onYoutubeUploadProgress((pct) => {
+								toast.loading(`Uploading... ${Math.round(pct * 100)}%`, { id: "yt-upload" });
+							});
+							try {
+								const result = await window.electronAPI.youtubeUpload({
+									filePath: lastExportPath,
+									title,
+									description: `Created with Lucid Studio`,
+									privacy,
+								});
+								toast.dismiss("yt-upload");
+								if (result.success && result.url) {
+									toast.success(`Uploaded! ${result.url}`, { duration: 10000 });
+								} else {
+									toast.error(result.error || "Upload failed");
+								}
+							} finally {
+								unsub();
+								setIsUploadingYT(false);
+							}
+						}}
+						disabled={isUploadingYT}
+						className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-colors text-xs disabled:opacity-50"
+						title="Upload last export to YouTube"
+					>
+						{isUploadingYT ? <Loader2 size={14} className="animate-spin" /> : "▶"}
+						YouTube
+					</button>
+				)}
 			</div>
 
 			{/* ── Main Content Area ────────────────────────────────────── */}

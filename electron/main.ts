@@ -22,6 +22,7 @@ import { registerDemoHandlers } from "./ipc/demoHandlers";
 import { registerExportHandlers } from "./ipc/exportHandlers";
 import { registerFfmpegHandlers } from "./ipc/ffmpegHandlers";
 import { registerIpcHandlers } from "./ipc/handlers";
+import { registerYouTubeHandlers } from "./ipc/youtubeHandlers";
 import { registerProjectHandlers } from "./ipc/projectHandlers";
 import { registerSettingsHandlers } from "./ipc/settingsHandlers";
 import { registerUpdaterHandlers } from "./ipc/updaterHandlers";
@@ -504,6 +505,7 @@ app.whenReady().then(async () => {
 	);
 	registerSettingsHandlers();
 	registerExportHandlers(() => mainWindow);
+	registerYouTubeHandlers(() => mainWindow);
 	registerFfmpegHandlers();
 	registerUpdaterHandlers();
 	registerProjectHandlers();

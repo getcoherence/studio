@@ -199,6 +199,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	musicLibraryDelete: (filePath: string) => {
 		return ipcRenderer.invoke("music-library-delete", filePath);
 	},
+
+	// ── YouTube ──
+	youtubeIsConnected: () => ipcRenderer.invoke("youtube-is-connected"),
+	youtubeConnect: () => ipcRenderer.invoke("youtube-connect"),
+	youtubeDisconnect: () => ipcRenderer.invoke("youtube-disconnect"),
+	youtubeSetCredentials: (clientId: string, clientSecret: string) =>
+		ipcRenderer.invoke("youtube-set-credentials", clientId, clientSecret),
+	youtubeUpload: (opts: { filePath: string; title: string; description?: string; privacy: "public" | "unlisted" | "private" }) =>
+		ipcRenderer.invoke("youtube-upload", opts),
+	onYoutubeUploadProgress: (callback: (percent: number) => void) => {
+		const listener = (_: unknown, percent: number) => callback(percent);
+		ipcRenderer.on("youtube-upload-progress", listener);
+		return () => ipcRenderer.removeListener("youtube-upload-progress", listener);
+	},
 	lottieSearch: (query: string, page?: number) => {
 		return ipcRenderer.invoke("lottie-search", query, page);
 	},
