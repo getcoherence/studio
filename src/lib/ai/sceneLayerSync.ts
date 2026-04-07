@@ -240,6 +240,36 @@ const REGISTRY: Partial<Record<SceneType, SceneTypeConfig>> = {
 			...(!cur.headline ? { headline: seed } : {}),
 		}),
 	},
+	// glass-stats uses the same metrics fields as metrics-dashboard
+	"glass-stats": {
+		readsHeadline: true,
+		readsSubtitle: false,
+		mappings: [
+			{
+				kind: "paired-array",
+				field: "metrics",
+				prefixes: ["metric-value-", "metric-label-"],
+				fromLayers: (valLyr, lblLyr, existing) => ({
+					...existing,
+					...(valLyr ? parseMetricValue(valLyr.content || "0") : {}),
+					...(lblLyr ? { label: lblLyr.content || "" } : {}),
+				}),
+				defaultEntry: () => ({ value: 0, label: "" }),
+			},
+		],
+		seedDefaults: (cur, seed) => ({
+			...(!cur.metrics?.length
+				? {
+						metrics: [
+							{ value: 500, label: "Users", suffix: "+" },
+							{ value: 99, label: "Uptime", suffix: "%" },
+							{ value: 10, label: "Times faster", suffix: "x" },
+						],
+					}
+				: {}),
+			...(!cur.headline ? { headline: seed } : {}),
+		}),
+	},
 	"icon-showcase": {
 		readsHeadline: true,
 		readsSubtitle: false,

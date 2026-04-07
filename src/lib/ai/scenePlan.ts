@@ -41,7 +41,12 @@ export type SceneType =
 	| "app-icon-cloud" // 3D app icons scattered in space
 	| "data-flow-network" // nodes connected by animated lines
 	| "camera-text" // cinematic camera-in-text animation with scale + typewriter + logo inject
-	| "scrolling-list"; // 4-6 lines scrolling up sequentially, all visible at end (alternative to slot wheel)
+	| "scrolling-list" // 4-6 lines scrolling up sequentially, all visible at end (alternative to slot wheel)
+	// Phase 3: cinematic scene types
+	| "device-showcase" // screenshot in laptop/phone mockup with floating animation
+	| "glass-stats" // glassmorphism cards with animated metric counters
+	| "cinematic-title" // gradient text with particle effects
+	| "countdown"; // animated number countdown with confetti burst
 
 export interface ScenePlanItem {
 	/** Stable unique ID for React keys — survives reordering/insertion */
@@ -89,8 +94,10 @@ export interface ScenePlanItem {
 	effects: ("vignette" | "light-streak" | "clip-reveal")[];
 	/** For cards type: list of feature cards */
 	cards?: Array<{ title: string; description: string }>;
-	/** For screenshot type: which screenshot index to use */
+	/** For screenshot/product-glow/device-showcase: which screenshot index to use */
 	screenshotIndex?: number;
+	/** For countdown: target number to count up to */
+	countdownTarget?: number;
 	/** For split-layout: right-side content type */
 	rightContent?: "cards" | "pills" | "screenshot";
 	/** Lottie animation overlay — filename in public/lottie/ or URL */
