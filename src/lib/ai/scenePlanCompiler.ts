@@ -633,11 +633,129 @@ function renderSceneByTypeInner(
 			return renderCameraText(scene, accent, bg);
 		case "scrolling-list":
 			return renderScrollingList(scene, accent, bg);
+		case "device-showcase":
+			return renderDeviceShowcase(scene, accent, bg);
+		case "glass-stats":
+			return renderGlassStats(scene, accent, bg);
+		case "cinematic-title":
+			return renderCinematicTitle(scene, accent, bg);
+		case "countdown":
+			return renderCountdown(scene, accent, bg);
 		case "cta":
 			return renderCTA(scene, accent, bg, logoUrl, websiteUrl);
 		default:
 			return renderLegacyLayerBased(scene, accent, bg);
 	}
+}
+
+// ── Phase 3: Cinematic scene renderers ──────────────────────────────────
+
+function renderDeviceShowcase(
+	scene: ScenePlanItem,
+	accent: string,
+	bg: string,
+): string {
+	const screenshotIndex = scene.screenshotIndex ?? 0;
+	const device = scene.variant === "phone" ? "phone" : "laptop";
+	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
+	const textColor = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const pal = accentPalette(accent);
+	const ssLayer = scene.layers?.find((l) => l.id.startsWith("screenshot-"));
+	const ssContent = ssLayer?.content || `screenshots[${screenshotIndex}]`;
+	const isRef = /^screenshots\[\d+\]$/.test(ssContent);
+	const srcExpr = isRef ? `{${ssContent}}` : `{${JSON.stringify(ssContent)}}`;
+	return `<Scene bg="${bg}">
+        <FloatingOrbs colors={["${accent}", "${pal.w}"]} count={3} opacity={0.15} blurAmount={140} />
+        ${headline ? `<div style={{ marginBottom: 48 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="${scene.animation || "blur-in"}" /></div>` : ""}
+        <DeviceMockup device="${device}" tilt={-4}>
+          <Img src=${srcExpr} style={{ width: '100%', height: 'auto', display: 'block' }} />
+        </DeviceMockup>
+        <Vignette intensity={0.3} />
+      </Scene>`;
+}
+
+function renderGlassStats(
+	scene: ScenePlanItem,
+	accent: string,
+	bg: string,
+): string {
+	const metrics = scene.metrics || [
+		{ value: 10, label: "Times faster", suffix: "x" },
+		{ value: 99, label: "Uptime", suffix: "%" },
+		{ value: 500, label: "Users", prefix: "", suffix: "+" },
+	];
+	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
+	const textColor = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const pal = accentPalette(accent);
+	const metricsJson = JSON.stringify(metrics);
+	return `<Scene bg="${bg}">
+        <FloatingOrbs colors={["${accent}", "${pal.w}", "${pal.k}"]} count={4} opacity={0.2} blurAmount={120} />
+        ${headline ? `<div style={{ marginBottom: 40 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 72}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="words" /></div>` : ""}
+        <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {${metricsJson}.map((m, i) => (
+            <GlassCard key={i} width={320} padding={32} borderRadius={20}>
+              <div style={{ textAlign: 'center' }}>
+                <MetricCounter value={m.value} prefix={m.prefix || ""} suffix={m.suffix || ""} fontSize={64} color="${textColor}" delay={i * 8} />
+                <div style={{ fontSize: 20, color: '${textColor}80', fontFamily: "'Inter', sans-serif", marginTop: 8 }}>{m.label}</div>
+              </div>
+            </GlassCard>
+          ))}
+        </div>
+      </Scene>`;
+}
+
+function renderCinematicTitle(
+	scene: ScenePlanItem,
+	accent: string,
+	bg: string,
+): string {
+	const headline = JSON.stringify(scene.headline || "Cinematic.");
+	const textColor = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const pal = accentPalette(accent);
+	const effect = scene.backgroundEffect || "sakura";
+	return `<Scene bg="${bg}" bgEffect="${effect}" bgEffectColors={["${accent}","${pal.w}","${pal.k}"]} bgEffectIntensity={0.8}>
+        <AnimatedText text={${headline}} fontSize={${scene.fontSize || 200}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="${scene.animation || "gradient"}" gradientColors={["${accent}","${pal.w}","${pal.k}"]} />
+        ${scene.subtitle ? `<div style={{ marginTop: 20 }}><AnimatedText text={${JSON.stringify(scene.subtitle)}} fontSize={36} color="${textColor}80" fontFamily="'Inter', sans-serif" animation="words" delay={12} /></div>` : ""}
+      </Scene>`;
+}
+
+function renderCountdown(
+	scene: ScenePlanItem,
+	accent: string,
+	bg: string,
+): string {
+	const targetValue = scene.countdownTarget ?? 1000;
+	const label = JSON.stringify(scene.headline || "milestone reached");
+	const pal = accentPalette(accent);
+	return `<Scene bg="${bg}">
+        {(() => {
+          const frame = useCurrentFrame();
+          const { fps } = useVideoConfig();
+          const sceneDur = ${clampDuration(scene)};
+          const countDur = Math.floor(sceneDur * 0.6);
+          const progress = Math.min(1, frame / countDur);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const current = Math.floor(eased * ${targetValue});
+          const done = frame >= countDur;
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+              <div style={{
+                fontSize: 180, fontWeight: 900, fontFamily: "'Inter', sans-serif",
+                color: done ? '${accent}' : '#ffffff',
+                letterSpacing: '-0.04em',
+                transform: done ? 'scale(1.1)' : 'scale(1)',
+                transition: 'transform 0.3s, color 0.3s',
+              }}>
+                {current.toLocaleString()}
+              </div>
+              <div style={{ fontSize: 36, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter', sans-serif" }}>
+                {${label}}
+              </div>
+              {done && <Confetti mode="burst" colors={["${accent}","${pal.w}","${pal.k}","#f59e0b","#10b981"]} intensity={1.2} />}
+            </div>
+          );
+        })()}
+      </Scene>`;
 }
 
 function renderCTA(
@@ -2460,7 +2578,7 @@ export function expandSceneToLayers(scene: ScenePlanItem, accent: string): Scene
 	}
 
 	// ── Screenshot layer ──
-	if (scene.type === "screenshot" || scene.type === "product-glow") {
+	if (scene.type === "screenshot" || scene.type === "product-glow" || scene.type === "device-showcase") {
 		const ssIdx = scene.screenshotIndex ?? 0;
 		layers.push({
 			id: `screenshot-${ssIdx}`,

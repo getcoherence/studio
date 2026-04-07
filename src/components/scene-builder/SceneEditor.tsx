@@ -101,6 +101,11 @@ const SCENE_TYPE_OPTIONS: ScenePlanItem["type"][] = [
 	"timeline-chaos",
 	"typewriter-prompt",
 	"word-slot-machine",
+	// Phase 3
+	"device-showcase",
+	"glass-stats",
+	"cinematic-title",
+	"countdown",
 ];
 
 /** Visual variant options per scene type. Types not listed here have no variants. */
@@ -114,6 +119,7 @@ const SCENE_VARIANT_OPTIONS: Partial<Record<ScenePlanItem["type"], string[]>> = 
 	],
 	"before-after": ["split-card", "swipe-reveal", "stacked-morph", "toggle-switch"],
 	"metrics-dashboard": ["counter-row", "bar-chart", "pie-radial", "ticker-tape"],
+	"device-showcase": ["laptop", "phone"],
 	"word-slot-machine": ["wheel", "typewriter-swap", "flip-cards", "glitch-swap"],
 };
 
