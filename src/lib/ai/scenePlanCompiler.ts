@@ -757,7 +757,7 @@ function renderCountdown(
 	const label = JSON.stringify(scene.headline || "milestone reached");
 	const pal = accentPalette(accent);
 	return `<Scene bg="${bg}">
-        {(() => {
+        <FrameScope>{(frame, fps) => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const sceneDur = ${clampDuration(scene)};
@@ -1010,7 +1010,7 @@ function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: 
 	const wipeDelay = Math.floor(clampDuration(scene) * 0.5);
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 40 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="words" /></div>` : ""}
-        {(() => {
+        <FrameScope>{(frame, fps) => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const wipe = spring({ frame: Math.max(0, frame - ${wipeDelay}), fps, config: { damping: 20, stiffness: 30 } });
@@ -1061,7 +1061,7 @@ function renderBeforeAfterStackedMorph(scene: ScenePlanItem, accent: string, bg:
 	const fontSize = scene.fontSize || 72;
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 50 }}><AnimatedText text={${headline}} fontSize={${fontSize}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="words" /></div>` : ""}
-        {(() => {
+        <FrameScope>{(frame, fps) => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const pairs = ${pairs};
@@ -1110,7 +1110,7 @@ function renderBeforeAfterToggleSwitch(scene: ScenePlanItem, accent: string, bg:
 	const toggleFrame = Math.floor(clampDuration(scene) * 0.4);
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 40 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="words" /></div>` : ""}
-        {(() => {
+        <FrameScope>{(frame, fps) => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const toggle = spring({ frame: Math.max(0, frame - ${toggleFrame}), fps, config: { damping: 18, stiffness: 80 } });
@@ -1213,7 +1213,7 @@ function renderMetricsBarChart(scene: ScenePlanItem, accent: string, bg: string)
 	const maxVal = Math.max(...metrics.map((m) => m.value), 1);
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 50 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 90}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="blur-in" /></div>` : ""}
-        {(() => {
+        <FrameScope>{(frame, fps) => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const metrics = ${metricsJson};
@@ -1256,7 +1256,7 @@ function renderMetricsPieRadial(scene: ScenePlanItem, accent: string, bg: string
 	const ringColors = [accent, pal.w, pal.k, pal.c, pal.t];
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 50 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 90}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="blur-in" /></div>` : ""}
-        {(() => {
+        <FrameScope>{(frame, fps) => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const metrics = ${metricsJson};
@@ -1305,7 +1305,7 @@ function renderMetricsTickerTape(scene: ScenePlanItem, _accent: string, bg: stri
 	const borderColor = light ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.1)";
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 50 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 90}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="blur-in" /></div>` : ""}
-        {(() => {
+        <FrameScope>{(frame, fps) => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const metrics = ${metricsJson};
@@ -1519,8 +1519,7 @@ function renderSlotTypewriterSwap(scene: ScenePlanItem, accent: string, bg: stri
 	const dur = clampDuration(scene);
 	const framesPerWord = Math.max(30, Math.floor((dur * 0.7) / Math.max(1, words.length)));
 	return `<Scene bg="${bg}">
-        {(() => {
-          const frame = useCurrentFrame();
+        <FrameScope>{(frame, fps) => {
           const words = ${wordsJson};
           const selected = ${selected};
           const fpw = ${framesPerWord};
@@ -1528,7 +1527,6 @@ function renderSlotTypewriterSwap(scene: ScenePlanItem, accent: string, bg: stri
           const isSettled = currentIdx >= selected;
           const wordFrame = frame - currentIdx * fpw;
           const displayWord = isSettled ? words[selected] : words[currentIdx];
-          // Type in during first 50% of word time, hold, then strike through at 80%
           const typeProgress = Math.min(1, wordFrame / (fpw * 0.5));
           const charsToShow = isSettled ? displayWord.length : Math.ceil(displayWord.length * typeProgress);
           const strikeThrough = !isSettled && wordFrame > fpw * 0.75;
@@ -1553,7 +1551,7 @@ function renderSlotTypewriterSwap(scene: ScenePlanItem, accent: string, bg: stri
               </div>
             </div>
           );
-        })()}
+        }}</FrameScope>
       </Scene>`;
 }
 
@@ -1568,9 +1566,7 @@ function renderSlotFlipCards(scene: ScenePlanItem, accent: string, bg: string): 
 	const dur = clampDuration(scene);
 	const framesPerWord = Math.max(25, Math.floor((dur * 0.7) / Math.max(1, words.length)));
 	return `<Scene bg="${bg}">
-        {(() => {
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
+        <FrameScope>{(frame, fps) => {
           const words = ${wordsJson};
           const selected = ${selected};
           const fpw = ${framesPerWord};
@@ -1603,13 +1599,12 @@ function renderSlotFlipCards(scene: ScenePlanItem, accent: string, bg: string): 
                   <div key={i} style={{
                     width: 8, height: 8, borderRadius: '50%',
                     background: i === currentIdx ? '${accent}' : '${light ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.2)"}',
-                    transition: 'background 0.2s',
                   }} />
                 ))}
               </div>
             </div>
           );
-        })()}
+        }}</FrameScope>
       </Scene>`;
 }
 
@@ -1627,9 +1622,7 @@ function renderSlotGlitchSwap(scene: ScenePlanItem, accent: string, bg: string):
 	// Give each word enough time to be read (min 25 frames = ~0.8s each)
 	const framesPerWord = Math.max(25, Math.floor((dur * 0.65) / Math.max(1, selected + 1)));
 	return `<Scene bg="${bg}">
-        {(() => {
-          const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
+        <FrameScope>{(frame, fps) => {
           const words = ${wordsJson};
           const selected = ${selected};
           const framesPerWord = ${framesPerWord};
@@ -1661,7 +1654,7 @@ function renderSlotGlitchSwap(scene: ScenePlanItem, accent: string, bg: string):
               </div>
             </div>
           );
-        })()}
+        }}</FrameScope>
       </Scene>`;
 }
 
@@ -1781,7 +1774,7 @@ function renderAppIconCloud(scene: ScenePlanItem, accent: string, bg: string): s
 	const fontSize = scene.fontSize || 120;
 	const textColor = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
 	return `<Scene bg="${bg}">
-        {(() => {
+        <FrameScope>{(frame, fps) => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const icons = ${iconsJson};
@@ -1915,7 +1908,7 @@ function renderDataFlowCircles(scene: ScenePlanItem, accent: string, bg: string)
                     border: '3px solid ${accent}',
                     boxShadow: '0 0 ' + glowPulse + 'px ' + (glowPulse * 0.7) + 'px ${accent}60',`;
 	return `<Scene bg="${bg}">
-        {(() => {
+        <FrameScope>{(frame, fps) => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const nodes = ${nodesJson};
@@ -1977,7 +1970,7 @@ function renderDataFlowTimelineArrows(scene: ScenePlanItem, accent: string, bg: 
 	const pillBg = light ? `${accent}15` : `${accent}25`;
 	const pillBorder = `${accent}`;
 	return `<Scene bg="${bg}">
-        {(() => {
+        <FrameScope>{(frame, fps) => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const nodes = ${nodesJson};
@@ -2032,7 +2025,7 @@ function renderDataFlowHexGrid(scene: ScenePlanItem, accent: string, bg: string)
 	const textColor = light ? "#1a1a1a" : "#ffffff";
 	// Hexagonal staggered grid: odd nodes shift down
 	return `<Scene bg="${bg}">
-        {(() => {
+        <FrameScope>{(frame, fps) => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const nodes = ${nodesJson};
@@ -2097,7 +2090,7 @@ function renderDataFlowIsometricBlocks(scene: ScenePlanItem, accent: string, bg:
 	const blockFace = light ? `${accent}18` : `${accent}30`;
 	const blockSide = light ? `${accent}10` : `${accent}20`;
 	return `<Scene bg="${bg}">
-        {(() => {
+        <FrameScope>{(frame, fps) => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const nodes = ${nodesJson};
@@ -2161,7 +2154,7 @@ function renderDataFlowOrbitalRings(scene: ScenePlanItem, accent: string, bg: st
 	const headlineColor = light ? "#1a1a1a" : "#ffffff";
 	const textColor = light ? "#1a1a1a" : "#ffffff";
 	return `<Scene bg="${bg}">
-        {(() => {
+        <FrameScope>{(frame, fps) => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const nodes = ${nodesJson};
