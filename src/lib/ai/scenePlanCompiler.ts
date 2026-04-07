@@ -39,11 +39,13 @@ const MIN_DURATION_BY_TYPE: Record<string, number> = {
 	cards: 100,
 };
 
-/** Clamp scene duration based on type. Enforces MINIMUM only — no max cap
- * so users can extend scenes as long as they want. The min prevents scenes
- * that are too short to read their content. */
+/** Get the effective duration for a scene. When the user has explicitly set
+ * a duration, respect it exactly (even very short). Only apply the minimum
+ * clamp for AI-generated defaults. */
 export function clampDuration(scene: ScenePlanItem): number {
 	const raw = scene.durationFrames || 60;
+	// If user explicitly set a value, respect it (allow as low as 10 frames)
+	if (scene.durationFrames) return Math.max(10, raw);
 	const min = MIN_DURATION_BY_TYPE[scene.type] || 50;
 	return Math.max(min, raw);
 }
