@@ -895,7 +895,7 @@ function renderGhostHook(scene: ScenePlanItem, _accent: string, bg: string): str
       </Scene>`;
 }
 
-function renderNotificationChaos(scene: ScenePlanItem, _accent: string, _bg: string): string {
+function renderNotificationChaos(scene: ScenePlanItem, _accent: string, bg: string): string {
 	const notifs = JSON.stringify(
 		scene.notifications || [
 			{ platform: "instagram", title: "Sarah", subtitle: "liked your post", time: "2m" },
@@ -908,7 +908,7 @@ function renderNotificationChaos(scene: ScenePlanItem, _accent: string, _bg: str
 	);
 	const headline = JSON.stringify(scene.headline || "Notifications everywhere.");
 	const fontSize = scene.fontSize || 110;
-	return `<Scene bg="#050505">
+	return `<Scene bg="${bg}">
         <NotificationCloud notifications={${notifs}}>
           <AnimatedText text={${headline}} fontSize={${fontSize}} color="#ffffff" fontFamily="'Inter', sans-serif" animation="words" />
         </NotificationCloud>
@@ -1677,7 +1677,7 @@ function renderAvatarConstellation(scene: ScenePlanItem, accent: string, bg: str
       </Scene>`;
 }
 
-function renderGradientMeshHero(scene: ScenePlanItem, _accent: string, _bg: string): string {
+function renderGradientMeshHero(scene: ScenePlanItem, _accent: string, bg: string): string {
 	const meshColorArr = scene.meshColors || ["#ffd6e7", "#e0d4ff", "#d4fff1", "#ffefd6"];
 	const isDark = isDarkHex(meshColorArr[0]);
 	const textColor = resolveTextColor(scene);
@@ -1690,7 +1690,9 @@ function renderGradientMeshHero(scene: ScenePlanItem, _accent: string, _bg: stri
 	const subtitleColor = subtitleLayer?.settings?.color || (textColor === "#ffffff" ? "rgba(255,255,255,0.7)" : "rgba(26,26,26,0.6)");
 	const subtitle = subtitleText ? JSON.stringify(subtitleText) : null;
 	const fontSize = scene.fontSize || 130;
-	return `<Scene bg="transparent">
+	const effect = scene.backgroundEffect && scene.backgroundEffect !== "none" ? scene.backgroundEffect : null;
+	const pal = accentPalette(_accent);
+	return `<Scene bg="${bg}"${effect ? ` bgEffect="${effect}" bgEffectColors={["${_accent}","${pal.w}","${pal.k}"]} bgEffectIntensity={0.7}` : ""}>
         <GradientMesh colors={${colors}} dots={${dots}} />
           <AnimatedText text={${headline}} fontSize={${fontSize}} color="${textColor}" fontFamily="Georgia, serif" animation="blur-in" />
           ${subtitle ? `<div style={{ marginTop: 24 }}><AnimatedText text={${subtitle}} fontSize={36} color="${subtitleColor}" fontFamily="'Inter', sans-serif" animation="words" delay={12} /></div>` : ""}
@@ -1719,7 +1721,7 @@ function renderDashboardDeconstructed(scene: ScenePlanItem, _accent: string, bg:
       </Scene>`;
 }
 
-function renderBrowserTabsChaos(scene: ScenePlanItem, _accent: string, _bg: string): string {
+function renderBrowserTabsChaos(scene: ScenePlanItem, _accent: string, bg: string): string {
 	const tabs = JSON.stringify(
 		scene.browserTabs || [
 			"linkedin.com",
@@ -1738,7 +1740,7 @@ function renderBrowserTabsChaos(scene: ScenePlanItem, _accent: string, _bg: stri
 	);
 	const headline = JSON.stringify(scene.headline || "Endless tabs.");
 	const fontSize = scene.fontSize || 140;
-	return `<Scene bg="#f5f5f5">
+	return `<Scene bg="${bg}">
         <div style={{ position: 'absolute', top: 40, left: 40, right: 40, background: '#e8e8e8', borderRadius: 12, padding: '12px 16px', border: '1px solid #d0d0d0', display: 'flex', gap: 4, overflow: 'hidden', flexWrap: 'nowrap' }}>
           {${tabs}.map((tab, i) => (
             <div key={i} style={{
