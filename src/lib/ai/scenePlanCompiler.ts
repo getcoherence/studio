@@ -783,7 +783,7 @@ function renderCountdown(
               {done && <Confetti mode="burst" colors={["${accent}","${pal.w}","${pal.k}","#f59e0b","#10b981"]} intensity={1.2} />}
             </div>
           );
-        })()}
+        })}
       </Scene>`;
 }
 
@@ -1038,7 +1038,7 @@ function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: 
               </div>
             </div>
           );
-        })()}
+        })}
       </Scene>`;
 }
 
@@ -1093,7 +1093,7 @@ function renderBeforeAfterStackedMorph(scene: ScenePlanItem, accent: string, bg:
               })}
             </div>
           );
-        })()}
+        })}
       </Scene>`;
 }
 
@@ -1158,7 +1158,7 @@ function renderBeforeAfterToggleSwitch(scene: ScenePlanItem, accent: string, bg:
               </div>
             </div>
           );
-        })()}
+        })}
       </Scene>`;
 }
 
@@ -1238,7 +1238,7 @@ function renderMetricsBarChart(scene: ScenePlanItem, accent: string, bg: string)
               })}
             </div>
           );
-        })()}
+        })}
       </Scene>`;
 }
 
@@ -1290,7 +1290,7 @@ function renderMetricsPieRadial(scene: ScenePlanItem, accent: string, bg: string
               })}
             </div>
           );
-        })()}
+        })}
       </Scene>`;
 }
 
@@ -1336,7 +1336,7 @@ function renderMetricsTickerTape(scene: ScenePlanItem, _accent: string, bg: stri
               })}
             </div>
           );
-        })()}
+        })}
       </Scene>`;
 }
 
@@ -1553,7 +1553,7 @@ function renderSlotTypewriterSwap(scene: ScenePlanItem, accent: string, bg: stri
               </div>
             </div>
           );
-        }))}
+        })}
       </Scene>`;
 }
 
@@ -1608,7 +1608,7 @@ function renderSlotFlipCards(scene: ScenePlanItem, accent: string, bg: string): 
               </div>
             </div>
           );
-        }))}
+        })}
       </Scene>`;
 }
 
@@ -1660,7 +1660,7 @@ function renderSlotGlitchSwap(scene: ScenePlanItem, accent: string, bg: string):
               </div>
             </div>
           );
-        }))}
+        })}
       </Scene>`;
 }
 
@@ -1802,7 +1802,7 @@ function renderAppIconCloud(scene: ScenePlanItem, accent: string, bg: string): s
               })}
             </div>
           );
-        })()}
+        })}
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <AnimatedText text={${headline}} fontSize={${fontSize}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="split" accentWord="One" accentColor="${accent}" />
         </div>
@@ -1960,7 +1960,7 @@ function renderDataFlowCircles(scene: ScenePlanItem, accent: string, bg: string)
               })}
             </div>
           );
-        })()}
+        })}
         ${headline ? `<div style={{ marginTop: 30 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="blur-in" /></div>` : ""}
       </Scene>`;
 }
@@ -2016,7 +2016,7 @@ function renderDataFlowTimelineArrows(scene: ScenePlanItem, accent: string, bg: 
               })}
             </div>
           );
-        })()}
+        })}
         ${headline ? `<div style={{ marginTop: 50 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="blur-in" /></div>` : ""}
       </Scene>`;
 }
@@ -2080,7 +2080,7 @@ function renderDataFlowHexGrid(scene: ScenePlanItem, accent: string, bg: string)
               })}
             </div>
           );
-        })()}
+        })}
         ${headline ? `<div style={{ marginTop: 30 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="blur-in" /></div>` : ""}
       </Scene>`;
 }
@@ -2140,13 +2140,13 @@ function renderDataFlowIsometricBlocks(scene: ScenePlanItem, accent: string, bg:
                             strokeDashoffset={-frame * 1.3} opacity={pipeEnter * ${light ? 0.3 : 0.5}} />
                         </svg>
                       );
-                    })()}
+                    })}
                   </React.Fragment>
                 );
               })}
             </div>
           );
-        })()}
+        })}
         ${headline ? `<div style={{ marginTop: 30 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="blur-in" /></div>` : ""}
       </Scene>`;
 }
@@ -2200,7 +2200,7 @@ function renderDataFlowOrbitalRings(scene: ScenePlanItem, accent: string, bg: st
               })}
             </div>
           );
-        })()}
+        })}
         ${headline ? `<div style={{ marginTop: 20 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="blur-in" /></div>` : ""}
       </Scene>`;
 }
