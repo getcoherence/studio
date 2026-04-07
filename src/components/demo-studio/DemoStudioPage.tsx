@@ -32,6 +32,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 	const [maxSteps, setMaxSteps] = useState(12);
 	const [outputStyle, setOutputStyle] = useState<OutputStyle>("cinematic");
 	const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+	const lastConfigRef = useRef<DemoConfig | null>(null);
 	const webviewRef = useRef<Electron.WebviewTag>(null);
 
 	const handleMessage = useCallback((msg: DemoChatMessage) => {
@@ -60,6 +61,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 		(config: DemoConfig) => {
 			setMaxSteps(config.maxSteps);
 			setOutputStyle(config.outputStyle);
+			lastConfigRef.current = config;
 			aiGenerationStartedRef.current = false; // Reset for new demo
 			setMessages([]);
 			addToPromptHistory({ url: config.url, prompt: config.prompt });
@@ -99,6 +101,9 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 		const result = await generateAiComposition(agent.steps, {
 			title,
 			brand,
+			videoType: lastConfigRef.current?.mode,
+			userBrief: lastConfigRef.current?.prompt,
+			websiteUrl: lastConfigRef.current?.url,
 			onStatus: (msg) => {
 				handleMessage({
 					id: `ai-status-${Date.now()}`,
@@ -312,7 +317,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 					<div className="w-px h-4 bg-white/10" />
 					<div className="flex items-center gap-2">
 						<Bot size={16} className="text-[#2563eb]" />
-						<span className="text-sm font-medium text-white">AI Demo Studio</span>
+						<span className="text-sm font-medium text-white">AI Video Studio</span>
 					</div>
 				</div>
 			</div>
@@ -320,7 +325,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 			{/* Split panes */}
 			<div className="flex-1 min-h-0">
 				<PanelGroup direction="horizontal">
-					<Panel defaultSize={38} minSize={25} maxSize={55}>
+					<Panel defaultSize={38} minSize={18} maxSize={55}>
 						<DemoChatPanel
 							messages={messages}
 							status={agent.status}
@@ -331,7 +336,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 						/>
 					</Panel>
 					<PanelResizeHandle className="w-1 bg-white/5 hover:bg-[#2563eb]/40 transition-colors" />
-					<Panel defaultSize={62} minSize={40}>
+					<Panel defaultSize={62} minSize={35}>
 						<DemoBrowserPanel webviewRef={webviewRef} isRunning={agent.status !== "idle"} />
 					</Panel>
 				</PanelGroup>

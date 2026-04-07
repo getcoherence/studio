@@ -5,9 +5,10 @@
 // Supports optional background music track.
 
 import { Player, type PlayerRef } from "@remotion/player";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { AbsoluteFill, Audio } from "remotion";
 import { DynamicComposition, estimateAiDuration } from "./DynamicComposition";
+import { AudioPulseProvider } from "./helpers/AudioReactive";
 
 interface DynamicPreviewProps {
 	/** AI-generated TSX code */
@@ -26,18 +27,29 @@ interface DynamicPreviewProps {
 	onFrameUpdate?: (frame: number) => void;
 }
 
-/** Wrapper composition that layers DynamicComposition + background music */
+/** Wrapper composition that layers DynamicComposition + background music + audio analysis */
 const DynamicWithMusic: React.FC<{
 	code: string;
 	screenshots: string[];
 	musicSrc?: string;
 }> = ({ code, screenshots, musicSrc }) => {
-	return (
+	const content = (
 		<AbsoluteFill>
 			<DynamicComposition code={code} screenshots={screenshots} />
 			{musicSrc && <Audio src={musicSrc} volume={0.25} />}
 		</AbsoluteFill>
 	);
+
+	// Only wrap in AudioPulseProvider when the AI code actually uses useAudioPulse.
+	// The provider runs an FFT (visualizeAudio) on every frame, which steals CPU
+	// from scene rendering and causes audible jitter at scene boundaries on
+	// heavy scenes (zoomMorph transitions, animated backgrounds, etc.) in
+	// compositions that never consume the pulse data anyway.
+	const needsPulse = musicSrc && /useAudioPulse|AudioPulse\b|BeatDot/.test(code);
+	if (needsPulse) {
+		return <AudioPulseProvider musicSrc={musicSrc!}>{content}</AudioPulseProvider>;
+	}
+	return content;
 };
 
 export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
@@ -88,9 +100,16 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 		}
 	}, [seekToFrame]);
 
-	// Use the wrapper component when music is present
+	// Use the wrapper component when music is present. Memoize inputProps so the
+	// object reference is stable across parent re-renders (e.g. the 100ms
+	// setCurrentPlayerFrame loop during playback). Without this, Player sees a
+	// "new" inputProps object every 100ms, which causes the Audio element to
+	// re-sync and produces the audible jitter at scene boundaries.
 	const CompositionComponent = musicSrc ? DynamicWithMusic : DynamicComposition;
-	const inputProps = musicSrc ? { code, screenshots, musicSrc } : { code, screenshots };
+	const inputProps = useMemo(
+		() => (musicSrc ? { code, screenshots, musicSrc } : { code, screenshots }),
+		[code, screenshots, musicSrc],
+	);
 
 	return (
 		<div

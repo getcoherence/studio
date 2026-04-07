@@ -763,10 +763,23 @@ export function registerIpcHandlers(
 		},
 	);
 
-	// Merge video with background music
+	// Merge video with background music — merges in-place (replaces original)
 	ipcMain.handle("merge-video-audio", async (_, videoPath: string, audioPath: string) => {
-		const outputPath = videoPath.replace(/\.[^.]+$/, "_with_music.webm");
-		return mergeVideoWithAudio(videoPath, audioPath, outputPath);
+		const ext = path.extname(videoPath) || ".webm";
+		const tempPath = videoPath.replace(/\.[^.]+$/, `_merging${ext}`);
+		const result = await mergeVideoWithAudio(videoPath, audioPath, tempPath);
+		if (result.success) {
+			try {
+				// Replace original with merged file
+				await fs.unlink(videoPath);
+				await fs.rename(tempPath, videoPath);
+			} catch (swapErr) {
+				console.error("[merge-video-audio] Failed to swap files:", swapErr);
+				// Merged file still exists at tempPath — not ideal but not a data loss
+				return { success: true, path: tempPath };
+			}
+		}
+		return result;
 	});
 
 	// Silent auto-save — saves directly to recordings dir without dialog

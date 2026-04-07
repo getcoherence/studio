@@ -5,10 +5,54 @@
 
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { ScenePlan } from "@/lib/ai/scenePlan";
-import { expandSceneToLayers } from "@/lib/ai/scenePlanCompiler";
+import {
+	clampDuration,
+	computeRealTotalFrames,
+	computeSceneOffsets,
+	expandSceneToLayers,
+} from "@/lib/ai/scenePlanCompiler";
 
 function getLayerLabel(layer: { type: string; content: string }) {
-	if (layer.type === "card") { try { return JSON.parse(layer.content).title; } catch { return layer.content; } }
+	if (layer.type === "card") {
+		try {
+			return JSON.parse(layer.content).title;
+		} catch {
+			return layer.content;
+		}
+	}
+	if (layer.type === "word-carousel") {
+		try {
+			const c = JSON.parse(layer.content);
+			return `${c.prefix || ""} [${(c.words || []).join(", ")}]`;
+		} catch {
+			return layer.content;
+		}
+	}
+	if (layer.type === "metric-counter") {
+		try {
+			const c = JSON.parse(layer.content);
+			return `${c.prefix || ""}${c.value}${c.suffix || ""} ${c.label || ""}`;
+		} catch {
+			return layer.content;
+		}
+	}
+	if (layer.type === "progress-bar") {
+		try {
+			const c = JSON.parse(layer.content);
+			return `${c.label}: ${c.value}%`;
+		} catch {
+			return layer.content;
+		}
+	}
+	if (layer.type === "icon-grid") {
+		try {
+			const items = JSON.parse(layer.content);
+			return items.map((i: any) => i.icon).join(" ");
+		} catch {
+			return layer.content;
+		}
+	}
+	if (layer.type === "divider") return "───";
 	return layer.content;
 }
 
@@ -18,6 +62,8 @@ interface SceneLayerTimelineProps {
 	onSeekToFrame: (frame: number) => void;
 	onAddLayer: (sceneIndex: number) => void;
 	onSelectLayer: (sceneIndex: number, layerIndex: number) => void;
+	/** When set, renders a music track row spanning the full timeline. */
+	musicLabel?: string;
 }
 
 const TRACK_HEIGHT = 32;
@@ -51,6 +97,7 @@ export function SceneLayerTimeline({
 	currentFrame,
 	onSeekToFrame,
 	onSelectLayer,
+	musicLabel,
 }: SceneLayerTimelineProps) {
 	const [height, setHeight] = useState(DEFAULT_HEIGHT);
 	const [zoom, setZoom] = useState(1);
@@ -59,20 +106,17 @@ export function SceneLayerTimeline({
 	const startYRef = useRef(0);
 	const startHeightRef = useRef(DEFAULT_HEIGHT);
 
-	const totalFrames = useMemo(
-		() => plan.scenes.reduce((sum, s) => sum + (s.durationFrames || 90), 0),
-		[plan.scenes],
-	);
+	// Use clampDuration so the timeline matches what the compiler emitted to the
+	// Player. Offsets must account for transition overlaps — Remotion's
+	// TransitionSeries overlaps transitions with the adjacent sequences, so each
+	// scene's *real* playback start is `cumulative sequences - cumulative
+	// transitions`. Without this, the playhead drifts further behind the video
+	// at every scene boundary because the naive offset is too generous.
+	const clampedDurations = useMemo(() => plan.scenes.map((s) => clampDuration(s)), [plan.scenes]);
 
-	const sceneOffsets = useMemo(() => {
-		const offsets: number[] = [];
-		let offset = 0;
-		for (const scene of plan.scenes) {
-			offsets.push(offset);
-			offset += scene.durationFrames || 90;
-		}
-		return offsets;
-	}, [plan.scenes]);
+	const totalFrames = useMemo(() => computeRealTotalFrames(plan.scenes), [plan.scenes]);
+
+	const sceneOffsets = useMemo(() => computeSceneOffsets(plan.scenes), [plan.scenes]);
 
 	// ── Resize ──
 	const handleResizeStart = useCallback(
@@ -216,8 +260,10 @@ export function SceneLayerTimeline({
 					>
 						{plan.scenes.map((scene, i) => {
 							const startPct = totalFrames > 0 ? (sceneOffsets[i] / totalFrames) * 100 : 0;
+							// Scene's visible width = gap to next scene's start (or to total for last).
+							const nextStart = i < plan.scenes.length - 1 ? sceneOffsets[i + 1] : totalFrames;
 							const widthPct =
-								totalFrames > 0 ? ((scene.durationFrames || 90) / totalFrames) * 100 : 0;
+								totalFrames > 0 ? ((nextStart - sceneOffsets[i]) / totalFrames) * 100 : 0;
 							return (
 								<div
 									key={i}
@@ -241,6 +287,54 @@ export function SceneLayerTimeline({
 						/>
 					</div>
 
+					{/* Music track — spans the full timeline when music is loaded */}
+					{musicLabel && (
+						<div
+							className="relative border-t border-white/[0.03] cursor-pointer"
+							style={{ height: TRACK_HEIGHT }}
+							onClick={handleClick}
+							title={musicLabel}
+						>
+							<div
+								className="absolute top-0.5 left-0 rounded-sm flex items-center px-2 overflow-hidden"
+								style={{
+									width: "100%",
+									height: TRACK_HEIGHT - 4,
+									background:
+										"linear-gradient(90deg, rgba(20,184,166,0.35) 0%, rgba(14,165,233,0.35) 50%, rgba(20,184,166,0.35) 100%)",
+									borderLeft: "2px solid rgba(20,184,166,0.7)",
+								}}
+							>
+								{/* Fake waveform bars */}
+								<div className="flex items-center gap-[2px] w-full h-full opacity-60">
+									{Array.from({ length: 120 }, (_, i) => {
+										// Deterministic pseudo-waveform based on index
+										const seed = (Math.sin(i * 0.73) + Math.sin(i * 0.31 + 1.7)) * 0.5 + 0.5;
+										const h = 20 + seed * 60;
+										return (
+											<div
+												key={i}
+												className="flex-1"
+												style={{
+													height: `${h}%`,
+													background: "rgba(20,184,166,0.9)",
+													borderRadius: 1,
+												}}
+											/>
+										);
+									})}
+								</div>
+								<span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-white/80 font-medium pointer-events-none">
+									♪ {musicLabel}
+								</span>
+							</div>
+							<div
+								className="absolute top-0 bottom-0 w-0.5 bg-[#2563eb] z-10"
+								style={{ left: `${playheadPercent}%` }}
+							/>
+						</div>
+					)}
+
 					{/* Layer tracks */}
 					{Array.from({ length: Math.min(maxLayers, 10) }, (_, trackIndex) => (
 						<div
@@ -258,7 +352,7 @@ export function SceneLayerTimeline({
 								if (!layer) return null;
 
 								const sceneStart = sceneOffsets[si];
-								const sceneDur = scene.durationFrames || 90;
+								const sceneDur = clampedDurations[si];
 								const layerStart = sceneStart + layer.startFrame;
 								const layerEnd =
 									layer.endFrame === -1 ? sceneStart + sceneDur : sceneStart + layer.endFrame;
@@ -279,7 +373,9 @@ export function SceneLayerTimeline({
 										onClick={(e) => {
 											e.stopPropagation();
 											onSelectLayer(si, trackIndex);
-											onSeekToFrame(layerStart);
+											// Offset past the transition overlap so the scene's content is visible
+											const nudge = si > 0 ? 12 : 0;
+											onSeekToFrame(Math.max(layerStart, sceneStart + nudge));
 										}}
 										title={`${layer.type}: ${getLayerLabel(layer).slice(0, 40)}`}
 									>

@@ -19,6 +19,7 @@ import { mainT, setMainLocale } from "./i18n";
 import { registerAIHandlers } from "./ipc/aiHandlers";
 import { registerCaptureHandlers } from "./ipc/captureHandlers";
 import { registerDemoHandlers } from "./ipc/demoHandlers";
+import { registerExportHandlers } from "./ipc/exportHandlers";
 import { registerFfmpegHandlers } from "./ipc/ffmpegHandlers";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { registerProjectHandlers } from "./ipc/projectHandlers";
@@ -356,12 +357,12 @@ function forceCloseEditorWindow(windowToClose: BrowserWindow | null) {
 }
 
 function createEditorWindowWrapper() {
-	if (mainWindow) {
+	if (mainWindow && !mainWindow.isDestroyed()) {
 		isForceClosing = true;
 		mainWindow.close();
 		isForceClosing = false;
-		mainWindow = null;
 	}
+	mainWindow = null;
 	mainWindow = createEditorWindow();
 	editorHasUnsavedChanges = false;
 
@@ -399,6 +400,10 @@ function createEditorWindowWrapper() {
 			forceCloseEditorWindow(windowToClose);
 		}
 		// choice === 2: Cancel — do nothing, window stays open
+	});
+
+	mainWindow.on("closed", () => {
+		mainWindow = null;
 	});
 }
 
@@ -498,6 +503,7 @@ app.whenReady().then(async () => {
 		},
 	);
 	registerSettingsHandlers();
+	registerExportHandlers(() => mainWindow);
 	registerFfmpegHandlers();
 	registerUpdaterHandlers();
 	registerProjectHandlers();

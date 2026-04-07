@@ -29,6 +29,10 @@
       "from": "native/bin/${os}",
       "to": "ffmpeg",
       "filter": ["ffmpeg*"]
+    },
+    {
+      "from": "dist-remotion",
+      "to": "remotion-bundle"
     }
   ],
 

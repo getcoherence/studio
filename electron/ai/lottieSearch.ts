@@ -47,6 +47,7 @@ export async function searchLottieAnimations(
 		});
 
 		if (!response.ok) {
+			console.warn(`[lottie] search returned ${response.status} for query="${query}"`);
 			return { results: [], error: `LottieFiles API returned ${response.status}` };
 		}
 
@@ -73,11 +74,17 @@ export async function searchLottieAnimations(
 
 /**
  * Get popular/featured animations.
+ *
+ * The old internal endpoint (iconscout/popular-animations-weekly) now returns
+ * 403 — LottieFiles gated it. We fall back to merging a handful of broad
+ * searches on the public search endpoint so the "Browse popular" button still
+ * returns a useful, varied set of results.
  */
 export async function getPopularLotties(
 	page = 1,
 	limit = 20,
 ): Promise<{ results: LottieSearchResult[]; error?: string }> {
+	// First, try the original endpoint in case it comes back.
 	try {
 		const url = `${API_BASE}/iconscout/popular-animations-weekly?page=${page}&limit=${limit}&format=json`;
 		const response = await fetch(url, {
@@ -88,26 +95,53 @@ export async function getPopularLotties(
 			signal: AbortSignal.timeout(15_000),
 		});
 
-		if (!response.ok) {
-			return { results: [], error: `API returned ${response.status}` };
+		if (response.ok) {
+			const data = await response.json();
+			const animations = data?.data?.popularWeeklyData?.data || data?.data?.data || [];
+			if (Array.isArray(animations) && animations.length > 0) {
+				return {
+					results: animations.map((a: any) => ({
+						id: String(a.id || a.hash || ""),
+						name: a.name || "Untitled",
+						imageUrl: a.imageUrl || a.gifUrl || "",
+						lottieUrl: a.lottieUrl || "",
+						bgColor: a.bgColor || "#ffffff",
+						createdBy: a.createdBy,
+					})),
+				};
+			}
+		} else {
+			console.warn(
+				`[lottie] popular-animations-weekly returned ${response.status}, falling back to curated search`,
+			);
 		}
-
-		const data = await response.json();
-		const animations = data?.data?.popularWeeklyData?.data || data?.data?.data || [];
-
-		const results: LottieSearchResult[] = Array.isArray(animations)
-			? animations.map((a: any) => ({
-					id: String(a.id || a.hash || ""),
-					name: a.name || "Untitled",
-					imageUrl: a.imageUrl || a.gifUrl || "",
-					lottieUrl: a.lottieUrl || "",
-					bgColor: a.bgColor || "#ffffff",
-					createdBy: a.createdBy,
-				}))
-			: [];
-
-		return { results };
 	} catch (err) {
+		console.warn("[lottie] popular-animations-weekly fetch failed, falling back:", err);
+	}
+
+	// Fallback: merge results from a handful of broad, visually useful searches.
+	const curatedQueries = ["loading", "success", "arrow", "celebration", "rocket"];
+	const merged: LottieSearchResult[] = [];
+	const seen = new Set<string>();
+	const perQuery = Math.max(4, Math.ceil(limit / curatedQueries.length));
+
+	try {
+		const searchResults = await Promise.all(
+			curatedQueries.map((q) => searchLottieAnimations(q, 1, perQuery)),
+		);
+		for (const sr of searchResults) {
+			for (const item of sr.results) {
+				if (!item.id || seen.has(item.id)) continue;
+				seen.add(item.id);
+				merged.push(item);
+				if (merged.length >= limit) break;
+			}
+			if (merged.length >= limit) break;
+		}
+		if (merged.length > 0) return { results: merged };
+		return { results: [], error: "No animations found (LottieFiles popular endpoint unavailable)" };
+	} catch (err) {
+		console.error("[lottie] curated fallback failed:", err);
 		return { results: [], error: `Popular fetch failed: ${err}` };
 	}
 }

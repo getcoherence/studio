@@ -152,9 +152,11 @@ interface Window {
 		getShortcuts: () => Promise<Record<string, unknown> | null>;
 		saveShortcuts: (shortcuts: unknown) => Promise<{ success: boolean; error?: string }>;
 		// AI features
+		aiGetAllKeys: () => Promise<{ keys: Record<string, string>; models: Record<string, string> }>;
 		aiAnalyze: (
 			prompt: string,
 			context?: string,
+			modelOverride?: { provider: string; model: string },
 		) => Promise<import("../src/lib/ai/types").AIServiceResult>;
 		aiGenerateJSON: (
 			prompt: string,
@@ -179,7 +181,31 @@ interface Window {
 			mood: string,
 			customPrompt?: string,
 			videoDurationSec?: number,
+			vocalMode?: string,
+			lyrics?: string,
 		) => Promise<{ success: boolean; audioPath?: string; durationSec?: number; error?: string }>;
+		aiGenerateLyrics: (
+			themePrompt: string,
+			title?: string,
+		) => Promise<{
+			success: boolean;
+			lyrics?: string;
+			title?: string;
+			styleTags?: string;
+			error?: string;
+		}>;
+		musicLibraryList: () => Promise<
+			Array<{
+				path: string;
+				name: string;
+				createdAt: number;
+				sizeBytes: number;
+				label?: string;
+				mood?: string;
+				prompt?: string;
+			}>
+		>;
+		musicLibraryDelete: (filePath: string) => Promise<{ success: boolean; error?: string }>;
 
 		lottieSearch: (
 			query: string,
@@ -208,6 +234,24 @@ interface Window {
 			lottieUrl: string,
 			name: string,
 		) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+
+		// Remotion SSR Export
+		exportRemotion: (opts: {
+			code: string;
+			screenshots: string[];
+			fps?: number;
+			durationInFrames?: number;
+			fileName?: string;
+			musicPath?: string;
+			musicVolume?: number;
+		}) => Promise<{
+			success: boolean;
+			path?: string;
+			canceled?: boolean;
+			error?: string;
+			logs?: string[];
+		}>;
+		onExportRemotionProgress: (callback: (percent: number) => void) => () => void;
 
 		setMicrophoneExpanded: (expanded: boolean) => void;
 		setHasUnsavedChanges: (hasChanges: boolean) => void;

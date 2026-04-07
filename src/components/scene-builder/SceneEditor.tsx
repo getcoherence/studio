@@ -8,29 +8,195 @@ import {
 	Music,
 	Pause,
 	Play,
+	Redo2,
 	RotateCcw,
 	Sparkles,
 	Square,
 	Trash2,
 	Type,
+	Undo2,
 	Wand2,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
 import { AISettingsButton } from "@/components/ui/AISettingsDialog";
 import { Slider } from "@/components/ui/slider";
 import { AnimatedBackgroundPicker } from "@/components/video-editor/AnimatedBackgroundPicker";
-import { generateAiComposition } from "@/lib/ai/aiCinematicEngine";
+import {
+	generateAiComposition,
+	patchHeadline,
+	patchSceneBackground,
+	patchSceneDuration,
+} from "@/lib/ai/aiCinematicEngine";
 import { applyCritiqueMutations, critiqueSceneProject } from "@/lib/ai/designCritique";
 import { DESIGN_STYLE_LIST, type DesignStyleId } from "@/lib/ai/designStyles";
 import { generateSceneProject } from "@/lib/ai/sceneGenerator";
 import type { ScenePlan, ScenePlanItem } from "@/lib/ai/scenePlan";
-import { BACKGROUND_NAMES } from "@/lib/ai/scenePlan";
-import { compileScenePlan, expandSceneToLayers } from "@/lib/ai/scenePlanCompiler";
-import { reviewCompositionVisually } from "@/lib/ai/visionReview";
+import { BACKGROUND_NAMES, BACKGROUND_PRESETS } from "@/lib/ai/scenePlan";
+
+/** All scene-type template names, in the order the scenes panel should show
+ * them. Each one maps to a renderer in scenePlanCompiler (impact-word →
+ * renderImpactWord, ghost-hook → renderGhostHook, etc.). */
+const BG_EFFECT_OPTIONS = [
+	"none",
+	// Ambient
+	"flowing-lines",
+	"drifting-orbs",
+	"mesh-shift",
+	"aurora",
+	"bokeh",
+	"liquid-glass",
+	// Particles
+	"confetti",
+	"snow",
+	"fireflies",
+	"sakura",
+	"sparks",
+	// Grid/geometric
+	"pulse-grid",
+	"wave-grid",
+	"perspective-grid",
+	// Texture
+	"grain",
+	"particle-field",
+	"spotlight",
+	"gradient-wipe",
+	// Gradient
+	"flowing-gradient",
+] as const;
+
+const SCENE_TYPE_OPTIONS: ScenePlanItem["type"][] = [
+	"app-icon-cloud",
+	"avatar-constellation",
+	"before-after",
+	"browser-tabs-chaos",
+	"camera-text",
+	"cards",
+	"chat-narrative",
+	"collapse",
+	"cta",
+	"dashboard-deconstructed",
+	"data-flow-network",
+	"echo-hero",
+	"full-bleed",
+	"ghost-hook",
+	"glitch-intro",
+	"gradient-mesh-hero",
+	"hero-text",
+	"icon-showcase",
+	"impact-word",
+	"logo-reveal",
+	"metrics-dashboard",
+	"notification-chaos",
+	"outline-hero",
+	"process-ladder",
+	"product-glow",
+	"radial-vortex",
+	"scrolling-list",
+	"screenshot",
+	"split-layout",
+	"stacked-hierarchy",
+	"stacked-text",
+	"timeline-chaos",
+	"typewriter-prompt",
+	"word-slot-machine",
+];
+
+/** Visual variant options per scene type. Types not listed here have no variants. */
+const SCENE_VARIANT_OPTIONS: Partial<Record<ScenePlanItem["type"], string[]>> = {
+	"data-flow-network": [
+		"circles",
+		"timeline-arrows",
+		"hex-grid",
+		"isometric-blocks",
+		"orbital-rings",
+	],
+	"before-after": ["split-card", "swipe-reveal", "stacked-morph", "toggle-switch"],
+	"metrics-dashboard": ["counter-row", "bar-chart", "pie-radial", "ticker-tape"],
+	"word-slot-machine": ["wheel", "typewriter-swap", "flip-cards", "glitch-swap"],
+};
+
+import { pruneLayersForType, seedFieldsForType, syncLayersToData } from "@/lib/ai/sceneLayerSync";
+import {
+	compileScenePlan,
+	computeSceneOffsets,
+	expandSceneToLayers,
+} from "@/lib/ai/scenePlanCompiler";
+
+const MonacoEditor = lazy(() => import("@monaco-editor/react"));
+
+/** Lazy-loaded Monaco code editor with JSX/TSX syntax highlighting */
+function CodeEditor({
+	value,
+	onChange,
+}: {
+	value: string;
+	onChange: (val: string | undefined) => void;
+}) {
+	return (
+		<Suspense
+			fallback={
+				<div className="flex-1 bg-[#0a0a0c] p-3 text-[11px] text-white/30 font-mono">
+					Loading editor...
+				</div>
+			}
+		>
+			{/* Stop keyboard events from bubbling to SceneEditor's handler.
+			    Also handle clipboard manually for Electron compatibility. */}
+			<div
+				onKeyDown={(e) => {
+					e.stopPropagation();
+					// Electron's Monaco doesn't always handle clipboard via the
+					// browser API. Manually bridge Ctrl+C/V/X to the clipboard.
+					if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+						if (e.key === "c") {
+							document.execCommand("copy");
+						} else if (e.key === "v") {
+							document.execCommand("paste");
+						} else if (e.key === "x") {
+							document.execCommand("cut");
+						} else if (e.key === "a") {
+							document.execCommand("selectAll");
+						}
+					}
+				}}
+				style={{ height: "100%" }}
+			>
+				<MonacoEditor
+					height="100%"
+					language="typescript"
+					theme="vs-dark"
+					value={value}
+					onChange={onChange}
+					options={{
+						fontSize: 12,
+						minimap: { enabled: false },
+						lineNumbers: "on",
+						scrollBeyondLastLine: false,
+						wordWrap: "on",
+						tabSize: 2,
+						automaticLayout: true,
+						padding: { top: 8 },
+						contextmenu: true,
+					}}
+				/>
+			</div>
+		</Suspense>
+	);
+}
+
 import { aiPolishSceneProject, polishSceneProject } from "@/lib/ai/scenePolish";
-import { generateCustomMusic, type MusicMood } from "@/lib/audio/musicCatalog";
+import { reviewCompositionVisually } from "@/lib/ai/visionReview";
+import {
+	buildMusicPrompt,
+	generateCustomMusic,
+	generateLyrics,
+	MUSIC_MOOD_PRESETS,
+	type MusicMood,
+	type PromptIngredients,
+	type VocalMode,
+} from "@/lib/audio/musicCatalog";
 import { type AiCompositionData, consumePendingDemoProject } from "@/lib/demoProjectStore";
 import { DynamicPreview } from "@/lib/remotion/DynamicPreview";
 import { RemotionPreview } from "@/lib/remotion/RemotionPreview";
@@ -48,9 +214,10 @@ import {
 } from "@/lib/scene-renderer";
 import { exportSceneProject, type SceneExportProgress } from "@/lib/scene-renderer/sceneExporter";
 import { renderScene } from "@/lib/scene-renderer/sceneRenderer";
+import { DirectorChat } from "./DirectorChat";
 import { LayerPanel } from "./LayerPanel";
-import { SceneCanvas } from "./SceneCanvas";
 import { LottieBrowser } from "./LottieBrowser";
+import { SceneCanvas } from "./SceneCanvas";
 import { SceneLayerEditor } from "./SceneLayerEditor";
 import { SceneLayerTimeline } from "./SceneLayerTimeline";
 import { SceneTimeline } from "./SceneTimeline";
@@ -134,41 +301,205 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		}
 		return null;
 	});
-	const [scenePlan, setScenePlan] = useState<ScenePlan | null>(() => {
+	// ── Undo/Redo refs (functions defined after scenePlan state) ────
+	const undoStackRef = useRef<ScenePlan[]>([]);
+	const redoStackRef = useRef<ScenePlan[]>([]);
+	const lastPushTimeRef = useRef(0);
+
+	const [scenePlan, setScenePlanRaw] = useState<ScenePlan | null>(() => {
 		const plan: ScenePlan | null = (project as any)._aiPlan ?? null;
 		if (plan) {
+			// Ensure every scene has a stable _id for React keys
+			for (const scene of plan.scenes) {
+				if (!scene._id) scene._id = `s-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+			}
 			const accent = plan.accentColor || "#2563eb";
 			for (const scene of plan.scenes) {
-				// Always re-expand if layers are empty or missing
+				// Always re-expand if layers are empty or missing.
+				// Note: we NO LONGER create a "default text layer" fallback when
+				// expansion returns empty. For scene types like word-slot-machine
+				// that render their own content (slotMachineWords, iconItems, etc.)
+				// the fallback layer was getting rendered as an extras overlay and
+				// colliding with the primary content on screen. An empty layers
+				// array is fine — the renderer picks up data from scene fields.
 				if (!scene.layers || scene.layers.length === 0) {
-					const expanded = expandSceneToLayers(scene, accent);
-					// If expansion produced nothing (no headline etc), create a default text layer
-					scene.layers =
-						expanded.length > 0
-							? expanded
-							: [
-									{
-										id: `default-${Date.now()}`,
-										type: "text" as const,
-										content: scene.headline || "Untitled",
-										position: "center" as const,
-										size: 80,
-										startFrame: 0,
-										endFrame: -1,
-										settings: {
-											fontSize: 120,
-											color: ["white", "cream", "#fafafa", "#f5f0e8"].includes(scene.background)
-												? "#050505"
-												: "#ffffff",
-											animation: "chars",
-										},
-									},
-								];
-				}
+					scene.layers = expandSceneToLayers(scene, accent);
+				} else {
+					// Quick check: if none of the existing layers match what
+					// expandSceneToLayers would produce, the layers are entirely
+					// stale (e.g. from a different scene type). Re-expand from scratch.
+					const quickFresh = expandSceneToLayers(scene, accent);
+					const freshIdSet = new Set(quickFresh.map((l) => l.id));
+					const userPrefixes = ["layer-", "l-"];
+					const hasAnyValidLayer = scene.layers.some(
+						(l) => freshIdSet.has(l.id) || userPrefixes.some((p) => l.id.startsWith(p)),
+					);
+					if (!hasAnyValidLayer && quickFresh.length > 0) {
+						scene.layers = quickFresh;
+					} else {
+						// Migration: bring older saved projects up to date with the current
+						// expandSceneToLayers logic. Two passes:
+						//
+						//   1. ADD any scene-type-specific layers that are missing
+						//      (camera-text words, ghost words, stacked lines, before/after
+						//      lines).
+						//   2. REMOVE stale layers that shouldn't exist for this scene type
+						//      (e.g. headline/subtitle/vignette layers on ghost-hook scenes,
+						//      whose renderer only reads scene.ghostWords). Without this,
+						//      older projects show ghost rows in the panel that don't
+						//      correspond to anything on screen.
+						const hasLayerWithPrefix = (prefix: string) =>
+							scene.layers!.some((l) => l.id.startsWith(prefix));
+						const fresh = expandSceneToLayers(scene, accent);
+						const migrationPrefixes: Array<[keyof ScenePlanItem, string]> = [
+							["cameraTextWords", "camera-word-"],
+							["ghostWords", "ghost-word-"],
+							["stackedLines", "stacked-line-"],
+							["beforeLines", "before-"],
+							["afterLines", "after-"],
+							["networkNodes", "network-node-"],
+							["metrics", "metric-"],
+							["iconItems", "icon-item-"],
+							["slotMachineWords", "slot-word-"],
+							["scrollingListLines", "scroll-line-"],
+							["notifications", "notif-"],
+							["chatMessages", "chat-msg-"],
+							["browserTabs", "browser-tab-"],
+							["appIcons", "app-icon-"],
+						];
+						// Also check single-value fields that produce fixed-id layers
+						const singleFieldIds: Array<[keyof ScenePlanItem, string]> = [
+							["slotMachinePrefix", "slot-prefix"],
+							["typewriterText", "typewriter-text"],
+							["chatChannel", "chat-channel"],
+						];
+						for (const [field, layerId] of singleFieldIds) {
+							const fieldVal = (scene as any)[field];
+							if (fieldVal && !scene.layers!.some((l) => l.id === layerId)) {
+								const match = fresh.find((l) => l.id === layerId);
+								if (match) scene.layers!.push(match);
+							}
+						}
+						for (const [field, prefix] of migrationPrefixes) {
+							const fieldVal = (scene as any)[field];
+							if (Array.isArray(fieldVal) && fieldVal.length > 0 && !hasLayerWithPrefix(prefix)) {
+								const toAdd = fresh.filter((l) => l.id.startsWith(prefix));
+								scene.layers.push(...toAdd);
+							}
+						}
+
+						// Fix icon-item layers: ensure type is "text" (not "icon-grid")
+						// and content has "emoji label" format (not just label).
+						if (scene.type === "icon-showcase" && scene.iconItems) {
+							for (const l of scene.layers) {
+								const m = l.id.match(/^icon-item-(\d+)$/);
+								if (m) {
+									// Fix type if user accidentally changed it
+									if (l.type !== "text") l.type = "text";
+									const idx = Number.parseInt(m[1], 10);
+									const item = scene.iconItems[idx];
+									if (item) {
+										// Backfill emoji prefix if content is just the label
+										const content = (l.content || "").trim();
+										if (content === item.label || !content.includes(" ")) {
+											l.content = `${item.icon} ${item.label}`;
+										}
+									}
+								}
+							}
+						}
+
+						// Prune layers whose id doesn't appear in the freshly-expanded set
+						// AND aren't user-added (user-added layers have ids like `layer-...`
+						// or `l-...` which the expansion never produces). This drops stale
+						// headline/subtitle/vignette rows on scene types whose renderer
+						// ignores those fields, without touching the user's custom layers.
+						const freshIds = new Set(fresh.map((l) => l.id));
+						const USER_ADDED_PREFIXES = ["layer-", "l-"];
+						const HEADLINE_SKIP_TYPES = new Set([
+							"ghost-hook",
+							"camera-text",
+							"stacked-hierarchy",
+							"word-slot-machine",
+						]);
+						scene.layers = scene.layers.filter((l) => {
+							if (freshIds.has(l.id)) return true;
+							if (USER_ADDED_PREFIXES.some((p) => l.id.startsWith(p))) return true;
+							// Extra safety: drop any text layer whose content matches the
+							// scene headline on types that don't render it — catches stale
+							// default-* or other ghost layers regardless of id prefix.
+							if (
+								HEADLINE_SKIP_TYPES.has(scene.type) &&
+								l.type === "text" &&
+								l.content === scene.headline
+							) {
+								return false;
+							}
+							return false;
+						});
+					}
+				} // end hasAnyValidLayer else
 			}
 		}
 		return plan;
 	});
+	// ── Undo/Redo functions ──
+	const MAX_UNDO = 50;
+
+	const setScenePlan = useCallback(
+		(newPlan: ScenePlan) => {
+			if (scenePlan && newPlan) {
+				const now = Date.now();
+				if (now - lastPushTimeRef.current > 500) {
+					undoStackRef.current = [...undoStackRef.current.slice(-(MAX_UNDO - 1)), scenePlan];
+					redoStackRef.current = [];
+					lastPushTimeRef.current = now;
+				}
+			}
+			setScenePlanRaw(newPlan);
+		},
+		[scenePlan],
+	);
+
+	const undo = useCallback(() => {
+		const stack = undoStackRef.current;
+		if (stack.length === 0 || !scenePlan) return;
+		const prev = stack[stack.length - 1];
+		undoStackRef.current = stack.slice(0, -1);
+		redoStackRef.current = [...redoStackRef.current, scenePlan];
+		setScenePlanRaw(prev);
+		(project as any)._aiPlan = prev;
+		if (!prev.readonly) {
+			try {
+				const newCode = compileScenePlan(prev);
+				setAiComposition((p) => (p ? { ...p, code: newCode } : p));
+				(project as any)._aiCode = newCode;
+			} catch {
+				/* ignore compile errors during undo */
+			}
+		}
+		toast("Undo", { duration: 1500 });
+	}, [scenePlan, project]);
+
+	const redo = useCallback(() => {
+		const stack = redoStackRef.current;
+		if (stack.length === 0 || !scenePlan) return;
+		const next = stack[stack.length - 1];
+		redoStackRef.current = stack.slice(0, -1);
+		undoStackRef.current = [...undoStackRef.current, scenePlan];
+		setScenePlanRaw(next);
+		(project as any)._aiPlan = next;
+		if (!next.readonly) {
+			try {
+				const newCode = compileScenePlan(next);
+				setAiComposition((p) => (p ? { ...p, code: newCode } : p));
+				(project as any)._aiCode = newCode;
+			} catch {
+				/* ignore compile errors during redo */
+			}
+		}
+		toast("Redo", { duration: 1500 });
+	}, [scenePlan, project]);
 	const [isRegenerating, setIsRegenerating] = useState(false);
 	const [previewMode, setPreviewMode] = useState<"canvas" | "remotion">(
 		// Default to Remotion for cinematic/AI projects
@@ -183,9 +514,17 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	const [isVisionReviewing, setIsVisionReviewing] = useState(false);
 	const [visionScore, setVisionScore] = useState<number | null>(null);
 	const playerContainerRef = useRef<HTMLDivElement>(null);
+	const codeEditorRef = useRef<string>("");
 	const [musicPath, _setMusicPath] = useState<string | null>(
 		() => (project as any)._musicPath ?? null,
 	);
+	const [musicVolume, _setMusicVolume] = useState<number>(
+		() => (project as any)._musicVolume ?? 0.25,
+	);
+	const setMusicVolume = useCallback((vol: number) => {
+		_setMusicVolume(vol);
+		setProject((prev) => ({ ...prev, _musicVolume: vol }) as any);
+	}, []);
 	const [musicDataUrl, setMusicDataUrl] = useState<string | null>(null);
 	const setMusicPath = useCallback((path: string | null) => {
 		_setMusicPath(path);
@@ -216,17 +555,41 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		}
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 	const [generatingMusicMood, setGeneratingMusicMood] = useState<string | null>(null);
+	type MusicLibraryEntry = {
+		path: string;
+		name: string;
+		createdAt: number;
+		sizeBytes: number;
+		label?: string;
+		mood?: string;
+		prompt?: string;
+	};
+	const [musicLibrary, setMusicLibrary] = useState<MusicLibraryEntry[]>([]);
+	const [showPromptBuilder, setShowPromptBuilder] = useState(false);
+	const [promptIngredients, setPromptIngredients] = useState<PromptIngredients>({});
+	const [vocalMode, setVocalMode] = useState<VocalMode>("instrumental");
+	const refreshMusicLibrary = useCallback(async () => {
+		try {
+			const list = await window.electronAPI?.musicLibraryList();
+			if (Array.isArray(list)) setMusicLibrary(list);
+		} catch (err) {
+			console.error("[Music] Failed to list library:", err);
+		}
+	}, []);
 	const [rightPanelTab, setRightPanelTab] = useState<
-		"layers" | "tools" | "music" | "background" | "code" | "plan"
+		"layers" | "tools" | "music" | "background" | "code" | "plan" | "director"
 	>(project.styleId === "ai-cinematic" ? "plan" : "layers");
 	const [selectedStyle, setSelectedStyle] = useState<DesignStyleId | null>(null);
 	const [projectPath, _setProjectPath] = useState<string | null>(
 		() => (project as any)._projectPath ?? null,
 	);
-	const setProjectPath = useCallback((path: string | null) => {
-		_setProjectPath(path);
-		(project as any)._projectPath = path;
-	}, [project]);
+	const setProjectPath = useCallback(
+		(path: string | null) => {
+			_setProjectPath(path);
+			(project as any)._projectPath = path;
+		},
+		[project],
+	);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const canvasRefOut = useRef<HTMLCanvasElement | null>(null);
 
@@ -253,6 +616,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 					setProjectPath(result.path);
 				}
 			}
+			// Clear the unsaved changes flag after a successful save
+			window.electronAPI?.setHasUnsavedChanges?.(false);
 		} catch (err) {
 			console.error("[AutoSave] Failed:", err);
 		}
@@ -263,16 +628,34 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		doAutoSave(project, projectPath);
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-	// Debounced auto-save on project changes (15s after last change)
+	// Debounced auto-save on project / plan / composition changes. Plan edits
+	// mutate `(project as any)._aiPlan` directly without calling setProject,
+	// so we must also watch scenePlan + aiComposition here — otherwise layer
+	// edits, headline changes, scene type switches, etc. never trigger a save
+	// and get lost on reload. 3s debounce (was 15s) so edits flush quickly
+	// during dev iteration.
 	useEffect(() => {
 		if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
 		autoSaveTimerRef.current = setTimeout(() => {
 			doAutoSave(project, projectPath);
-		}, 15_000);
+		}, 3_000);
 		return () => {
 			if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
 		};
-	}, [project, projectPath, doAutoSave]);
+	}, [project, projectPath, scenePlan, aiComposition, doAutoSave]);
+
+	// Flush a save on unmount so closing the editor preserves any pending
+	// changes that hadn't hit the 3s debounce yet. Uses refs to capture the
+	// latest values without re-running the effect on every edit.
+	const latestProjectRef = useRef(project);
+	const latestPathRef = useRef(projectPath);
+	latestProjectRef.current = project;
+	latestPathRef.current = projectPath;
+	useEffect(() => {
+		return () => {
+			doAutoSave(latestProjectRef.current, latestPathRef.current);
+		};
+	}, [doAutoSave]);
 
 	// ── Manual save (responds to File > Save menu) ──────────────────────
 
@@ -285,6 +668,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 			);
 			if (result?.success && result.path) {
 				setProjectPath(result.path);
+				window.electronAPI?.setHasUnsavedChanges?.(false);
 				toast.success("Project saved");
 			}
 		} catch (_err) {
@@ -299,13 +683,11 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		return () => cleanup?.();
 	}, [saveProject]);
 
-	// Mark unsaved changes
+	// Track unsaved changes: mark dirty whenever project/plan/composition
+	// changes, and clear after every successful auto-save or manual save.
 	useEffect(() => {
 		window.electronAPI?.setHasUnsavedChanges?.(true);
-		return () => {
-			window.electronAPI?.setHasUnsavedChanges?.(false);
-		};
-	}, []);
+	}, [project, scenePlan, aiComposition]);
 
 	// ── Project mutation helpers ────────────────────────────────────────
 
@@ -506,7 +888,21 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 	const [resetSignal, setResetSignal] = useState(0);
 	const [currentPlayerFrame, setCurrentPlayerFrame] = useState(0);
+	const currentPlayerFrameRef = useRef(0);
+	// Keep ref in sync with state so closures can read the latest frame
+	currentPlayerFrameRef.current = currentPlayerFrame;
 	const [seekToFrame, setSeekToFrame] = useState<number | undefined>(undefined);
+
+	/** Seek to a scene by index. Uses computeSceneOffsets to account for
+	 *  transition overlaps, then adds a small offset so the player lands
+	 *  solidly inside the scene (past the incoming transition). */
+	const seekToScene = useCallback((plan: ScenePlan, si: number) => {
+		const offsets = computeSceneOffsets(plan.scenes);
+		const start = offsets[si] ?? 0;
+		// Offset a few frames past the transition so the scene's own content is visible
+		const nudge = si > 0 ? 12 : 0;
+		setSeekToFrame(start + nudge + Math.random() * 0.001);
+	}, []);
 
 	const resetPlayback = useCallback(() => {
 		setSelectedSceneIndex(0);
@@ -526,58 +922,87 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		setIsPlaying(false);
 
 		try {
-			let blob: Blob;
+			if (aiComposition) {
+				// AI Cinematic: Remotion SSR → H.264 MP4 (background, no UI impact)
+				toast.loading("Rendering video... this runs in the background", { id: "export" });
 
-			if (aiComposition && playerContainerRef.current) {
-				// AI Cinematic: capture from Remotion Player
-				toast.loading("Exporting AI Cinematic video... this may take a minute", { id: "export" });
-				const { exportPlayerToVideo } = await import("@/lib/remotion/playerExport");
-				const totalMs = project.scenes.reduce((s, sc) => s + sc.durationMs, 0) || 30000;
-				blob = await exportPlayerToVideo({
-					playerElement: playerContainerRef.current,
-					durationMs: totalMs,
-					fps: 30,
-					seekToFrame: (f) => setSeekToFrame(f),
-					onProgress: (p) =>
-						setExportProgress({ phase: "rendering", progress: p, currentScene: 0, totalScenes: 1 }),
+				// Listen for progress updates from the main process
+				const unsubProgress = window.electronAPI.onExportRemotionProgress((percent) => {
+					setExportProgress({
+						phase: "rendering",
+						progress: percent,
+						currentScene: 0,
+						totalScenes: 1,
+					});
 				});
-				toast.dismiss("export");
+
+				try {
+					const { estimateAiDuration } = await import("@/lib/remotion/compileCode");
+					const durationInFrames = estimateAiDuration(aiComposition.code, 30);
+
+					const result = await window.electronAPI.exportRemotion({
+						code: aiComposition.code,
+						screenshots: aiComposition.screenshots,
+						fps: 30,
+						durationInFrames,
+						fileName: project.name || "export",
+						musicPath: musicPath || undefined,
+						musicVolume,
+					});
+
+					toast.dismiss("export");
+
+					// Log main-process diagnostics to renderer console
+					if (result.logs?.length) {
+						console.group("[Remotion Export Diagnostics]");
+						for (const line of result.logs) console.log(line);
+						console.groupEnd();
+					}
+
+					if (result.success) {
+						toast.success(musicPath ? "Video exported with music!" : "Video exported successfully");
+					} else if (!result.canceled) {
+						toast.error(result.error || "Failed to export video");
+					}
+				} finally {
+					unsubProgress();
+				}
 			} else {
-				// Standard: Canvas 2D export
-				blob = await exportSceneProject(project, {
+				// Standard: Canvas 2D export → WebM
+				const blob = await exportSceneProject(project, {
 					fps: project.fps || 30,
 					quality: "high",
 					onProgress: setExportProgress,
 				});
-			}
 
-			const arrayBuffer = await blob.arrayBuffer();
-			const fileName = `${project.name || "scene-export"}.webm`;
-			const result = await window.electronAPI.saveExportedVideo(arrayBuffer, fileName);
+				const arrayBuffer = await blob.arrayBuffer();
+				const fileName = `${project.name || "scene-export"}.webm`;
+				const result = await window.electronAPI.saveExportedVideo(arrayBuffer, fileName);
 
-			if (result.success && result.path && musicPath) {
-				// Merge music with the exported video
-				toast.loading("Adding background music...", { id: "merge" });
-				const mergeResult = await window.electronAPI.mergeVideoAudio(result.path, musicPath);
-				toast.dismiss("merge");
-				if (mergeResult.success) {
-					toast.success("Video exported with music!");
-				} else {
-					toast.success("Video exported (music merge failed — video saved without music)");
+				if (result.success && result.path && musicPath) {
+					toast.loading("Adding background music...", { id: "merge" });
+					const mergeResult = await window.electronAPI.mergeVideoAudio(result.path, musicPath);
+					toast.dismiss("merge");
+					if (mergeResult.success) {
+						toast.success("Video exported with music!");
+					} else {
+						toast.success("Video exported (music merge failed — video saved without music)");
+					}
+				} else if (result.success) {
+					toast.success("Video exported successfully");
+				} else if (!result.canceled) {
+					toast.error(result.message || "Failed to save video");
 				}
-			} else if (result.success) {
-				toast.success("Video exported successfully");
-			} else if (!result.canceled) {
-				toast.error(result.message || "Failed to save video");
 			}
 		} catch (err) {
 			console.error("Export failed:", err);
+			toast.dismiss("export");
 			toast.error(`Export failed: ${err instanceof Error ? err.message : "Unknown error"}`);
 		} finally {
 			setIsExporting(false);
 			setExportProgress(null);
 		}
-	}, [isExporting, project, musicPath]);
+	}, [isExporting, aiComposition, project, musicPath]);
 
 	// ── Background ─────────────────────────────────────────────────────
 
@@ -781,8 +1206,9 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 		(afterIndex: number) => {
 			if (!scenePlan) return;
 			const newScene: ScenePlanItem = {
+				_id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
 				type: "hero-text",
-				headline: "New Scene",
+				headline: "",
 				background: "black",
 				animation: "words",
 				font: "sans-serif",
@@ -794,10 +1220,11 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 			newScenes.splice(afterIndex + 1, 0, newScene);
 			const newPlan = { ...scenePlan, scenes: newScenes };
 			setScenePlan(newPlan);
+			(project as any)._aiPlan = newPlan;
+			if (scenePlan.readonly) return;
 			const newCode = compileScenePlan(newPlan);
 			setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
 			(project as any)._aiCode = newCode;
-			(project as any)._aiPlan = newPlan;
 		},
 		[scenePlan, project],
 	);
@@ -807,10 +1234,11 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 			if (!scenePlan || scenePlan.scenes.length <= 1) return;
 			const newPlan = { ...scenePlan, scenes: scenePlan.scenes.filter((_, i) => i !== index) };
 			setScenePlan(newPlan);
+			(project as any)._aiPlan = newPlan;
+			if (scenePlan.readonly) return;
 			const newCode = compileScenePlan(newPlan);
 			setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
 			(project as any)._aiCode = newCode;
-			(project as any)._aiPlan = newPlan;
 		},
 		[scenePlan, project],
 	);
@@ -824,38 +1252,202 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 			[newScenes[fromIndex], newScenes[toIndex]] = [newScenes[toIndex], newScenes[fromIndex]];
 			const newPlan = { ...scenePlan, scenes: newScenes };
 			setScenePlan(newPlan);
+			(project as any)._aiPlan = newPlan;
+			if (scenePlan.readonly) return;
 			const newCode = compileScenePlan(newPlan);
 			setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
 			(project as any)._aiCode = newCode;
-			(project as any)._aiPlan = newPlan;
 		},
 		[scenePlan, project],
 	);
 
 	const recompileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+	// ── Readonly-plan code sync ref ──────────────────────────────────
+	// For readonly plans (synthesized from AI code), we patch targeted strings
+	// in the generated code on each edit instead of recompiling. Problem: the
+	// prior implementation captured the "old" value from React state via a
+	// useCallback closure, which went stale every keystroke because setScenePlan
+	// kept rewriting scenePlan, so by the time the debounce fired the captured
+	// "old" value matched the new value and patchHeadline couldn't find its
+	// target string in _aiCode.
+	//
+	// Fix: keep a ref that mirrors the fields currently present in _aiCode,
+	// re-sync it when scenePlan identity changes (new generation), and patch
+	// synchronously on every updateScenePlan call so the ref + _aiCode stay
+	// in lockstep regardless of keystroke rate.
+	const syncedAiScenesRef = useRef<ScenePlanItem[] | null>(null);
+	const lastSyncedPlanObjRef = useRef<ScenePlan | null>(null);
+	if (scenePlan && scenePlan !== lastSyncedPlanObjRef.current) {
+		syncedAiScenesRef.current = scenePlan.scenes.map((s) => ({
+			...s,
+			layers: s.layers?.map((l) => ({
+				...l,
+				settings: l.settings ? { ...l.settings } : undefined,
+			})),
+		}));
+		lastSyncedPlanObjRef.current = scenePlan;
+	}
+
 	const updateScenePlan = useCallback(
 		(sceneIndex: number, updates: Partial<ScenePlanItem>) => {
 			if (!scenePlan) return;
+
+			const currentScene = scenePlan.scenes[sceneIndex];
+			const accent = scenePlan.accentColor || "#2563eb";
+			const isTypeSwitch = !!(updates.type && updates.type !== currentScene.type);
+			let mergedUpdates: Partial<ScenePlanItem> = { ...updates };
+
+			// 1. Type switch: seed new type's fields, clear stale fields, re-expand layers
+			if (isTypeSwitch && updates.type) {
+				const seeded = seedFieldsForType(updates.type, currentScene);
+				mergedUpdates = { ...mergedUpdates, ...seeded };
+
+				const newScene = { ...currentScene, ...mergedUpdates };
+				const freshLayers = expandSceneToLayers(newScene, accent);
+				const userLayers = (currentScene.layers || []).filter(
+					(l) => l.id.startsWith("layer-") || l.id.startsWith("l-"),
+				);
+				mergedUpdates.layers = [...freshLayers, ...userLayers];
+
+				const { clearedFields } = pruneLayersForType(
+					mergedUpdates.layers,
+					updates.type,
+					{ ...newScene, layers: mergedUpdates.layers },
+					accent,
+				);
+				mergedUpdates = { ...mergedUpdates, ...clearedFields };
+			}
+
+			// 2. Sync layer edits back to scene data fields + trim/re-index
+			if (mergedUpdates.layers) {
+				const sceneForSync = { ...currentScene, ...mergedUpdates };
+				const { fieldUpdates, layers: syncedLayers } = syncLayersToData(
+					sceneForSync,
+					mergedUpdates.layers,
+					scenePlan.scenes[sceneIndex],
+				);
+				mergedUpdates = { ...mergedUpdates, ...fieldUpdates };
+				mergedUpdates.layers = syncedLayers;
+
+				// 3. Prune cross-type layers + clear orphaned data fields
+				const effectiveType = mergedUpdates.type || currentScene.type;
+				const { layers: prunedLayers, clearedFields } = pruneLayersForType(
+					syncedLayers,
+					effectiveType,
+					{ ...currentScene, ...mergedUpdates } as ScenePlanItem,
+					accent,
+				);
+				mergedUpdates.layers = prunedLayers;
+				mergedUpdates = { ...mergedUpdates, ...clearedFields };
+			}
+
 			const newPlan = {
 				...scenePlan,
-				scenes: scenePlan.scenes.map((s, i) => (i === sceneIndex ? { ...s, ...updates } : s)),
+				scenes: scenePlan.scenes.map((s, i) => (i === sceneIndex ? { ...s, ...mergedUpdates } : s)),
 			};
 			setScenePlan(newPlan);
 			(project as any)._aiPlan = newPlan;
 
-			// Debounce recompile so typing doesn't steal focus
+			// Readonly plans are synthesized from AI code. Instead of recompiling the whole
+			// plan (which would clobber the AI's custom components), apply targeted string
+			// patches to the generated code for the specific fields the user changed.
+			if (scenePlan.readonly) {
+				const syncedScene = syncedAiScenesRef.current?.[sceneIndex];
+				let currentCode = (project as any)._aiCode as string | undefined;
+				if (!syncedScene || !currentCode) return;
+
+				let anyPatch = false;
+
+				// Use mergedUpdates so synced-field changes (headline synced from
+				// a headline-layer edit) also get patched into the code.
+				if (
+					mergedUpdates.headline !== undefined &&
+					syncedScene.headline &&
+					mergedUpdates.headline !== syncedScene.headline
+				) {
+					const next = patchHeadline(currentCode, syncedScene.headline, mergedUpdates.headline);
+					if (next !== currentCode) {
+						currentCode = next;
+						anyPatch = true;
+					}
+					syncedScene.headline = mergedUpdates.headline;
+				}
+				if (
+					mergedUpdates.durationFrames !== undefined &&
+					mergedUpdates.durationFrames !== syncedScene.durationFrames
+				) {
+					const next = patchSceneDuration(currentCode, sceneIndex, mergedUpdates.durationFrames);
+					if (next !== currentCode) {
+						currentCode = next;
+						anyPatch = true;
+					}
+					syncedScene.durationFrames = mergedUpdates.durationFrames;
+				}
+				if (
+					mergedUpdates.background !== undefined &&
+					mergedUpdates.background !== syncedScene.background
+				) {
+					const next = patchSceneBackground(currentCode, sceneIndex, mergedUpdates.background);
+					if (next !== currentCode) {
+						currentCode = next;
+						anyPatch = true;
+					}
+					syncedScene.background = mergedUpdates.background;
+				}
+				// Layer text content edits: diff each text layer against the synced ref.
+				if (updates.layers && syncedScene.layers) {
+					for (const newLayer of updates.layers) {
+						if (newLayer.type !== "text") continue;
+						const syncedLayer = syncedScene.layers.find((l) => l.id === newLayer.id);
+						if (syncedLayer && syncedLayer.content && syncedLayer.content !== newLayer.content) {
+							const next = patchHeadline(currentCode, syncedLayer.content, newLayer.content);
+							if (next !== currentCode) {
+								currentCode = next;
+								anyPatch = true;
+							}
+							syncedLayer.content = newLayer.content;
+						}
+					}
+				}
+
+				(project as any)._aiCode = currentCode;
+
+				if (anyPatch) {
+					if (recompileTimerRef.current) clearTimeout(recompileTimerRef.current);
+					recompileTimerRef.current = setTimeout(() => {
+						const latestCode = (project as any)._aiCode as string;
+						setSeekToFrame(currentPlayerFrameRef.current + Math.random() * 0.001);
+						setAiComposition((prev) => (prev ? { ...prev, code: latestCode } : prev));
+					}, 300);
+				}
+				return;
+			}
+
+			// Plan-based path: debounce recompile so typing doesn't steal focus.
 			if (recompileTimerRef.current) clearTimeout(recompileTimerRef.current);
+			const shouldSeek = isTypeSwitch || updates.durationFrames !== undefined;
 			recompileTimerRef.current = setTimeout(() => {
-				const newCode = compileScenePlan(newPlan);
-				setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
+				let newCode: string;
+				try {
+					newCode = compileScenePlan(newPlan);
+				} catch (err) {
+					console.error("[compileScenePlan] failed:", err);
+					toast.error(`Compile failed: ${err instanceof Error ? err.message : String(err)}`);
+					return;
+				}
 				(project as any)._aiCode = newCode;
-				// Seek player to the edited scene
-				const startFrame = newPlan.scenes
-					.slice(0, sceneIndex)
-					.reduce((sum, s) => sum + (s.durationFrames || 90), 0);
-				// Delay seek to happen AFTER Player remounts from code change
-				setTimeout(() => setSeekToFrame(startFrame + Math.random() * 0.001), 300);
+				// Set seek frame BEFORE updating composition so the Player
+				// mounts at the correct position (no flash to frame 0).
+				if (shouldSeek) {
+					const offsets = computeSceneOffsets(newPlan.scenes);
+					const start = offsets[sceneIndex] ?? 0;
+					const nudge = sceneIndex > 0 ? 12 : 0;
+					setSeekToFrame(start + nudge + Math.random() * 0.001);
+				} else {
+					setSeekToFrame(currentPlayerFrameRef.current + Math.random() * 0.001);
+				}
+				setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
 			}, 500);
 		},
 		[scenePlan, project],
@@ -863,31 +1455,78 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 	// ── Music ────────────────────────────────────────────────────────
 
-	const handleGenerateMusic = useCallback(async (mood: MusicMood) => {
-		setGeneratingMusicMood(mood);
-		toast.loading("Composing your soundtrack... this takes ~30 seconds", { id: "music" });
-		try {
-			// Calculate video duration from project scenes
-			const totalMs = project.scenes.reduce((sum, s) => sum + s.durationMs, 0);
-			const videoDurationSec = Math.round(totalMs / 1000);
-			console.log("[Music] Requesting", mood, "music for", videoDurationSec, "second video");
-			const result = await generateCustomMusic(mood, undefined, videoDurationSec);
-			console.log("[Music] Result:", result);
-			toast.dismiss("music");
-			if (result.success && result.audioPath) {
-				setMusicPath(result.audioPath);
-				toast.success(`Music generated! (${mood})`);
-			} else {
-				console.error("[Music] Generation failed:", result.error);
-				toast.error(result.error || "Music generation failed");
+	// Refresh the music library whenever the Music tab becomes active so newly
+	// generated tracks appear without the user having to reload.
+	useEffect(() => {
+		if (rightPanelTab === "music") refreshMusicLibrary();
+	}, [rightPanelTab, refreshMusicLibrary]);
+
+	const handleGenerateMusic = useCallback(
+		async (mood: MusicMood) => {
+			setGeneratingMusicMood(mood);
+			toast.loading("Composing your soundtrack... this takes ~30 seconds", { id: "music" });
+			try {
+				// Calculate video duration from project scenes
+				const totalMs = project.scenes.reduce((sum, s) => sum + s.durationMs, 0);
+				const videoDurationSec = Math.round(totalMs / 1000);
+				console.log(
+					"[Music] Requesting",
+					mood,
+					"music for",
+					videoDurationSec,
+					"second video, vocal:",
+					vocalMode,
+				);
+				// If custom-lyrics mode, read the lyrics textarea
+				let lyrics: string | undefined;
+				if (vocalMode === "custom-lyrics") {
+					const ta = document.getElementById("custom-lyrics-input") as HTMLTextAreaElement;
+					lyrics = ta?.value?.trim() || undefined;
+				}
+				const result = await generateCustomMusic(
+					mood,
+					undefined,
+					videoDurationSec,
+					vocalMode,
+					lyrics,
+				);
+				console.log("[Music] Result:", result);
+				toast.dismiss("music");
+				if (result.success && result.audioPath) {
+					setMusicPath(result.audioPath);
+					toast.success(`Music generated! (${mood})`);
+					refreshMusicLibrary();
+				} else {
+					console.error("[Music] Generation failed:", result.error);
+					toast.error(result.error || "Music generation failed");
+				}
+			} catch (err) {
+				console.error("[Music] Exception:", err);
+				toast.dismiss("music");
+				toast.error("Music generation failed");
 			}
-		} catch (err) {
-			console.error("[Music] Exception:", err);
-			toast.dismiss("music");
-			toast.error("Music generation failed");
+			setGeneratingMusicMood(null);
+		},
+		[refreshMusicLibrary],
+	);
+
+	// ── Auto-music: generate background music on first load ──────────
+	// If the scene plan includes a musicMood suggestion from the AI but no
+	// music track is loaded yet, automatically generate music in the
+	// background. This gives the user a fully-featured video on first open
+	// without requiring manual music selection.
+	const autoMusicTriggered = useRef(false);
+	useEffect(() => {
+		if (scenePlan?.musicMood && !musicPath && !autoMusicTriggered.current && !generatingMusicMood) {
+			autoMusicTriggered.current = true;
+			const mood = scenePlan.musicMood as MusicMood;
+			console.log("[AutoMusic] Plan suggests music mood:", mood, "— auto-generating...");
+			toast.loading("Generating background music...", { id: "automusic", duration: 60_000 });
+			handleGenerateMusic(mood).then(() => {
+				toast.dismiss("automusic");
+			});
 		}
-		setGeneratingMusicMood(null);
-	}, []);
+	}, [scenePlan?.musicMood, musicPath, generatingMusicMood, handleGenerateMusic]);
 
 	// ── AI Regenerate ────────────────────────────────────────────────
 
@@ -944,27 +1583,40 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 	const handleKeyDown = useCallback(
 		(e: React.KeyboardEvent) => {
+			const tag = (e.target as HTMLElement).tagName;
+			const isInput = tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT";
+			const hasModifier = e.metaKey || e.ctrlKey || e.altKey || e.shiftKey;
+
+			// Ctrl+Z / Cmd+Z → undo (works even in inputs)
+			if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+				e.preventDefault();
+				undo();
+				return;
+			}
+			// Ctrl+Shift+Z / Cmd+Shift+Z / Ctrl+Y → redo
 			if (
-				(e.key === " " && !e.target) ||
-				((e.target as HTMLElement).tagName !== "TEXTAREA" &&
-					(e.target as HTMLElement).tagName !== "INPUT")
+				(e.key === "z" && (e.ctrlKey || e.metaKey) && e.shiftKey) ||
+				(e.key === "y" && (e.ctrlKey || e.metaKey))
 			) {
+				e.preventDefault();
+				redo();
+				return;
+			}
+			// Space (no modifiers, not in an input) → toggle playback
+			if (e.key === " " && !isInput && !hasModifier) {
 				e.preventDefault();
 				togglePlayback();
 			}
-			if (e.key === "Delete" || e.key === "Backspace") {
-				if (
-					(e.target as HTMLElement).tagName !== "TEXTAREA" &&
-					(e.target as HTMLElement).tagName !== "INPUT"
-				) {
-					deleteSelectedLayer();
-				}
+			// Delete/Backspace (not in an input) → delete selected layer
+			if ((e.key === "Delete" || e.key === "Backspace") && !isInput) {
+				deleteSelectedLayer();
 			}
+			// Escape → deselect layer
 			if (e.key === "Escape") {
 				setSelectedLayerId(null);
 			}
 		},
-		[togglePlayback, deleteSelectedLayer],
+		[togglePlayback, deleteSelectedLayer, undo, redo],
 	);
 
 	return (
@@ -984,61 +1636,63 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 					<span className="text-xs">Back</span>
 				</button>
 
-				<div className="w-px h-5 bg-white/10 mx-1" />
+				{!aiComposition && (
+					<>
+						<div className="w-px h-5 bg-white/10 mx-1" />
 
-				{/* Add layer buttons */}
-				<button
-					onClick={addTextLayer}
-					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors text-xs"
-				>
-					<Type size={14} />
-					Text
-				</button>
-				<button
-					onClick={() => fileInputRef.current?.click()}
-					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors text-xs"
-				>
-					<ImagePlus size={14} />
-					Image
-				</button>
-				<input
-					ref={fileInputRef}
-					type="file"
-					accept="image/*"
-					onChange={handleImageUpload}
-					className="hidden"
-				/>
-				<button
-					onClick={addShapeLayer}
-					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors text-xs"
-				>
-					<Square size={14} />
-					Shape
-				</button>
-
-				<div className="w-px h-5 bg-white/10 mx-1" />
-
-				{/* Scene duration */}
-				<div className="flex items-center gap-2">
-					<Clock size={12} className="text-white/40" />
-					<span className="text-[11px] text-white/40">Duration</span>
-					<div className="w-24">
-						<Slider
-							value={[currentScene.durationMs]}
-							onValueChange={([v]) => handleDurationChange(v)}
-							min={1000}
-							max={30000}
-							step={500}
+						{/* Add layer buttons */}
+						<button
+							onClick={addTextLayer}
+							className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors text-xs"
+						>
+							<Type size={14} />
+							Text
+						</button>
+						<button
+							onClick={() => fileInputRef.current?.click()}
+							className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors text-xs"
+						>
+							<ImagePlus size={14} />
+							Image
+						</button>
+						<input
+							ref={fileInputRef}
+							type="file"
+							accept="image/*"
+							onChange={handleImageUpload}
+							className="hidden"
 						/>
-					</div>
-					<span className="text-[11px] text-white/50 w-8">
-						{(currentScene.durationMs / 1000).toFixed(1)}s
-					</span>
-				</div>
+						<button
+							onClick={addShapeLayer}
+							className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors text-xs"
+						>
+							<Square size={14} />
+							Shape
+						</button>
 
-				<div className="w-px h-5 bg-white/10 mx-1" />
+						<div className="w-px h-5 bg-white/10 mx-1" />
 
-				<div className="w-px h-5 bg-white/10 mx-1" />
+						{/* Scene duration */}
+						<div className="flex items-center gap-2">
+							<Clock size={12} className="text-white/40" />
+							<span className="text-[11px] text-white/40">Duration</span>
+							<div className="w-24">
+								<Slider
+									value={[currentScene.durationMs]}
+									onValueChange={([v]) => handleDurationChange(v)}
+									min={1000}
+									max={30000}
+									step={500}
+								/>
+							</div>
+							<span className="text-[11px] text-white/50 w-8">
+								{(currentScene.durationMs / 1000).toFixed(1)}s
+							</span>
+						</div>
+
+						<div className="w-px h-5 bg-white/10 mx-1" />
+					</>
+				)}
 
 				{/* AI Settings */}
 				<AISettingsButton />
@@ -1128,8 +1782,25 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 							{/* Preview area */}
 							<div
 								ref={playerContainerRef}
-								className="flex-1 p-4 flex flex-col min-h-0 overflow-hidden"
+								className="flex-1 p-4 flex flex-col min-h-0 overflow-hidden relative"
 							>
+								{isExporting && !aiComposition && (
+									<div className="absolute inset-0 z-50 bg-[#09090b]/95 flex flex-col items-center justify-center gap-4 rounded-lg">
+										<Loader2 size={32} className="animate-spin text-[#2563eb]" />
+										<div className="text-white/70 text-sm font-medium">Exporting video...</div>
+										{exportProgress && (
+											<div className="w-48 h-1.5 rounded-full bg-white/10 overflow-hidden">
+												<div
+													className="h-full bg-[#2563eb] transition-all"
+													style={{ width: `${Math.round(exportProgress.progress * 100)}%` }}
+												/>
+											</div>
+										)}
+										<div className="text-white/30 text-[10px]">
+											Capturing frames — this may take a minute
+										</div>
+									</div>
+								)}
 								{previewMode === "remotion" && aiComposition ? (
 									<DynamicPreview
 										code={aiComposition.code}
@@ -1179,7 +1850,9 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 							</div>
 
 							{/* Playback controls bar — hidden in Motion mode (Remotion Player has its own) */}
-							<div className={`flex-shrink-0 flex items-center justify-center gap-4 px-4 py-2 border-t border-white/5 ${previewMode === "remotion" ? "hidden" : ""}`}>
+							<div
+								className={`flex-shrink-0 flex items-center justify-center gap-4 px-4 py-2 border-t border-white/5 ${previewMode === "remotion" ? "hidden" : ""}`}
+							>
 								<button
 									onClick={resetPlayback}
 									className="p-1.5 rounded text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
@@ -1227,6 +1900,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										{ id: "tools" as const, label: "Tools" },
 										...(!aiComposition ? [{ id: "background" as const, label: "BG" }] : []),
 										...(scenePlan ? [{ id: "plan" as const, label: "Scenes" }] : []),
+										...(scenePlan ? [{ id: "director" as const, label: "Director" }] : []),
 										...(aiComposition ? [{ id: "code" as const, label: "Code" }] : []),
 										{ id: "music" as const, label: "Music" },
 									] as const
@@ -1245,6 +1919,32 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 								))}
 							</div>
 
+							{/* Undo/Redo toolbar — visible on Scenes tab */}
+							{rightPanelTab === "plan" && scenePlan && (
+								<div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5">
+									<span className="text-[11px] text-white/30">
+										Scenes ({scenePlan.scenes.length})
+									</span>
+									<div className="flex items-center gap-0.5">
+										<button
+											onClick={undo}
+											disabled={undoStackRef.current.length === 0}
+											title="Undo (Ctrl+Z)"
+											className="p-1 rounded text-white/30 hover:text-white/60 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+										>
+											<Undo2 size={14} />
+										</button>
+										<button
+											onClick={redo}
+											disabled={redoStackRef.current.length === 0}
+											title="Redo (Ctrl+Shift+Z)"
+											className="p-1 rounded text-white/30 hover:text-white/60 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+										>
+											<Redo2 size={14} />
+										</button>
+									</div>
+								</div>
+							)}
 							{/* Tab content */}
 							<div className="flex-1 overflow-y-auto">
 								{rightPanelTab === "layers" && (
@@ -1443,75 +2143,268 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 								{rightPanelTab === "plan" && scenePlan && (
 									<div className="flex-1 overflow-y-auto p-3 space-y-3">
-										<div className="text-xs text-white/60 font-medium">
-											Scenes ({scenePlan.scenes.length})
-										</div>
 										{scenePlan.scenes.map((scene, i) => (
-											<div
-												key={i}
-												className="p-3 rounded-lg bg-white/[0.03] border border-white/5 space-y-2"
-											>
-												<div className="flex items-center justify-between">
-													<div className="flex items-center gap-1">
-														<span className="text-[11px] text-white/30 font-medium">
+											<Fragment key={scene._id || i}>
+												<div className="p-3 rounded-lg bg-white/[0.03] border border-white/5 space-y-2">
+													{/* Row 1: Scene header with action buttons */}
+													<div className="flex items-center justify-between">
+														<span
+															className="text-[11px] text-white/30 font-medium"
+															title="Scene number — click a scene in the timeline to jump here"
+														>
 															Scene {i + 1}
 														</span>
-														<button
-															onClick={() => moveSceneInPlan(i, "up")}
-															disabled={i === 0}
-															className="text-[11px] text-white/20 hover:text-white/50 disabled:opacity-20"
-														>
-															▲
-														</button>
-														<button
-															onClick={() => moveSceneInPlan(i, "down")}
-															disabled={i === scenePlan.scenes.length - 1}
-															className="text-[11px] text-white/20 hover:text-white/50 disabled:opacity-20"
-														>
-															▼
-														</button>
-														<button
-															onClick={() => deleteSceneFromPlan(i)}
-															disabled={scenePlan.scenes.length <= 1}
-															className="text-[11px] text-red-400/30 hover:text-red-400/70 disabled:opacity-20 ml-1"
-														>
-															✕
-														</button>
+														<div className="flex items-center gap-1.5">
+															<button
+																onClick={() => moveSceneInPlan(i, "up")}
+																disabled={i === 0}
+																title="Move this scene earlier in the sequence"
+																className="text-[13px] text-white/25 hover:text-white/60 disabled:opacity-20 px-0.5"
+															>
+																▲
+															</button>
+															<button
+																onClick={() => moveSceneInPlan(i, "down")}
+																disabled={i === scenePlan.scenes.length - 1}
+																title="Move this scene later in the sequence"
+																className="text-[13px] text-white/25 hover:text-white/60 disabled:opacity-20 px-0.5"
+															>
+																▼
+															</button>
+															<button
+																onClick={() => addSceneToPlan(i)}
+																title="Insert a new scene after this one"
+																className="text-[13px] text-emerald-400/40 hover:text-emerald-400/80 px-0.5"
+															>
+																+
+															</button>
+															<button
+																onClick={() => deleteSceneFromPlan(i)}
+																disabled={scenePlan.scenes.length <= 1}
+																title="Delete this scene (can't delete the last remaining scene)"
+																className="text-[13px] text-red-400/40 hover:text-red-400/80 disabled:opacity-20 px-0.5"
+															>
+																✕
+															</button>
+														</div>
 													</div>
-													<div className="flex items-center gap-1">
+													{/* Row 2: Scene type, theme, frames */}
+													<div className="flex items-center gap-1 flex-wrap">
 														<select
-															value={scene.background}
-															onChange={(e) => updateScenePlan(i, { background: e.target.value })}
-															className="text-[11px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-white/60 [&>option]:bg-[#141417] [&>option]:text-white"
+															value={scene.type}
+															onChange={(e) =>
+																updateScenePlan(i, {
+																	type: e.target.value as ScenePlanItem["type"],
+																})
+															}
+															title="Scene template"
+															className="text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-purple-400/70 [&>option]:bg-[#141417] [&>option]:text-white max-w-[130px] truncate"
 														>
-															{BACKGROUND_NAMES.map((bg) => (
-																<option key={bg} value={bg}>
-																	{bg}
+															{SCENE_TYPE_OPTIONS.map((t) => (
+																<option key={t} value={t}>
+																	{t}
 																</option>
 															))}
 														</select>
+														{SCENE_VARIANT_OPTIONS[scene.type] && (
+															<select
+																value={scene.variant || SCENE_VARIANT_OPTIONS[scene.type]![0]}
+																onChange={(e) => updateScenePlan(i, { variant: e.target.value })}
+																title="Visual variant"
+																className="text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-cyan-400/60 [&>option]:bg-[#141417] [&>option]:text-white max-w-[100px] truncate"
+															>
+																{SCENE_VARIANT_OPTIONS[scene.type]!.map((v) => (
+																	<option key={v} value={v}>
+																		{v}
+																	</option>
+																))}
+															</select>
+														)}
 														<input
 															type="number"
 															value={scene.durationFrames || 90}
-															onChange={(e) => updateScenePlan(i, { durationFrames: Number(e.target.value) })}
-															className="w-12 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/40 focus:outline-none"
-															title="Duration (frames, 30 = 1 second)"
+															onChange={(e) =>
+																updateScenePlan(i, { durationFrames: Number(e.target.value) })
+															}
+															className="w-12 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-white/40 focus:outline-none"
+															title="Duration in frames (30 = 1 second)"
 															step={15}
 														/>
-														<span className="text-[9px] text-white/20">f</span>
+														<span
+															className="text-[9px] text-white/20"
+															title="Frames (30 per second)"
+														>
+															f
+														</span>
 													</div>
+													{/* Row 3: Background color swatches + custom picker */}
+													<div className="space-y-1.5">
+														<div className="flex items-center gap-1 flex-wrap">
+															{BACKGROUND_NAMES.map((name) => {
+																const css = BACKGROUND_PRESETS[name];
+																const isGradient = css.startsWith("linear-gradient");
+																const active = scene.background === name;
+																return (
+																	<button
+																		key={name}
+																		onClick={() => updateScenePlan(i, { background: name })}
+																		title={name}
+																		className={`w-5 h-5 rounded-sm border transition-all shrink-0 ${active ? "border-[#2563eb] ring-1 ring-[#2563eb]/50 scale-110" : "border-white/10 hover:border-white/30"}`}
+																		style={{ background: isGradient ? css : css }}
+																	/>
+																);
+															})}
+															<label title="Custom color" className="relative w-5 h-5 shrink-0">
+																<div
+																	className={`w-5 h-5 rounded-sm border border-white/10 cursor-pointer flex items-center justify-center text-[9px] text-white/40 hover:border-white/30 ${!BACKGROUND_PRESETS[scene.background] ? "ring-1 ring-[#2563eb]/50" : ""}`}
+																	style={{
+																		background:
+																			scene.background?.startsWith("#") &&
+																			!BACKGROUND_PRESETS[scene.background]
+																				? scene.background
+																				: "transparent",
+																	}}
+																>
+																	+
+																</div>
+																<input
+																	type="color"
+																	value={
+																		BACKGROUND_PRESETS[scene.background]?.startsWith("#")
+																			? BACKGROUND_PRESETS[scene.background]
+																			: scene.background?.startsWith("#")
+																				? scene.background
+																				: "#050505"
+																	}
+																	onChange={(e) =>
+																		updateScenePlan(i, { background: e.target.value })
+																	}
+																	className="absolute inset-0 opacity-0 cursor-pointer"
+																/>
+															</label>
+														</div>
+														{/* Background effect picker */}
+														<div className="flex items-center gap-1 flex-wrap">
+															<span className="text-[9px] text-white/25 shrink-0">Effect</span>
+															{BG_EFFECT_OPTIONS.map((fx) => {
+																const active = (scene.backgroundEffect || "none") === fx;
+																return (
+																	<button
+																		key={fx}
+																		onClick={() =>
+																			updateScenePlan(i, { backgroundEffect: fx as any })
+																		}
+																		title={fx}
+																		className={`px-1.5 py-0.5 rounded text-[9px] border transition-colors ${active ? "bg-violet-500/20 border-violet-500/40 text-violet-300" : "bg-white/[0.03] border-white/5 text-white/30 hover:text-white/50 hover:border-white/15"}`}
+																	>
+																		{fx === "none" ? "none" : fx.replace(/-/g, " ")}
+																	</button>
+																);
+															})}
+														</div>
+													</div>
+													<SceneLayerEditor
+														scene={scene}
+														sceneIndex={i}
+														onUpdate={updateScenePlan}
+														readonly={!!scenePlan.readonly}
+													/>
 												</div>
-												<SceneLayerEditor scene={scene} sceneIndex={i} onUpdate={updateScenePlan} />
-											</div>
+												{/* Transition control between this scene and the next */}
+												{i < scenePlan.scenes.length - 1 && (
+													<div
+														className="flex items-center gap-2 py-1.5 px-3 mx-3 rounded bg-white/[0.02] border border-dashed border-white/5"
+														title="Transition between this scene and the next. Type controls the animation, duration controls overlap with the next scene."
+													>
+														<span className="text-[9px] text-white/20 shrink-0">Transition</span>
+														<select
+															value={scene.transitionOut || ""}
+															onChange={(e) =>
+																updateScenePlan(i, {
+																	transitionOut: (e.target.value ||
+																		undefined) as ScenePlanItem["transitionOut"],
+																})
+															}
+															title="Transition animation to the next scene. Empty = smart auto-pick based on scene types."
+															className="text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-amber-400/60 [&>option]:bg-[#141417] [&>option]:text-white flex-1"
+														>
+															<option value="">Auto</option>
+															<option value="fade">Fade</option>
+															<option value="slide-left">Slide Left</option>
+															<option value="slide-right">Slide Right</option>
+															<option value="slide-up">Slide Up</option>
+															<option value="slide-down">Slide Down</option>
+															<option value="wipe-left">Wipe Left</option>
+															<option value="wipe-right">Wipe Right</option>
+															<option value="wipe-up">Wipe Up</option>
+															<option value="wipe-down">Wipe Down</option>
+															<option value="zoom-morph">Zoom Morph</option>
+															<option value="cut">Cut (instant)</option>
+														</select>
+														<input
+															type="number"
+															value={scene.transitionDurationFrames || ""}
+															onChange={(e) => {
+																const v = e.target.value ? Number(e.target.value) : undefined;
+																updateScenePlan(i, { transitionDurationFrames: v });
+															}}
+															placeholder="auto"
+															title="Transition overlap in frames (30 = 1 second). This is how many frames the next scene starts before this one ends. More overlap = faster cut. Leave empty for auto."
+															className="w-10 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-amber-400/40 focus:outline-none placeholder:text-white/15"
+														/>
+														<span className="text-[9px] text-white/15">f</span>
+													</div>
+												)}
+											</Fragment>
 										))}
 										{/* Add Scene button */}
 										<button
 											onClick={() => addSceneToPlan(scenePlan.scenes.length - 1)}
+											title="Insert a new hero-text scene at the end of the sequence. You can change its type, background, duration, and layers after adding."
 											className="w-full py-2 rounded-lg border-2 border-dashed border-white/10 hover:border-[#2563eb]/40 text-white/30 hover:text-white/50 text-xs transition-colors"
 										>
 											+ Add Scene
 										</button>
 									</div>
+								)}
+
+								{rightPanelTab === "director" && (
+									<DirectorChat
+										scenePlan={scenePlan}
+										onMessagesChange={(msgs) => {
+											if (scenePlan) {
+												const history = msgs.map((m) => ({ role: m.role, content: m.content }));
+												const updated = { ...scenePlan, directorHistory: history };
+												setScenePlan(updated);
+												(project as any)._aiPlan = updated;
+											}
+										}}
+										onPlanUpdate={(updatedPlan) => {
+											// Apply the director's updated plan: normalize, expand layers, compile.
+											// Clear existing layers first — expandSceneToLayers appends scene.layers
+											// at the end (for user-added layers), so leaving stale layers from the
+											// Director's JSON would cause duplicates.
+											const accent = updatedPlan.accentColor || "#2563eb";
+											for (const scene of updatedPlan.scenes) {
+												const userLayers = (scene.layers || []).filter(
+													(l) => l.id.startsWith("layer-") || l.id.startsWith("l-"),
+												);
+												scene.layers = undefined as any;
+												scene.layers = [...expandSceneToLayers(scene, accent), ...userLayers];
+											}
+											setScenePlan(updatedPlan);
+											(project as any)._aiPlan = updatedPlan;
+											try {
+												const newCode = compileScenePlan(updatedPlan);
+												setAiComposition((prev) => (prev ? { ...prev, code: newCode } : prev));
+												(project as any)._aiCode = newCode;
+											} catch (err) {
+												toast.error(
+													`Compile failed: ${err instanceof Error ? err.message : String(err)}`,
+												);
+											}
+										}}
+									/>
 								)}
 
 								{rightPanelTab === "code" && aiComposition && (
@@ -1520,12 +2413,10 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 											<span className="text-xs text-white/60 font-medium">Composition Code</span>
 											<button
 												onClick={() => {
-													const textarea = document.getElementById(
-														"ai-code-editor",
-													) as HTMLTextAreaElement;
-													if (textarea && textarea.value !== aiComposition.code) {
-														setAiComposition({ ...aiComposition, code: textarea.value });
-														(project as any)._aiCode = textarea.value;
+													const val = codeEditorRef.current;
+													if (val && val !== aiComposition.code) {
+														setAiComposition({ ...aiComposition, code: val });
+														(project as any)._aiCode = val;
 														toast.success("Code updated — preview refreshed");
 													}
 												}}
@@ -1534,13 +2425,11 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 												Apply Changes
 											</button>
 										</div>
-										<textarea
-											id="ai-code-editor"
-											defaultValue={aiComposition.code}
-											spellCheck={false}
-											className="flex-1 w-full bg-[#0a0a0c] text-[11px] text-white/80 font-mono p-3 resize-none focus:outline-none leading-relaxed"
-											style={{ tabSize: 2 }}
-											onKeyDown={(e) => e.stopPropagation()}
+										<CodeEditor
+											value={aiComposition.code}
+											onChange={(val) => {
+												codeEditorRef.current = val || "";
+											}}
 										/>
 									</div>
 								)}
@@ -1555,6 +2444,20 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 													Track loaded
 												</div>
 												<MusicPreviewPlayer audioPath={musicPath} />
+												<div className="flex items-center gap-2 px-1">
+													<span className="text-[10px] text-white/30 w-12 shrink-0">Volume</span>
+													<input
+														type="range"
+														min={0}
+														max={100}
+														value={Math.round(musicVolume * 100)}
+														onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+														className="flex-1 h-1 accent-[#2563eb] cursor-pointer"
+													/>
+													<span className="text-[10px] text-white/40 w-8 text-right">
+														{Math.round(musicVolume * 100)}%
+													</span>
+												</div>
 												<button
 													onClick={() => setMusicPath(null)}
 													className="w-full text-left px-2 py-1.5 rounded text-xs text-red-400/70 hover:text-red-400 hover:bg-red-400/5 transition-colors"
@@ -1566,33 +2469,481 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										<div className="text-[11px] text-white/30 font-medium mt-2">
 											AI Generate (MiniMax)
 										</div>
-										{(["energetic", "ambient", "dramatic", "minimal", "upbeat"] as MusicMood[]).map(
-											(mood) => (
+										<div className="flex items-center gap-1 mb-1">
+											<span className="text-[9px] text-white/25">Vocals:</span>
+											{(
+												[
+													["instrumental", "None"],
+													["auto-lyrics", "Auto"],
+													["custom-lyrics", "Custom"],
+												] as const
+											).map(([mode, label]) => (
 												<button
-													key={mood}
-													onClick={() => handleGenerateMusic(mood)}
-													disabled={generatingMusicMood !== null}
-													className="w-full text-left px-2 py-1.5 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors capitalize disabled:opacity-40"
+													key={mode}
+													onClick={() => setVocalMode(mode)}
+													title={
+														mode === "instrumental"
+															? "Pure instrumental — no vocals"
+															: mode === "auto-lyrics"
+																? "MiniMax auto-generates lyrics from the mood prompt"
+																: "Write or generate lyrics first, then create music with them"
+													}
+													className={`px-1.5 py-0.5 rounded text-[10px] border transition-colors ${
+														vocalMode === mode
+															? "bg-[#2563eb]/20 border-[#2563eb]/50 text-[#60a5fa]"
+															: "bg-white/5 border-white/10 text-white/40 hover:text-white/70"
+													}`}
 												>
-													{generatingMusicMood === mood ? (
-														<span className="flex items-center gap-2">
-															<Loader2 size={10} className="animate-spin" />
-															Generating...
-														</span>
-													) : (
-														mood
-													)}
+													{label}
 												</button>
-											),
-										)}
-									{/* Custom music prompt */}
-									<div className="mt-3 pt-2 border-t border-white/5">
-										<div className="text-[11px] text-white/30 mb-1">Custom Prompt</div>
-										<div className="flex gap-1">
-											<input type="text" id="custom-music-prompt" placeholder="Upbeat tech video with synths..." onKeyDown={(e) => e.stopPropagation()} className="flex-1 px-2 py-1.5 rounded bg-white/5 border border-white/10 text-[11px] text-white placeholder-white/25 focus:outline-none focus:border-[#2563eb]/50" />
-											<button onClick={async () => { const input = document.getElementById("custom-music-prompt") as HTMLInputElement; if (!input?.value.trim()) return; toast.loading("Generating...", { id: "cmusic" }); const r = await generateCustomMusic("custom" as any, input.value.trim(), Math.round(project.scenes.reduce((s, sc) => s + sc.durationMs, 0) / 1000)); toast.dismiss("cmusic"); if (r.success && r.audioPath) { setMusicPath(r.audioPath); toast.success("Custom music generated!"); } else { toast.error(r.error || "Failed"); } }} className="px-2 py-1.5 rounded bg-[#2563eb]/20 text-[#60a5fa] hover:bg-[#2563eb]/30 text-[11px] whitespace-nowrap">Go</button>
+											))}
 										</div>
-									</div>
+										{vocalMode === "custom-lyrics" && (
+											<div className="space-y-1 mb-2 p-2 rounded bg-white/[0.03] border border-white/5">
+												<div className="text-[9px] text-white/30 uppercase tracking-wider">
+													Lyrics
+												</div>
+												<textarea
+													id="custom-lyrics-input"
+													placeholder={
+														"[Verse]\nRecord once, let it flow\n\n[Chorus]\nLucid makes it go"
+													}
+													onKeyDown={(e) => e.stopPropagation()}
+													className="w-full h-24 px-2 py-1.5 rounded bg-white/5 border border-white/10 text-[11px] text-white placeholder-white/20 focus:outline-none focus:border-[#2563eb]/50 resize-y font-mono"
+												/>
+												<div className="flex gap-1">
+													<button
+														onClick={async () => {
+															const desc = scenePlan?.title || "SaaS product teaser";
+															toast.loading("Generating lyrics...", { id: "lyrics" });
+															const r = await generateLyrics(
+																`Short catchy lyrics for a ${desc} promotional video. Keep it under 8 lines. Upbeat and memorable.`,
+																desc,
+															);
+															toast.dismiss("lyrics");
+															if (r.success && r.lyrics) {
+																const ta = document.getElementById(
+																	"custom-lyrics-input",
+																) as HTMLTextAreaElement;
+																if (ta) ta.value = r.lyrics;
+																toast.success(`Lyrics generated: "${r.title || desc}"`);
+															} else {
+																toast.error(r.error || "Lyrics generation failed");
+															}
+														}}
+														className="flex-1 px-2 py-1 rounded bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 text-[10px]"
+													>
+														AI Generate Lyrics
+													</button>
+													<button
+														onClick={() => {
+															const ta = document.getElementById(
+																"custom-lyrics-input",
+															) as HTMLTextAreaElement;
+															if (ta) ta.value = "";
+														}}
+														className="px-2 py-1 rounded bg-white/5 text-white/30 hover:text-white/60 text-[10px]"
+													>
+														Clear
+													</button>
+												</div>
+												<div className="text-[9px] text-white/20">
+													Use [Verse], [Chorus], [Bridge], [Outro] tags. Then pick a preset below to
+													generate music with these lyrics.
+												</div>
+											</div>
+										)}
+										<div className="text-[9px] text-white/20 uppercase tracking-wider mt-1 mb-0.5">
+											Classic
+										</div>
+										{MUSIC_MOOD_PRESETS.filter((p) => p.group === "classic").map((preset) => (
+											<button
+												key={preset.id}
+												onClick={() => handleGenerateMusic(preset.id)}
+												disabled={generatingMusicMood !== null}
+												title={preset.description}
+												className="w-full text-left px-2 py-1.5 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
+											>
+												{generatingMusicMood === preset.id ? (
+													<span className="flex items-center gap-2">
+														<Loader2 size={10} className="animate-spin" />
+														Generating...
+													</span>
+												) : (
+													<div className="flex items-center justify-between gap-2">
+														<span>{preset.label}</span>
+														<span className="text-[9px] text-white/25 truncate max-w-[170px]">
+															{preset.description}
+														</span>
+													</div>
+												)}
+											</button>
+										))}
+										<div className="text-[9px] text-[#60a5fa]/60 uppercase tracking-wider mt-2 mb-0.5">
+											SaaS Teaser Styles
+										</div>
+										{MUSIC_MOOD_PRESETS.filter((p) => p.group === "saas").map((preset) => (
+											<button
+												key={preset.id}
+												onClick={() => handleGenerateMusic(preset.id)}
+												disabled={generatingMusicMood !== null}
+												title={preset.description}
+												className="w-full text-left px-2 py-1.5 rounded text-xs text-white/60 hover:text-white hover:bg-[#2563eb]/10 transition-colors disabled:opacity-40"
+											>
+												{generatingMusicMood === preset.id ? (
+													<span className="flex items-center gap-2">
+														<Loader2 size={10} className="animate-spin" />
+														Generating...
+													</span>
+												) : (
+													<div className="flex items-center justify-between gap-2">
+														<span>{preset.label}</span>
+														<span className="text-[9px] text-white/25 truncate max-w-[170px]">
+															{preset.description}
+														</span>
+													</div>
+												)}
+											</button>
+										))}
+										<div className="text-[9px] text-pink-400/60 uppercase tracking-wider mt-2 mb-0.5">
+											Viral / Catchy Ad Styles
+										</div>
+										{MUSIC_MOOD_PRESETS.filter((p) => p.group === "viral").map((preset) => (
+											<button
+												key={preset.id}
+												onClick={() => handleGenerateMusic(preset.id)}
+												disabled={generatingMusicMood !== null}
+												title={preset.description}
+												className="w-full text-left px-2 py-1.5 rounded text-xs text-white/60 hover:text-white hover:bg-pink-500/10 transition-colors disabled:opacity-40"
+											>
+												{generatingMusicMood === preset.id ? (
+													<span className="flex items-center gap-2">
+														<Loader2 size={10} className="animate-spin" />
+														Generating...
+													</span>
+												) : (
+													<div className="flex items-center justify-between gap-2">
+														<span>{preset.label}</span>
+														<span className="text-[9px] text-white/25 truncate max-w-[170px]">
+															{preset.description}
+														</span>
+													</div>
+												)}
+											</button>
+										))}
+										{/* Mix & match prompt builder */}
+										<div className="mt-3 pt-2 border-t border-white/5">
+											<button
+												onClick={() => setShowPromptBuilder((v) => !v)}
+												className="w-full flex items-center justify-between text-[11px] text-white/30 hover:text-white/60 transition-colors"
+											>
+												<span>Mix & Match Builder</span>
+												<span className="text-[9px]">{showPromptBuilder ? "▲" : "▼"}</span>
+											</button>
+											{showPromptBuilder && (
+												<div className="mt-2 space-y-2">
+													<div>
+														<div className="text-[9px] text-white/30 uppercase tracking-wider mb-0.5">
+															Genre
+														</div>
+														<select
+															value={promptIngredients.genre || ""}
+															onChange={(e) =>
+																setPromptIngredients((p) => ({
+																	...p,
+																	genre: (e.target.value ||
+																		undefined) as PromptIngredients["genre"],
+																}))
+															}
+															className="w-full text-[11px] bg-[#141417] border border-white/10 rounded px-1.5 py-1 text-white/70 [&>option]:bg-[#141417]"
+														>
+															<option value="">— Any —</option>
+															<option value="electronic">Electronic</option>
+															<option value="pop">Pop</option>
+															<option value="indie">Indie</option>
+															<option value="hip-hop">Hip-Hop</option>
+															<option value="funk">Funk</option>
+															<option value="rock">Rock</option>
+															<option value="acoustic">Acoustic</option>
+															<option value="cinematic">Cinematic</option>
+															<option value="ambient">Ambient</option>
+															<option value="world">World / Afrobeat</option>
+														</select>
+													</div>
+													<div className="flex gap-1">
+														<div className="flex-1">
+															<div className="text-[9px] text-white/30 uppercase tracking-wider mb-0.5">
+																Tempo
+															</div>
+															<select
+																value={promptIngredients.tempo || ""}
+																onChange={(e) =>
+																	setPromptIngredients((p) => ({
+																		...p,
+																		tempo: (e.target.value ||
+																			undefined) as PromptIngredients["tempo"],
+																	}))
+																}
+																className="w-full text-[11px] bg-[#141417] border border-white/10 rounded px-1.5 py-1 text-white/70 [&>option]:bg-[#141417]"
+															>
+																<option value="">— Any —</option>
+																<option value="chill">Chill (~85)</option>
+																<option value="mid">Mid (~105)</option>
+																<option value="driving">Driving (~120)</option>
+																<option value="fast">Fast (~135)</option>
+															</select>
+														</div>
+														<div className="flex-1">
+															<div className="text-[9px] text-white/30 uppercase tracking-wider mb-0.5">
+																Energy
+															</div>
+															<select
+																value={promptIngredients.energy || ""}
+																onChange={(e) =>
+																	setPromptIngredients((p) => ({
+																		...p,
+																		energy: (e.target.value ||
+																			undefined) as PromptIngredients["energy"],
+																	}))
+																}
+																className="w-full text-[11px] bg-[#141417] border border-white/10 rounded px-1.5 py-1 text-white/70 [&>option]:bg-[#141417]"
+															>
+																<option value="">— Any —</option>
+																<option value="calm">Calm</option>
+																<option value="building">Building</option>
+																<option value="high">High</option>
+																<option value="explosive">Explosive</option>
+															</select>
+														</div>
+													</div>
+													<div>
+														<div className="text-[9px] text-white/30 uppercase tracking-wider mb-0.5">
+															Vibe
+														</div>
+														<select
+															value={promptIngredients.vibe || ""}
+															onChange={(e) =>
+																setPromptIngredients((p) => ({
+																	...p,
+																	vibe: (e.target.value || undefined) as PromptIngredients["vibe"],
+																}))
+															}
+															className="w-full text-[11px] bg-[#141417] border border-white/10 rounded px-1.5 py-1 text-white/70 [&>option]:bg-[#141417]"
+														>
+															<option value="">— Any —</option>
+															<option value="confident">Confident</option>
+															<option value="playful">Playful</option>
+															<option value="nostalgic">Nostalgic</option>
+															<option value="edgy">Edgy</option>
+															<option value="warm">Warm</option>
+															<option value="mysterious">Mysterious</option>
+															<option value="euphoric">Euphoric</option>
+														</select>
+													</div>
+													<div>
+														<div className="text-[9px] text-white/30 uppercase tracking-wider mb-0.5">
+															Instruments (click to toggle)
+														</div>
+														<div className="flex flex-wrap gap-1">
+															{(
+																[
+																	["synth-lead", "Synth"],
+																	["piano", "Piano"],
+																	["electric-guitar", "E-Guitar"],
+																	["acoustic-guitar", "Acoustic"],
+																	["bass", "Bass"],
+																	["drums", "Drums"],
+																	["strings", "Strings"],
+																	["horns", "Horns"],
+																	["whistle", "Whistle"],
+																	["hand-claps", "Claps"],
+																	["vocal-chops", "Vox Chops"],
+																	["marimba", "Marimba"],
+																	["glockenspiel", "Glockenspiel"],
+																] as const
+															).map(([key, label]) => {
+																const active = (promptIngredients.instruments || []).includes(key);
+																return (
+																	<button
+																		key={key}
+																		onClick={() =>
+																			setPromptIngredients((p) => {
+																				const cur = p.instruments || [];
+																				const next = cur.includes(key)
+																					? cur.filter((x) => x !== key)
+																					: [...cur, key];
+																				return { ...p, instruments: next };
+																			})
+																		}
+																		className={`px-1.5 py-0.5 rounded text-[10px] border transition-colors ${
+																			active
+																				? "bg-[#2563eb]/20 border-[#2563eb]/50 text-[#60a5fa]"
+																				: "bg-white/5 border-white/10 text-white/40 hover:text-white/70"
+																		}`}
+																	>
+																		{label}
+																	</button>
+																);
+															})}
+														</div>
+													</div>
+													<div>
+														<div className="text-[9px] text-white/30 uppercase tracking-wider mb-0.5">
+															Reference (optional)
+														</div>
+														<input
+															type="text"
+															value={promptIngredients.reference || ""}
+															onChange={(e) =>
+																setPromptIngredients((p) => ({
+																	...p,
+																	reference: e.target.value || undefined,
+																}))
+															}
+															onKeyDown={(e) => e.stopPropagation()}
+															placeholder="e.g. Bruno Mars Uptown Funk"
+															className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-white placeholder-white/25 focus:outline-none focus:border-[#2563eb]/50"
+														/>
+													</div>
+													<button
+														onClick={async () => {
+															const videoDurationSec = Math.round(
+																project.scenes.reduce((s, sc) => s + sc.durationMs, 0) / 1000,
+															);
+															const prompt = buildMusicPrompt(
+																promptIngredients,
+																videoDurationSec || 20,
+															);
+															toast.loading("Generating from your mix...", { id: "mixmusic" });
+															const r = await generateCustomMusic(
+																"custom" as any,
+																prompt,
+																videoDurationSec,
+															);
+															toast.dismiss("mixmusic");
+															if (r.success && r.audioPath) {
+																setMusicPath(r.audioPath);
+																toast.success("Mix generated!");
+																refreshMusicLibrary();
+															} else {
+																toast.error(r.error || "Failed");
+															}
+														}}
+														disabled={generatingMusicMood !== null}
+														className="w-full px-2 py-1.5 rounded bg-[#2563eb]/20 text-[#60a5fa] hover:bg-[#2563eb]/30 text-[11px] font-medium disabled:opacity-40"
+													>
+														Generate from Mix
+													</button>
+												</div>
+											)}
+										</div>
+										{/* Custom music prompt */}
+										<div className="mt-3 pt-2 border-t border-white/5">
+											<div className="text-[11px] text-white/30 mb-1">Custom Prompt</div>
+											<div className="flex gap-1">
+												<input
+													type="text"
+													id="custom-music-prompt"
+													placeholder="Upbeat tech video with synths..."
+													onKeyDown={(e) => e.stopPropagation()}
+													className="flex-1 px-2 py-1.5 rounded bg-white/5 border border-white/10 text-[11px] text-white placeholder-white/25 focus:outline-none focus:border-[#2563eb]/50"
+												/>
+												<button
+													onClick={async () => {
+														const input = document.getElementById(
+															"custom-music-prompt",
+														) as HTMLInputElement;
+														if (!input?.value.trim()) return;
+														toast.loading("Generating...", { id: "cmusic" });
+														const r = await generateCustomMusic(
+															"custom" as any,
+															input.value.trim(),
+															Math.round(
+																project.scenes.reduce((s, sc) => s + sc.durationMs, 0) / 1000,
+															),
+														);
+														toast.dismiss("cmusic");
+														if (r.success && r.audioPath) {
+															setMusicPath(r.audioPath);
+															toast.success("Custom music generated!");
+															refreshMusicLibrary();
+														} else {
+															toast.error(r.error || "Failed");
+														}
+													}}
+													className="px-2 py-1.5 rounded bg-[#2563eb]/20 text-[#60a5fa] hover:bg-[#2563eb]/30 text-[11px] whitespace-nowrap"
+												>
+													Go
+												</button>
+											</div>
+										</div>
+										{/* Library of previously generated tracks */}
+										{musicLibrary.length > 0 && (
+											<div className="mt-3 pt-2 border-t border-white/5">
+												<div className="flex items-center justify-between mb-1">
+													<div className="text-[11px] text-white/30 font-medium">
+														Library ({musicLibrary.length})
+													</div>
+													<button
+														onClick={refreshMusicLibrary}
+														className="text-[10px] text-white/20 hover:text-white/50"
+														title="Refresh library"
+													>
+														⟳
+													</button>
+												</div>
+												<div className="space-y-1 max-h-64 overflow-y-auto">
+													{musicLibrary.map((entry) => {
+														const isCurrent = musicPath === entry.path;
+														const displayLabel = entry.label || entry.mood || entry.name;
+														const when = new Date(entry.createdAt).toLocaleDateString(undefined, {
+															month: "short",
+															day: "numeric",
+															hour: "numeric",
+															minute: "2-digit",
+														});
+														return (
+															<div
+																key={entry.path}
+																className={`group flex items-center gap-1 px-1.5 py-1 rounded text-xs transition-colors ${
+																	isCurrent
+																		? "bg-emerald-500/10 border border-emerald-500/30"
+																		: "bg-white/[0.02] border border-white/5 hover:border-white/15"
+																}`}
+															>
+																<button
+																	onClick={() => setMusicPath(entry.path)}
+																	title={entry.prompt || displayLabel}
+																	className="flex-1 text-left min-w-0"
+																>
+																	<div className="text-white/70 truncate capitalize">
+																		{displayLabel}
+																	</div>
+																	<div className="text-[9px] text-white/25">{when}</div>
+																</button>
+																<button
+																	onClick={async () => {
+																		const r = await window.electronAPI?.musicLibraryDelete(
+																			entry.path,
+																		);
+																		if (r?.success) {
+																			if (musicPath === entry.path) setMusicPath(null);
+																			refreshMusicLibrary();
+																		} else {
+																			toast.error(r?.error || "Failed to delete");
+																		}
+																	}}
+																	title="Delete from library"
+																	className="opacity-0 group-hover:opacity-100 text-[10px] text-red-400/50 hover:text-red-400 px-1 transition-opacity"
+																>
+																	✕
+																</button>
+															</div>
+														);
+													})}
+												</div>
+											</div>
+										)}
 									</div>
 								)}
 							</div>
@@ -1606,6 +2957,14 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 				<SceneLayerTimeline
 					plan={scenePlan}
 					currentFrame={currentPlayerFrame}
+					musicLabel={
+						musicPath
+							? musicPath
+									.split(/[\\/]/)
+									.pop()
+									?.replace(/\.[^.]+$/, "") || "Music"
+							: undefined
+					}
 					onSeekToFrame={(f) => setSeekToFrame(f + Math.random() * 0.001)}
 					onAddLayer={(si) => {
 						// Add a default text layer to the scene
@@ -1621,11 +2980,29 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 						const currentLayers = scenePlan.scenes[si]?.layers || [];
 						updateScenePlan(si, { layers: [...currentLayers, newLayer] });
 					}}
-					onSelectLayer={(si, _li) => {
-						const startFrame = scenePlan.scenes
-							.slice(0, si)
-							.reduce((sum, s) => sum + (s.durationFrames || 90), 0);
-						setSeekToFrame(startFrame);
+					onSelectLayer={(si, li) => {
+						seekToScene(scenePlan, si);
+						// Switch the right panel to the plan tab if it isn't already,
+						// then scroll the matching layer row into view + highlight it
+						// briefly so the user can see where it landed.
+						setRightPanelTab("plan");
+						// Delay until after the panel renders (especially if we just
+						// switched tabs), then find and scroll the layer row.
+						setTimeout(() => {
+							const el = document.querySelector<HTMLElement>(`[data-layer-row="${si}-${li}"]`);
+							if (!el) return;
+							el.scrollIntoView({ behavior: "smooth", block: "center" });
+							// Brief highlight
+							el.style.transition = "box-shadow 0.3s ease, border-color 0.3s ease";
+							const prevBoxShadow = el.style.boxShadow;
+							const prevBorder = el.style.borderColor;
+							el.style.boxShadow = "0 0 0 2px rgba(37,99,235,0.6)";
+							el.style.borderColor = "rgba(37,99,235,0.6)";
+							setTimeout(() => {
+								el.style.boxShadow = prevBoxShadow;
+								el.style.borderColor = prevBorder;
+							}, 900);
+						}, 60);
 					}}
 				/>
 			) : (

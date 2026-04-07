@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AISettingsButton } from "@/components/ui/AISettingsDialog";
-import { DEMO_MODE_LIST, type DemoModeId } from "@/lib/ai/demoModes";
+import { ADVANCED_MODES, PRIMARY_MODES, type DemoModeId } from "@/lib/ai/demoModes";
 import { AI_PROVIDERS, type AIProvider, type AIServiceConfig } from "@/lib/ai/types";
 import { getPromptHistory, type PromptHistoryEntry } from "./promptHistory";
 import type { DemoAgentStatus, DemoChatMessage, DemoConfig, OutputStyle } from "./types";
@@ -243,8 +243,9 @@ export function DemoChatPanel({
 }: DemoChatPanelProps) {
 	const [input, setInput] = useState("");
 	const [maxSteps, setMaxSteps] = useState(20);
-	const [selectedMode, setSelectedMode] = useState<DemoModeId>("evangelist");
-	const [outputStyle, setOutputStyle] = useState<OutputStyle>("cinematic");
+	const [selectedMode, setSelectedMode] = useState<DemoModeId>("saas-teaser");
+	const [showAdvancedModes, setShowAdvancedModes] = useState(false);
+	const [outputStyle] = useState<OutputStyle>("ai-cinematic");
 	const [history, setHistory] = useState<PromptHistoryEntry[]>([]);
 	const [showHistory, setShowHistory] = useState(false);
 	const [currentProvider, setCurrentProvider] = useState<AIProvider>("openai");
@@ -287,7 +288,18 @@ export function DemoChatPanel({
 			.replace(url, "")
 			.replace(/^[\s\-—:,]+|[\s\-—:,]+$/g, "")
 			.trim();
-		const finalPrompt = prompt || "Give a complete product demo, exploring the main features.";
+		const defaultPrompts: Record<string, string> = {
+			"saas-teaser": "Create a high-energy product teaser — sell the vision.",
+			"feature-spotlight": "Spotlight the key feature on this page — go deep, stay focused.",
+			"launch-announcement": "Announce this like a launch day — build excitement.",
+			"competitor-comparison": "Show why this product is the better choice.",
+			"customer-story": "Tell the transformation story — focus on results and outcomes.",
+			"social-clip": "Create a 15-second scroll-stopping hook.",
+			"product-tour": "Give a complete product tour, exploring the main features.",
+			tutorial: "Walk through the main workflow step by step.",
+			teardown: "Analyze what makes this product tick.",
+		};
+		const finalPrompt = prompt || defaultPrompts[selectedMode] || "Explore and create a video.";
 
 		setInput("");
 		setShowHistory(false);
@@ -342,62 +354,62 @@ export function DemoChatPanel({
 			<div className="p-3 bg-[#0c0c0f]">
 				{canSend && (
 					<>
-						{/* Mode selector */}
-						<div className="flex gap-1.5 mb-2">
-							{DEMO_MODE_LIST.map((mode) => (
-								<button
-									key={mode.id}
-									onClick={() => setSelectedMode(mode.id)}
-									className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-[11px] transition-colors ${
-										selectedMode === mode.id
-											? "border-[#2563eb]/50 bg-[#2563eb]/10 text-[#60a5fa]"
-											: "border-white/5 bg-white/[0.02] text-white/40 hover:text-white/60 hover:border-white/10"
-									}`}
-									title={mode.description}
-								>
-									<span>{mode.icon}</span>
-									{mode.name}
-								</button>
-							))}
+						{/* Video type selector */}
+						<div className="mb-2">
+							<div className="text-[10px] text-white/25 mb-1">Video Type</div>
+							<div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+								{PRIMARY_MODES.map((mode) => (
+									<button
+										key={mode.id}
+										onClick={() => setSelectedMode(mode.id)}
+										className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-[11px] text-left transition-colors ${
+											selectedMode === mode.id
+												? "border-[#2563eb]/50 bg-[#2563eb]/10 text-[#60a5fa]"
+												: "border-white/8 bg-white/[0.03] text-white/50 hover:text-white/70 hover:border-white/15"
+										}`}
+										title={mode.description}
+									>
+										<span className="text-[14px] shrink-0">{mode.icon}</span>
+										<div className="min-w-0">
+											<div className="font-medium truncate">{mode.name}</div>
+											<div className={`text-[9px] truncate ${selectedMode === mode.id ? "text-[#60a5fa]/60" : "text-white/25"}`}>{mode.description}</div>
+										</div>
+									</button>
+								))}
+							</div>
+							<button
+								onClick={() => setShowAdvancedModes((v) => !v)}
+								className={`mt-1.5 text-[10px] transition-colors ${
+									showAdvancedModes || ADVANCED_MODES.some((m) => m.id === selectedMode)
+										? "text-white/50"
+										: "text-white/20 hover:text-white/40"
+								}`}
+								title="More video types"
+							>
+								{showAdvancedModes ? "▾ Less" : "▸ More types..."}
+							</button>
+							{showAdvancedModes && (
+								<div className="grid gap-1.5 mt-1" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
+									{ADVANCED_MODES.map((mode) => (
+										<button
+											key={mode.id}
+											onClick={() => { setSelectedMode(mode.id); setShowAdvancedModes(false); }}
+											className={`flex items-center gap-1 px-2 py-1.5 rounded-md border text-[10px] transition-colors ${
+												selectedMode === mode.id
+													? "border-[#2563eb]/50 bg-[#2563eb]/10 text-[#60a5fa]"
+													: "border-white/5 bg-white/[0.02] text-white/40 hover:text-white/60 hover:border-white/10"
+											}`}
+											title={mode.description}
+										>
+											<span>{mode.icon}</span>
+											{mode.name}
+										</button>
+									))}
+								</div>
+							)}
 						</div>
 
-						{/* Output style selector */}
-						<div className="flex gap-1.5 mb-2">
-							{[
-								{
-									id: "product-demo" as const,
-									label: "Product Demo",
-									icon: "📸",
-									desc: "Screenshot-heavy layouts (Canvas)",
-								},
-								{
-									id: "cinematic" as const,
-									label: "Cinematic",
-									icon: "🎬",
-									desc: "Bold typography, fast cuts, motion graphics",
-								},
-								{
-									id: "ai-cinematic" as const,
-									label: "AI Cinematic",
-									icon: "✨",
-									desc: "AI generates custom motion graphics (experimental)",
-								},
-							].map((style) => (
-								<button
-									key={style.id}
-									onClick={() => setOutputStyle(style.id)}
-									className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-[11px] transition-colors ${
-										outputStyle === style.id
-											? "border-purple-500/50 bg-purple-500/10 text-purple-300"
-											: "border-white/5 bg-white/[0.02] text-white/40 hover:text-white/60 hover:border-white/10"
-									}`}
-									title={style.desc}
-								>
-									<span>{style.icon}</span>
-									{style.label}
-								</button>
-							))}
-						</div>
+						{/* Output style is always ai-cinematic now — no picker needed */}
 
 						<div className="rounded-lg border border-white/10 bg-white/[0.03] focus-within:border-[#2563eb]/50 transition-colors overflow-hidden">
 							{/* Textarea */}
