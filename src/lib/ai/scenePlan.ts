@@ -283,6 +283,12 @@ export interface SceneLayer {
 		shadow?: string;
 		/** Text outline/stroke width (e.g., "2px") */
 		outline?: string;
+		/** Font weight override (e.g., "bold") */
+		fontWeight?: string;
+		/** Font style override (e.g., "italic") */
+		fontStyle?: string;
+		/** Text decoration (e.g., "underline", "line-through") */
+		textDecoration?: string;
 	};
 }
 

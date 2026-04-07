@@ -563,6 +563,9 @@ function renderExtraLayers(scene: ScenePlanItem, accent: string): string {
 			if (layer.settings?.glow) textEffectStyles.push(`textShadow: '${layer.settings.glow}'`);
 			if (layer.settings?.shadow) textEffectStyles.push(`textShadow: '${layer.settings.shadow}'`);
 			if (layer.settings?.outline) textEffectStyles.push(`WebkitTextStroke: '${layer.settings.outline} rgba(0,0,0,0.6)'`);
+			if (layer.settings?.fontWeight) textEffectStyles.push(`fontWeight: '${layer.settings.fontWeight}'`);
+			if (layer.settings?.fontStyle) textEffectStyles.push(`fontStyle: '${layer.settings.fontStyle}'`);
+			if (layer.settings?.textDecoration) textEffectStyles.push(`textDecoration: '${layer.settings.textDecoration}'`);
 			const effectStyle = textEffectStyles.length > 0 ? `, ${textEffectStyles.join(", ")}` : "";
 			parts.push(
 				`        <Sequence from={${startFrame}} durationInFrames={${duration}}>\n` +
