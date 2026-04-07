@@ -95,10 +95,8 @@ export interface EffectPlugin {
 	/** Category for grouping in the effect picker */
 	category: "ambient" | "particles" | "geometric" | "texture" | "gradient";
 	/** The React component that renders the effect overlay */
-	component: React.FC<{
-		colors?: string[];
-		intensity?: number;
-	}>;
+	// biome-ignore lint: Effect components have varying prop shapes
+	component: React.FC<any>;
 }
 
 // ── Text Animation Plugin ───────────────────────────────────────────────

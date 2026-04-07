@@ -86,6 +86,13 @@ import {
 	Snow,
 	Sparks,
 } from "./helpers/ParticleEffects";
+// Scene library (adapted from remotion-scenes)
+import { EffectFilmGrain, EffectVHS, EffectChromaticAberration, EffectGlow, EffectLightLeak } from "./helpers/scenes/EffectAnimations";
+import { LiquidBlob, LiquidInkSplash, LiquidFluidWave, LiquidSwirl } from "./helpers/scenes/LiquidAnimations";
+import { ShapeRipples, ShapeHexGrid, ShapeSpinningRings, ShapeMorphing } from "./helpers/scenes/ShapeAnimations";
+import { TextNeon, TextKinetic, TextExplode, Text3DFlip } from "./helpers/scenes/TextAnimations";
+import { Logo3DRotate, LogoStroke, LogoNeonSign, LogoParticles } from "./helpers/scenes/LogoAnimations";
+import { CinematicEpic, CinematicSciFi, CinematicNoir } from "./helpers/scenes/CinematicAnimations";
 
 /**
  * Render-prop component that provides the Sequence-local frame.
@@ -205,6 +212,31 @@ export const MODULE_SCOPE = {
 	Sparks,
 	PerspectiveGrid,
 	FlowingGradient,
+	// Scene library (from remotion-scenes)
+	EffectFilmGrain,
+	EffectVHS,
+	EffectChromaticAberration,
+	EffectGlow,
+	EffectLightLeak,
+	LiquidBlob,
+	LiquidInkSplash,
+	LiquidFluidWave,
+	LiquidSwirl,
+	ShapeRipples,
+	ShapeHexGrid,
+	ShapeSpinningRings,
+	ShapeMorphing,
+	TextNeon,
+	TextKinetic,
+	TextExplode,
+	Text3DFlip,
+	Logo3DRotate,
+	LogoStroke,
+	LogoNeonSign,
+	LogoParticles,
+	CinematicEpic,
+	CinematicSciFi,
+	CinematicNoir,
 };
 
 /**

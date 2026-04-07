@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Adapted from remotion-scenes (MIT licensed)
 // https://github.com/lifeprompt-team/remotion-scenes
 
