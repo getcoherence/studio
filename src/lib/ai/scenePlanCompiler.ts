@@ -968,7 +968,7 @@ function renderBeforeAfterSplitCard(scene: ScenePlanItem, accent: string, bg: st
 	const headlineColor = isDarkHex(bg) ? "#ffffff" : "#1a1a1a";
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 40 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="words" /></div>` : ""}
-        <div style={{ width: 1500, borderRadius: 32, overflow: 'hidden', position: 'relative', boxShadow: '0 40px 100px rgba(0,0,0,0.4)', display: 'flex' }}>
+        <div style={{ width: 1650, borderRadius: 32, overflow: 'hidden', position: 'relative', boxShadow: '0 40px 100px rgba(0,0,0,0.4)', display: 'flex' }}>
           <div style={{ width: '50%', background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)', padding: '56px 48px', color: '#fff', display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div style={{ fontSize: 20, fontWeight: 700, opacity: 0.55, letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: "'Inter', sans-serif" }}>Before</div>
             {${beforeLines}.map((l, i) => (
@@ -1016,8 +1016,8 @@ function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: 
           const wipe = spring({ frame: Math.max(0, frame - ${wipeDelay}), fps, config: { damping: 20, stiffness: 30 } });
           // Both sides always 50% width — the divider slides and content cross-fades
           return (
-            <div style={{ display: 'flex', width: 1300, height: 420, borderRadius: 28, overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.35)' }}>
-              <div style={{ width: '50%', background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)', padding: '48px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16, overflow: 'hidden', opacity: 1 - wipe * 0.3 }}>
+            <div style={{ display: 'flex', width: 1600, height: 520, borderRadius: 28, overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.35)' }}>
+              <div style={{ width: '50%', background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)', padding: '52px 48px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 18, overflow: 'hidden', opacity: 1 - wipe * 0.3 }}>
                 <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.55, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fff', fontFamily: "'Inter', sans-serif" }}>Before</div>
                 {${beforeLines}.map((l, i) => (
                   <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: 'rgba(255,255,255,0.85)', fontFamily: "'Inter', sans-serif", textDecoration: wipe > 0.5 ? 'line-through' : 'none', textDecorationColor: 'rgba(239,68,68,0.6)', letterSpacing: '-0.03em', lineHeight: 1.1 }}>{l}</div>

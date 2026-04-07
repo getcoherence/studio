@@ -2362,14 +2362,14 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 																		key={name}
 																		onClick={() => updateScenePlan(i, { background: name })}
 																		title={name}
-																		className={`w-5 h-5 rounded-sm border transition-all shrink-0 ${active ? "border-[#2563eb] ring-1 ring-[#2563eb]/50 scale-110" : "border-white/10 hover:border-white/30"}`}
+																		className={`w-6 h-6 rounded border-2 transition-all shrink-0 ${active ? "border-[#2563eb] ring-1 ring-[#2563eb]/50 scale-110" : "border-white/20 hover:border-white/40"}`}
 																		style={{ background: isGradient ? css : css }}
 																	/>
 																);
 															})}
 															<label title="Custom color" className="relative w-5 h-5 shrink-0">
 																<div
-																	className={`w-5 h-5 rounded-sm border border-white/10 cursor-pointer flex items-center justify-center text-[9px] text-white/40 hover:border-white/30 ${!BACKGROUND_PRESETS[scene.background] ? "ring-1 ring-[#2563eb]/50" : ""}`}
+																	className={`w-6 h-6 rounded border-2 border-white/20 cursor-pointer flex items-center justify-center text-[9px] text-white/40 hover:border-white/40 ${!BACKGROUND_PRESETS[scene.background] ? "ring-1 ring-[#2563eb]/50" : ""}`}
 																	style={{
 																		background:
 																			scene.background?.startsWith("#") &&
