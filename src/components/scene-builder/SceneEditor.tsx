@@ -66,6 +66,42 @@ const BG_EFFECT_OPTIONS = [
 	"flowing-gradient",
 ] as const;
 
+const SCENE_TEMPLATE_CATALOG = [
+	// Text
+	{ type: "hero-text", icon: "T", label: "Hero Text", description: "Large centered headline with animation", defaultHeadline: "Your headline" },
+	{ type: "impact-word", icon: "!", label: "Impact Word", description: "Single massive word, 240-320px", defaultHeadline: "Finally." },
+	{ type: "ghost-hook", icon: "👻", label: "Ghost Hook", description: "Sentence fragmentation with ghost future words" },
+	{ type: "camera-text", icon: "🎥", label: "Camera Text", description: "Cinematic camera zoom through appearing words" },
+	{ type: "stacked-hierarchy", icon: "📊", label: "Stacked Hierarchy", description: "Text lines with dramatic size hierarchy" },
+	{ type: "outline-hero", icon: "O", label: "Outline Hero", description: "Hollow stroke-only typography" },
+	{ type: "echo-hero", icon: "🔊", label: "Echo Hero", description: "Text with motion-blur zoom trail" },
+	{ type: "typewriter-prompt", icon: "⌨️", label: "Typewriter", description: "Animated typing input with glow" },
+	{ type: "word-slot-machine", icon: "🎰", label: "Slot Machine", description: "Vertical word list with selection checkmark" },
+	{ type: "cinematic-title", icon: "✨", label: "Cinematic Title", description: "Gradient text with particle effects" },
+	// Data & stats
+	{ type: "metrics-dashboard", icon: "📈", label: "Metrics", description: "Animated metric counters with labels" },
+	{ type: "glass-stats", icon: "🧊", label: "Glass Stats", description: "Glassmorphism cards with animated counters" },
+	{ type: "countdown", icon: "🔢", label: "Countdown", description: "Animated number counting up with confetti burst" },
+	{ type: "data-flow-network", icon: "🔗", label: "Data Flow", description: "Nodes connected by animated lines" },
+	{ type: "dashboard-deconstructed", icon: "📊", label: "Dashboard", description: "Floating metric cards with chart line" },
+	// Visual
+	{ type: "product-glow", icon: "📱", label: "Product Glow", description: "Tilted screenshot with perspective glow frame" },
+	{ type: "device-showcase", icon: "💻", label: "Device Showcase", description: "Screenshot in laptop/phone mockup" },
+	{ type: "gradient-mesh-hero", icon: "🎨", label: "Gradient Mesh", description: "Soft pastel mesh background with centered text" },
+	{ type: "avatar-constellation", icon: "👥", label: "Avatar Cloud", description: "Social proof avatars orbiting a claim" },
+	{ type: "scrolling-list", icon: "📜", label: "Scrolling List", description: "Lines scrolling up sequentially" },
+	// Chaos & social proof
+	{ type: "before-after", icon: "⚡", label: "Before/After", description: "Split-screen problem vs solution" },
+	{ type: "notification-chaos", icon: "🔔", label: "Notifications", description: "Platform notification cards scattered around" },
+	{ type: "browser-tabs-chaos", icon: "🌐", label: "Browser Tabs", description: "Too many tabs — overwhelm then solution" },
+	{ type: "chat-narrative", icon: "💬", label: "Chat Narrative", description: "Progressive chat UI with urgent messages" },
+	{ type: "app-icon-cloud", icon: "📱", label: "App Icons", description: "Floating 3D app icons in space" },
+	{ type: "icon-showcase", icon: "⚡", label: "Icon Showcase", description: "Feature icons in a grid layout" },
+	// CTA & branding
+	{ type: "cta", icon: "🚀", label: "Call to Action", description: "Headline + button + optional logo", defaultHeadline: "Get Started" },
+	{ type: "logo-reveal", icon: "✨", label: "Logo Reveal", description: "Brand moment with gradient text + glow" },
+] as const;
+
 const SCENE_TYPE_OPTIONS: ScenePlanItem["type"][] = [
 	"app-icon-cloud",
 	"avatar-constellation",
@@ -2142,6 +2178,37 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 												</button>
 											)}
 										</div>
+										{/* Scene Templates */}
+										{scenePlan && (
+											<div className="space-y-2 pt-2 border-t border-white/5">
+												<div className="text-xs text-white/60 font-medium">Scene Templates</div>
+												<div className="text-[10px] text-white/25 mb-1">Click to add a scene</div>
+												<div className="grid grid-cols-2 gap-1.5">
+													{SCENE_TEMPLATE_CATALOG.map((t) => (
+														<button
+															key={t.type}
+															onClick={() => {
+																addSceneToPlan(scenePlan.scenes.length - 1);
+																// Update the newly added scene's type
+																setTimeout(() => {
+																	const idx = scenePlan.scenes.length;
+																	updateScenePlan(idx, { type: t.type as any, headline: (t as any).defaultHeadline || "" });
+																}, 50);
+															}}
+															className="flex flex-col items-start gap-1 px-2 py-2 rounded-md border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/15 transition-colors text-left"
+															title={t.description}
+														>
+															<div className="flex items-center gap-1.5 w-full">
+																<span className="text-[14px]">{t.icon}</span>
+																<span className="text-[10px] text-white/60 font-medium truncate">{t.label}</span>
+															</div>
+															<span className="text-[9px] text-white/25 line-clamp-2">{t.description}</span>
+														</button>
+													))}
+												</div>
+											</div>
+										)}
+
 										{/* Lottie Browser */}
 										<div className="space-y-2 pt-2 border-t border-white/5">
 											<div className="text-xs text-white/60 font-medium">LottieFiles Browser</div>
