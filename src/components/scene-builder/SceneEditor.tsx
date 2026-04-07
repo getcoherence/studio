@@ -319,6 +319,19 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 			for (const scene of plan.scenes) {
 				if (!scene._id) scene._id = `s-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 			}
+			// Migration: fix content-dependent headline/subtitle layer IDs
+			// (old code used headline-${text.slice(0,10)}, now uses headline-0)
+			for (const scene of plan.scenes) {
+				if (!scene.layers) continue;
+				for (const layer of scene.layers) {
+					if (layer.id.startsWith("headline-") && layer.id !== "headline-0") {
+						layer.id = "headline-0";
+					}
+					if (layer.id.startsWith("subtitle-") && layer.id !== "subtitle-0") {
+						layer.id = "subtitle-0";
+					}
+				}
+			}
 			const accent = plan.accentColor || "#2563eb";
 			for (const scene of plan.scenes) {
 				// Always re-expand if layers are empty or missing.
