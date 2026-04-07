@@ -61,10 +61,24 @@ export function getProAuthConfig(): ProAuthConfig {
 /** Current pro status */
 let proStatus: "unknown" | "checking" | "active" | "inactive" | "error" = "unknown";
 let proToken: string | null = null;
+let proValidUntil: number = 0; // timestamp — pro deactivates after this
+let revalidationTimer: ReturnType<typeof setInterval> | null = null;
+
+// How long pro stays active without server confirmation (grace period for offline use)
+const GRACE_PERIOD_MS = 24 * 60 * 60 * 1000; // 24 hours
+// How often to re-validate subscription while app is running
+const REVALIDATION_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
 /** Check if pro is currently active */
 export function isProActive(): boolean {
-	return proStatus === "active";
+	if (proStatus !== "active") return false;
+	// Even if status says active, check the validity window
+	if (Date.now() > proValidUntil) {
+		proStatus = "inactive";
+		stopRevalidation();
+		return false;
+	}
+	return true;
 }
 
 /** Get current pro status */
@@ -245,6 +259,8 @@ export async function activatePro(): Promise<{ success: boolean; error?: string 
 			try {
 				await loadProBundle();
 				proStatus = "active";
+				proValidUntil = Date.now() + GRACE_PERIOD_MS;
+				startRevalidation();
 				return { success: true };
 			} catch (err) {
 				proStatus = "error";
@@ -269,10 +285,36 @@ export async function activatePro(): Promise<{ success: boolean; error?: string 
 	try {
 		await loadProBundle();
 		proStatus = "active";
+		proValidUntil = Date.now() + GRACE_PERIOD_MS;
+		startRevalidation();
 		return { success: true };
 	} catch (err) {
 		proStatus = "error";
 		return { success: false, error: err instanceof Error ? err.message : String(err) };
+	}
+}
+
+/** Periodically re-validate the subscription while the app is running */
+function startRevalidation(): void {
+	stopRevalidation();
+	revalidationTimer = setInterval(async () => {
+		const sub = await checkSubscription();
+		if (!sub.active) {
+			console.warn("[Pro] Subscription no longer active — deactivating pro features");
+			proStatus = "inactive";
+			proValidUntil = 0;
+			stopRevalidation();
+		} else {
+			// Subscription still good — extend the grace window
+			proValidUntil = Date.now() + GRACE_PERIOD_MS;
+		}
+	}, REVALIDATION_INTERVAL_MS);
+}
+
+function stopRevalidation(): void {
+	if (revalidationTimer) {
+		clearInterval(revalidationTimer);
+		revalidationTimer = null;
 	}
 }
 
