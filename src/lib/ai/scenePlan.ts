@@ -126,6 +126,12 @@ export interface ScenePlanItem {
 	beforeLines?: string[];
 	/** For before-after: the solution state text lines */
 	afterLines?: string[];
+	/** For before-after: custom background color for left (Before) panel */
+	beforeBgColor?: string;
+	/** For before-after: custom background color for right (After) panel */
+	afterBgColor?: string;
+	/** For before-after: custom accent/header color for the After side */
+	afterAccentColor?: string;
 	/** For metrics-dashboard: the metrics to display (2-3 recommended) */
 	metrics?: Array<{ value: number; label: string; suffix?: string; prefix?: string }>;
 	/** For icon-showcase: the feature items with icon + label */
