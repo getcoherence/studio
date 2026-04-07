@@ -1507,53 +1507,49 @@ function renderSlotWheel(scene: ScenePlanItem, accent: string, bg: string): stri
       </Scene>`;
 }
 
-/** word-slot-machine: typewriter-swap — text types out, gets crossed out, retyped */
+/** word-slot-machine: typewriter-swap — each word types out, gets struck through, next types */
 function renderSlotTypewriterSwap(scene: ScenePlanItem, accent: string, bg: string): string {
 	const { prefix, words, selected } = slotData(scene);
 	const wordsJson = JSON.stringify(words);
-	const fontSize = scene.fontSize || 120;
+	const longestWord = Math.max(...words.map((w: string) => w.length));
+	const totalChars = (prefix?.length || 0) + longestWord;
+	const fontSize = scene.fontSize || (totalChars > 25 ? 80 : totalChars > 15 ? 100 : 120);
 	const light = isLightBg(scene.background);
 	const color = light ? "#1a1a1a" : "#ffffff";
-	const dimColor = light ? "rgba(26,26,26,0.3)" : "rgba(255,255,255,0.3)";
-	// Use 60% of scene duration for cycling, so the selected word shows for the last 40%
 	const dur = clampDuration(scene);
-	const cycleFrames = Math.floor(dur * 0.6);
-	const framesPerWord = Math.max(10, Math.floor(cycleFrames / Math.max(1, selected + 1)));
+	const framesPerWord = Math.max(30, Math.floor((dur * 0.7) / Math.max(1, words.length)));
 	return `<Scene bg="${bg}">
         {(() => {
           const frame = useCurrentFrame();
-          const { fps } = useVideoConfig();
           const words = ${wordsJson};
           const selected = ${selected};
-          const framesPerWord = ${framesPerWord};
-          const currentWordIdx = Math.min(Math.floor(frame / framesPerWord), words.length - 1);
-          const isSelected = currentWordIdx >= selected;
-          const displayWord = isSelected ? words[selected] : words[currentWordIdx];
-          const typingProgress = interpolate(frame % framesPerWord, [0, framesPerWord * 0.7], [0, 1], { extrapolateRight: 'clamp' });
-          const charsToShow = isSelected ? displayWord.length : Math.ceil(displayWord.length * typingProgress);
+          const fpw = ${framesPerWord};
+          const currentIdx = Math.min(Math.floor(frame / fpw), words.length - 1);
+          const isSettled = currentIdx >= selected;
+          const wordFrame = frame - currentIdx * fpw;
+          const displayWord = isSettled ? words[selected] : words[currentIdx];
+          // Type in during first 50% of word time, hold, then strike through at 80%
+          const typeProgress = Math.min(1, wordFrame / (fpw * 0.5));
+          const charsToShow = isSettled ? displayWord.length : Math.ceil(displayWord.length * typeProgress);
+          const strikeThrough = !isSettled && wordFrame > fpw * 0.75;
           return (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 24, fontFamily: "'Inter', sans-serif" }}>
-              <span style={{ fontSize: ${fontSize}, fontWeight: 300, color: '${color}' }}>${prefix}</span>
-              <div style={{ position: 'relative' }}>
-                {!isSelected && currentWordIdx > 0 && (
-                  <div style={{ position: 'absolute', top: 0, left: 0, fontSize: ${fontSize}, fontWeight: 800, color: '${dimColor}', textDecoration: 'line-through', textDecorationColor: 'rgba(239,68,68,0.5)', whiteSpace: 'nowrap' }}>
-                    {words[currentWordIdx - 1]}
-                  </div>
-                )}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, fontFamily: "'Inter', sans-serif" }}>
+              <span style={{ fontSize: ${Math.round(fontSize * 0.5)}, fontWeight: 300, color: '${color}', opacity: 0.5 }}>${prefix}</span>
+              <div style={{ position: 'relative', textAlign: 'center' }}>
                 <span style={{
                   fontSize: ${fontSize}, fontWeight: 800,
-                  color: isSelected ? '${accent}' : '${color}',
-                  whiteSpace: 'nowrap',
+                  color: isSettled ? '${accent}' : '${color}',
+                  textDecoration: strikeThrough ? 'line-through' : 'none',
+                  textDecorationColor: 'rgba(239,68,68,0.6)',
+                  letterSpacing: '-0.03em',
                 }}>{displayWord.slice(0, charsToShow)}</span>
                 <span style={{
-                  display: 'inline-block', width: 3, height: ${fontSize * 0.8},
-                  background: isSelected ? '${accent}' : '${color}',
+                  display: 'inline-block', width: 3, height: ${Math.round(fontSize * 0.7)},
+                  background: isSettled ? '${accent}' : '${color}',
                   marginLeft: 4, verticalAlign: 'middle',
                   opacity: Math.sin(frame * 0.3) > 0 ? 1 : 0,
                 }} />
-                {isSelected && (
-                  <span style={{ fontSize: ${fontSize * 0.4}, color: '${accent}', marginLeft: 16, fontWeight: 900 }}>✓</span>
-                )}
+                {isSettled && <span style={{ fontSize: ${Math.round(fontSize * 0.35)}, color: '${accent}', marginLeft: 16, fontWeight: 900 }}>✓</span>}
               </div>
             </div>
           );
@@ -1561,51 +1557,56 @@ function renderSlotTypewriterSwap(scene: ScenePlanItem, accent: string, bg: stri
       </Scene>`;
 }
 
-/** word-slot-machine: flip-cards — cards flip to reveal each word */
+/** word-slot-machine: flip-cards — cards flip in one at a time, selected one stays */
 function renderSlotFlipCards(scene: ScenePlanItem, accent: string, bg: string): string {
 	const { prefix, words, selected } = slotData(scene);
 	const wordsJson = JSON.stringify(words);
-	const fontSize = scene.fontSize || 100;
+	const longestWord = Math.max(...words.map((w: string) => w.length));
+	const fontSize = scene.fontSize || (longestWord > 20 ? 80 : longestWord > 12 ? 100 : 120);
 	const light = isLightBg(scene.background);
 	const color = light ? "#1a1a1a" : "#ffffff";
-	const cardBg = light ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)";
-	const selectedBg = `${accent}20`;
+	const dur = clampDuration(scene);
+	const framesPerWord = Math.max(25, Math.floor((dur * 0.7) / Math.max(1, words.length)));
 	return `<Scene bg="${bg}">
-        <div style={{ marginBottom: 40 }}>
-          <span style={{ fontSize: ${fontSize * 0.7}, fontWeight: 300, color: '${color}', fontFamily: "'Inter', sans-serif" }}>${prefix}</span>
-        </div>
         {(() => {
           const frame = useCurrentFrame();
           const { fps } = useVideoConfig();
           const words = ${wordsJson};
           const selected = ${selected};
+          const fpw = ${framesPerWord};
+          const currentIdx = Math.min(Math.floor(frame / fpw), words.length - 1);
+          const isSettled = currentIdx >= selected;
+          const displayWord = isSettled ? words[selected] : words[currentIdx];
+          const flipProgress = spring({ frame: frame % fpw, fps, config: { damping: 14, stiffness: 90 } });
           return (
-            <div style={{ display: 'flex', gap: 20, perspective: 800 }}>
-              {words.map((word, i) => {
-                const delay = i * 5;
-                const flipIn = spring({ frame: Math.max(0, frame - delay), fps, config: { damping: 14, stiffness: 90 } });
-                const rotateX = (1 - flipIn) * 90;
-                const isSel = i === selected;
-                return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24, fontFamily: "'Inter', sans-serif", perspective: 800 }}>
+              <span style={{ fontSize: ${Math.round(fontSize * 0.5)}, fontWeight: 300, color: '${color}', opacity: 0.5 }}>${prefix}</span>
+              <div style={{
+                transform: isSettled ? 'none' : 'rotateX(' + ((1 - flipProgress) * 45) + 'deg)',
+                padding: '36px 60px',
+                borderRadius: 20,
+                background: isSettled ? '${accent}15' : '${light ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)"}',
+                border: isSettled ? '2px solid ${accent}' : '1px solid ${light ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.1)"}',
+                boxShadow: isSettled ? '0 12px 40px ${accent}20' : '0 8px 24px rgba(0,0,0,0.15)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  {isSettled && <span style={{ fontSize: ${Math.round(fontSize * 0.4)}, fontWeight: 900, color: '${accent}' }}>✓</span>}
+                  <span style={{
+                    fontSize: ${fontSize}, fontWeight: 800,
+                    color: isSettled ? '${accent}' : '${color}',
+                    letterSpacing: '-0.03em',
+                  }}>{displayWord}</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                {words.map((_, i) => (
                   <div key={i} style={{
-                    transform: 'rotateX(' + rotateX + 'deg)',
-                    opacity: flipIn,
-                    padding: '28px 44px',
-                    borderRadius: 18,
-                    background: isSel ? '${selectedBg}' : '${cardBg}',
-                    border: isSel ? '2px solid ${accent}' : '1px solid ${light ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.1)"}',
-                    fontSize: ${fontSize * 0.7},
-                    fontWeight: isSel ? 800 : 500,
-                    color: isSel ? '${accent}' : '${light ? "rgba(26,26,26,0.5)" : "rgba(255,255,255,0.45)"}',
-                    fontFamily: "'Inter', sans-serif",
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    boxShadow: isSel ? '0 8px 30px ${accent}20' : 'none',
-                  }}>
-                    {isSel && <span style={{ fontSize: ${fontSize * 0.35}, fontWeight: 900, color: '${accent}' }}>✓</span>}
-                    {word}
-                  </div>
-                );
-              })}
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: i === currentIdx ? '${accent}' : '${light ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.2)"}',
+                    transition: 'background 0.2s',
+                  }} />
+                ))}
+              </div>
             </div>
           );
         })()}
