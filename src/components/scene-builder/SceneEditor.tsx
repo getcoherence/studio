@@ -1570,6 +1570,27 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 					setMusicPath(result.audioPath);
 					toast.success(`Music generated! (${mood})`);
 					refreshMusicLibrary();
+					// Auto beat-sync: snap scene durations to detected beats
+					if (scenePlan && !scenePlan.readonly) {
+						try {
+							const { detectBeats, snapScenesToBeats } = await import("@/lib/audio/beatDetection");
+							const { bpm, beats } = await detectBeats(result.audioPath);
+							const durations = scenePlan.scenes.map((s) => s.durationFrames || 90);
+							const snapped = snapScenesToBeats(durations, beats, 30);
+							const syncedPlan = {
+								...scenePlan,
+								scenes: scenePlan.scenes.map((s, i) => ({ ...s, durationFrames: snapped[i] })),
+							};
+							setScenePlan(syncedPlan);
+							(project as any)._aiPlan = syncedPlan;
+							const newCode = compileScenePlan(syncedPlan);
+							setAiComposition((prev) => prev ? { ...prev, code: newCode } : prev);
+							(project as any)._aiCode = newCode;
+							console.log(`[AutoBeatSync] Synced to ${bpm} BPM`);
+						} catch (err) {
+							console.warn("[AutoBeatSync] Beat detection failed, skipping:", err);
+						}
+					}
 				} else {
 					console.error("[Music] Generation failed:", result.error);
 					toast.error(result.error || "Music generation failed");
@@ -2569,6 +2590,43 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 														{Math.round(musicVolume * 100)}%
 													</span>
 												</div>
+												{scenePlan && (
+													<button
+														onClick={async () => {
+															if (!musicPath || !scenePlan) return;
+															toast.loading("Detecting beats...", { id: "beats" });
+															try {
+																const { detectBeats, snapScenesToBeats } = await import("@/lib/audio/beatDetection");
+																const { bpm, beats } = await detectBeats(musicPath);
+																const durations = scenePlan.scenes.map((s) => s.durationFrames || 90);
+																const snapped = snapScenesToBeats(durations, beats, 30);
+																const newPlan = {
+																	...scenePlan,
+																	scenes: scenePlan.scenes.map((s, i) => ({
+																		...s,
+																		durationFrames: snapped[i],
+																	})),
+																};
+																setScenePlan(newPlan);
+																(project as any)._aiPlan = newPlan;
+																if (!scenePlan.readonly) {
+																	const newCode = compileScenePlan(newPlan);
+																	setAiComposition((prev) => prev ? { ...prev, code: newCode } : prev);
+																	(project as any)._aiCode = newCode;
+																}
+																toast.dismiss("beats");
+																toast.success(`Synced to ${bpm} BPM (${beats.length} beats)`);
+															} catch (err) {
+																toast.dismiss("beats");
+																toast.error(`Beat detection failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+															}
+														}}
+														className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors"
+													>
+														<Music size={12} />
+														Snap Scenes to Beats
+													</button>
+												)}
 												<button
 													onClick={() => setMusicPath(null)}
 													className="w-full text-left px-2 py-1.5 rounded text-xs text-red-400/70 hover:text-red-400 hover:bg-red-400/5 transition-colors"
