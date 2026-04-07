@@ -707,9 +707,44 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 									}
 									onKeyDown={(e) => e.stopPropagation()}
 									placeholder="Highlight"
-									title="Optional word to render in the scene's accent color. Must match exactly (case-sensitive) a word in the text content above."
+									title="Optional word to render in the scene's accent color."
 									className="w-16 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[#60a5fa]/50 focus:outline-none"
 								/>
+							</div>
+						)}
+						{/* Text effects: glow, shadow, outline */}
+						{layer.type === "text" && !ro && (
+							<div className="flex gap-1 items-center text-[10px]">
+								<button
+									onClick={() => {
+										const cur = layer.settings?.glow;
+										updateLayer(li, { settings: { ...layer.settings, glow: cur ? undefined : "0 0 40px currentColor" } });
+									}}
+									title="Text glow — adds a colored glow around the text"
+									className={`px-1.5 py-0.5 rounded border transition-colors ${layer.settings?.glow ? "bg-amber-500/20 border-amber-500/40 text-amber-300" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+								>
+									Glow
+								</button>
+								<button
+									onClick={() => {
+										const cur = layer.settings?.shadow;
+										updateLayer(li, { settings: { ...layer.settings, shadow: cur ? undefined : "4px 4px 0px rgba(0,0,0,0.5)" } });
+									}}
+									title="Drop shadow behind text"
+									className={`px-1.5 py-0.5 rounded border transition-colors ${layer.settings?.shadow ? "bg-sky-500/20 border-sky-500/40 text-sky-300" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+								>
+									Shadow
+								</button>
+								<button
+									onClick={() => {
+										const cur = layer.settings?.outline;
+										updateLayer(li, { settings: { ...layer.settings, outline: cur ? undefined : "2px" } });
+									}}
+									title="Text outline / stroke"
+									className={`px-1.5 py-0.5 rounded border transition-colors ${layer.settings?.outline ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+								>
+									Outline
+								</button>
 							</div>
 						)}
 					</div>
