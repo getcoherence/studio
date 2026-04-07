@@ -687,7 +687,7 @@ function renderDeviceShowcase(
 	const screenshotIndex = scene.screenshotIndex ?? 0;
 	const device = scene.variant === "phone" ? "phone" : "laptop";
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
-	const textColor = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const textColor = resolveTextColor(scene);
 	const pal = accentPalette(accent);
 	const ssLayer = scene.layers?.find((l) => l.id.startsWith("screenshot-"));
 	const ssContent = ssLayer?.content || `screenshots[${screenshotIndex}]`;
@@ -714,7 +714,7 @@ function renderGlassStats(
 		{ value: 500, label: "Users", prefix: "", suffix: "+" },
 	];
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
-	const textColor = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const textColor = resolveTextColor(scene);
 	const pal = accentPalette(accent);
 	const metricsJson = JSON.stringify(metrics);
 	return `<Scene bg="${bg}">
@@ -739,7 +739,7 @@ function renderCinematicTitle(
 	bg: string,
 ): string {
 	const headline = JSON.stringify(scene.headline || "Cinematic.");
-	const textColor = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const textColor = resolveTextColor(scene);
 	const pal = accentPalette(accent);
 	const effect = scene.backgroundEffect || "sakura";
 	return `<Scene bg="${bg}" bgEffect="${effect}" bgEffectColors={["${accent}","${pal.w}","${pal.k}"]} bgEffectIntensity={0.8}>
@@ -797,7 +797,7 @@ function renderCTA(
 	const headline = JSON.stringify(scene.headline || "Get Started");
 	const subtitle = scene.subtitle ? JSON.stringify(scene.subtitle) : null;
 	const fontSize = scene.fontSize || 120;
-	const textColor = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const textColor = resolveTextColor(scene);
 	const dimColor = isLightBg(scene.background) ? "rgba(26,26,26,0.4)" : "rgba(255,255,255,0.4)";
 	const pal = accentPalette(accent);
 	// Use subtitle as URL display if it looks like a domain, otherwise use websiteUrl
@@ -889,7 +889,7 @@ function renderGhostHook(scene: ScenePlanItem, _accent: string, bg: string): str
 						: 140;
 	// Respect user's fontSize if they set it, but cap at autoSize to prevent overflow
 	const fontSize = scene.fontSize ? Math.min(scene.fontSize, autoSize) : autoSize;
-	const color = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const color = resolveTextColor(scene);
 	return `<Scene bg="${bg}">
         <GhostSentence words={${words}} activeIndex={${activeIndex}} fontSize={${fontSize}} color="${color}" maxWidth={1700} />
       </Scene>`;
@@ -965,7 +965,7 @@ function beforeAfterData(scene: ScenePlanItem) {
 function renderBeforeAfterSplitCard(scene: ScenePlanItem, accent: string, bg: string): string {
 	const { beforeLines, afterLines, lineSize } = beforeAfterData(scene);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
-	const headlineColor = isDarkHex(bg) ? "#ffffff" : "#1a1a1a";
+	const headlineColor = resolveTextColor(scene);
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 40 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="words" /></div>` : ""}
         <div style={{ width: 1650, borderRadius: 32, overflow: 'hidden', position: 'relative', boxShadow: '0 40px 100px rgba(0,0,0,0.4)', display: 'flex' }}>
@@ -1003,7 +1003,7 @@ function renderBeforeAfterSplitCard(scene: ScenePlanItem, accent: string, bg: st
 function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: string): string {
 	const { beforeArr, afterArr, lineSize } = beforeAfterData(scene);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
-	const headlineColor = isDarkHex(bg) ? "#ffffff" : "#1a1a1a";
+	const headlineColor = resolveTextColor(scene);
 	const beforeLines = JSON.stringify(beforeArr);
 	const afterLines = JSON.stringify(afterArr);
 	// Wipe at 50% of scene duration so "before" gets plenty of reading time
@@ -1046,7 +1046,7 @@ function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: 
 function renderBeforeAfterStackedMorph(scene: ScenePlanItem, accent: string, bg: string): string {
 	const { beforeArr, afterArr } = beforeAfterData(scene);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
-	const headlineColor = isDarkHex(bg) ? "#ffffff" : "#1a1a1a";
+	const headlineColor = resolveTextColor(scene);
 	const light = isLightBg(scene.background);
 	const textColor = light ? "#1a1a1a" : "#ffffff";
 	const dimColor = light ? "rgba(26,26,26,0.4)" : "rgba(255,255,255,0.4)";
@@ -1101,7 +1101,7 @@ function renderBeforeAfterStackedMorph(scene: ScenePlanItem, accent: string, bg:
 function renderBeforeAfterToggleSwitch(scene: ScenePlanItem, accent: string, bg: string): string {
 	const { beforeArr, afterArr, lineSize } = beforeAfterData(scene);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
-	const headlineColor = isDarkHex(bg) ? "#ffffff" : "#1a1a1a";
+	const headlineColor = resolveTextColor(scene);
 	const light = isLightBg(scene.background);
 	const textColor = light ? "#1a1a1a" : "#ffffff";
 	const beforeLines = JSON.stringify(beforeArr);
@@ -1354,7 +1354,7 @@ function renderIconShowcase(scene: ScenePlanItem, _accent: string, bg: string): 
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
 	const itemCount = scene.iconItems?.length || 6;
 	const columns = itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : itemCount % 3 === 0 ? 3 : itemCount % 2 === 0 ? 2 : 3;
-	const textColor = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const textColor = resolveTextColor(scene);
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 50 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${textColor}" fontFamily="Georgia, serif" animation="clip" /></div>` : ""}
         <IconGrid items={${items}} columns={${columns}} iconSize={72} gap={48} delay={8} color="${textColor}" />
@@ -1408,7 +1408,7 @@ function renderProductGlow(scene: ScenePlanItem, accent: string, bg: string): st
 	const perspectiveX = scene.perspectiveX ?? 12;
 	const perspectiveY = scene.perspectiveY ?? -4;
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
-	const textColor = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const textColor = resolveTextColor(scene);
 	const animation = scene.animation || "clip";
 	const light = isLightBg(scene.background);
 	const pal = accentPalette(accent);
@@ -1452,7 +1452,7 @@ function renderStackedHierarchy(scene: ScenePlanItem, _accent: string, bg: strin
 
 function renderRadialVortex(scene: ScenePlanItem, _accent: string, bg: string): string {
 	const text = JSON.stringify(scene.headline || "GOOD ENOUGH");
-	const color = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const color = resolveTextColor(scene);
 	const baseFontSize = scene.fontSize || 80;
 	return `<Scene bg="${bg}">
         <RadialTextVortex text={${text}} rings={5} baseFontSize={${baseFontSize}} color="${color}" rotationSpeed={0.3} />
@@ -1461,7 +1461,7 @@ function renderRadialVortex(scene: ScenePlanItem, _accent: string, bg: string): 
 
 function renderOutlineHero(scene: ScenePlanItem, _accent: string, bg: string): string {
 	const text = JSON.stringify(scene.headline || "AVERAGE");
-	const color = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const color = resolveTextColor(scene);
 	const fontSize = Math.max(220, scene.fontSize || 260);
 	return `<Scene bg="${bg}">
         <OutlineText text={${text}} fontSize={${fontSize}} strokeWidth={3} color="${color}" maxWidth={2200} />
@@ -1502,7 +1502,7 @@ function slotData(scene: ScenePlanItem) {
 function renderSlotWheel(scene: ScenePlanItem, accent: string, bg: string): string {
 	const { prefix, words, selected } = slotData(scene);
 	const fontSize = scene.fontSize || 140;
-	const color = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const color = resolveTextColor(scene);
 	return `<Scene bg="${bg}">
         <WordSlotMachine prefix={${JSON.stringify(prefix)}} words={${JSON.stringify(words)}} selectedIndex={${selected}} fontSize={${fontSize}} color="${color}" accentColor="${accent}" checkmark={true} />
       </Scene>`;
@@ -1708,7 +1708,7 @@ function renderDashboardDeconstructed(scene: ScenePlanItem, _accent: string, bg:
 		],
 	);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
-	const headlineColor = isDarkHex(bg) ? "#ffffff" : "#1a1a1a";
+	const headlineColor = resolveTextColor(scene);
 	// Headline in flow at top, dashboard grid constrained below (not full-height)
 	return `<Scene bg="${bg}">
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', height: '100%', gap: 24 }}>
@@ -1780,7 +1780,7 @@ function renderAppIconCloud(scene: ScenePlanItem, accent: string, bg: string): s
 	const iconsJson = JSON.stringify(icons.slice(0, n));
 	const headline = JSON.stringify(scene.headline || "Every tool. One flow.");
 	const fontSize = scene.fontSize || 120;
-	const textColor = isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+	const textColor = resolveTextColor(scene);
 	return `<Scene bg="${bg}">
         {React.createElement(() => {
           const frame = useCurrentFrame();
@@ -1819,7 +1819,7 @@ function renderScrollingList(scene: ScenePlanItem, accent: string, bg: string): 
 		{ text: "Polish." },
 		{ text: "Ship." },
 	];
-	const textColor = isDarkHex(bg) ? "#ffffff" : "#1a1a1a";
+	const textColor = resolveTextColor(scene);
 	// Pick an accent color for 1-2 lines (last or specified)
 	const withColors = rawLines.map((l, i) => ({
 		text: l.text,
@@ -1832,7 +1832,7 @@ function renderScrollingList(scene: ScenePlanItem, accent: string, bg: string): 
 	);
 	const headline =
 		scene.headline && scene.headline !== rawLines[0].text ? JSON.stringify(scene.headline) : null;
-	const headlineColor = isDarkHex(bg) ? "#ffffff" : "#1a1a1a";
+	const headlineColor = resolveTextColor(scene);
 	// Compute stagger from scene duration so lines are paced across the full
 	// scene. Reserve ~30% of the scene for the final "all-visible" hold.
 	const sceneDur = clampDuration(scene);
