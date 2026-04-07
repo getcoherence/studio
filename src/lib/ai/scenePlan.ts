@@ -277,6 +277,12 @@ export interface SceneLayer {
 		stiffness?: number;
 		/** Stagger delay between elements in frames (default 2) */
 		stagger?: number;
+		/** Text glow CSS (e.g., "0 0 40px currentColor") */
+		glow?: string;
+		/** Text drop shadow CSS (e.g., "4px 4px 0px rgba(0,0,0,0.5)") */
+		shadow?: string;
+		/** Text outline/stroke width (e.g., "2px") */
+		outline?: string;
 	};
 }
 

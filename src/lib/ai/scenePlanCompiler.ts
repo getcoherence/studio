@@ -558,9 +558,15 @@ function renderExtraLayers(scene: ScenePlanItem, accent: string): string {
 				? ` accentWord=${JSON.stringify(layer.settings.accentWord)} accentColor="${accent}"`
 				: "";
 			const text = JSON.stringify(layer.content);
+			// Text effects: glow, shadow, outline
+			const textEffectStyles: string[] = [];
+			if (layer.settings?.glow) textEffectStyles.push(`textShadow: '${layer.settings.glow}'`);
+			if (layer.settings?.shadow) textEffectStyles.push(`textShadow: '${layer.settings.shadow}'`);
+			if (layer.settings?.outline) textEffectStyles.push(`WebkitTextStroke: '${layer.settings.outline} rgba(0,0,0,0.6)'`);
+			const effectStyle = textEffectStyles.length > 0 ? `, ${textEffectStyles.join(", ")}` : "";
 			parts.push(
 				`        <Sequence from={${startFrame}} durationInFrames={${duration}}>\n` +
-					`          <div style={{ position: 'absolute', ${posStyle}, zIndex: 30 }}>\n` +
+					`          <div style={{ position: 'absolute', ${posStyle}, zIndex: 30${effectStyle} }}>\n` +
 					`            <AnimatedText text={${text}} fontSize={${fontSize}} color="${color}" animation="${animation}"${accentWord} />\n` +
 					`          </div>\n` +
 					`        </Sequence>`,
