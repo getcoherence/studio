@@ -950,7 +950,8 @@ function beforeAfterData(scene: ScenePlanItem) {
 	const beforeArr = scene.beforeLines || ["Flat.", "Cluttered.", "Forgettable."];
 	const afterArr = scene.afterLines || ["Clean.", "Branded.", "Ready to ship."];
 	const longest = Math.max(...beforeArr.map((l) => l.length), ...afterArr.map((l) => l.length));
-	const lineSize = longest > 22 ? 46 : longest > 15 ? 58 : 72;
+	// Scale down aggressively — text must fit in a 50% width container
+	const lineSize = longest > 25 ? 36 : longest > 18 ? 42 : longest > 12 ? 52 : 64;
 	return {
 		beforeArr,
 		afterArr,
@@ -1019,7 +1020,7 @@ function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: 
               <div style={{ width: '50%', background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)', padding: '48px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16, overflow: 'hidden', opacity: 1 - wipe * 0.3 }}>
                 <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.55, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fff', fontFamily: "'Inter', sans-serif" }}>Before</div>
                 {${beforeLines}.map((l, i) => (
-                  <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: 'rgba(255,255,255,0.85)', fontFamily: "'Inter', sans-serif", textDecoration: wipe > 0.5 ? 'line-through' : 'none', textDecorationColor: 'rgba(239,68,68,0.6)', letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>{l}</div>
+                  <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: 'rgba(255,255,255,0.85)', fontFamily: "'Inter', sans-serif", textDecoration: wipe > 0.5 ? 'line-through' : 'none', textDecorationColor: 'rgba(239,68,68,0.6)', letterSpacing: '-0.03em', lineHeight: 1.1 }}>{l}</div>
                 ))}
               </div>
               <div style={{ width: 4, background: '${accent}', boxShadow: '0 0 20px ${accent}80', flexShrink: 0, zIndex: 2 }} />
@@ -1028,7 +1029,7 @@ function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: 
                 {${afterLines}.map((l, i) => {
                   const stagger = spring({ frame: Math.max(0, frame - ${wipeDelay} - i * 6), fps, config: { damping: 14, stiffness: 120 } });
                   return (
-                    <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: '#0f172a', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 12, letterSpacing: '-0.03em', whiteSpace: 'nowrap', opacity: stagger, transform: 'translateY(' + ((1 - stagger) * 20) + 'px)' }}>
+                    <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: '#0f172a', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 12, letterSpacing: '-0.03em', lineHeight: 1.1, opacity: stagger, transform: 'translateY(' + ((1 - stagger) * 20) + 'px)' }}>
                       <span style={{ color: '${accent}', fontSize: ${lineSize * 0.5}, flexShrink: 0 }}>✓</span>
                       {l}
                     </div>
