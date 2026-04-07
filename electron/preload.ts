@@ -143,8 +143,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		return ipcRenderer.invoke("set-locale", locale);
 	},
 	// ── AI features ──
-	aiAnalyze: (prompt: string, context?: string) => {
-		return ipcRenderer.invoke("ai-analyze", prompt, context);
+	aiAnalyze: (
+		prompt: string,
+		context?: string,
+		modelOverride?: { provider: string; model: string },
+	) => {
+		return ipcRenderer.invoke("ai-analyze", prompt, context, modelOverride);
 	},
 	aiGenerateJSON: (prompt: string, context?: string, schema?: Record<string, unknown>) => {
 		return ipcRenderer.invoke("ai-generate-json", prompt, context, schema);
@@ -158,14 +162,42 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	aiGetConfig: () => {
 		return ipcRenderer.invoke("ai-get-config");
 	},
+	aiGetAllKeys: () => {
+		return ipcRenderer.invoke("ai-get-all-keys") as Promise<{
+			keys: Record<string, string>;
+			models: Record<string, string>;
+		}>;
+	},
 	aiSaveConfig: (config: Partial<AIServiceConfig>) => {
 		return ipcRenderer.invoke("ai-save-config", config);
 	},
 	aiTtsSynthesize: (text: string, voice?: string) => {
 		return ipcRenderer.invoke("ai-tts-synthesize", text, voice);
 	},
-	aiGenerateMusic: (mood: string, customPrompt?: string, videoDurationSec?: number) => {
-		return ipcRenderer.invoke("ai-generate-music", mood, customPrompt, videoDurationSec);
+	aiGenerateMusic: (
+		mood: string,
+		customPrompt?: string,
+		videoDurationSec?: number,
+		vocalMode?: string,
+		lyrics?: string,
+	) => {
+		return ipcRenderer.invoke(
+			"ai-generate-music",
+			mood,
+			customPrompt,
+			videoDurationSec,
+			vocalMode,
+			lyrics,
+		);
+	},
+	aiGenerateLyrics: (themePrompt: string, title?: string) => {
+		return ipcRenderer.invoke("ai-generate-lyrics", themePrompt, title);
+	},
+	musicLibraryList: () => {
+		return ipcRenderer.invoke("music-library-list");
+	},
+	musicLibraryDelete: (filePath: string) => {
+		return ipcRenderer.invoke("music-library-delete", filePath);
 	},
 	lottieSearch: (query: string, page?: number) => {
 		return ipcRenderer.invoke("lottie-search", query, page);
@@ -175,6 +207,24 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	lottieDownload: (lottieUrl: string, name: string) => {
 		return ipcRenderer.invoke("lottie-download", lottieUrl, name);
+	},
+
+	// ── Remotion SSR Export ──
+	exportRemotion: (opts: {
+		code: string;
+		screenshots: string[];
+		fps?: number;
+		durationInFrames?: number;
+		fileName?: string;
+		musicPath?: string;
+		musicVolume?: number;
+	}) => {
+		return ipcRenderer.invoke("export-remotion", opts);
+	},
+	onExportRemotionProgress: (callback: (percent: number) => void) => {
+		const listener = (_: unknown, percent: number) => callback(percent);
+		ipcRenderer.on("export-remotion-progress", listener);
+		return () => ipcRenderer.removeListener("export-remotion-progress", listener);
 	},
 
 	setMicrophoneExpanded: (expanded: boolean) => {

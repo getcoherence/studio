@@ -30,9 +30,9 @@ export async function loadAIConfig(): Promise<AIServiceConfig> {
 	// Read per-provider key, falling back to legacy single key
 	const providerKeyField = `aiApiKey_${provider}` as keyof typeof settings;
 	const apiKey = (settings[providerKeyField] as string | undefined) ?? settings.aiApiKey;
-	// Only use saved model if it belongs to the current provider
-	// (prevents sending "gpt-5.4" to Anthropic after switching)
-	const savedModel = settings.aiModel;
+	// Read per-provider model, falling back to legacy single model
+	const providerModelField = `aiModel_${provider}` as keyof typeof settings;
+	const savedModel = (settings[providerModelField] as string | undefined) ?? settings.aiModel;
 	const validModel =
 		savedModel && isModelValidForProvider(savedModel, provider) ? savedModel : undefined;
 
@@ -54,8 +54,13 @@ export async function saveAIConfig(config: Partial<AIServiceConfig>): Promise<vo
 	const updates: Record<string, unknown> = {};
 
 	if (config.provider) updates.aiProvider = config.provider;
-	if (config.model !== undefined) updates.aiModel = config.model;
 	if (config.ollamaUrl !== undefined) updates.aiOllamaUrl = config.ollamaUrl;
+
+	if (config.model !== undefined) {
+		// Save to per-provider model field AND legacy field
+		updates[`aiModel_${provider}`] = config.model;
+		updates.aiModel = config.model;
+	}
 
 	if (config.apiKey !== undefined) {
 		// Save to per-provider key field AND legacy field
@@ -64,6 +69,25 @@ export async function saveAIConfig(config: Partial<AIServiceConfig>): Promise<vo
 	}
 
 	await saveSettings(updates as Partial<import("../settings").LucidSettings>);
+}
+
+/** Return all per-provider API keys and models (for settings dialog) */
+export async function getAllProviderKeys(): Promise<{
+	keys: Record<string, string>;
+	models: Record<string, string>;
+}> {
+	const settings = await loadSettings();
+	const keys: Record<string, string> = {};
+	const models: Record<string, string> = {};
+	for (const provider of ["openai", "anthropic", "groq", "minimax", "ollama"]) {
+		const keyField = `aiApiKey_${provider}` as keyof typeof settings;
+		const keyVal = settings[keyField] as string | undefined;
+		if (keyVal) keys[provider] = keyVal;
+		const modelField = `aiModel_${provider}` as keyof typeof settings;
+		const modelVal = settings[modelField] as string | undefined;
+		if (modelVal) models[provider] = modelVal;
+	}
+	return { keys, models };
 }
 
 // ── Provider endpoints ──
@@ -425,15 +449,41 @@ export async function analyzeImage(
 
 // ── Public API ──
 
-export async function analyze(prompt: string, context?: string): Promise<AIServiceResult> {
+export async function analyze(
+	prompt: string,
+	context?: string,
+	modelOverride?: { provider: string; model: string },
+): Promise<AIServiceResult> {
 	const config = await loadAIConfig();
+
+	// Apply model override if provided (used by Director chat to test different models).
+	// CRITICAL: when overriding the provider, we must also load the correct API key
+	// for that provider — not reuse the current provider's key.
+	let effectiveConfig = config;
+	if (modelOverride) {
+		const overrideProvider = modelOverride.provider as typeof config.provider;
+		if (overrideProvider !== config.provider) {
+			// Load the per-provider key from settings
+			const settings = await (await import("../settings")).loadSettings();
+			const providerKeyField = `aiApiKey_${overrideProvider}` as keyof typeof settings;
+			const providerKey = (settings[providerKeyField] as string | undefined) ?? settings.aiApiKey;
+			effectiveConfig = {
+				...config,
+				provider: overrideProvider,
+				model: modelOverride.model,
+				apiKey: providerKey,
+			};
+		} else {
+			effectiveConfig = { ...config, model: modelOverride.model };
+		}
+	}
 
 	try {
 		// Pass context as a proper system prompt for all providers
-		const text = await callProvider(config.provider, prompt, config, context);
+		const text = await callProvider(effectiveConfig.provider, prompt, effectiveConfig, context);
 		return { success: true, text };
 	} catch (err) {
-		console.warn(`AI provider "${config.provider}" failed:`, err);
+		console.warn(`AI provider "${effectiveConfig.provider}" failed:`, err);
 		return {
 			success: false,
 			error: err instanceof Error ? err.message : String(err),

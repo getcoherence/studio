@@ -19,6 +19,13 @@ export interface LucidSettings {
 	aiApiKey_groq?: string;
 	aiApiKey_minimax?: string;
 
+	// Per-provider model selection (so switching providers doesn't lose model choice)
+	aiModel_openai?: string;
+	aiModel_anthropic?: string;
+	aiModel_groq?: string;
+	aiModel_minimax?: string;
+	aiModel_ollama?: string;
+
 	// Cursor
 	cursorSmoothing: number;
 	cursorSway: number;

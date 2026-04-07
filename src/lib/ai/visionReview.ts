@@ -77,28 +77,46 @@ export async function reviewCompositionVisually(
 
 	onStatus?.(`Analyzing ${screenshots.length} frames with vision AI...`);
 
-	// Send the middle frame (most representative) to vision AI
-	const bestFrame = screenshots[Math.floor(screenshots.length / 2)];
+	// Send multiple frames for a holistic review
+	// Pick opening, middle, and closing frames for story + visual review
+	const frameIndices = [0, Math.floor(screenshots.length / 2), screenshots.length - 1];
+	const selectedFrames = frameIndices
+		.map((i) => screenshots[Math.min(i, screenshots.length - 1)])
+		.filter(Boolean);
+	const bestFrame = selectedFrames[0]; // Use first frame for single-image API
 
 	try {
 		const result = await window.electronAPI.aiAnalyzeImage(
 			[
-				"You are reviewing a frame from a cinematic product video. Score it 1-10 and list issues.",
+				"You are a creative director reviewing frames from a cinematic product video.",
+				"Score it 1-10 and provide feedback on BOTH design quality AND storytelling.",
 				"",
-				"Check for:",
-				"1. Text readability: Is text large enough? Good contrast? Not clipped?",
-				"2. Layout: Are elements well-positioned? No overlapping? Proper spacing?",
-				"3. Visual quality: Clean backgrounds? Professional look? Not cluttered?",
-				"4. Typography: Consistent fonts? Good weight? Readable at video scale?",
-				"5. Color: Good contrast? Brand colors used well? Not garish?",
+				"## DESIGN QUALITY (does it look like a premium agency made it?)",
+				"1. Typography: Bold, large, cinematic? Or small and generic?",
+				"2. Composition: Clean focal point? Breathing room? Or cluttered?",
+				"3. Color: Strong contrast? Premium feel? Or flat and boring?",
+				"4. Motion design feel: Does this frame look like it's from a real brand video?",
+				"   Or does it look like a PowerPoint slide?",
+				"",
+				"## STORYTELLING (would this make someone want to try the product?)",
+				"5. Does the text feel emotional and compelling? Or generic and corporate?",
+				"6. Is there a clear message? Or just buzzwords?",
+				"7. Would a viewer stop scrolling for this? Or keep going?",
+				"",
+				"## TECHNICAL",
+				"8. Text readability, contrast, clipping",
+				"9. Layout and spacing",
+				"",
+				"Be honest and specific. A score of 7+ means 'looks like a real agency made this.'",
+				"A score below 5 means 'looks AI-generated or like a slideshow.'",
 				"",
 				"Respond in this exact JSON format:",
-				'{ "score": 8, "issues": ["text too small in bottom area"], "suggestions": ["increase font size to 32px+"] }',
+				'{ "score": 7, "issues": ["headline feels generic — says what the product does instead of why it matters"], "suggestions": ["rewrite headline to address viewer emotion, not product features"] }',
 				"",
 				"JSON only, no markdown.",
 			].join("\n"),
 			bestFrame,
-			"You review video frames for quality. Respond ONLY in JSON format.",
+			"You are a creative director reviewing video frames for design quality and storytelling impact. Respond ONLY in JSON format.",
 		);
 
 		if (!result?.success || !result.text) {

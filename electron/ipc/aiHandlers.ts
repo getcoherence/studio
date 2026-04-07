@@ -9,6 +9,7 @@ import {
 	analyzeImage,
 	checkAvailability,
 	generateJSON,
+	getAllProviderKeys,
 	loadAIConfig,
 	saveAIConfig,
 } from "../ai/aiService";
@@ -17,13 +18,28 @@ import {
 	getPopularLotties,
 	searchLottieAnimations,
 } from "../ai/lottieSearch";
-import { generateMusic, type MusicMood } from "../ai/musicService";
+import {
+	deleteMusicLibraryEntry,
+	generateLyrics,
+	generateMusic,
+	listMusicLibrary,
+	type MusicMood,
+	type VocalMode,
+} from "../ai/musicService";
 import { synthesize, type TTSVoice } from "../ai/ttsService";
 
 export function registerAIHandlers(): void {
-	ipcMain.handle("ai-analyze", async (_event, prompt: string, context?: string) => {
-		return analyze(prompt, context);
-	});
+	ipcMain.handle(
+		"ai-analyze",
+		async (
+			_event,
+			prompt: string,
+			context?: string,
+			modelOverride?: { provider: string; model: string },
+		) => {
+			return analyze(prompt, context, modelOverride);
+		},
+	);
 
 	ipcMain.handle("ai-generate-json", async (_event, prompt: string, context?: string) => {
 		return generateJSON(prompt, context);
@@ -35,6 +51,10 @@ export function registerAIHandlers(): void {
 
 	ipcMain.handle("ai-get-config", async () => {
 		return loadAIConfig();
+	});
+
+	ipcMain.handle("ai-get-all-keys", async () => {
+		return getAllProviderKeys();
 	});
 
 	ipcMain.handle("ai-save-config", async (_event, config: Partial<AIServiceConfig>) => {
@@ -59,10 +79,29 @@ export function registerAIHandlers(): void {
 
 	ipcMain.handle(
 		"ai-generate-music",
-		async (_event, mood: MusicMood, customPrompt?: string, videoDurationSec?: number) => {
-			return generateMusic(mood, customPrompt, videoDurationSec);
+		async (
+			_event,
+			mood: MusicMood,
+			customPrompt?: string,
+			videoDurationSec?: number,
+			vocalMode?: VocalMode,
+			lyrics?: string,
+		) => {
+			return generateMusic(mood, customPrompt, videoDurationSec, vocalMode, lyrics);
 		},
 	);
+
+	ipcMain.handle("ai-generate-lyrics", async (_event, themePrompt: string, title?: string) => {
+		return generateLyrics(themePrompt, title);
+	});
+
+	ipcMain.handle("music-library-list", async () => {
+		return listMusicLibrary();
+	});
+
+	ipcMain.handle("music-library-delete", async (_event, filePath: string) => {
+		return deleteMusicLibraryEntry(filePath);
+	});
 
 	// Lottie search
 	ipcMain.handle("lottie-search", async (_event, query: string, page?: number) => {

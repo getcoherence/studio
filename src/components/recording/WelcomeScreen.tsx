@@ -58,7 +58,7 @@ export function WelcomeScreen({
 						className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 font-medium transition-colors border border-[#2563eb]/30 hover:border-[#2563eb]/50"
 					>
 						<Bot size={18} />
-						AI Demo
+						Generate AI Video
 						{!isPro && <ProBadge />}
 					</button>
 				)}

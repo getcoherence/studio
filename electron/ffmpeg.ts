@@ -69,6 +69,12 @@ export async function mergeVideoWithAudio(
 	const { promisify } = await import("node:util");
 	const execFileAsync = promisify(execFile);
 
+	// Determine audio codec from output extension — WebM needs libopus, MP4 needs AAC
+	const isWebm = outputPath.toLowerCase().endsWith(".webm");
+	const audioCodec = isWebm ? "libopus" : "aac";
+	const audioBitrate = isWebm ? "128k" : "192k";
+
+	// Try simple merge first (video likely has no audio from html2canvas export)
 	try {
 		await execFileAsync(
 			ffmpegPath,
@@ -78,7 +84,7 @@ export async function mergeVideoWithAudio(
 				"-i",
 				audioPath,
 				"-filter_complex",
-				`[1:a]volume=${audioVolume}[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=3[aout]`,
+				`[1:a]volume=${audioVolume}[aout]`,
 				"-map",
 				"0:v",
 				"-map",
@@ -86,7 +92,9 @@ export async function mergeVideoWithAudio(
 				"-c:v",
 				"copy",
 				"-c:a",
-				"aac",
+				audioCodec,
+				"-b:a",
+				audioBitrate,
 				"-shortest",
 				"-y",
 				outputPath,
@@ -94,8 +102,9 @@ export async function mergeVideoWithAudio(
 			{ timeout: 120_000 },
 		);
 		return { success: true };
-	} catch (_err) {
-		// If video has no audio track, use simpler merge
+	} catch (err1) {
+		console.error("[FFmpeg] Simple merge failed:", err1);
+		// Fallback: try with amix in case video has an audio track
 		try {
 			await execFileAsync(
 				ffmpegPath,
@@ -105,7 +114,7 @@ export async function mergeVideoWithAudio(
 					"-i",
 					audioPath,
 					"-filter_complex",
-					`[1:a]volume=${audioVolume}[aout]`,
+					`[1:a]volume=${audioVolume}[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=3[aout]`,
 					"-map",
 					"0:v",
 					"-map",
@@ -113,7 +122,9 @@ export async function mergeVideoWithAudio(
 					"-c:v",
 					"copy",
 					"-c:a",
-					"aac",
+					audioCodec,
+					"-b:a",
+					audioBitrate,
 					"-shortest",
 					"-y",
 					outputPath,
@@ -122,6 +133,7 @@ export async function mergeVideoWithAudio(
 			);
 			return { success: true };
 		} catch (err2) {
+			console.error("[FFmpeg] Amix merge also failed:", err2);
 			return { success: false, error: `FFmpeg merge failed: ${err2}` };
 		}
 	}

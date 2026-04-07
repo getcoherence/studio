@@ -35,8 +35,9 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 	const [testing, setTesting] = useState(false);
 	const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
 
-	// Per-provider key cache — survives provider switching within the dialog
+	// Per-provider caches — survive provider switching within the dialog
 	const [keyCache, setKeyCache] = useState<Record<string, string>>({});
+	const [modelCache, setModelCache] = useState<Record<string, string>>({});
 
 	// License state
 	const [licenseTier, setLicenseTierLocal] = useState<LicenseTier>("free");
@@ -56,10 +57,17 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 			setOllamaUrl(config.ollamaUrl ?? "http://localhost:11434");
 			setSaved(false);
 			setTestResult(null);
-			// Seed the key cache with the current provider's key
-			if (config.apiKey) {
-				setKeyCache((prev) => ({ ...prev, [config.provider ?? "openai"]: config.apiKey! }));
-			}
+		});
+		// Load ALL provider keys + models so switching tabs doesn't lose them
+		window.electronAPI?.aiGetAllKeys?.().then((result: { keys: Record<string, string>; models: Record<string, string> }) => {
+			setKeyCache(result.keys);
+			setModelCache(result.models);
+			// Set current input fields from the active provider's cached values
+			window.electronAPI?.aiGetConfig().then((config: AIServiceConfig) => {
+				const p = config.provider ?? "openai";
+				setApiKey(result.keys[p] || config.apiKey || "");
+				setModel(result.models[p] || config.model || "");
+			});
 		});
 		getLicenseTier().then(setLicenseTierLocal);
 		setLicenseKeyInput("");
@@ -71,14 +79,16 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 
 	async function handleSave() {
 		setSaving(true);
-		// Save current provider's key to cache
+		// Save current provider's key + model to caches
 		const allKeys = { ...keyCache, [provider]: apiKey };
-		// Save each provider's key separately
+		const allModels = { ...modelCache, [provider]: model };
+		// Save each provider's key + model separately
 		for (const [prov, key] of Object.entries(allKeys)) {
 			if (key) {
 				await window.electronAPI?.aiSaveConfig({
 					provider: prov as AIProvider,
 					apiKey: key,
+					model: allModels[prov] || undefined,
 				});
 			}
 		}
@@ -189,12 +199,13 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 									<button
 										key={p.id}
 										onClick={() => {
-											// Cache the current provider's key before switching
+											// Cache current provider's key + model before switching
 											setKeyCache((prev) => ({ ...prev, [provider]: apiKey }));
-											// Switch provider and restore its cached key
+											setModelCache((prev) => ({ ...prev, [provider]: model }));
+											// Switch provider and restore its cached key + model
 											setProvider(p.id);
 											setApiKey(keyCache[p.id] ?? "");
-											setModel("");
+											setModel(modelCache[p.id] ?? "");
 											setTestResult(null);
 										}}
 										className={`flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-md border text-left transition-colors ${
