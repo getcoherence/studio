@@ -68,6 +68,14 @@ import {
 	GlassCard,
 	DeviceMockup,
 } from "./helpers/CinematicHelpers";
+import {
+	colorBurst,
+	diagonalReveal,
+	glitchSlam,
+	stripedSlam,
+	verticalShutter,
+	zoomPunch,
+} from "./helpers/CustomTransitions";
 import { LottieBackground, LottieOverlay } from "./helpers/LottieHelper";
 import {
 	Confetti,
@@ -160,6 +168,13 @@ export const MODULE_SCOPE = {
 	AnimatedBackground,
 	GlassCard,
 	DeviceMockup,
+	// Custom transitions
+	stripedSlam,
+	zoomPunch,
+	diagonalReveal,
+	colorBurst,
+	verticalShutter,
+	glitchSlam,
 	// Audio-reactive
 	useAudioPulse,
 	AudioPulse,
