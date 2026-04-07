@@ -21,6 +21,13 @@ export async function generateScenePlan(
 		userBrief?: string;
 		/** Website URL being demoed — used for the CTA/outro scene */
 		websiteUrl?: string;
+		/** Full content extracted from the landing page (headings, stats, features) */
+		landingPageContent?: {
+			headings?: Array<{ tag: string; text: string }>;
+			stats?: string[];
+			features?: string[];
+			fullText?: string;
+		};
 	},
 ): Promise<{ plan: ScenePlan | null; error?: string }> {
 	const stepsWithScreenshots = steps.filter((s) => s.screenshotDataUrl);
@@ -82,6 +89,40 @@ export async function generateScenePlan(
 		"",
 		sceneDescriptions.join("\n\n"),
 		"",
+		// Inject extracted landing page content if available
+		...(opts?.landingPageContent
+			? [
+					"## Website Content (extracted from the landing page)",
+					"",
+					"Use this REAL content for headlines, stats, and feature lists. NEVER fabricate stats — use these exact numbers.",
+					"",
+					...(opts.landingPageContent.headings?.length
+						? [
+								"### Page Headings",
+								...opts.landingPageContent.headings.map(
+									(h) => `- ${h.tag}: ${h.text}`,
+								),
+								"",
+							]
+						: []),
+					...(opts.landingPageContent.stats?.length
+						? [
+								"### Statistics & Metrics (USE THESE EXACT NUMBERS)",
+								...opts.landingPageContent.stats.map((s) => `- ${s}`),
+								"",
+							]
+						: []),
+					...(opts.landingPageContent.features?.length
+						? [
+								"### Features & Benefits",
+								...opts.landingPageContent.features
+									.slice(0, 15)
+									.map((f) => `- ${f}`),
+								"",
+							]
+						: []),
+				]
+			: []),
 		"## Scene Types — Rich library of motion design patterns",
 		"",
 		"Each scene MUST have a `type` field. CHOOSE the type that best fits the content:",

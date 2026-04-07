@@ -18,6 +18,9 @@ export interface PageInfo {
 	title: string;
 	visibleText: string;
 	elements: PageElement[];
+	headings?: Array<{ tag: string; text: string }>;
+	stats?: string[];
+	features?: string[];
 }
 
 export interface DemoConfig {

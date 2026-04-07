@@ -31,6 +31,14 @@ export class WebviewDriver {
 		await this.waitForNavigation();
 	}
 
+	async scrollDown(pixels = 400): Promise<void> {
+		await safeExec(this.wv, `window.scrollBy(0, ${pixels})`, undefined);
+	}
+
+	async scrollToTop(): Promise<void> {
+		await safeExec(this.wv, "window.scrollTo(0, 0)", undefined);
+	}
+
 	async click(selector: string): Promise<void> {
 		await safeExec(
 			this.wv,
@@ -156,8 +164,11 @@ export class WebviewDriver {
 		const result = await safeExec(
 			this.wv,
 			`(function() {
-				const visibleText = (document.body?.innerText || '').slice(0, 2000);
+				const visibleText = (document.body?.innerText || '').slice(0, 8000);
 				const elements = [];
+				const headings = [];
+				const stats = [];
+				const features = [];
 
 				function isVisible(el) {
 					const rect = el.getBoundingClientRect();
@@ -178,6 +189,25 @@ export class WebviewDriver {
 					return tag;
 				}
 
+				// Extract headings
+				for (const el of document.querySelectorAll('h1, h2, h3')) {
+					const text = (el.innerText || '').trim();
+					if (text && text.length < 200) headings.push({ tag: el.tagName, text });
+				}
+
+				// Extract stats/metrics
+				for (const el of document.querySelectorAll('[class*="stat"], [class*="metric"], [class*="number"], [class*="count"], [class*="counter"], [data-stat], [data-metric], strong, b')) {
+					const text = (el.innerText || '').trim();
+					if (text && /\\d/.test(text) && text.length < 60) stats.push(text);
+				}
+
+				// Extract feature lists
+				for (const el of document.querySelectorAll('li, [class*="feature"], [class*="benefit"], [class*="capability"]')) {
+					const text = (el.innerText || '').trim();
+					if (text && text.length > 5 && text.length < 150 && features.length < 20) features.push(text);
+				}
+
+				// Interactive elements
 				for (const el of document.querySelectorAll('button, [role="button"], input[type="submit"]')) {
 					const text = getText(el);
 					if (text && isVisible(el)) elements.push({ type: 'button', text, selector: buildSelector(el), visible: true });
@@ -191,12 +221,25 @@ export class WebviewDriver {
 					if (isVisible(el)) elements.push({ type: 'input', text, selector: buildSelector(el), visible: true });
 				}
 
-				return { visibleText, elements: elements.slice(0, 50) };
+				return {
+					visibleText,
+					elements: elements.slice(0, 50),
+					headings: headings.slice(0, 15),
+					stats: [...new Set(stats)].slice(0, 15),
+					features: features.slice(0, 20),
+				};
 			})()`,
-			{ visibleText: "", elements: [] },
+			{ visibleText: "", elements: [], headings: [], stats: [], features: [] },
 		);
 
-		return { url, title, visibleText: result.visibleText, elements: result.elements };
+		return {
+			url, title,
+			visibleText: result.visibleText,
+			elements: result.elements,
+			headings: result.headings,
+			stats: result.stats,
+			features: result.features,
+		};
 	}
 
 	/**
