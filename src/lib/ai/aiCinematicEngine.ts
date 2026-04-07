@@ -48,6 +48,13 @@ export async function generateAiComposition(
 		userBrief?: string;
 		/** Website URL being demoed */
 		websiteUrl?: string;
+		/** Full content extracted from the landing page */
+		landingPageContent?: {
+			headings?: Array<{ tag: string; text: string }>;
+			stats?: string[];
+			features?: string[];
+			fullText?: string;
+		};
 	},
 ): Promise<AiCompositionResult> {
 	const stepsWithScreenshots = steps.filter((s) => s.screenshotDataUrl);
@@ -72,6 +79,7 @@ export async function generateAiComposition(
 				videoType: opts?.videoType,
 				userBrief: opts?.userBrief,
 				websiteUrl: opts?.websiteUrl,
+				landingPageContent: opts?.landingPageContent,
 			});
 
 			if (planResult.plan) {

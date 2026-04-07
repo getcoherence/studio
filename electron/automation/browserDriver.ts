@@ -12,6 +12,12 @@ export interface PageInfo {
 	title: string;
 	visibleText: string;
 	elements: PageElement[];
+	/** Extracted headings (h1, h2, h3) from the page */
+	headings?: Array<{ tag: string; text: string }>;
+	/** Extracted statistics/metrics found on the page (e.g., "1,000+ users", "99.9% uptime") */
+	stats?: string[];
+	/** Extracted feature list items and bullet points */
+	features?: string[];
 }
 
 export interface PageElement {
@@ -137,28 +143,53 @@ export class BrowserDriver {
 
 		const result = await wc.executeJavaScript(`
 			(function() {
-				const visibleText = (document.body?.innerText || '').slice(0, 2000);
-				const elements = [];
+				// ── Full page text (generous limit for AI context) ──
+				const visibleText = (document.body?.innerText || '').slice(0, 8000);
 
+				// ── Extract structured content: headings, stats, features ──
+				const headings = [];
+				for (const el of document.querySelectorAll('h1, h2, h3')) {
+					const text = (el.innerText || '').trim();
+					if (text && text.length < 200) headings.push({ tag: el.tagName, text });
+				}
+
+				// Extract stats/metrics: look for numbers near descriptive text
+				const stats = [];
+				const statPatterns = /\\b(\\d[\\d,.]+[+%xX]?\\s*(\\w+[\\s\\w]*)?|\\w+[\\s\\w]*\\b\\d[\\d,.]+[+%xX]?)\\b/;
+				for (const el of document.querySelectorAll('[class*="stat"], [class*="metric"], [class*="number"], [class*="count"], [class*="counter"], [data-stat], [data-metric]')) {
+					const text = (el.innerText || '').trim();
+					if (text && text.length < 100) stats.push(text);
+				}
+				// Also find large numbers in any visible text blocks
+				for (const el of document.querySelectorAll('strong, b, [class*="bold"], [class*="highlight"], span[class*="num"]')) {
+					const text = (el.innerText || '').trim();
+					if (text && /\\d/.test(text) && text.length < 60) stats.push(text);
+				}
+
+				// Extract feature lists and bullet points
+				const features = [];
+				for (const el of document.querySelectorAll('li, [class*="feature"], [class*="benefit"], [class*="capability"]')) {
+					const text = (el.innerText || '').trim();
+					if (text && text.length > 5 && text.length < 150 && features.length < 20) features.push(text);
+				}
+
+				// ── Interactive elements (existing) ──
+				const elements = [];
 				function isVisible(el) {
 					const rect = el.getBoundingClientRect();
 					if (rect.width === 0 || rect.height === 0) return false;
 					const style = window.getComputedStyle(el);
 					return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
 				}
-
 				function getText(el) {
 					return (el.getAttribute('aria-label') || el.getAttribute('title') || el.innerText || el.getAttribute('placeholder') || el.getAttribute('name') || '').trim().slice(0, 80);
 				}
-
 				function buildSelector(el) {
 					if (el.id) return '#' + el.id;
-					const tag = el.tagName.toLowerCase();
 					const text = getText(el);
 					if (text) return text.slice(0, 40);
-					return tag;
+					return el.tagName.toLowerCase();
 				}
-
 				for (const el of document.querySelectorAll('button, [role="button"], input[type="submit"]')) {
 					const text = getText(el);
 					if (text && isVisible(el)) elements.push({ type: 'button', text, selector: buildSelector(el), visible: true });
@@ -172,11 +203,24 @@ export class BrowserDriver {
 					if (isVisible(el)) elements.push({ type: 'input', text, selector: buildSelector(el), visible: true });
 				}
 
-				return { visibleText, elements: elements.slice(0, 50) };
+				return {
+					visibleText,
+					elements: elements.slice(0, 50),
+					headings: headings.slice(0, 15),
+					stats: [...new Set(stats)].slice(0, 15),
+					features: features.slice(0, 20),
+				};
 			})()
 		`);
 
-		return { url, title, visibleText: result.visibleText, elements: result.elements };
+		return {
+			url, title,
+			visibleText: result.visibleText,
+			elements: result.elements,
+			headings: result.headings,
+			stats: result.stats,
+			features: result.features,
+		};
 	}
 
 	/** Hide the demo browser (minimize) so the main window is accessible. */

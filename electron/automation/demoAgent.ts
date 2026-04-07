@@ -42,6 +42,13 @@ export interface DemoResult {
 	steps: DemoStep[];
 	totalDurationMs: number;
 	narrationText: string; // combined narration for captions
+	/** Full content from the landing page (headings, stats, features) */
+	landingPageContent?: {
+		headings: Array<{ tag: string; text: string }>;
+		stats: string[];
+		features: string[];
+		fullText: string;
+	};
 }
 
 // ── System prompt ────────────────────────────────────────────────────────
@@ -125,6 +132,13 @@ export class DemoAgent {
 	private previousNarrations: string[] = [];
 	private onProgress?: (step: DemoStep, stepIndex: number) => void;
 	private resumeResolver: (() => void) | null = null;
+	/** Full content captured from the landing page after auto-scroll */
+	landingPageContent?: {
+		headings: Array<{ tag: string; text: string }>;
+		stats: string[];
+		features: string[];
+		fullText: string;
+	};
 
 	constructor(onProgress?: (step: DemoStep, stepIndex: number) => void) {
 		this.driver = new BrowserDriver();
@@ -170,6 +184,32 @@ export class DemoAgent {
 		};
 		this.steps.push(initialStep);
 		this.onProgress?.(initialStep, 0);
+
+		// ── Auto-scroll the landing page to capture below-the-fold content ──
+		// This ensures stats, features, pricing, and social proof are captured
+		// before the AI starts making navigation decisions.
+		console.log("[DemoAgent] Auto-scrolling landing page to capture full content...");
+		for (let scrollStep = 0; scrollStep < 6; scrollStep++) {
+			await this.driver.scroll("down", 600);
+			await new Promise((r) => setTimeout(r, 300));
+		}
+		// Scroll back to top
+		await this.driver.scroll("up", 10000);
+		await new Promise((r) => setTimeout(r, 500));
+
+		// Re-capture page info after scrolling (now has all lazy-loaded content)
+		const fullPageInfo = await this.driver.getPageInfo();
+		this.landingPageContent = {
+			headings: fullPageInfo.headings || [],
+			stats: fullPageInfo.stats || [],
+			features: fullPageInfo.features || [],
+			fullText: fullPageInfo.visibleText,
+		};
+		console.log(
+			`[DemoAgent] Landing page: ${this.landingPageContent.headings?.length} headings, ` +
+			`${this.landingPageContent.stats?.length} stats, ` +
+			`${this.landingPageContent.features?.length} features`
+		);
 
 		const maxSteps = config.maxSteps ?? 15;
 
@@ -258,6 +298,7 @@ export class DemoAgent {
 			steps: this.steps,
 			totalDurationMs: Date.now() - this.startTime,
 			narrationText,
+			landingPageContent: this.landingPageContent,
 		};
 	}
 

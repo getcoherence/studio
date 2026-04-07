@@ -104,6 +104,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 			videoType: lastConfigRef.current?.mode,
 			userBrief: lastConfigRef.current?.prompt,
 			websiteUrl: lastConfigRef.current?.url,
+			landingPageContent: agent.landingPageContent,
 			onStatus: (msg) => {
 				handleMessage({
 					id: `ai-status-${Date.now()}`,

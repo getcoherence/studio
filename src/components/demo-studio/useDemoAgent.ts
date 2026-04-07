@@ -136,6 +136,12 @@ export function useDemoAgent(
 ) {
 	const [status, setStatus] = useState<DemoAgentStatus>("idle");
 	const [steps, setSteps] = useState<DemoStep[]>([]);
+	const [landingPageContent, setLandingPageContent] = useState<{
+		headings?: Array<{ tag: string; text: string }>;
+		stats?: string[];
+		features?: string[];
+		fullText?: string;
+	} | undefined>();
 	const [currentStepIndex, setCurrentStepIndex] = useState(0);
 	const [elapsedMs, setElapsedMs] = useState(0);
 	const [storyboardTitle, setStoryboardTitle] = useState("");
@@ -221,6 +227,30 @@ export function useDemoAgent(
 		}
 
 		const reconSystemPrompt = `${RECON_SYSTEM_PROMPT}\n\nADDITIONAL FOCUS:\n${mode.reconFocus}`;
+
+		// Auto-scroll the landing page to trigger lazy-loaded content and capture
+		// below-the-fold stats, features, and pricing before AI starts navigating.
+		console.log("[DemoAgent] Auto-scrolling landing page to capture full content...");
+		for (let s = 0; s < 8; s++) {
+			await driver.scrollDown(500);
+			await new Promise((r) => setTimeout(r, 250));
+		}
+		await driver.scrollToTop();
+		await new Promise((r) => setTimeout(r, 500));
+
+		// Capture full landing page content (headings, stats, features)
+		const lpInfo = await driver.getPageInfo();
+		const extractedContent = {
+			headings: lpInfo.headings || [],
+			stats: lpInfo.stats || [],
+			features: lpInfo.features || [],
+			fullText: lpInfo.visibleText,
+		};
+		setLandingPageContent(extractedContent);
+		console.log(
+			`[DemoAgent] Landing page: ${extractedContent.headings.length} headings, ` +
+			`${extractedContent.stats.length} stats, ${extractedContent.features.length} features`
+		);
 
 		const exploringMessages = [
 			"Poking around the site...",
@@ -751,6 +781,7 @@ export function useDemoAgent(
 		elapsedMs,
 		storyboardTitle,
 		brandInfo,
+		landingPageContent,
 	};
 }
 
