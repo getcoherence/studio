@@ -979,30 +979,35 @@ function renderBeforeAfter(scene: ScenePlanItem, accent: string, bg: string): st
 }
 
 /** Shared helpers for before-after variants */
-function beforeAfterData(scene: ScenePlanItem) {
+function beforeAfterData(scene: ScenePlanItem, accent: string) {
 	const beforeArr = scene.beforeLines || ["Flat.", "Cluttered.", "Forgettable."];
 	const afterArr = scene.afterLines || ["Clean.", "Branded.", "Ready to ship."];
 	const longest = Math.max(...beforeArr.map((l) => l.length), ...afterArr.map((l) => l.length));
-	// Scale down aggressively — text must fit in a 50% width container
 	const lineSize = longest > 25 ? 36 : longest > 18 ? 42 : longest > 12 ? 52 : 64;
+	const beforeBg = scene.beforeBgColor || "linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)";
+	const afterBg = scene.afterBgColor || "linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)";
+	const afterAccent = scene.afterAccentColor || accent;
 	return {
 		beforeArr,
 		afterArr,
 		lineSize,
 		beforeLines: JSON.stringify(beforeArr),
 		afterLines: JSON.stringify(afterArr),
+		beforeBg,
+		afterBg,
+		afterAccent,
 	};
 }
 
 /** before-after: split-card — original side-by-side card */
 function renderBeforeAfterSplitCard(scene: ScenePlanItem, accent: string, bg: string): string {
-	const { beforeLines, afterLines, lineSize } = beforeAfterData(scene);
+	const { beforeLines, afterLines, lineSize, beforeBg, afterBg, afterAccent } = beforeAfterData(scene, accent);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
 	const headlineColor = resolveTextColor(scene);
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 40 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="words" /></div>` : ""}
         <div style={{ width: 1650, borderRadius: 32, overflow: 'hidden', position: 'relative', boxShadow: '0 40px 100px rgba(0,0,0,0.4)', display: 'flex' }}>
-          <div style={{ width: '50%', background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)', padding: '56px 48px', color: '#fff', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ width: '50%', background: '${beforeBg}', padding: '56px 48px', color: '#fff', display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div style={{ fontSize: 20, fontWeight: 700, opacity: 0.55, letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: "'Inter', sans-serif" }}>Before</div>
             {${beforeLines}.map((l, i) => (
               <div key={i} style={{
@@ -1012,8 +1017,8 @@ function renderBeforeAfterSplitCard(scene: ScenePlanItem, accent: string, bg: st
               }}>{l}</div>
             ))}
           </div>
-          <div style={{ width: '50%', background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)', padding: '56px 48px', color: '#0f172a', display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '${accent}', fontFamily: "'Inter', sans-serif" }}>After</div>
+          <div style={{ width: '50%', background: '${afterBg}', padding: '56px 48px', color: '#0f172a', display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '${afterAccent}', fontFamily: "'Inter', sans-serif" }}>After</div>
             {${afterLines}.map((l, i) => (
               <div key={i} style={{
                 fontSize: ${lineSize}, lineHeight: 1.1, fontWeight: 800, letterSpacing: '-0.03em',
@@ -1021,7 +1026,7 @@ function renderBeforeAfterSplitCard(scene: ScenePlanItem, accent: string, bg: st
               }}>
                 <span style={{
                   width: ${lineSize * 0.5}, height: ${lineSize * 0.5}, borderRadius: '50%',
-                  background: '${accent}', color: '#fff', display: 'inline-flex', alignItems: 'center',
+                  background: '${afterAccent}', color: '#fff', display: 'inline-flex', alignItems: 'center',
                   justifyContent: 'center', fontSize: ${lineSize * 0.35}, fontWeight: 900, flexShrink: 0,
                 }}>✓</span>
                 {l}
@@ -1034,7 +1039,7 @@ function renderBeforeAfterSplitCard(scene: ScenePlanItem, accent: string, bg: st
 
 /** before-after: swipe-reveal — animated wipe revealing "after" over "before" */
 function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: string): string {
-	const { beforeArr, afterArr, lineSize } = beforeAfterData(scene);
+	const { beforeArr, afterArr, lineSize, beforeBg, afterBg, afterAccent } = beforeAfterData(scene, accent);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
 	const headlineColor = resolveTextColor(scene);
 	const beforeLines = JSON.stringify(beforeArr);
@@ -1050,20 +1055,20 @@ function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: 
           // Both sides always 50% width — the divider slides and content cross-fades
           return (
             <div style={{ display: 'flex', width: 1600, height: 520, borderRadius: 28, overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.35)' }}>
-              <div style={{ width: '50%', background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)', padding: '52px 48px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 18, overflow: 'hidden', opacity: 1 - wipe * 0.3 }}>
+              <div style={{ width: '50%', background: '${beforeBg}', padding: '52px 48px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 18, overflow: 'hidden', opacity: 1 - wipe * 0.3 }}>
                 <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.55, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fff', fontFamily: "'Inter', sans-serif" }}>Before</div>
                 {${beforeLines}.map((l, i) => (
                   <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: 'rgba(255,255,255,0.85)', fontFamily: "'Inter', sans-serif", textDecoration: wipe > 0.5 ? 'line-through' : 'none', textDecorationColor: 'rgba(239,68,68,0.6)', letterSpacing: '-0.03em', lineHeight: 1.1 }}>{l}</div>
                 ))}
               </div>
-              <div style={{ width: 4, background: '${accent}', boxShadow: '0 0 20px ${accent}80', flexShrink: 0, zIndex: 2 }} />
-              <div style={{ width: '50%', background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)', padding: '48px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16, overflow: 'hidden' }}>
-                <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '${accent}', fontFamily: "'Inter', sans-serif", opacity: wipe }}>After</div>
+              <div style={{ width: 4, background: '${afterAccent}', boxShadow: '0 0 20px ${afterAccent}80', flexShrink: 0, zIndex: 2 }} />
+              <div style={{ width: '50%', background: '${afterBg}', padding: '48px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16, overflow: 'hidden' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '${afterAccent}', fontFamily: "'Inter', sans-serif", opacity: wipe }}>After</div>
                 {${afterLines}.map((l, i) => {
                   const stagger = spring({ frame: Math.max(0, frame - ${wipeDelay} - i * 6), fps, config: { damping: 14, stiffness: 120 } });
                   return (
                     <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: '#0f172a', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 12, letterSpacing: '-0.03em', lineHeight: 1.1, opacity: stagger, transform: 'translateY(' + ((1 - stagger) * 20) + 'px)' }}>
-                      <span style={{ color: '${accent}', fontSize: ${lineSize * 0.5}, flexShrink: 0 }}>✓</span>
+                      <span style={{ color: '${afterAccent}', fontSize: ${lineSize * 0.5}, flexShrink: 0 }}>✓</span>
                       {l}
                     </div>
                   );
@@ -1077,7 +1082,7 @@ function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: 
 
 /** before-after: stacked-morph — "before" list fades/shrinks, "after" list grows in its place */
 function renderBeforeAfterStackedMorph(scene: ScenePlanItem, accent: string, bg: string): string {
-	const { beforeArr, afterArr } = beforeAfterData(scene);
+	const { beforeArr, afterArr } = beforeAfterData(scene, accent);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
 	const headlineColor = resolveTextColor(scene);
 	const light = isLightBg(scene.background);
@@ -1132,7 +1137,7 @@ function renderBeforeAfterStackedMorph(scene: ScenePlanItem, accent: string, bg:
 
 /** before-after: toggle-switch — UI toggle that flips between states */
 function renderBeforeAfterToggleSwitch(scene: ScenePlanItem, accent: string, bg: string): string {
-	const { beforeArr, afterArr, lineSize } = beforeAfterData(scene);
+	const { beforeArr, afterArr, lineSize, beforeBg, afterBg, afterAccent } = beforeAfterData(scene, accent);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
 	const headlineColor = resolveTextColor(scene);
 	const light = isLightBg(scene.background);
@@ -1167,7 +1172,7 @@ function renderBeforeAfterToggleSwitch(scene: ScenePlanItem, accent: string, bg:
               <div style={{ position: 'relative', width: 1100, height: 360, borderRadius: 24, overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.25)' }}>
                 <div style={{
                   position: 'absolute', inset: 0, padding: '44px 52px',
-                  background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)',
+                  background: '${beforeBg}',
                   display: 'flex', flexDirection: 'column', gap: 16,
                   opacity: 1 - toggle, transition: 'opacity 0.1s',
                 }}>
@@ -1177,13 +1182,13 @@ function renderBeforeAfterToggleSwitch(scene: ScenePlanItem, accent: string, bg:
                 </div>
                 <div style={{
                   position: 'absolute', inset: 0, padding: '44px 52px',
-                  background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)',
+                  background: '${afterBg}',
                   display: 'flex', flexDirection: 'column', gap: 16,
                   opacity: toggle,
                 }}>
                   {${afterLines}.map((l, i) => (
                     <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: '#0f172a', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ color: '${accent}', fontSize: ${lineSize * 0.5} }}>✓</span>
+                      <span style={{ color: '${afterAccent}', fontSize: ${lineSize * 0.5} }}>✓</span>
                       {l}
                     </div>
                   ))}
