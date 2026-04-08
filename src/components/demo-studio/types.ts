@@ -29,6 +29,8 @@ export interface DemoConfig {
 	maxSteps: number;
 	mode: DemoModeId;
 	outputStyle: OutputStyle;
+	/** When true, the AI will generate cinematic video clips for 1-3 hero scenes */
+	includeVideoClips?: boolean;
 }
 
 export interface DemoAction {

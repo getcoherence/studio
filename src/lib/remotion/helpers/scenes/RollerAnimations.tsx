@@ -932,12 +932,6 @@ export const RollerFadeSlide = ({ startDelay = 0 }: {
  */
 
 
-const C = {
-  light: "#fafafa",
-  dark: "#1a1a1a",
-  gray: { 600: "#666666", 400: "#999999" },
-};
-
 export const RollerFlip = ({ startDelay = 0 }: {
   startDelay?: number;
 }) => {
@@ -966,7 +960,7 @@ export const RollerFlip = ({ startDelay = 0 }: {
     : showNext ? words[nextIndex] : words[currentIndex];
 
   return (
-    <AbsoluteFill style={{ background: C.light }}>
+    <AbsoluteFill style={{ background: C.white }}>
       <div
         style={{
           position: "absolute",
@@ -986,7 +980,7 @@ export const RollerFlip = ({ startDelay = 0 }: {
               fontFamily: font,
               fontSize: 72,
               fontWeight: 800,
-              color: C.dark,
+              color: C.black,
               transform: `rotateX(${showNext ? 180 - rotation : -rotation}deg)`,
               transformStyle: "preserve-3d",
               backfaceVisibility: "hidden",
@@ -2140,13 +2134,6 @@ export const RollerShuffle = ({ startDelay = 0 }: {
  * RollerSlotMachine - 高速縦ロール（スロットマシン風）
  */
 
-
-const C = {
-  black: "#0a0a0a",
-  white: "#ffffff",
-  accent: "#6366f1",
-  gray: { 600: "#666666" },
-};
 
 export const RollerSlotMachine = ({ startDelay = 0 }: {
   startDelay?: number;

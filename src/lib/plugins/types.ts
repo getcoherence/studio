@@ -28,6 +28,10 @@ export interface SceneTypePlugin {
 	readsHeadline?: boolean;
 	/** Whether this type reads scene.subtitle */
 	readsSubtitle?: boolean;
+	/** Layout hint: compact visual description of the scene structure (e.g., "█ centered text", "█|█ split panels") */
+	layout?: string;
+	/** Use case tags for search (e.g., ["hero", "opener", "single word"]) */
+	tags?: string[];
 	/** Available visual variants */
 	variants?: string[];
 	/**

@@ -105,6 +105,7 @@ export function DemoStudioPage({ onBack, onOpenInEditor }: DemoStudioPageProps) 
 			userBrief: lastConfigRef.current?.prompt,
 			websiteUrl: lastConfigRef.current?.url,
 			landingPageContent: agent.landingPageContent,
+			includeVideoClips: lastConfigRef.current?.includeVideoClips,
 			onStatus: (msg) => {
 				handleMessage({
 					id: `ai-status-${Date.now()}`,

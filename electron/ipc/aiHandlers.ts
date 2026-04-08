@@ -27,6 +27,7 @@ import {
 	type VocalMode,
 } from "../ai/musicService";
 import { synthesize, type TTSVoice } from "../ai/ttsService";
+import { generateVideo, generateVideoBatch } from "../ai/videoService";
 
 export function registerAIHandlers(): void {
 	ipcMain.handle(
@@ -115,4 +116,36 @@ export function registerAIHandlers(): void {
 	ipcMain.handle("lottie-download", async (_event, lottieUrl: string, name: string) => {
 		return downloadLottieAnimation(lottieUrl, name);
 	});
+
+	// Video generation
+	ipcMain.handle(
+		"ai-generate-video",
+		async (
+			_event,
+			prompt: string,
+			options?: {
+				model?: string;
+				durationSec?: number;
+				resolution?: "720P" | "768P" | "1080P";
+			},
+		) => {
+			return generateVideo(prompt, options);
+		},
+	);
+
+	ipcMain.handle(
+		"ai-generate-video-batch",
+		async (
+			_event,
+			clips: Array<{
+				prompt: string;
+				sceneIndex: number;
+				model?: string;
+				durationSec?: number;
+				resolution?: "720P" | "768P" | "1080P";
+			}>,
+		) => {
+			return generateVideoBatch(clips);
+		},
+	);
 }

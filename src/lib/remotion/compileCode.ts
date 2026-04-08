@@ -16,6 +16,7 @@ import {
 	Img,
 	interpolate,
 	Loop,
+	OffthreadVideo,
 	random,
 	Sequence,
 	Series,
@@ -67,6 +68,8 @@ import {
 	zoomMorph,
 	GlassCard,
 	DeviceMockup,
+	ButtonPill,
+	BackgroundVideo,
 } from "./helpers/CinematicHelpers";
 import {
 	colorBurst,
@@ -87,12 +90,15 @@ import {
 	Sparks,
 } from "./helpers/ParticleEffects";
 // Scene library (adapted from remotion-scenes)
-import { EffectFilmGrain, EffectVHS, EffectChromaticAberration, EffectGlow, EffectLightLeak } from "./helpers/scenes/EffectAnimations";
-import { LiquidBlob, LiquidInkSplash, LiquidFluidWave, LiquidSwirl } from "./helpers/scenes/LiquidAnimations";
-import { ShapeRipples, ShapeHexGrid, ShapeSpinningRings, ShapeMorphing } from "./helpers/scenes/ShapeAnimations";
-import { TextNeon, TextKinetic, TextExplode, Text3DFlip } from "./helpers/scenes/TextAnimations";
-import { Logo3DRotate, LogoStroke, LogoNeonSign, LogoParticles } from "./helpers/scenes/LogoAnimations";
-import { CinematicEpic, CinematicSciFi, CinematicNoir } from "./helpers/scenes/CinematicAnimations";
+import { EffectFilmGrain, EffectVHS, EffectChromaticAberration, EffectGlow, EffectLightLeak, EffectDuotone, EffectKaleidoscope } from "./helpers/scenes/EffectAnimations";
+import { LiquidBlob, LiquidInkSplash, LiquidFluidWave, LiquidSwirl, LiquidMorphBlob, LiquidCalligraphyInk } from "./helpers/scenes/LiquidAnimations";
+import { ShapeRipples, ShapeHexGrid, ShapeSpinningRings, ShapeMorphing, ShapeCircularProgress, ShapeExplosion, ShapeHelix } from "./helpers/scenes/ShapeAnimations";
+import { TextNeon, TextKinetic, TextExplode, Text3DFlip, TextScramble, TextGradient, TextWave, TextCounter } from "./helpers/scenes/TextAnimations";
+import { Logo3DRotate, LogoStroke, LogoNeonSign, LogoParticles, LogoGlitch, LogoMaskReveal, LogoLightTrail } from "./helpers/scenes/LogoAnimations";
+import { CinematicEpic, CinematicSciFi, CinematicNoir, CinematicAnime, CinematicDocumentary } from "./helpers/scenes/CinematicAnimations";
+import { DataBarChart, DataPieChart, DataTimeline, DataProgressBars, DataGauge } from "./helpers/scenes/DataAnimations";
+import { ListHeroWithList, ListTimeline, ListStaggered, ListNumberedVertical, ListTwoColumnCompare } from "./helpers/scenes/ListAnimations";
+import { RollerFlip, Roller3DCarousel, RollerSplitFlap, RollerTypewriter, RollerGlitch } from "./helpers/scenes/RollerAnimations";
 
 /**
  * Render-prop component that provides the Sequence-local frame.
@@ -142,6 +148,7 @@ export const MODULE_SCOPE = {
 	Series,
 	AbsoluteFill,
 	Img,
+	OffthreadVideo,
 	// Transitions
 	TransitionSeries,
 	linearTiming,
@@ -193,6 +200,8 @@ export const MODULE_SCOPE = {
 	AnimatedBackground,
 	GlassCard,
 	DeviceMockup,
+	ButtonPill,
+	BackgroundVideo,
 	// Custom transitions
 	stripedSlam,
 	zoomPunch,
@@ -218,25 +227,59 @@ export const MODULE_SCOPE = {
 	EffectChromaticAberration,
 	EffectGlow,
 	EffectLightLeak,
+	EffectDuotone,
+	EffectKaleidoscope,
 	LiquidBlob,
 	LiquidInkSplash,
 	LiquidFluidWave,
 	LiquidSwirl,
+	LiquidMorphBlob,
+	LiquidCalligraphyInk,
 	ShapeRipples,
 	ShapeHexGrid,
 	ShapeSpinningRings,
 	ShapeMorphing,
+	ShapeCircularProgress,
+	ShapeExplosion,
+	ShapeHelix,
 	TextNeon,
 	TextKinetic,
 	TextExplode,
 	Text3DFlip,
+	TextScramble,
+	TextGradient,
+	TextWave,
+	TextCounter,
 	Logo3DRotate,
 	LogoStroke,
 	LogoNeonSign,
 	LogoParticles,
+	LogoGlitch,
+	LogoMaskReveal,
+	LogoLightTrail,
 	CinematicEpic,
 	CinematicSciFi,
 	CinematicNoir,
+	CinematicAnime,
+	CinematicDocumentary,
+	// Data visualizations
+	DataBarChart,
+	DataPieChart,
+	DataTimeline,
+	DataProgressBars,
+	DataGauge,
+	// List layouts
+	ListHeroWithList,
+	ListTimeline,
+	ListStaggered,
+	ListNumberedVertical,
+	ListTwoColumnCompare,
+	// Roller/slot animations
+	RollerFlip,
+	Roller3DCarousel,
+	RollerSplitFlap,
+	RollerTypewriter,
+	RollerGlitch,
 };
 
 /**

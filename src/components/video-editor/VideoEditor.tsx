@@ -1882,6 +1882,9 @@ export default function VideoEditor() {
 					onProjectOpened={(project, path) => {
 						setError(null);
 						if (project && typeof project === "object" && "scenes" in project) {
+							// Stamp the actual file path so auto-save uses the opened location,
+							// not a stale _projectPath from inside a copied file
+							if (path) (project as any)._projectPath = path;
 							// Scene project (from AI Demo or Scene Builder) — open in Scene Editor
 							sceneEditorInitialRef.current = project;
 							setSceneEditorKey((k) => k + 1);
@@ -2452,6 +2455,7 @@ export default function VideoEditor() {
 				onProjectOpened={(project, path) => {
 					setError(null);
 					if (project && typeof project === "object" && "scenes" in project) {
+						if (path) (project as any)._projectPath = path;
 						sceneEditorInitialRef.current = project;
 						setSceneEditorKey((k) => k + 1);
 						setShowSceneEditor(true);

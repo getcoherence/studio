@@ -14,6 +14,8 @@ export function registerExportHandlers(getMainWindow: () => BrowserWindow | null
 				screenshots: string[];
 				fps?: number;
 				durationInFrames?: number;
+				width?: number;
+				height?: number;
 				fileName?: string;
 				musicPath?: string;
 				musicVolume?: number;
@@ -71,6 +73,8 @@ export function registerExportHandlers(getMainWindow: () => BrowserWindow | null
 						outputPath,
 						fps: opts.fps,
 						durationInFrames: opts.durationInFrames,
+						width: opts.width,
+						height: opts.height,
 						musicPath: opts.musicPath,
 						musicVolume: opts.musicVolume,
 						onProgress: (percent) => {

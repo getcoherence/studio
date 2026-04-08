@@ -207,6 +207,42 @@ interface Window {
 		>;
 		musicLibraryDelete: (filePath: string) => Promise<{ success: boolean; error?: string }>;
 
+		// Video generation
+		aiGenerateVideo: (
+			prompt: string,
+			options?: {
+				model?: string;
+				durationSec?: number;
+				resolution?: "720P" | "768P" | "1080P";
+			},
+		) => Promise<{
+			success: boolean;
+			videoPath?: string;
+			width?: number;
+			height?: number;
+			error?: string;
+		}>;
+		aiGenerateVideoBatch: (
+			clips: Array<{
+				prompt: string;
+				sceneIndex: number;
+				model?: string;
+				durationSec?: number;
+				resolution?: "720P" | "768P" | "1080P";
+			}>,
+		) => Promise<
+			Array<{
+				sceneIndex: number;
+				result: {
+					success: boolean;
+					videoPath?: string;
+					width?: number;
+					height?: number;
+					error?: string;
+				};
+			}>
+		>;
+
 		lottieSearch: (
 			query: string,
 			page?: number,
@@ -241,6 +277,8 @@ interface Window {
 			screenshots: string[];
 			fps?: number;
 			durationInFrames?: number;
+			width?: number;
+			height?: number;
 			fileName?: string;
 			musicPath?: string;
 			musicVolume?: number;

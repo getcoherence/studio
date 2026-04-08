@@ -119,6 +119,68 @@ const FPS = 30;
 const framesToSeconds = (f: number) => (f < 0 ? f : f / FPS);
 const secondsToFrames = (s: number) => (s < 0 ? -1 : Math.round(s * FPS));
 
+/** Unified color picker — single swatch button that opens a popover with brand colors + full picker */
+function ColorPickerWithSwatches({ value, accentColor, onChange }: {
+	value: string;
+	accentColor?: string;
+	onChange: (color: string) => void;
+}) {
+	const [open, setOpen] = useState(false);
+	const ref = useRef<HTMLDivElement>(null);
+
+	const swatches = [
+		...(accentColor ? [{ color: accentColor, label: "Brand" }] : []),
+		{ color: "#ffffff", label: "White" },
+		{ color: "#000000", label: "Black" },
+		{ color: "rgba(255,255,255,0.5)", label: "50% white" },
+		{ color: "rgba(255,255,255,0.25)", label: "25% white" },
+		{ color: "#ef4444", label: "Red" },
+		{ color: "#22c55e", label: "Green" },
+		{ color: "#3b82f6", label: "Blue" },
+		{ color: "#eab308", label: "Yellow" },
+	];
+
+	return (
+		<div ref={ref} className="relative">
+			<button
+				type="button"
+				onClick={() => setOpen((v) => !v)}
+				className="w-5 h-5 rounded border border-white/15 cursor-pointer hover:border-white/30 transition-colors"
+				style={{ background: value }}
+				title="Text color"
+			/>
+			{open && (
+				<div
+					className="absolute top-full right-0 mt-1 z-50 bg-[#1a1a1e] border border-white/15 rounded-lg shadow-2xl shadow-black/60 p-2 w-[170px]"
+					onMouseLeave={() => setOpen(false)}
+				>
+					<div className="grid grid-cols-5 gap-1 mb-2">
+						{swatches.map((s) => (
+							<button
+								key={s.label}
+								type="button"
+								onClick={() => { onChange(s.color); setOpen(false); }}
+								title={s.label}
+								className="w-6 h-6 rounded border border-white/10 cursor-pointer hover:scale-110 hover:border-white/30 transition-all"
+								style={{ background: s.color }}
+							/>
+						))}
+					</div>
+					<div className="border-t border-white/10 pt-2 flex items-center gap-2">
+						<input
+							type="color"
+							value={toColorInput(value, "#ffffff")}
+							onChange={(e) => onChange(e.target.value)}
+							className="w-6 h-6 rounded border border-white/10 cursor-pointer bg-transparent"
+						/>
+						<span className="text-[9px] text-white/30">Custom</span>
+					</div>
+				</div>
+			)}
+		</div>
+	);
+}
+
 interface SceneLayerEditorProps {
 	scene: ScenePlanItem;
 	sceneIndex: number;
@@ -128,6 +190,8 @@ interface SceneLayerEditorProps {
 	 * Non-patchable controls (animation, position, size, timing, color) are
 	 * rendered disabled so users don't think their change will apply. */
 	readonly?: boolean;
+	/** Brand accent color for quick-pick swatches */
+	accentColor?: string;
 }
 
 const POSITIONS = [
@@ -153,7 +217,7 @@ function toColorInput(val: string | undefined, fallback: string): string {
 	return fallback;
 }
 
-export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: SceneLayerEditorProps) {
+export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly, accentColor }: SceneLayerEditorProps) {
 	const layers = scene.layers || [];
 	const [dragIndex, setDragIndex] = useState<number | null>(null);
 	const [dropIndex, setDropIndex] = useState<number | null>(null);
@@ -402,6 +466,7 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 
 			{layers.map((layer, li) => {
 				const card = layer.type === "card" ? getCard(layer) : null;
+				const isIncompat = !!(layer as any)._incompatible;
 
 				return (
 					<div
@@ -409,12 +474,18 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 						data-layer-row={`${sceneIndex}-${li}`}
 						onDragOver={(e) => !ro && handleDragOver(e, li)}
 						onDrop={(e) => !ro && handleDrop(e, li)}
-						className={`flex rounded border transition-colors ${
-							dropIndex === li && dragIndex !== null && dragIndex !== li
-								? "border-[#2563eb]/30 bg-[#2563eb]/10"
-								: "border-white/5 bg-white/[0.02]"
+						className={`flex rounded border transition-colors relative ${
+							isIncompat
+								? "border-amber-500/20 bg-amber-500/5 opacity-50"
+								: dropIndex === li && dragIndex !== null && dragIndex !== li
+									? "border-[#2563eb]/30 bg-[#2563eb]/10"
+									: "border-white/5 bg-white/[0.02]"
 						}`}
+						title={isIncompat ? "This layer is from a different scene type and won't render. Switch back to restore it." : undefined}
 					>
+						{isIncompat && (
+							<div className="absolute -top-1.5 right-1 text-[8px] text-amber-400/60 bg-[#141417] px-1 rounded z-10">incompatible</div>
+						)}
 						{/* Grab handle — left edge only */}
 						{!ro && (
 							<div
@@ -442,6 +513,7 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 								className={`w-12 text-[10px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-white/50 [&>option]:bg-[#141417] [&>option]:text-white ${ro ? "opacity-40 cursor-not-allowed" : ""}`}
 							>
 								<option value="text">Text</option>
+								<option value="button">Button</option>
 								<option value="card">Card</option>
 								<option value="word-carousel">Carousel</option>
 								<option value="metric-counter">Counter</option>
@@ -658,8 +730,62 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 								);
 							})()}
 
+						{/* Button layer settings */}
+						{layer.type === "button" && !ro && (
+							<div className="flex gap-1 items-center text-[10px] flex-wrap">
+								<select
+									value={layer.settings?.animation || "none"}
+									onChange={(e) => updateLayer(li, { settings: { ...layer.settings, animation: e.target.value } })}
+									title="Button animation"
+									className="text-[10px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-purple-400/60 [&>option]:bg-[#141417] [&>option]:text-white"
+								>
+									<option value="none">Static</option>
+									<option value="racing-border">Racing Border</option>
+									<option value="pulse">Pulse</option>
+									<option value="glow-pulse">Glow Pulse</option>
+									<option value="slide-in">Slide In</option>
+								</select>
+								<span className="text-white/20">Size</span>
+								<input
+									type="number"
+									value={layer.settings?.fontSize || 26}
+									onChange={(e) => updateLayer(li, { settings: { ...layer.settings, fontSize: Number(e.target.value) } })}
+									step={2}
+									className="w-10 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/40 focus:outline-none"
+								/>
+								<span className="text-white/20">Bg</span>
+								<input
+									type="color"
+									value={layer.settings?.accentColor || accentColor || "#2563eb"}
+									onChange={(e) => updateLayer(li, { settings: { ...layer.settings, accentColor: e.target.value } })}
+									className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent"
+								/>
+								<span className="text-white/20">Text</span>
+								<input
+									type="color"
+									value={layer.settings?.color || "#ffffff"}
+									onChange={(e) => updateLayer(li, { settings: { ...layer.settings, color: e.target.value } })}
+									className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent"
+								/>
+								<span className="text-white/20">Border</span>
+								<input
+									type="color"
+									value={layer.settings?.borderColor || layer.settings?.accentColor || accentColor || "#2563eb"}
+									onChange={(e) => updateLayer(li, { settings: { ...layer.settings, borderColor: e.target.value } })}
+									className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent"
+								/>
+								{layer.settings?.borderColor && (
+									<button
+										type="button"
+										onClick={() => updateLayer(li, { settings: { ...layer.settings, borderColor: undefined } })}
+										className="text-[8px] text-red-400/50 hover:text-red-400"
+										title="Remove border"
+									>✕</button>
+								)}
+							</div>
+						)}
 						{/* Row 3: Text animation settings — hidden for readonly plans */}
-						{layer.type === "text" && !ro && (
+						{layer.type === "text" && !ro && (<>
 							<div className="flex gap-1 items-center text-[10px]">
 								<select
 									value={layer.settings?.animation || "chars"}
@@ -691,14 +817,10 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 									title="Font size in pixels. 1080p frame is 1920×1080, so 120–200px is a typical headline size."
 									className="w-10 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/40 focus:outline-none"
 								/>
-								<input
-									type="color"
-									value={toColorInput(layer.settings?.color, "#ffffff")}
-									onChange={(e) =>
-										updateLayer(li, { settings: { ...layer.settings, color: e.target.value } })
-									}
-									title="Text color. Defaults to white on dark backgrounds, near-black on light ones."
-									className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent"
+								<ColorPickerWithSwatches
+									value={layer.settings?.color || "#ffffff"}
+									accentColor={accentColor}
+									onChange={(c) => updateLayer(li, { settings: { ...layer.settings, color: c } })}
 								/>
 								<input
 									type="text"
@@ -714,9 +836,7 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 									className="w-16 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[#60a5fa]/50 focus:outline-none"
 								/>
 							</div>
-						)}
 						{/* Text effects: glow, shadow, outline */}
-						{layer.type === "text" && !ro && (
 							<div className="flex gap-1 items-center text-[10px]">
 								<button
 									onClick={() => {
@@ -769,8 +889,30 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly }: Scen
 									title="Strikethrough"
 									className={`w-6 h-6 rounded border flex items-center justify-center line-through text-[11px] transition-colors ${layer.settings?.textDecoration === "line-through" ? "bg-white/10 border-white/20 text-white/70" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
 								>S</button>
+									<button
+										onClick={() => {
+											const cur = layer.settings?.spacingAfter;
+											updateLayer(li, { settings: { ...layer.settings, spacingAfter: cur !== undefined ? undefined : 40 } });
+										}}
+										title="Add extra spacing below this layer"
+										className={`w-6 h-6 rounded border flex items-center justify-center text-[11px] transition-colors ${layer.settings?.spacingAfter !== undefined ? "bg-violet-500/20 border-violet-500/40 text-violet-300" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+									>↕</button>
 							</div>
-						)}
+							{layer.settings?.spacingAfter !== undefined ? (
+								<div className="flex items-center gap-1 mt-0.5">
+									<span className="text-[9px] text-white/20 shrink-0">Spacing</span>
+									<input
+										type="range"
+										min={0}
+										max={120}
+										value={layer.settings.spacingAfter}
+										onChange={(e) => updateLayer(li, { settings: { ...layer.settings, spacingAfter: Number(e.target.value) } })}
+										className="flex-1 h-1 accent-violet-500 cursor-pointer"
+									/>
+									<span className="text-[9px] text-white/25 w-5 text-right">{layer.settings.spacingAfter}</span>
+								</div>
+							) : null}
+							</>)}
 					</div>
 					</div>
 				);

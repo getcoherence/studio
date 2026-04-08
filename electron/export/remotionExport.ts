@@ -33,6 +33,8 @@ export interface RemotionExportOptions {
 	outputPath: string;
 	fps?: number;
 	durationInFrames?: number;
+	width?: number;
+	height?: number;
 	musicPath?: string;
 	musicVolume?: number;
 	onProgress?: (percent: number) => void;
@@ -67,11 +69,13 @@ export async function exportWithRemotion(opts: RemotionExportOptions) {
 		inputProps,
 	});
 
-	// 4. Override duration if explicitly provided (otherwise calculateMetadata handles it)
+	// 4. Override duration/resolution if explicitly provided
 	if (durationInFrames && durationInFrames > 0) {
 		composition.durationInFrames = durationInFrames;
 	}
 	composition.fps = fps;
+	if (opts.width) composition.width = opts.width;
+	if (opts.height) composition.height = opts.height;
 
 	console.log(
 		`[remotionExport] Rendering ${composition.durationInFrames} frames @ ${composition.fps}fps`,

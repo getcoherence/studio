@@ -28,6 +28,8 @@ export async function generateScenePlan(
 			features?: string[];
 			fullText?: string;
 		};
+		/** When true, tell the AI to include videoPrompt on 1-3 hero scenes */
+		includeVideoClips?: boolean;
 	},
 ): Promise<{ plan: ScenePlan | null; error?: string }> {
 	const stepsWithScreenshots = steps.filter((s) => s.screenshotDataUrl);
@@ -62,6 +64,21 @@ export async function generateScenePlan(
 	const targetDuration = videoType?.targetDurationSec;
 	const userBrief = opts?.userBrief;
 
+	// Creative seed — inject randomized creative direction so identical inputs
+	// produce different videos. The AI has no memory across users/sessions,
+	// so this is the only way to get variety from the same product.
+	const moods = ["bold and provocative", "calm and editorial", "energetic and fast-paced", "mysterious and cinematic", "playful and irreverent", "elegant and minimal", "raw and authentic", "futuristic and techy"];
+	const openStyles = ["open with a shocking stat or question", "open with a visual metaphor for the problem", "open by showing the chaos the user lives in", "open with a single provocative word", "open with a fragmented sentence that builds tension", "open with rapid-fire typography", "open by contrasting the old way vs the new"];
+	const closingStyles = ["end with confident simplicity", "end with a gradient-powered brand moment", "end with the product name and nothing else", "end with a split layout showing logo and CTA"];
+	const creativeSeed = [
+		`## Creative Direction (unique to this video)`,
+		`Mood: ${moods[Math.floor(Math.random() * moods.length)]}`,
+		`Opening approach: ${openStyles[Math.floor(Math.random() * openStyles.length)]}`,
+		`Closing style: ${closingStyles[Math.floor(Math.random() * closingStyles.length)]}`,
+		`This creative direction is a starting point — adapt it to fit the brand, but let it push you away from your defaults.`,
+		"",
+	];
+
 	const prompt = [
 		`Create a cinematic video scene plan for "${productName}".`,
 		"",
@@ -69,6 +86,7 @@ export async function generateScenePlan(
 		`- Product: ${productName}`,
 		`- Accent color: ${accentColor}`,
 		"",
+		...creativeSeed,
 		...(userBrief
 			? [
 					"## User's Brief",
@@ -129,12 +147,19 @@ export async function generateScenePlan(
 		"",
 		"### Narrative & Impact scenes",
 		"- `impact-word`: Single massive word (200-320px). Use for beats like 'Finally.', 'Done.', 'One place.'",
-		"- `ghost-hook`: Sentence fragmentation where future words are visible as ghosts. USE 3-4 of these in a row for the opening hook.",
-		"  Data: `ghostWords: ['Your work', 'lives in 14 places.', 'Not anymore.']`, `ghostActiveIndex: 0` (increment in each scene)",
+		"- `ghost-hook`: Sentence fragmentation where future words are visible as ghosts. USE 3 of these in a row for the opening hook.",
+		"  CRITICAL SEQUENCING: ghost-hook scenes work as a SEQUENCE. You emit 3 consecutive ghost-hook scenes that share the EXACT SAME `ghostWords` array.",
+		"  Each scene increments `ghostActiveIndex`: scene 1 → 0, scene 2 → 1, scene 3 → 2. This reveals one more word per scene.",
+		"  Example (3 scenes with the SAME ghostWords, different ghostActiveIndex):",
+		"    Scene 1: { type:'ghost-hook', ghostWords:['Your work','lives in 14 places.','Not anymore.'], ghostActiveIndex: 0 }",
+		"    Scene 2: { type:'ghost-hook', ghostWords:['Your work','lives in 14 places.','Not anymore.'], ghostActiveIndex: 1 }",
+		"    Scene 3: { type:'ghost-hook', ghostWords:['Your work','lives in 14 places.','Not anymore.'], ghostActiveIndex: 2 }",
 		"  CRITICAL: MAX 3 fragments in ghostWords array. Each fragment 2-5 words. Total sentence must fit on screen at fontSize 110-130.",
 		"  BAD: ['You hit record.','Then the real work','begins.','It shouldn\\'t.'] — 4 fragments, too much text stacked vertically",
 		"  GOOD: ['You hit record.','Then the chaos begins.','Not anymore.'] — 3 short fragments",
 		"  Font size should stay at 110-130 for ghost-hook scenes — never 160+.",
+		"  WRONG: using different ghostWords arrays across the 3 scenes. They MUST be identical.",
+		"  WRONG: setting ghostActiveIndex to 0 on all 3 scenes. It MUST increment: 0, 1, 2.",
 		"- `stacked-hierarchy`: Multi-line with dramatic size hierarchy.",
 		"  Data: `stackedLines: [{text:'WHY SETTLE', size:90}, {text:'FOR', size:110}, {text:'LESS', size:280}]`",
 		"",
@@ -234,10 +259,14 @@ export async function generateScenePlan(
 		"- `countdown`: Animated number counting up to a target with confetti burst on completion.",
 		"  Data: `countdownTarget: 1000`, `headline: 'bugs eliminated'`. Number animates from 0 → target.",
 		"",
+		"### CTA (closing scene)",
+		"- `cta`: Product name + call to action button.",
+		"  **Variants** (set `variant` field): `centered` (classic centered logo + headline + pill button), `split-logo` (logo left, text + button right — editorial feel), `gradient-bar` (gradient text + gradient button — premium feel), `minimal` (just product name + URL, no button — clean/confident ending)",
+		"  PICK A DIFFERENT VARIANT each video — do NOT always use `centered`.",
+		"",
 		"### Legacy types (still supported)",
 		"- `hero-text`: Centered headline with optional subtitle. Basic.",
 		"- `cards`: 2-3 feature cards. Use MAX 1 per video.",
-		"- `cta`: Product name + call to action.",
 		"- `screenshot`: Browser frame with screenshot. Use MAX 1.",
 		"",
 		"## Output Format",
@@ -259,8 +288,8 @@ export async function generateScenePlan(
 		`      "accentWord": "optional word to highlight",`,
 		`      "durationFrames": 60,`,
 		`      "effects": ["vignette", "light-streak"],`,
-		`      "ghostWords": ["for ghost-hook scenes"],`,
-		`      "ghostActiveIndex": 0,`,
+		`      "ghostWords": ["same array", "for all ghost-hook", "scenes in sequence"],`,
+		`      "ghostActiveIndex": "0 for first ghost-hook, 1 for second, 2 for third",`,
 		`      "notifications": [{"platform":"instagram","title":"Sarah","subtitle":"liked your post","time":"2m"}],`,
 		`      "chatMessages": [{"user":"Sarah","text":"urgent","time":"9:42 AM"}],`,
 		`      "chatChannel": "general",`,
@@ -284,7 +313,9 @@ export async function generateScenePlan(
 		`      "backgroundEffect": "flowing-lines | drifting-orbs | mesh-shift | particle-field | grain | pulse-grid | aurora | spotlight | wave-grid | gradient-wipe | bokeh | liquid-glass | confetti | snow | fireflies | sakura | sparks | perspective-grid | flowing-gradient | none",`,
 		`      "backgroundEffectColors": ["#2563eb","#7c3aed","#06b6d4"],`,
 		`      "transitionOut": "fade | slide-left | slide-right | slide-up | slide-down | wipe-left | wipe-right | wipe-up | wipe-down | zoom-morph | striped-slam | zoom-punch | diagonal-reveal | color-burst | vertical-shutter | glitch-slam | cut",`,
-		`      "transitionDurationFrames": 10`,
+		`      "transitionDurationFrames": 10,`,
+		`      "videoPrompt": "optional — cinematic AI video generation prompt for this scene. When set, an AI model generates a real video clip instead of motion graphics. Use for 1-3 KEY scenes where cinematic footage would be more impactful than text animation (hero moments, product reveals, emotional beats). Write vivid, specific visual descriptions: camera angle, lighting, mood, motion. Example: 'Smooth tracking shot of glowing data streams flowing through a dark server room, blue accent lighting, shallow depth of field, cinematic 24fps'. Leave blank/omit for scenes that work well as motion graphics (text, stats, lists, CTA).",`,
+		`      "videoOverlayText": true`,
 		`    }`,
 		`  ],`,
 		`  "musicMood": "saas-teaser | hype-launch | indie-bedroom | future-garage | synthwave-retro | lofi-hiphop | glitch-hop | tropical-house | phonk-trailer | anthem-build | whistle-hook | clap-stomp-anthem | feel-good-pop | tiktok-hook | funk-bass-horns | energetic | dramatic | upbeat | ambient | minimal"`,
@@ -346,18 +377,20 @@ export async function generateScenePlan(
 		"",
 		"Think of this as a motion graphics piece set to music — NOT a slideshow with animations.",
 		"",
-		"### PACING (critical — give every scene enough time to breathe and be READ)",
-		"- 12-16 scenes total. Quality over quantity.",
-		"- Scene durations — balanced. Not too fast, not sluggish:",
-		"  - IMPACT scenes: 60-80 frames (2-2.7 sec) — single word or short phrase, let it land",
-		"  - STANDARD scenes: 80-110 frames (2.7-3.7 sec) — headline with animation, viewer needs time to READ",
-		"  - RICH scenes: 110-150 frames (3.7-5 sec) — before-after, metrics-dashboard, chat-narrative, icon-showcase, data-flow-network, scrolling-list (scenes with multiple elements that animate sequentially)",
-		"  - GHOST-HOOK scenes: 70-90 frames each (viewers must read the full sentence fragment)",
-		"- MAXIMUM duration for ANY scene is 180 frames (6 sec). Use this for very content-dense scenes.",
-		"- RULE OF THUMB: if a scene has more than 5 words of text, it needs at least 80 frames. More than 15 words → at least 120 frames.",
-		"- 2-4 seconds is the sweet spot for most scenes. Under 2 feels rushed, over 5 feels slow.",
+		"### PACING (critical — viewers should NEVER feel rushed or overwhelmed)",
+		"- 10-14 scenes total. Fewer scenes with more breathing room beats cramming in content.",
+		"- Scene durations — ERR ON THE SIDE OF LONGER. A scene that lingers 1 sec too long is",
+		"  far better than one that flashes by before the viewer can read it:",
+		"  - IMPACT scenes: 80-100 frames (2.7-3.3 sec) — single word or short phrase, let it LAND",
+		"  - STANDARD scenes: 100-130 frames (3.3-4.3 sec) — headline with animation, viewer needs time to READ",
+		"  - RICH scenes: 130-170 frames (4.3-5.7 sec) — before-after, metrics-dashboard, chat-narrative, icon-showcase, data-flow-network, scrolling-list (scenes with multiple elements that animate sequentially)",
+		"  - GHOST-HOOK scenes: 85-100 frames each (viewers must read the full sentence fragment)",
+		"- MAXIMUM duration for ANY scene is 200 frames (6.7 sec). Use this for very content-dense scenes.",
+		"- RULE OF THUMB: if a scene has more than 5 words of text, it needs at least 100 frames. More than 15 words → at least 140 frames.",
+		"- 3-4.5 seconds is the sweet spot for most scenes. Under 2.5 feels rushed, over 5.5 feels slow.",
 		"- NEVER make all scenes the same duration. That's what makes it feel robotic.",
-		"- Ghost-hook scenes should each be 70-90 frames (viewers need time to read each fragment).",
+		"- Ghost-hook scenes should each be 85-100 frames (viewers need time to read each fragment).",
+		"- BREATHING ROOM: every scene should be readable in a single glance. If you have to squint or rush, it's too dense or too fast.",
 		"",
 		"### ANIMATED BACKGROUNDS (no more solid black/white!)",
 		"Every scene should have a `backgroundEffect` field to get an animated backdrop. Options:",
@@ -410,12 +443,13 @@ export async function generateScenePlan(
 		"MIX transition types aggressively. Never use the same transition 3 times in a row.",
 		"The AI that reviews this video WILL PENALIZE you if transitions are monotone.",
 		"",
-		"### CONTENT DENSITY (most scenes should be SPARSE, not dense)",
-		"- At least 4 scenes should have ONLY a headline — NO subtitle. Just bold text, big space.",
-		"- At least 2 scenes should be 1-3 WORDS only (e.g. 'Finally.' or 'One place.' or 'Zero friction.')",
-		"- Subtitles on MAX 5 scenes. Most scenes don't need them.",
-		"- Headlines: 2-5 words for impact scenes, max 7 words for standard scenes.",
+		"### CONTENT DENSITY (LESS IS MORE — viewers should never feel overwhelmed)",
+		"- At least HALF of all scenes should have ONLY a headline — NO subtitle. Just bold text, big space.",
+		"- At least 3 scenes should be 1-3 WORDS only (e.g. 'Finally.' or 'One place.' or 'Zero friction.')",
+		"- Subtitles on MAX 4 scenes. Most scenes don't need them. When you DO use a subtitle, keep it under 6 words.",
+		"- Headlines: 2-4 words for impact scenes, max 6 words for standard scenes. Shorter is ALWAYS better.",
 		"- CARDS: Maximum 1 scene with cards. Max 3 cards. Use for proof, not story.",
+		"- WHITE SPACE IS YOUR FRIEND. A scene with 3 bold words and generous spacing is more impactful than 15 words crammed in.",
 		"",
 		"### STATISTICS & CLAIMS (never fabricate!)",
 		"- ONLY use statistics, numbers, and claims that appear in the captured narration or UI elements.",
@@ -434,58 +468,45 @@ export async function generateScenePlan(
 		"- EFFECTS: vignette max 2x. light-streak max 1x. Less is more.",
 		"- SCREENSHOTS: 0-1 total. This is motion graphics, not a product tour.",
 		"",
-		"### RHYTHM PATTERN (follow this beat structure)",
-		"Short → Short → Standard → Short → Breathing → Short → Standard → Short → Short → CTA",
-		"The video should feel like BURSTS of energy with brief pauses, not a steady march.",
+		"### RHYTHM",
+		"Vary scene durations like music — bursts of energy with breathing room. Never make all scenes the same length.",
 		"",
-		"## REQUIRED scene type mix (15-scene video)",
-		"You MUST use AT LEAST 10 DIFFERENT scene types across the video. Here's the ideal distribution:",
+		"## Creative direction — YOU are the director",
 		"",
-		"### Hook phase (first 3-4 scenes)",
-		"- 3-4x `ghost-hook` with incrementing ghostActiveIndex (same ghostWords array, different activeIndex 0,1,2,3)",
-		"- OR: 1x `browser-tabs-chaos`, 1x `notification-chaos`, 1x `impact-word`, 1x `ghost-hook`",
+		"You have 30+ scene types at your disposal. There is no formula. No template. No required sequence.",
+		"Your job is to read the brand, feel the story, and compose a unique video every time.",
 		"",
-		"### Brand reveal + relief (1-2 scenes)",
-		"- 1x `camera-text` — THE signature cinematic brand reveal. THIS IS THE MONEY SHOT.",
-		"  Use this instead of logo-reveal for premium feel. ONE camera-text scene replaces 4+ simple text scenes.",
-		"  Duration: 55-75 frames. Put it after the hook.",
-		"- OR: 1x `logo-reveal` (simpler, less cinematic)",
-		"- Optional: 1x `gradient-mesh-hero` (soft premium bg with product name)",
+		"### Principles (not recipes)",
+		"1. **Open with tension.** The first 2-4 scenes should make the viewer feel a problem, ask a question, or create curiosity. HOW you do that is up to you — typography, chaos visualization, fragmented text, a provocative question, a stat that shocks. Match the opener to the brand's energy.",
+		"2. **Introduce the brand.** At some point early-mid, reveal who this is for. Could be cinematic, could be minimal, could be a logo moment. Let the product's personality guide the style.",
+		"3. **Build the case.** The middle scenes prove the product's value. Use whatever scene types best fit the ACTUAL content you extracted — features, metrics, comparisons, workflows, social proof. Don't force a scene type that doesn't match the content.",
+		"4. **Land it.** End with a CTA that matches the video's energy.",
 		"",
-		"### Proof & features (5-7 scenes — MAXIMUM variety here)",
-		"Pick from these, using EACH TYPE AT MOST ONCE. PRIORITIZE VISUAL-HEAVY types:",
-		"- **`app-icon-cloud`** ⭐ (3D scattered floating app icons with headline) — HIGHEST IMPACT",
-		"- **`data-flow-network`** ⭐ (nodes connected by animated lines) — VERY VISUAL",
-		"- **`dashboard-deconstructed`** ⭐ (floating metric cards with chart line) — VERY VISUAL",
-		"- `metrics-dashboard` (counters with dividers)",
-		"- `icon-showcase` (feature grid)",
-		"- `word-slot-machine` ('Your ✓ App' pattern — 1 answer out of many)",
-		"- **`scrolling-list`** ⭐ (4-6 steps scrolling up sequentially, all visible at end) — EXCELLENT for process/feature lists",
-		"- `avatar-constellation` (social proof)",
-		"- `before-after` (split-screen comparison)",
-		"- `process-ladder` (3-step progression)",
-		"- `product-glow` (tilted screenshot)",
-		"- `typewriter-prompt` (hero product input)",
+		...(opts?.includeVideoClips ? [
+		"### AI Video Clips (REQUIRED — user requested cinematic video scenes)",
+		"You MUST add a `videoPrompt` field to 2-3 scenes. These will have REAL AI-generated video as the background.",
+		"- BEST FOR: hero moments, product reveals, abstract brand imagery, emotional transitions",
+		"- NOT FOR: text-heavy scenes, stats, lists, CTA — those work better as motion graphics",
+		"- Write vivid, specific prompts: camera angle, lighting, subject, motion, mood",
+		"- Set `videoOverlayText: true` if you want your headline displayed on top of the video, `false` for pure cinematic footage",
+		"- Example prompts:",
+		"  - 'Aerial drone shot pulling back from a glowing laptop screen in a dark modern office, blue and purple accent lighting, cinematic depth of field'",
+		"  - 'Close-up of hands typing on a keyboard with holographic data visualizations floating above, shallow DOF, futuristic feel'",
+		"  - 'Abstract flowing liquid metal morphing into geometric shapes, dark background, reflective surfaces, slow motion'",
+		"  - 'Time-lapse of a city skyline transitioning from chaos to calm order, symbolizing workflow automation'",
+		"- IMPORTANT: At least 2 scenes MUST have a videoPrompt. This is what the user asked for.",
 		"",
-		"CRITICAL: At least 2 of your proof scenes MUST be visual-heavy (app-icon-cloud, data-flow-network, dashboard-deconstructed, metrics-dashboard, icon-showcase). Don't fill the middle with text-only scenes.",
-		"",
-		"### Impact beats (spread throughout, 2-4 scenes)",
-		"- `impact-word` (1-3 words at 280px+)",
-		"- `stacked-hierarchy` (multi-size text)",
-		"- `outline-hero` (hollow stroke text)",
-		"- `echo-hero` (motion blur text for stats)",
-		"- `radial-vortex` (concentric text)",
-		"",
-		"### Closing (1 scene)",
-		"- `cta` (product name + button)",
-		"",
-		"## ABSOLUTE RULES",
-		"1. NEVER use `hero-text` for more than 2 scenes — it's the boring fallback",
-		"2. NO TWO CONSECUTIVE SCENES with the same type",
-		"3. Use AT LEAST 10 DIFFERENT scene types across the video",
-		"4. For `ghost-hook` — you can use the SAME type multiple times in a row because it's building one sentence across scenes",
-		"5. Every scene type has specific data fields — populate them properly, don't leave them empty",
-		"6. VARIANTS: For scene types with variants (data-flow-network, before-after, metrics-dashboard, word-slot-machine), ALWAYS set a `variant` field. NEVER use the same variant twice in one video — pick DIFFERENT variants each time the type appears. This is critical for visual variety.",
+		] : []),
+		"### Guardrails (hard rules)",
+		"- Use AT LEAST 8 DIFFERENT scene types across the video",
+		"- NO scene type used more than TWICE (except ghost-hook which can repeat to build a sentence)",
+		"- NO TWO CONSECUTIVE scenes with the same type (except ghost-hook)",
+		"- For scene types with variants (data-flow-network, before-after, metrics-dashboard, word-slot-machine, cta), ALWAYS set a `variant` field",
+		"- At least 2 scenes should be visual-heavy (not just text on a background)",
+		"- NEVER use `hero-text` more than once — it's the boring fallback",
+		"- Every scene type has specific data fields — populate them properly",
+		"- For `ghost-hook`: ALL ghost-hook scenes MUST have the IDENTICAL ghostWords array (copy-paste it). ghostActiveIndex MUST be 0 for the first, 1 for the second, 2 for the third. Never repeat the same index.",
+		"- For `cta`: set a variant (`centered`, `split-logo`, `gradient-bar`, or `minimal`)",
 		"",
 		"Return ONLY the JSON.",
 	].join("\n");
@@ -525,6 +546,21 @@ export async function generateScenePlan(
 			return { plan: null, error: "Invalid scene plan: no scenes" };
 		}
 
+		// ── Fix ghost-hook activeIndex + normalize ghostWords ──
+		// The AI often generates multiple ghost-hook scenes but forgets to
+		// increment ghostActiveIndex, or uses different ghostWords per scene.
+		// Auto-fix: find all ghost-hook scenes, force the same ghostWords on all
+		// of them, and assign incrementing ghostActiveIndex (0, 1, 2).
+		const ghostScenes = plan.scenes.filter((s) => s.type === "ghost-hook");
+		if (ghostScenes.length > 0) {
+			// Use the ghostWords from the first ghost-hook scene as the canonical array
+			const canonicalWords = ghostScenes[0].ghostWords || ["Hello", "world."];
+			for (let i = 0; i < ghostScenes.length; i++) {
+				ghostScenes[i].ghostWords = [...canonicalWords];
+				ghostScenes[i].ghostActiveIndex = i;
+			}
+		}
+
 		// Attach brand assets (not something the AI generates)
 		if (brand?.logoUrl) {
 			plan.logoUrl = brand.logoUrl;
@@ -540,15 +576,18 @@ export async function generateScenePlan(
 		// video has a branded outro with the product name.
 		const lastScene = plan.scenes[plan.scenes.length - 1];
 		if (lastScene?.type !== "cta") {
+			const ctaVariants = ["centered", "split-logo", "gradient-bar", "minimal"] as const;
+			const randomVariant = ctaVariants[Math.floor(Math.random() * ctaVariants.length)];
 			plan.scenes.push({
 				type: "cta",
+				variant: randomVariant,
 				headline: productName,
 				subtitle: plan.websiteUrl || undefined,
 				background: "brand-dark",
 				animation: "blur-in",
 				font: "sans-serif",
 				fontSize: 120,
-				durationFrames: 75,
+				durationFrames: 90,
 				effects: [],
 				backgroundEffect: "aurora",
 				transitionOut: "fade",

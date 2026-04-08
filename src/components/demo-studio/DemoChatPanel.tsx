@@ -244,6 +244,7 @@ export function DemoChatPanel({
 	const [input, setInput] = useState("");
 	const [maxSteps, setMaxSteps] = useState(20);
 	const [selectedMode, setSelectedMode] = useState<DemoModeId>("saas-teaser");
+	const [includeVideoClips, setIncludeVideoClips] = useState(false);
 	const [showAdvancedModes, setShowAdvancedModes] = useState(false);
 	const [outputStyle] = useState<OutputStyle>("ai-cinematic");
 	const [history, setHistory] = useState<PromptHistoryEntry[]>([]);
@@ -303,7 +304,7 @@ export function DemoChatPanel({
 
 		setInput("");
 		setShowHistory(false);
-		onStart({ url, prompt: finalPrompt, maxSteps, mode: selectedMode, outputStyle });
+		onStart({ url, prompt: finalPrompt, maxSteps, mode: selectedMode, outputStyle, includeVideoClips });
 	}
 
 	function handleHistorySelect(entry: PromptHistoryEntry) {
@@ -406,6 +407,25 @@ export function DemoChatPanel({
 										</button>
 									))}
 								</div>
+							)}
+						</div>
+
+						{/* AI Video Clips toggle */}
+						<div className="mb-2 flex items-center gap-2">
+							<button
+								type="button"
+								onClick={() => setIncludeVideoClips((v) => !v)}
+								className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[11px] transition-colors ${
+									includeVideoClips
+										? "border-violet-500/50 bg-violet-500/15 text-violet-300"
+										: "border-white/8 bg-white/[0.03] text-white/35 hover:text-white/55 hover:border-white/15"
+								}`}
+							>
+								<span className="text-[13px]">🎬</span>
+								<span>AI Video Scenes</span>
+							</button>
+							{includeVideoClips && (
+								<span className="text-[9px] text-violet-300/40">1-3 scenes will use AI-generated cinematic footage</span>
 							)}
 						</div>
 
