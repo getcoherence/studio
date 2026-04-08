@@ -4,11 +4,11 @@
 // descriptions, and compatibility hints so users know what they're getting.
 
 import { useCallback, useMemo, useRef, useState } from "react";
-import { pluginRegistry } from "@/lib/plugins";
-import type { SceneTypePlugin } from "@/lib/plugins/types";
+import { seedFieldsForType } from "@/lib/ai/sceneLayerSync";
 import type { ScenePlanItem } from "@/lib/ai/scenePlan";
 import { expandSceneToLayers } from "@/lib/ai/scenePlanCompiler";
-import { seedFieldsForType } from "@/lib/ai/sceneLayerSync";
+import { pluginRegistry } from "@/lib/plugins";
+import type { SceneTypePlugin } from "@/lib/plugins/types";
 
 const CATEGORY_LABELS: Record<string, string> = {
 	text: "Text & Typography",
@@ -38,7 +38,15 @@ export function SceneTypePicker({ currentType, scene, accent, onSelect }: SceneT
 	const currentLayerCount = (scene.layers || []).filter((l) => !l._incompatible).length;
 
 	// Legacy types render ALL layers via compileLayer() — they accept any count
-	const LEGACY_TYPES = new Set(["hero-text", "full-bleed", "split-layout", "cards", "screenshot", "glitch-intro", "stacked-text"]);
+	const LEGACY_TYPES = new Set([
+		"hero-text",
+		"full-bleed",
+		"split-layout",
+		"cards",
+		"screenshot",
+		"glitch-intro",
+		"stacked-text",
+	]);
 
 	// Compute layer counts for all types once (used for best-fit and display)
 	const layerCounts = useMemo(() => {
@@ -65,8 +73,13 @@ export function SceneTypePicker({ currentType, scene, accent, onSelect }: SceneT
 	// "Multi-line text" types are compatible with each other. Types with specialized
 	// data (metrics, notifications, slot-machine) are only "best fit" for themselves.
 	const MULTI_LINE_FAMILIES = new Set([
-		"scrolling-list", "stacked-hierarchy", "ghost-hook",
-		"contrast-pairs", "before-after", "stacked-text", "hero-text",
+		"scrolling-list",
+		"stacked-hierarchy",
+		"ghost-hook",
+		"contrast-pairs",
+		"before-after",
+		"stacked-text",
+		"hero-text",
 	]);
 	const bestFitTypes = useMemo(() => {
 		if (currentLayerCount === 0) return [];
@@ -97,15 +110,15 @@ export function SceneTypePicker({ currentType, scene, accent, onSelect }: SceneT
 			const types = byCategory[cat];
 			if (!types?.length) continue;
 			const filtered = search
-				? types.filter(
-						(t) => {
-							const q = search.toLowerCase();
-							return t.id.includes(q) ||
-								t.name.toLowerCase().includes(q) ||
-								t.description.toLowerCase().includes(q) ||
-								(t.tags || []).some((tag) => tag.includes(q));
-						},
-					)
+				? types.filter((t) => {
+						const q = search.toLowerCase();
+						return (
+							t.id.includes(q) ||
+							t.name.toLowerCase().includes(q) ||
+							t.description.toLowerCase().includes(q) ||
+							(t.tags || []).some((tag) => tag.includes(q))
+						);
+					})
 				: types;
 			if (filtered.length > 0) {
 				result.push({ category: cat, label: CATEGORY_LABELS[cat] || cat, types: filtered });
@@ -114,10 +127,7 @@ export function SceneTypePicker({ currentType, scene, accent, onSelect }: SceneT
 		return result;
 	}, [search]);
 
-	const getLayerCount = useCallback(
-		(typeId: string) => layerCounts[typeId] ?? "?",
-		[layerCounts],
-	);
+	const getLayerCount = useCallback((typeId: string) => layerCounts[typeId] ?? "?", [layerCounts]);
 
 	const handleSelect = useCallback(
 		(typeId: string) => {
@@ -176,7 +186,14 @@ export function SceneTypePicker({ currentType, scene, accent, onSelect }: SceneT
 									Best Fit ({currentLayerCount} layers)
 								</div>
 								{bestFitTypes.map((t) => (
-									<TypeRow key={t.id} type={t} isActive={false} layerCount={getLayerCount(t.id)} currentLayerCount={currentLayerCount} onSelect={handleSelect} />
+									<TypeRow
+										key={t.id}
+										type={t}
+										isActive={false}
+										layerCount={getLayerCount(t.id)}
+										currentLayerCount={currentLayerCount}
+										onSelect={handleSelect}
+									/>
 								))}
 							</div>
 						)}
@@ -189,7 +206,14 @@ export function SceneTypePicker({ currentType, scene, accent, onSelect }: SceneT
 									const isActive = t.id === currentType;
 									const layerCount = getLayerCount(t.id);
 									return (
-										<TypeRow key={t.id} type={t} isActive={isActive} layerCount={layerCount} currentLayerCount={currentLayerCount} onSelect={handleSelect} />
+										<TypeRow
+											key={t.id}
+											type={t}
+											isActive={isActive}
+											layerCount={layerCount}
+											currentLayerCount={currentLayerCount}
+											onSelect={handleSelect}
+										/>
 									);
 								})}
 							</div>
@@ -204,7 +228,13 @@ export function SceneTypePicker({ currentType, scene, accent, onSelect }: SceneT
 	);
 }
 
-function TypeRow({ type: t, isActive, layerCount, currentLayerCount, onSelect }: {
+function TypeRow({
+	type: t,
+	isActive,
+	layerCount,
+	currentLayerCount,
+	onSelect,
+}: {
 	type: SceneTypePlugin;
 	isActive: boolean;
 	layerCount: number | string;
@@ -224,7 +254,9 @@ function TypeRow({ type: t, isActive, layerCount, currentLayerCount, onSelect }:
 			<span className="text-[13px] mt-0.5 shrink-0">{t.icon}</span>
 			<div className="flex-1 min-w-0">
 				<div className="flex items-center gap-1.5">
-					<span className={`text-[11px] font-medium ${isActive ? "text-purple-300" : "text-white/70"}`}>
+					<span
+						className={`text-[11px] font-medium ${isActive ? "text-purple-300" : "text-white/70"}`}
+					>
 						{t.name}
 					</span>
 					{t.variants && (
@@ -233,9 +265,7 @@ function TypeRow({ type: t, isActive, layerCount, currentLayerCount, onSelect }:
 						</span>
 					)}
 				</div>
-				<div className="text-[9px] text-white/30 leading-snug mt-0.5">
-					{t.description}
-				</div>
+				<div className="text-[9px] text-white/30 leading-snug mt-0.5">{t.description}</div>
 				{t.layout && (
 					<pre className="text-[7px] text-white/15 leading-tight mt-0.5 font-mono">{t.layout}</pre>
 				)}

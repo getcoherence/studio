@@ -46,7 +46,9 @@ function DebouncedInput({
 		}, debounceMs);
 	};
 
-	const handleFocus = () => { focusedRef.current = true; };
+	const handleFocus = () => {
+		focusedRef.current = true;
+	};
 	const handleBlur = () => {
 		focusedRef.current = false;
 		clearTimeout(timerRef.current);
@@ -120,7 +122,11 @@ const framesToSeconds = (f: number) => (f < 0 ? f : f / FPS);
 const secondsToFrames = (s: number) => (s < 0 ? -1 : Math.round(s * FPS));
 
 /** Unified color picker — single swatch button that opens a popover with brand colors + full picker */
-function ColorPickerWithSwatches({ value, accentColor, onChange }: {
+function ColorPickerWithSwatches({
+	value,
+	accentColor,
+	onChange,
+}: {
 	value: string;
 	accentColor?: string;
 	onChange: (color: string) => void;
@@ -159,7 +165,10 @@ function ColorPickerWithSwatches({ value, accentColor, onChange }: {
 							<button
 								key={s.label}
 								type="button"
-								onClick={() => { onChange(s.color); setOpen(false); }}
+								onClick={() => {
+									onChange(s.color);
+									setOpen(false);
+								}}
 								title={s.label}
 								className="w-6 h-6 rounded border border-white/10 cursor-pointer hover:scale-110 hover:border-white/30 transition-all"
 								style={{ background: s.color }}
@@ -217,7 +226,13 @@ function toColorInput(val: string | undefined, fallback: string): string {
 	return fallback;
 }
 
-export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly, accentColor }: SceneLayerEditorProps) {
+export function SceneLayerEditor({
+	scene,
+	sceneIndex,
+	onUpdate,
+	readonly,
+	accentColor,
+}: SceneLayerEditorProps) {
 	const layers = scene.layers || [];
 	const [dragIndex, setDragIndex] = useState<number | null>(null);
 	const [dropIndex, setDropIndex] = useState<number | null>(null);
@@ -481,10 +496,16 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly, accent
 									? "border-[#2563eb]/30 bg-[#2563eb]/10"
 									: "border-white/5 bg-white/[0.02]"
 						}`}
-						title={isIncompat ? "This layer is from a different scene type and won't render. Switch back to restore it." : undefined}
+						title={
+							isIncompat
+								? "This layer is from a different scene type and won't render. Switch back to restore it."
+								: undefined
+						}
 					>
 						{isIncompat && (
-							<div className="absolute -top-1.5 right-1 text-[8px] text-amber-400/60 bg-[#141417] px-1 rounded z-10">incompatible</div>
+							<div className="absolute -top-1.5 right-1 text-[8px] text-amber-400/60 bg-[#141417] px-1 rounded z-10">
+								incompatible
+							</div>
 						)}
 						{/* Grab handle — left edge only */}
 						{!ro && (
@@ -500,420 +521,527 @@ export function SceneLayerEditor({ scene, sceneIndex, onUpdate, readonly, accent
 						)}
 						{/* Layer content */}
 						<div className="flex-1 p-1.5 space-y-1 min-w-0">
-						{/* Row 1: Type + Content/Title + Delete */}
-						<div className="flex gap-1 items-center">
-							<select
-								value={layer.type}
-								onChange={(e) => changeLayerType(li, e.target.value as SceneLayer["type"])}
-								disabled={ro}
-								title={
-									roTitle ??
-									"Layer kind. Text = animated string, Card = title+description block, Lottie = JSON animation, Image = URL or screenshots[N], Shape = light-streak/vignette. Changing type resets the content to a default for the new kind."
-								}
-								className={`w-12 text-[10px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-white/50 [&>option]:bg-[#141417] [&>option]:text-white ${ro ? "opacity-40 cursor-not-allowed" : ""}`}
-							>
-								<option value="text">Text</option>
-								<option value="button">Button</option>
-								<option value="card">Card</option>
-								<option value="word-carousel">Carousel</option>
-								<option value="metric-counter">Counter</option>
-								<option value="progress-bar">Progress</option>
-								<option value="icon-grid">Icons</option>
-								<option value="divider">Divider</option>
-								<option value="lottie">Lottie</option>
-								<option value="image">Image</option>
-								<option value="shape">Shape</option>
-							</select>
-
-							{layer.type === "card" ? (
-								<DebouncedInput
-									value={card?.title || ""}
-									onChange={(val) =>
-										updateLayer(li, { content: JSON.stringify({ ...card, title: val }) })
-									}
-									onKeyDown={(e) => e.stopPropagation()}
-									disabled={ro}
-									title={roTitle ?? "Card title (the bold heading of the card)"}
-									className={`flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/60 focus:outline-none ${ro ? "opacity-40 cursor-not-allowed" : ""}`}
-									placeholder="Card title"
-								/>
-							) : layer.type === "shape" ? (
+							{/* Row 1: Type + Content/Title + Delete */}
+							<div className="flex gap-1 items-center">
 								<select
-									value={
-										SHAPE_VARIANTS.some((v) => v.value === layer.content)
-											? layer.content
-											: "light-streak"
+									value={layer.type}
+									onChange={(e) => changeLayerType(li, e.target.value as SceneLayer["type"])}
+									disabled={ro}
+									title={
+										roTitle ??
+										"Layer kind. Text = animated string, Card = title+description block, Lottie = JSON animation, Image = URL or screenshots[N], Shape = light-streak/vignette. Changing type resets the content to a default for the new kind."
 									}
-									onChange={(e) => updateLayer(li, { content: e.target.value })}
-									title="Shape variant. Light streak = animated diagonal glow bar. Vignette = darkened corners for cinematic framing."
-									className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/60 focus:outline-none [&>option]:bg-[#141417] [&>option]:text-white"
+									className={`w-12 text-[10px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-white/50 [&>option]:bg-[#141417] [&>option]:text-white ${ro ? "opacity-40 cursor-not-allowed" : ""}`}
 								>
-									{SHAPE_VARIANTS.map((v) => (
-										<option key={v.value} value={v.value}>
-											{v.label}
-										</option>
-									))}
+									<option value="text">Text</option>
+									<option value="button">Button</option>
+									<option value="card">Card</option>
+									<option value="word-carousel">Carousel</option>
+									<option value="metric-counter">Counter</option>
+									<option value="progress-bar">Progress</option>
+									<option value="icon-grid">Icons</option>
+									<option value="divider">Divider</option>
+									<option value="lottie">Lottie</option>
+									<option value="image">Image</option>
+									<option value="shape">Shape</option>
 								</select>
-							) : layer.type === "lottie" ? (
-								<DebouncedInput
-									value={layer.content}
-									onChange={(val) => updateLayer(li, { content: val })}
-									onKeyDown={(e) => e.stopPropagation()}
-									placeholder="filename.json or https://…"
-									title="Lottie JSON source: either a filename from public/lottie/ or a full https:// URL"
-									className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/50 focus:outline-none"
-								/>
-							) : layer.type === "image" ? (
-								<>
+
+								{layer.type === "card" ? (
+									<DebouncedInput
+										value={card?.title || ""}
+										onChange={(val) =>
+											updateLayer(li, { content: JSON.stringify({ ...card, title: val }) })
+										}
+										onKeyDown={(e) => e.stopPropagation()}
+										disabled={ro}
+										title={roTitle ?? "Card title (the bold heading of the card)"}
+										className={`flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/60 focus:outline-none ${ro ? "opacity-40 cursor-not-allowed" : ""}`}
+										placeholder="Card title"
+									/>
+								) : layer.type === "shape" ? (
+									<select
+										value={
+											SHAPE_VARIANTS.some((v) => v.value === layer.content)
+												? layer.content
+												: "light-streak"
+										}
+										onChange={(e) => updateLayer(li, { content: e.target.value })}
+										title="Shape variant. Light streak = animated diagonal glow bar. Vignette = darkened corners for cinematic framing."
+										className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/60 focus:outline-none [&>option]:bg-[#141417] [&>option]:text-white"
+									>
+										{SHAPE_VARIANTS.map((v) => (
+											<option key={v.value} value={v.value}>
+												{v.label}
+											</option>
+										))}
+									</select>
+								) : layer.type === "lottie" ? (
 									<DebouncedInput
 										value={layer.content}
 										onChange={(val) => updateLayer(li, { content: val })}
 										onKeyDown={(e) => e.stopPropagation()}
-										placeholder="URL or screenshots[i]"
-										title="Image source: an https:// URL, screenshots[N], or upload a file"
-										className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/50 focus:outline-none min-w-0"
+										placeholder="filename.json or https://…"
+										title="Lottie JSON source: either a filename from public/lottie/ or a full https:// URL"
+										className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/50 focus:outline-none"
 									/>
-									<label
-										title="Upload an image file"
-										className="shrink-0 w-7 h-7 rounded bg-white/5 border border-white/10 flex items-center justify-center text-[13px] text-white/40 hover:text-white/70 hover:bg-white/10 cursor-pointer transition-colors"
-									>
-										📁
-										<input
-											type="file"
-											accept="image/*"
-											className="hidden"
-											onChange={(e) => {
-												const file = e.target.files?.[0];
-												if (!file) return;
-												const reader = new FileReader();
-												reader.onload = () => {
-													if (typeof reader.result === "string") {
-														updateLayer(li, { content: reader.result });
-													}
-												};
-												reader.readAsDataURL(file);
-												e.target.value = "";
-											}}
+								) : layer.type === "image" ? (
+									<>
+										<DebouncedInput
+											value={layer.content}
+											onChange={(val) => updateLayer(li, { content: val })}
+											onKeyDown={(e) => e.stopPropagation()}
+											placeholder="URL or screenshots[i]"
+											title="Image source: an https:// URL, screenshots[N], or upload a file"
+											className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/50 focus:outline-none min-w-0"
 										/>
-									</label>
-								</>
-							) : layer.type === "icon-grid" ||
-								layer.id.startsWith("icon-item-") ||
-								layer.id.startsWith("app-icon-") ? (
-								/* Icon layers: emoji picker button + label input */
-								<IconLayerInputs layer={layer} li={li} updateLayer={updateLayer} />
-							) : (
-								<DebouncedInput
-									value={layer.content}
-									onChange={(val) => updateLayer(li, { content: val })}
-									onKeyDown={(e) => e.stopPropagation()}
-									title="The text that will render. Primary layers (headline, ghost words, metric labels, etc.) sync this back to the underlying scene field."
-									className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/50 focus:outline-none"
-								/>
-							)}
+										<label
+											title="Upload an image file"
+											className="shrink-0 w-7 h-7 rounded bg-white/5 border border-white/10 flex items-center justify-center text-[13px] text-white/40 hover:text-white/70 hover:bg-white/10 cursor-pointer transition-colors"
+										>
+											📁
+											<input
+												type="file"
+												accept="image/*"
+												className="hidden"
+												onChange={(e) => {
+													const file = e.target.files?.[0];
+													if (!file) return;
+													const reader = new FileReader();
+													reader.onload = () => {
+														if (typeof reader.result === "string") {
+															updateLayer(li, { content: reader.result });
+														}
+													};
+													reader.readAsDataURL(file);
+													e.target.value = "";
+												}}
+											/>
+										</label>
+									</>
+								) : layer.type === "icon-grid" ||
+									layer.id.startsWith("icon-item-") ||
+									layer.id.startsWith("app-icon-") ? (
+									/* Icon layers: emoji picker button + label input */
+									<IconLayerInputs layer={layer} li={li} updateLayer={updateLayer} />
+								) : (
+									<DebouncedInput
+										value={layer.content}
+										onChange={(val) => updateLayer(li, { content: val })}
+										onKeyDown={(e) => e.stopPropagation()}
+										title="The text that will render. Primary layers (headline, ghost words, metric labels, etc.) sync this back to the underlying scene field."
+										className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/50 focus:outline-none"
+									/>
+								)}
 
-							{!ro && (
-								<button
-									onClick={() => deleteLayer(li)}
-									title="Delete this layer"
-									className="text-[11px] text-red-400/30 hover:text-red-400 px-0.5"
-								>
-									✕
-								</button>
-							)}
-						</div>
-
-						{/* Row 2: Card description */}
-						{layer.type === "card" && (
-							<div className="flex gap-1 items-center">
-								<DebouncedInput
-									value={card?.description || ""}
-									onChange={(val) =>
-										updateLayer(li, { content: JSON.stringify({ ...card, description: val }) })
-									}
-									onKeyDown={(e) => e.stopPropagation()}
-									disabled={ro}
-									title={roTitle}
-									className={`flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/40 focus:outline-none ${ro ? "opacity-40 cursor-not-allowed" : ""}`}
-									placeholder="Card description"
-								/>
-								<input
-									type="color"
-									value={toColorInput(layer.settings?.color, "#16181f")}
-									onChange={(e) =>
-										updateLayer(li, { settings: { ...layer.settings, color: e.target.value } })
-									}
-									disabled={ro}
-									title={roTitle}
-									className={`w-8 h-7 rounded border border-white/10 bg-transparent p-0 ${ro ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
-								/>
+								{!ro && (
+									<button
+										onClick={() => deleteLayer(li)}
+										title="Delete this layer"
+										className="text-[11px] text-red-400/30 hover:text-red-400 px-0.5"
+									>
+										✕
+									</button>
+								)}
 							</div>
-						)}
 
-						{/* Row 2/3: Layout + Timing — hidden for readonly plans */}
-						{!ro &&
-							(() => {
-								// Timing only matters for user-added layers and legacy scene types.
-								// Rich scene types (ghost-hook, camera-text, etc.) handle their own
-								// timing internally — showing In/Out for their primary layers is misleading.
-								const isUserLayer = layer.id.startsWith("layer-") || layer.id.startsWith("l-");
-								const LEGACY_TYPES = new Set([
-									"hero-text",
-									"full-bleed",
-									"split-layout",
-									"cards",
-									"screenshot",
-									"cta",
-									"glitch-intro",
-									"stacked-text",
-								]);
-								const showTiming = isUserLayer || LEGACY_TYPES.has(scene.type);
-								return (
+							{/* Row 2: Card description */}
+							{layer.type === "card" && (
+								<div className="flex gap-1 items-center">
+									<DebouncedInput
+										value={card?.description || ""}
+										onChange={(val) =>
+											updateLayer(li, { content: JSON.stringify({ ...card, description: val }) })
+										}
+										onKeyDown={(e) => e.stopPropagation()}
+										disabled={ro}
+										title={roTitle}
+										className={`flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/40 focus:outline-none ${ro ? "opacity-40 cursor-not-allowed" : ""}`}
+										placeholder="Card description"
+									/>
+									<input
+										type="color"
+										value={toColorInput(layer.settings?.color, "#16181f")}
+										onChange={(e) =>
+											updateLayer(li, { settings: { ...layer.settings, color: e.target.value } })
+										}
+										disabled={ro}
+										title={roTitle}
+										className={`w-8 h-7 rounded border border-white/10 bg-transparent p-0 ${ro ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+									/>
+								</div>
+							)}
+
+							{/* Row 2/3: Layout + Timing — hidden for readonly plans */}
+							{!ro &&
+								(() => {
+									// Timing only matters for user-added layers and legacy scene types.
+									// Rich scene types (ghost-hook, camera-text, etc.) handle their own
+									// timing internally — showing In/Out for their primary layers is misleading.
+									const isUserLayer = layer.id.startsWith("layer-") || layer.id.startsWith("l-");
+									const LEGACY_TYPES = new Set([
+										"hero-text",
+										"full-bleed",
+										"split-layout",
+										"cards",
+										"screenshot",
+										"cta",
+										"glitch-intro",
+										"stacked-text",
+									]);
+									const showTiming = isUserLayer || LEGACY_TYPES.has(scene.type);
+									return (
+										<div className="flex gap-1 items-center text-[10px]">
+											<select
+												value={layer.position}
+												onChange={(e) =>
+													updateLayer(li, { position: e.target.value as SceneLayer["position"] })
+												}
+												title="Placement within the scene"
+												className="text-[10px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-white/40 [&>option]:bg-[#141417] [&>option]:text-white"
+											>
+												{POSITIONS.map((p) => (
+													<option key={p.value} value={p.value}>
+														{p.label}
+													</option>
+												))}
+											</select>
+
+											<span className="text-white/20">W%</span>
+											<input
+												type="number"
+												value={layer.size}
+												onChange={(e) => updateLayer(li, { size: Number(e.target.value) })}
+												title="Width as % of frame"
+												className="w-8 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/40 focus:outline-none"
+											/>
+
+											{showTiming && (
+												<>
+													<span className="text-white/20 ml-1">In</span>
+													<input
+														type="number"
+														step={0.1}
+														value={framesToSeconds(layer.startFrame).toFixed(1)}
+														onChange={(e) =>
+															updateLayer(li, {
+																startFrame: secondsToFrames(Number(e.target.value)),
+															})
+														}
+														className="w-10 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-emerald-400/50 focus:outline-none"
+														title="Start time (seconds from scene start)"
+													/>
+													<span className="text-white/15 text-[9px] -ml-0.5">s</span>
+
+													<span className="text-white/20">Out</span>
+													<input
+														type="number"
+														step={0.1}
+														value={
+															layer.endFrame === -1
+																? -1
+																: framesToSeconds(layer.endFrame).toFixed(1)
+														}
+														onChange={(e) => {
+															const v = Number(e.target.value);
+															updateLayer(li, { endFrame: v < 0 ? -1 : secondsToFrames(v) });
+														}}
+														className="w-10 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-amber-400/50 focus:outline-none"
+														title="End time in seconds (-1 = end of scene)"
+													/>
+													<span className="text-white/15 text-[9px] -ml-0.5">s</span>
+												</>
+											)}
+										</div>
+									);
+								})()}
+
+							{/* Button layer settings */}
+							{layer.type === "button" && !ro && (
+								<div className="flex gap-1 items-center text-[10px] flex-wrap">
+									<select
+										value={layer.settings?.animation || "none"}
+										onChange={(e) =>
+											updateLayer(li, {
+												settings: { ...layer.settings, animation: e.target.value },
+											})
+										}
+										title="Button animation"
+										className="text-[10px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-purple-400/60 [&>option]:bg-[#141417] [&>option]:text-white"
+									>
+										<option value="none">Static</option>
+										<option value="racing-border">Racing Border</option>
+										<option value="pulse">Pulse</option>
+										<option value="glow-pulse">Glow Pulse</option>
+										<option value="slide-in">Slide In</option>
+									</select>
+									<span className="text-white/20">Size</span>
+									<input
+										type="number"
+										value={layer.settings?.fontSize || 26}
+										onChange={(e) =>
+											updateLayer(li, {
+												settings: { ...layer.settings, fontSize: Number(e.target.value) },
+											})
+										}
+										step={2}
+										className="w-10 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/40 focus:outline-none"
+									/>
+									<span className="text-white/20">Bg</span>
+									<input
+										type="color"
+										value={layer.settings?.accentColor || accentColor || "#2563eb"}
+										onChange={(e) =>
+											updateLayer(li, {
+												settings: { ...layer.settings, accentColor: e.target.value },
+											})
+										}
+										className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent"
+									/>
+									<span className="text-white/20">Text</span>
+									<input
+										type="color"
+										value={layer.settings?.color || "#ffffff"}
+										onChange={(e) =>
+											updateLayer(li, { settings: { ...layer.settings, color: e.target.value } })
+										}
+										className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent"
+									/>
+									<span className="text-white/20">Border</span>
+									<input
+										type="color"
+										value={
+											layer.settings?.borderColor ||
+											layer.settings?.accentColor ||
+											accentColor ||
+											"#2563eb"
+										}
+										onChange={(e) =>
+											updateLayer(li, {
+												settings: { ...layer.settings, borderColor: e.target.value },
+											})
+										}
+										className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent"
+									/>
+									{layer.settings?.borderColor && (
+										<button
+											type="button"
+											onClick={() =>
+												updateLayer(li, { settings: { ...layer.settings, borderColor: undefined } })
+											}
+											className="text-[8px] text-red-400/50 hover:text-red-400"
+											title="Remove border"
+										>
+											✕
+										</button>
+									)}
+								</div>
+							)}
+							{/* Row 3: Text animation settings — hidden for readonly plans */}
+							{layer.type === "text" && !ro && (
+								<>
 									<div className="flex gap-1 items-center text-[10px]">
 										<select
-											value={layer.position}
+											value={layer.settings?.animation || "chars"}
 											onChange={(e) =>
-												updateLayer(li, { position: e.target.value as SceneLayer["position"] })
+												updateLayer(li, {
+													settings: { ...layer.settings, animation: e.target.value },
+												})
 											}
-											title="Placement within the scene"
-											className="text-[10px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-white/40 [&>option]:bg-[#141417] [&>option]:text-white"
+											title="Text animation. Per-Char = letter-by-letter fade, Words = word-by-word entrance, Scale = grow from 0.5x, Clip = diagonal reveal, Gradient = gradient wipe, Glitch = RGB split jitter, Blur = defocus→sharp, Bounce = spring drop, Wave = sinusoidal bob, Typewriter = character reveal with cursor, Staccato = rhythmic punch, Split = top/bottom halves slide together, Drop = fall from above, Scramble = random chars resolving to final, None = static."
+											className="text-[10px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-purple-400/60 [&>option]:bg-[#141417] [&>option]:text-white"
 										>
-											{POSITIONS.map((p) => (
-												<option key={p.value} value={p.value}>
-													{p.label}
+											{pluginRegistry.getAnimations().map((a) => (
+												<option key={a.id} value={a.id}>
+													{a.name}
 												</option>
 											))}
 										</select>
-
-										<span className="text-white/20">W%</span>
+										<span
+											className="text-white/20"
+											title="Font size in pixels — the actual rendered text size. This is what you want to tweak to make text bigger or smaller."
+										>
+											Font
+										</span>
 										<input
 											type="number"
-											value={layer.size}
-											onChange={(e) => updateLayer(li, { size: Number(e.target.value) })}
-											title="Width as % of frame"
-											className="w-8 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/40 focus:outline-none"
+											value={layer.settings?.fontSize || 100}
+											onChange={(e) =>
+												updateLayer(li, {
+													settings: { ...layer.settings, fontSize: Number(e.target.value) },
+												})
+											}
+											step={4}
+											title="Font size in pixels. 1080p frame is 1920×1080, so 120–200px is a typical headline size."
+											className="w-10 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/40 focus:outline-none"
 										/>
-
-										{showTiming && (
-											<>
-												<span className="text-white/20 ml-1">In</span>
-												<input
-													type="number"
-													step={0.1}
-													value={framesToSeconds(layer.startFrame).toFixed(1)}
-													onChange={(e) =>
-														updateLayer(li, { startFrame: secondsToFrames(Number(e.target.value)) })
-													}
-													className="w-10 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-emerald-400/50 focus:outline-none"
-													title="Start time (seconds from scene start)"
-												/>
-												<span className="text-white/15 text-[9px] -ml-0.5">s</span>
-
-												<span className="text-white/20">Out</span>
-												<input
-													type="number"
-													step={0.1}
-													value={
-														layer.endFrame === -1 ? -1 : framesToSeconds(layer.endFrame).toFixed(1)
-													}
-													onChange={(e) => {
-														const v = Number(e.target.value);
-														updateLayer(li, { endFrame: v < 0 ? -1 : secondsToFrames(v) });
-													}}
-													className="w-10 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-amber-400/50 focus:outline-none"
-													title="End time in seconds (-1 = end of scene)"
-												/>
-												<span className="text-white/15 text-[9px] -ml-0.5">s</span>
-											</>
-										)}
+										<ColorPickerWithSwatches
+											value={layer.settings?.color || "#ffffff"}
+											accentColor={accentColor}
+											onChange={(c) =>
+												updateLayer(li, { settings: { ...layer.settings, color: c } })
+											}
+										/>
+										<input
+											type="text"
+											value={layer.settings?.accentWord || ""}
+											onChange={(e) =>
+												updateLayer(li, {
+													settings: { ...layer.settings, accentWord: e.target.value || undefined },
+												})
+											}
+											onKeyDown={(e) => e.stopPropagation()}
+											placeholder="Highlight"
+											title="Optional word to render in the scene's accent color."
+											className="w-16 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[#60a5fa]/50 focus:outline-none"
+										/>
 									</div>
-								);
-							})()}
-
-						{/* Button layer settings */}
-						{layer.type === "button" && !ro && (
-							<div className="flex gap-1 items-center text-[10px] flex-wrap">
-								<select
-									value={layer.settings?.animation || "none"}
-									onChange={(e) => updateLayer(li, { settings: { ...layer.settings, animation: e.target.value } })}
-									title="Button animation"
-									className="text-[10px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-purple-400/60 [&>option]:bg-[#141417] [&>option]:text-white"
-								>
-									<option value="none">Static</option>
-									<option value="racing-border">Racing Border</option>
-									<option value="pulse">Pulse</option>
-									<option value="glow-pulse">Glow Pulse</option>
-									<option value="slide-in">Slide In</option>
-								</select>
-								<span className="text-white/20">Size</span>
-								<input
-									type="number"
-									value={layer.settings?.fontSize || 26}
-									onChange={(e) => updateLayer(li, { settings: { ...layer.settings, fontSize: Number(e.target.value) } })}
-									step={2}
-									className="w-10 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/40 focus:outline-none"
-								/>
-								<span className="text-white/20">Bg</span>
-								<input
-									type="color"
-									value={layer.settings?.accentColor || accentColor || "#2563eb"}
-									onChange={(e) => updateLayer(li, { settings: { ...layer.settings, accentColor: e.target.value } })}
-									className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent"
-								/>
-								<span className="text-white/20">Text</span>
-								<input
-									type="color"
-									value={layer.settings?.color || "#ffffff"}
-									onChange={(e) => updateLayer(li, { settings: { ...layer.settings, color: e.target.value } })}
-									className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent"
-								/>
-								<span className="text-white/20">Border</span>
-								<input
-									type="color"
-									value={layer.settings?.borderColor || layer.settings?.accentColor || accentColor || "#2563eb"}
-									onChange={(e) => updateLayer(li, { settings: { ...layer.settings, borderColor: e.target.value } })}
-									className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent"
-								/>
-								{layer.settings?.borderColor && (
-									<button
-										type="button"
-										onClick={() => updateLayer(li, { settings: { ...layer.settings, borderColor: undefined } })}
-										className="text-[8px] text-red-400/50 hover:text-red-400"
-										title="Remove border"
-									>✕</button>
-								)}
-							</div>
-						)}
-						{/* Row 3: Text animation settings — hidden for readonly plans */}
-						{layer.type === "text" && !ro && (<>
-							<div className="flex gap-1 items-center text-[10px]">
-								<select
-									value={layer.settings?.animation || "chars"}
-									onChange={(e) =>
-										updateLayer(li, { settings: { ...layer.settings, animation: e.target.value } })
-									}
-									title="Text animation. Per-Char = letter-by-letter fade, Words = word-by-word entrance, Scale = grow from 0.5x, Clip = diagonal reveal, Gradient = gradient wipe, Glitch = RGB split jitter, Blur = defocus→sharp, Bounce = spring drop, Wave = sinusoidal bob, Typewriter = character reveal with cursor, Staccato = rhythmic punch, Split = top/bottom halves slide together, Drop = fall from above, Scramble = random chars resolving to final, None = static."
-									className="text-[10px] bg-[#141417] border border-white/10 rounded px-0.5 py-0.5 text-purple-400/60 [&>option]:bg-[#141417] [&>option]:text-white"
-								>
-									{pluginRegistry.getAnimations().map((a) => (
-										<option key={a.id} value={a.id}>{a.name}</option>
-									))}
-								</select>
-								<span
-									className="text-white/20"
-									title="Font size in pixels — the actual rendered text size. This is what you want to tweak to make text bigger or smaller."
-								>
-									Font
-								</span>
-								<input
-									type="number"
-									value={layer.settings?.fontSize || 100}
-									onChange={(e) =>
-										updateLayer(li, {
-											settings: { ...layer.settings, fontSize: Number(e.target.value) },
-										})
-									}
-									step={4}
-									title="Font size in pixels. 1080p frame is 1920×1080, so 120–200px is a typical headline size."
-									className="w-10 px-0.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/40 focus:outline-none"
-								/>
-								<ColorPickerWithSwatches
-									value={layer.settings?.color || "#ffffff"}
-									accentColor={accentColor}
-									onChange={(c) => updateLayer(li, { settings: { ...layer.settings, color: c } })}
-								/>
-								<input
-									type="text"
-									value={layer.settings?.accentWord || ""}
-									onChange={(e) =>
-										updateLayer(li, {
-											settings: { ...layer.settings, accentWord: e.target.value || undefined },
-										})
-									}
-									onKeyDown={(e) => e.stopPropagation()}
-									placeholder="Highlight"
-									title="Optional word to render in the scene's accent color."
-									className="w-16 px-1 py-0.5 rounded bg-white/5 border border-white/10 text-[#60a5fa]/50 focus:outline-none"
-								/>
-							</div>
-						{/* Text effects: glow, shadow, outline */}
-							<div className="flex gap-1 items-center text-[10px]">
-								<button
-									onClick={() => {
-										const cur = layer.settings?.glow;
-										updateLayer(li, { settings: { ...layer.settings, glow: cur ? undefined : "0 0 40px currentColor" } });
-									}}
-									title="Text glow — adds a colored glow around the text"
-									className={`px-1.5 py-0.5 rounded border transition-colors ${layer.settings?.glow ? "bg-amber-500/20 border-amber-500/40 text-amber-300" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
-								>
-									Glow
-								</button>
-								<button
-									onClick={() => {
-										const cur = layer.settings?.shadow;
-										updateLayer(li, { settings: { ...layer.settings, shadow: cur ? undefined : "4px 4px 0px rgba(0,0,0,0.5)" } });
-									}}
-									title="Drop shadow behind text"
-									className={`px-1.5 py-0.5 rounded border transition-colors ${layer.settings?.shadow ? "bg-sky-500/20 border-sky-500/40 text-sky-300" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
-								>
-									Shadow
-								</button>
-								<button
-									onClick={() => {
-										const cur = layer.settings?.outline;
-										updateLayer(li, { settings: { ...layer.settings, outline: cur ? undefined : "2px" } });
-									}}
-									title="Text outline / stroke"
-									className={`px-1.5 py-0.5 rounded border transition-colors ${layer.settings?.outline ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
-								>
-									Outline
-								</button>
-								<span className="text-white/10">|</span>
-								<button
-									onClick={() => updateLayer(li, { settings: { ...layer.settings, fontWeight: layer.settings?.fontWeight === "bold" ? undefined : "bold" } })}
-									title="Bold"
-									className={`w-6 h-6 rounded border flex items-center justify-center font-bold text-[11px] transition-colors ${layer.settings?.fontWeight === "bold" ? "bg-white/10 border-white/20 text-white/70" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
-								>B</button>
-								<button
-									onClick={() => updateLayer(li, { settings: { ...layer.settings, fontStyle: layer.settings?.fontStyle === "italic" ? undefined : "italic" } })}
-									title="Italic"
-									className={`w-6 h-6 rounded border flex items-center justify-center italic text-[11px] transition-colors ${layer.settings?.fontStyle === "italic" ? "bg-white/10 border-white/20 text-white/70" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
-								>I</button>
-								<button
-									onClick={() => updateLayer(li, { settings: { ...layer.settings, textDecoration: layer.settings?.textDecoration === "underline" ? undefined : "underline" } })}
-									title="Underline"
-									className={`w-6 h-6 rounded border flex items-center justify-center underline text-[11px] transition-colors ${layer.settings?.textDecoration === "underline" ? "bg-white/10 border-white/20 text-white/70" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
-								>U</button>
-								<button
-									onClick={() => updateLayer(li, { settings: { ...layer.settings, textDecoration: layer.settings?.textDecoration === "line-through" ? undefined : "line-through" } })}
-									title="Strikethrough"
-									className={`w-6 h-6 rounded border flex items-center justify-center line-through text-[11px] transition-colors ${layer.settings?.textDecoration === "line-through" ? "bg-white/10 border-white/20 text-white/70" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
-								>S</button>
-									<button
-										onClick={() => {
-											const cur = layer.settings?.spacingAfter;
-											updateLayer(li, { settings: { ...layer.settings, spacingAfter: cur !== undefined ? undefined : 40 } });
-										}}
-										title="Add extra spacing below this layer"
-										className={`w-6 h-6 rounded border flex items-center justify-center text-[11px] transition-colors ${layer.settings?.spacingAfter !== undefined ? "bg-violet-500/20 border-violet-500/40 text-violet-300" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
-									>↕</button>
-							</div>
-							{layer.settings?.spacingAfter !== undefined ? (
-								<div className="flex items-center gap-1 mt-0.5">
-									<span className="text-[9px] text-white/20 shrink-0">Spacing</span>
-									<input
-										type="range"
-										min={0}
-										max={120}
-										value={layer.settings.spacingAfter}
-										onChange={(e) => updateLayer(li, { settings: { ...layer.settings, spacingAfter: Number(e.target.value) } })}
-										className="flex-1 h-1 accent-violet-500 cursor-pointer"
-									/>
-									<span className="text-[9px] text-white/25 w-5 text-right">{layer.settings.spacingAfter}</span>
-								</div>
-							) : null}
-							</>)}
-					</div>
+									{/* Text effects: glow, shadow, outline */}
+									<div className="flex gap-1 items-center text-[10px]">
+										<button
+											onClick={() => {
+												const cur = layer.settings?.glow;
+												updateLayer(li, {
+													settings: {
+														...layer.settings,
+														glow: cur ? undefined : "0 0 40px currentColor",
+													},
+												});
+											}}
+											title="Text glow — adds a colored glow around the text"
+											className={`px-1.5 py-0.5 rounded border transition-colors ${layer.settings?.glow ? "bg-amber-500/20 border-amber-500/40 text-amber-300" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+										>
+											Glow
+										</button>
+										<button
+											onClick={() => {
+												const cur = layer.settings?.shadow;
+												updateLayer(li, {
+													settings: {
+														...layer.settings,
+														shadow: cur ? undefined : "4px 4px 0px rgba(0,0,0,0.5)",
+													},
+												});
+											}}
+											title="Drop shadow behind text"
+											className={`px-1.5 py-0.5 rounded border transition-colors ${layer.settings?.shadow ? "bg-sky-500/20 border-sky-500/40 text-sky-300" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+										>
+											Shadow
+										</button>
+										<button
+											onClick={() => {
+												const cur = layer.settings?.outline;
+												updateLayer(li, {
+													settings: { ...layer.settings, outline: cur ? undefined : "2px" },
+												});
+											}}
+											title="Text outline / stroke"
+											className={`px-1.5 py-0.5 rounded border transition-colors ${layer.settings?.outline ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+										>
+											Outline
+										</button>
+										<span className="text-white/10">|</span>
+										<button
+											onClick={() =>
+												updateLayer(li, {
+													settings: {
+														...layer.settings,
+														fontWeight: layer.settings?.fontWeight === "bold" ? undefined : "bold",
+													},
+												})
+											}
+											title="Bold"
+											className={`w-6 h-6 rounded border flex items-center justify-center font-bold text-[11px] transition-colors ${layer.settings?.fontWeight === "bold" ? "bg-white/10 border-white/20 text-white/70" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+										>
+											B
+										</button>
+										<button
+											onClick={() =>
+												updateLayer(li, {
+													settings: {
+														...layer.settings,
+														fontStyle:
+															layer.settings?.fontStyle === "italic" ? undefined : "italic",
+													},
+												})
+											}
+											title="Italic"
+											className={`w-6 h-6 rounded border flex items-center justify-center italic text-[11px] transition-colors ${layer.settings?.fontStyle === "italic" ? "bg-white/10 border-white/20 text-white/70" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+										>
+											I
+										</button>
+										<button
+											onClick={() =>
+												updateLayer(li, {
+													settings: {
+														...layer.settings,
+														textDecoration:
+															layer.settings?.textDecoration === "underline"
+																? undefined
+																: "underline",
+													},
+												})
+											}
+											title="Underline"
+											className={`w-6 h-6 rounded border flex items-center justify-center underline text-[11px] transition-colors ${layer.settings?.textDecoration === "underline" ? "bg-white/10 border-white/20 text-white/70" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+										>
+											U
+										</button>
+										<button
+											onClick={() =>
+												updateLayer(li, {
+													settings: {
+														...layer.settings,
+														textDecoration:
+															layer.settings?.textDecoration === "line-through"
+																? undefined
+																: "line-through",
+													},
+												})
+											}
+											title="Strikethrough"
+											className={`w-6 h-6 rounded border flex items-center justify-center line-through text-[11px] transition-colors ${layer.settings?.textDecoration === "line-through" ? "bg-white/10 border-white/20 text-white/70" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+										>
+											S
+										</button>
+										<button
+											onClick={() => {
+												const cur = layer.settings?.spacingAfter;
+												updateLayer(li, {
+													settings: {
+														...layer.settings,
+														spacingAfter: cur !== undefined ? undefined : 40,
+													},
+												});
+											}}
+											title="Add extra spacing below this layer"
+											className={`w-6 h-6 rounded border flex items-center justify-center text-[11px] transition-colors ${layer.settings?.spacingAfter !== undefined ? "bg-violet-500/20 border-violet-500/40 text-violet-300" : "bg-white/[0.03] border-white/5 text-white/25 hover:text-white/40"}`}
+										>
+											↕
+										</button>
+									</div>
+									{layer.settings?.spacingAfter !== undefined ? (
+										<div className="flex items-center gap-1 mt-0.5">
+											<span className="text-[9px] text-white/20 shrink-0">Spacing</span>
+											<input
+												type="range"
+												min={0}
+												max={120}
+												value={layer.settings.spacingAfter}
+												onChange={(e) =>
+													updateLayer(li, {
+														settings: { ...layer.settings, spacingAfter: Number(e.target.value) },
+													})
+												}
+												className="flex-1 h-1 accent-violet-500 cursor-pointer"
+											/>
+											<span className="text-[9px] text-white/25 w-5 text-right">
+												{layer.settings.spacingAfter}
+											</span>
+										</div>
+									) : null}
+								</>
+							)}
+						</div>
 					</div>
 				);
 			})}

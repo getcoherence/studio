@@ -29,9 +29,9 @@ interface ProAuthConfig {
 
 const DEFAULT_CONFIG: ProAuthConfig = {
 	baseUrl: "https://app.getcoherence.io",
-	authUrl: "https://app.getcoherence.io/auth/lucid",
-	subscriptionUrl: "https://app.getcoherence.io/api/lucid/subscription",
-	bundleUrl: "https://app.getcoherence.io/api/lucid/pro-bundle.js",
+	authUrl: "https://app.getcoherence.io/login?redirect=lucid-desktop",
+	subscriptionUrl: "https://app.getcoherence.io/api/v1/auth/lucid/subscription",
+	bundleUrl: "https://app.getcoherence.io/api/v1/auth/lucid/pro-bundle.js",
 	tokenKey: "lucid-pro-token",
 	providerName: "Coherence",
 };
@@ -122,8 +122,9 @@ export async function authenticatePro(): Promise<{ success: boolean; error?: str
 		const left = Math.round((window.screen.width - width) / 2);
 		const top = Math.round((window.screen.height - height) / 2);
 
+		const separator = config.authUrl.includes("?") ? "&" : "?";
 		const popup = window.open(
-			`${config.authUrl}?redirect=lucid-desktop&t=${Date.now()}`,
+			`${config.authUrl}${separator}t=${Date.now()}`,
 			"coherence-login",
 			`width=${width},height=${height},left=${left},top=${top}`,
 		);
