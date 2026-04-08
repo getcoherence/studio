@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AISettingsButton } from "@/components/ui/AISettingsDialog";
-import { ADVANCED_MODES, PRIMARY_MODES, type DemoModeId } from "@/lib/ai/demoModes";
+import { ADVANCED_MODES, type DemoModeId, PRIMARY_MODES } from "@/lib/ai/demoModes";
 import { AI_PROVIDERS, type AIProvider, type AIServiceConfig } from "@/lib/ai/types";
 import { getPromptHistory, type PromptHistoryEntry } from "./promptHistory";
 import type { DemoAgentStatus, DemoChatMessage, DemoConfig, OutputStyle } from "./types";
@@ -304,7 +304,14 @@ export function DemoChatPanel({
 
 		setInput("");
 		setShowHistory(false);
-		onStart({ url, prompt: finalPrompt, maxSteps, mode: selectedMode, outputStyle, includeVideoClips });
+		onStart({
+			url,
+			prompt: finalPrompt,
+			maxSteps,
+			mode: selectedMode,
+			outputStyle,
+			includeVideoClips,
+		});
 	}
 
 	function handleHistorySelect(entry: PromptHistoryEntry) {
@@ -358,7 +365,10 @@ export function DemoChatPanel({
 						{/* Video type selector */}
 						<div className="mb-2">
 							<div className="text-[10px] text-white/25 mb-1">Video Type</div>
-							<div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+							<div
+								className="grid gap-1.5"
+								style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
+							>
 								{PRIMARY_MODES.map((mode) => (
 									<button
 										key={mode.id}
@@ -373,7 +383,11 @@ export function DemoChatPanel({
 										<span className="text-[14px] shrink-0">{mode.icon}</span>
 										<div className="min-w-0">
 											<div className="font-medium truncate">{mode.name}</div>
-											<div className={`text-[9px] truncate ${selectedMode === mode.id ? "text-[#60a5fa]/60" : "text-white/25"}`}>{mode.description}</div>
+											<div
+												className={`text-[9px] truncate ${selectedMode === mode.id ? "text-[#60a5fa]/60" : "text-white/25"}`}
+											>
+												{mode.description}
+											</div>
 										</div>
 									</button>
 								))}
@@ -390,11 +404,17 @@ export function DemoChatPanel({
 								{showAdvancedModes ? "▾ Less" : "▸ More types..."}
 							</button>
 							{showAdvancedModes && (
-								<div className="grid gap-1.5 mt-1" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
+								<div
+									className="grid gap-1.5 mt-1"
+									style={{ gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}
+								>
 									{ADVANCED_MODES.map((mode) => (
 										<button
 											key={mode.id}
-											onClick={() => { setSelectedMode(mode.id); setShowAdvancedModes(false); }}
+											onClick={() => {
+												setSelectedMode(mode.id);
+												setShowAdvancedModes(false);
+											}}
 											className={`flex items-center gap-1 px-2 py-1.5 rounded-md border text-[10px] transition-colors ${
 												selectedMode === mode.id
 													? "border-[#2563eb]/50 bg-[#2563eb]/10 text-[#60a5fa]"
@@ -425,7 +445,9 @@ export function DemoChatPanel({
 								<span>AI Video Scenes</span>
 							</button>
 							{includeVideoClips && (
-								<span className="text-[9px] text-violet-300/40">1-3 scenes will use AI-generated cinematic footage</span>
+								<span className="text-[9px] text-violet-300/40">
+									1-3 scenes will use AI-generated cinematic footage
+								</span>
 							)}
 						</div>
 
