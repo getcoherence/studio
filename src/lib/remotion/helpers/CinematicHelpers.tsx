@@ -3323,47 +3323,46 @@ export const ChatMessageFlow: React.FC<{
 // ── BackgroundVideo ────────────────────────────────────────────────────
 
 /**
- * Simple background video for AI-generated clips. Uses Remotion's Video
- * for frame-accurate scrubbing, but renders as a plain <img> poster frame
- * when Remotion's seeking causes issues.
- *
- * Strategy: render the video with a large acceptable time shift so Remotion
- * doesn't re-seek constantly, and let the browser handle smooth playback.
- */
-/**
  * Background video for AI-generated clips. Uses a plain <video> element
- * that plays naturally during playback and seeks during scrubbing.
- * Includes built-in error fallback (shows nothing on error).
+ * that plays from mount and only seeks when scrubbing (large frame jumps).
+ * Does NOT try to sync every frame — lets the browser play naturally.
  */
 export const BackgroundVideo: React.FC<{
 	src: string;
-	fallbackBg?: string;
 	onError?: () => void;
 }> = ({ src, onError }) => {
 	const videoRef = React.useRef<HTMLVideoElement>(null);
-	const lastFrameRef = React.useRef(-1);
+	const playingRef = React.useRef(false);
 	const [hasError, setHasError] = React.useState(false);
 	const frame = useCurrentFrame();
 	const { fps } = useVideoConfig();
 
-	const delta = frame - lastFrameRef.current;
-	const isPlaying = delta === 1;
-	lastFrameRef.current = frame;
-
+	// Start playing on mount, seek only on large jumps (scrubbing)
 	React.useEffect(() => {
 		const video = videoRef.current;
 		if (!video || hasError) return;
+		const targetTime = frame / fps;
 
-		if (frame === 0) {
+		if (!playingRef.current) {
+			// First mount — start from beginning
 			video.currentTime = 0;
-			video.play().catch(() => {});
-		} else if (!isPlaying) {
-			video.pause();
-			video.currentTime = frame / fps;
-		} else if (video.paused) {
-			video.play().catch(() => {});
+			video.play().then(() => { playingRef.current = true; }).catch(() => {});
+			return;
+		}
+
+		// Only seek if the video drifts more than 1.5s from where it should be
+		// This handles scrubbing/jumping without interfering with smooth playback
+		const drift = Math.abs(video.currentTime - targetTime);
+		if (drift > 1.5) {
+			video.currentTime = targetTime;
+			if (video.paused) video.play().catch(() => {});
 		}
 	});
+
+	// Reset when sequence restarts
+	React.useEffect(() => {
+		return () => { playingRef.current = false; };
+	}, []);
 
 	if (hasError) return null;
 
@@ -3373,7 +3372,6 @@ export const BackgroundVideo: React.FC<{
 			src={src}
 			muted
 			playsInline
-			loop
 			onError={() => { setHasError(true); onError?.(); }}
 			style={{
 				position: "absolute",
