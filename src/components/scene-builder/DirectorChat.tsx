@@ -30,7 +30,11 @@ export function DirectorChat({ scenePlan, onPlanUpdate, onMessagesChange }: Dire
 	});
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
-	const [selectedModel, setSelectedModel] = useState("");
+	const [selectedModel, _setSelectedModel] = useState(() => (scenePlan as any)?.directorModel || "");
+	const setSelectedModel = useCallback((model: string) => {
+		_setSelectedModel(model);
+		if (scenePlan) (scenePlan as any).directorModel = model;
+	}, [scenePlan]);
 	const [attachedImage, setAttachedImage] = useState<string | null>(null);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);

@@ -57,6 +57,8 @@ export async function generateAiComposition(
 			features?: string[];
 			fullText?: string;
 		};
+		/** When true, generate AI video clips for hero scenes */
+		includeVideoClips?: boolean;
 	},
 ): Promise<AiCompositionResult> {
 	const stepsWithScreenshots = steps.filter((s) => s.screenshotDataUrl);
@@ -82,6 +84,7 @@ export async function generateAiComposition(
 				userBrief: opts?.userBrief,
 				websiteUrl: opts?.websiteUrl,
 				landingPageContent: opts?.landingPageContent,
+				includeVideoClips: opts?.includeVideoClips,
 			});
 
 			if (planResult.plan) {
@@ -113,6 +116,65 @@ export async function generateAiComposition(
 
 				opts?.onStatus?.("Creative director reviewing the story arc...");
 				const reviewedPlan = await reviewScenePlan(planResult.plan, opts?.onStatus);
+				// ── AI Video Clip Generation (Phase 3: Hybrid) ──
+				// If any scenes have videoPrompt, generate video clips via MiniMax
+				// and set videoClipPath so the compiler renders <Video> elements.
+				const allVideoScenes = reviewedPlan.scenes
+					.map((s, i) => ({ scene: s, index: i }))
+					.filter(({ scene }) => scene.videoPrompt);
+				// Cap at 3 video clips max to control cost and generation time
+				const videoScenes = allVideoScenes.slice(0, 3);
+				// Clear videoPrompt on excess scenes so they render as motion graphics
+				for (const { scene } of allVideoScenes.slice(3)) {
+					scene.videoPrompt = undefined;
+				}
+
+				if (videoScenes.length > 0 && window.electronAPI?.aiGenerateVideoBatch) {
+					opts?.onStatus?.(
+						`Generating ${videoScenes.length} AI video clip${videoScenes.length > 1 ? "s" : ""}... this may take a few minutes`,
+					);
+					try {
+						const clips = videoScenes.map(({ scene, index }) => ({
+							prompt: scene.videoPrompt!,
+							sceneIndex: index,
+							durationSec: 6, // MiniMax supports 6s or 10s only
+						}));
+						const results = await window.electronAPI.aiGenerateVideoBatch(clips);
+						for (const { sceneIndex, result } of results) {
+							if (result.success && result.videoPath) {
+								// Convert local file to blob URL so Remotion can seek through it
+								// (Remotion needs seekable media — custom protocols don't support range requests)
+								try {
+									const fileResult = await window.electronAPI.readBinaryFile(result.videoPath);
+									if (fileResult?.success && fileResult.data) {
+										const blob = new Blob([new Uint8Array(fileResult.data)], { type: "video/mp4" });
+										const blobUrl = URL.createObjectURL(blob);
+										reviewedPlan.scenes[sceneIndex].videoClipPath = blobUrl;
+									} else {
+										// Fallback to lucid:// protocol
+										reviewedPlan.scenes[sceneIndex].videoClipPath = result.videoPath;
+									}
+								} catch {
+									reviewedPlan.scenes[sceneIndex].videoClipPath = result.videoPath;
+								}
+								// Ensure scene duration matches video clip (6s = 180 frames)
+								reviewedPlan.scenes[sceneIndex].durationFrames = 180;
+								console.log(`[AI] Video clip ready for scene ${sceneIndex}: ${result.videoPath}`);
+							} else {
+								console.warn(`[AI] Video clip failed for scene ${sceneIndex}: ${result.error}`);
+								// Clear the prompt so compiler falls back to motion graphics
+								reviewedPlan.scenes[sceneIndex].videoPrompt = undefined;
+							}
+						}
+					} catch (err) {
+						console.warn("[AI] Video batch generation failed, falling back to motion graphics:", err);
+						// Clear all video prompts so compiler uses normal rendering
+						for (const { scene } of videoScenes) {
+							scene.videoPrompt = undefined;
+						}
+					}
+				}
+
 				opts?.onStatus?.("Compiling scene plan to video code...");
 				normalizePlan(reviewedPlan);
 				const code = compileScenePlan(reviewedPlan);
@@ -1024,6 +1086,27 @@ function extractCode(response: string): string | null {
 function normalizePlan(plan: ScenePlan): void {
 	const accent = plan.accentColor || "#2563eb";
 	for (const scene of plan.scenes) {
+		// Ensure video clip scenes are long enough for the clip (6s = 180 frames)
+		if (scene.videoClipPath && (!scene.durationFrames || scene.durationFrames < 180)) {
+			scene.durationFrames = 180;
+		}
+		// Stamp plan-level assets onto CTA scenes so expandSceneToLayers can create logo/URL layers
+		if (scene.type === "cta") {
+			(scene as any)._logoUrl = (scene as any)._logoUrl || plan.logoUrl || null;
+			(scene as any)._websiteUrl = (scene as any)._websiteUrl || plan.websiteUrl || null;
+			// Backfill CTA layers only if pill doesn't exist (first time through new system)
+			if (scene.layers && scene.layers.length > 0 && !scene.layers.some((l) => l.id === "cta-pill")) {
+				const logoSrc = (scene as any)._logoUrl;
+				const urlText = (scene as any)._websiteUrl || plan.websiteUrl;
+				if (logoSrc) {
+					scene.layers.push({ id: "cta-logo", type: "image", content: logoSrc, position: "center", size: 20, startFrame: 0, endFrame: -1, settings: { fontSize: 60 } });
+				}
+				scene.layers.push({ id: "cta-pill", type: "button" as any, content: "Get Started", position: "center", size: 30, startFrame: 15, endFrame: -1, settings: { fontSize: 26 } });
+				if (urlText) {
+					scene.layers.push({ id: "cta-url", type: "text", content: urlText, position: "center", size: 30, startFrame: 10, endFrame: -1, settings: { fontSize: 24, color: "rgba(255,255,255,0.4)", animation: "none" } });
+				}
+			}
+		}
 		if (!scene.layers || scene.layers.length === 0) {
 			scene.layers = expandSceneToLayers(scene, accent);
 		}

@@ -165,6 +165,32 @@ const REGISTRY: Partial<Record<SceneType, SceneTypeConfig>> = {
 					}
 				: {},
 	},
+	"contrast-pairs": {
+		readsHeadline: false,
+		readsSubtitle: false,
+		mappings: [
+			{
+				kind: "paired-array",
+				field: "contrastPairs",
+				prefixes: ["contrast-stmt-", "contrast-ctr-"],
+				fromLayers: (stmt: any, ctr: any, existing: any) => ({
+					...existing,
+					statement: stmt?.content || "",
+					counter: ctr?.content || "",
+				}),
+				defaultEntry: () => ({ statement: "", counter: "" }),
+			},
+		],
+		seedDefaults: (cur, seed) =>
+			!cur.contrastPairs?.length
+				? {
+						contrastPairs: [
+							{ statement: seed, counter: "but not quite." },
+							{ statement: "You might think so…", counter: "but there's more." },
+						],
+					}
+				: {},
+	},
 	"before-after": {
 		readsHeadline: true,
 		readsSubtitle: false,
@@ -711,11 +737,14 @@ export function pruneLayersForType(
 	const freshForType = expandSceneToLayers(scene, accent);
 	const validIds = new Set(freshForType.map((l) => l.id));
 
-	const prunedLayers = layers.filter((l) => {
-		if (USER_PREFIXES.some((p) => l.id.startsWith(p))) return true;
-		if (validIds.has(l.id)) return true;
-		if (!isPrimaryLayer(l.id)) return true;
-		return false;
+	// Mark incompatible layers instead of removing them — this lets users
+	// switch back to the original type without losing layers.
+	const prunedLayers = layers.map((l) => {
+		const isUser = USER_PREFIXES.some((p) => l.id.startsWith(p));
+		const isValid = validIds.has(l.id);
+		const isNonPrimary = !isPrimaryLayer(l.id);
+		const compatible = isUser || isValid || isNonPrimary;
+		return compatible ? { ...l, _incompatible: undefined } : { ...l, _incompatible: true };
 	});
 
 	// Clear data fields for types we don't own
@@ -732,6 +761,7 @@ export function pruneLayersForType(
 		"ghostWords",
 		"cameraTextWords",
 		"stackedLines",
+		"contrastPairs",
 		"networkNodes",
 		"metrics",
 		"iconItems",

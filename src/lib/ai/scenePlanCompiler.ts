@@ -17,26 +17,26 @@ import {
 // Minimum durations per scene type — scenes shorter than this don't give the viewer
 // enough time to read the content (ghost-hook and stacked-hierarchy especially).
 const MIN_DURATION_BY_TYPE: Record<string, number> = {
-	"ghost-hook": 70,
-	"stacked-hierarchy": 80,
-	"scrolling-list": 110,
-	"camera-text": 90,
-	"before-after": 110,
-	"metrics-dashboard": 100,
-	"dashboard-deconstructed": 100,
-	"data-flow-network": 100,
-	"icon-showcase": 80,
-	"chat-narrative": 100,
-	"notification-chaos": 80,
-	"browser-tabs-chaos": 80,
-	"typewriter-prompt": 80,
-	"word-slot-machine": 100,
-	"radial-vortex": 70,
-	"glass-stats": 100,
-	"device-showcase": 90,
-	"cinematic-title": 70,
-	"countdown": 110,
-	cards: 100,
+	"ghost-hook": 85,
+	"stacked-hierarchy": 95,
+	"scrolling-list": 120,
+	"camera-text": 100,
+	"before-after": 120,
+	"metrics-dashboard": 110,
+	"dashboard-deconstructed": 110,
+	"data-flow-network": 110,
+	"icon-showcase": 95,
+	"chat-narrative": 110,
+	"notification-chaos": 90,
+	"browser-tabs-chaos": 90,
+	"typewriter-prompt": 90,
+	"word-slot-machine": 110,
+	"radial-vortex": 85,
+	"glass-stats": 110,
+	"device-showcase": 100,
+	"cinematic-title": 85,
+	"countdown": 120,
+	cards: 110,
 };
 
 /** Get the effective duration for a scene. When the user has explicitly set
@@ -46,7 +46,7 @@ export function clampDuration(scene: ScenePlanItem): number {
 	const raw = scene.durationFrames || 60;
 	// If user explicitly set a value, respect it (allow as low as 10 frames)
 	if (scene.durationFrames) return Math.max(10, raw);
-	const min = MIN_DURATION_BY_TYPE[scene.type] || 50;
+	const min = MIN_DURATION_BY_TYPE[scene.type] || 80;
 	return Math.max(min, raw);
 }
 
@@ -124,7 +124,7 @@ const VideoComposition = ({ screenshots }) => {
 		);
 		// Add transition after every scene except the last
 		if (i < scenes.length - 1) {
-			elements.push(buildTransition(scene, scenes[i + 1], i));
+			elements.push(buildTransition(scene, scenes[i + 1], i, accent));
 		}
 	});
 
@@ -148,6 +148,7 @@ function buildTransition(
 	fromScene: ScenePlanItem,
 	toScene: ScenePlanItem,
 	sceneIndex: number,
+	accent?: string,
 ): string {
 	// Use explicit transitionOut if specified, otherwise pick a smart default
 	// that varies based on scene index and type so we get visual variety.
@@ -159,7 +160,8 @@ function buildTransition(
 		return `    <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 1 })} />`;
 	}
 
-	const presentation = getTransitionPresentation(type);
+	const transColor = fromScene.transitionColor || accent;
+	const presentation = getTransitionPresentation(type, transColor);
 	const SPRING_TRANSITIONS = new Set(["zoom-morph", "zoom-punch"]);
 	const timing = SPRING_TRANSITIONS.has(type)
 		? `springTiming({ config: { damping: 20, stiffness: 90, mass: 1 }, durationInFrames: ${duration} })`
@@ -213,7 +215,7 @@ function pickSmartTransition(
 	return rotation[index % rotation.length];
 }
 
-function getTransitionPresentation(type: string): string {
+function getTransitionPresentation(type: string, accent?: string): string {
 	switch (type) {
 		case "fade":
 			return "fade()";
@@ -236,15 +238,15 @@ function getTransitionPresentation(type: string): string {
 		case "zoom-morph":
 			return "zoomMorph()";
 		case "striped-slam":
-			return "stripedSlam()";
+			return accent ? `stripedSlam(8, ["#0a0a0a", "${accent}"])` : "stripedSlam()";
 		case "zoom-punch":
 			return "zoomPunch()";
 		case "diagonal-reveal":
-			return "diagonalReveal()";
+			return accent ? `diagonalReveal("${accent}")` : "diagonalReveal()";
 		case "color-burst":
-			return "colorBurst()";
+			return accent ? `colorBurst("${accent}")` : "colorBurst()";
 		case "vertical-shutter":
-			return "verticalShutter()";
+			return accent ? `verticalShutter(7, ["#0a0a0a", "${accent}"])` : "verticalShutter()";
 		case "glitch-slam":
 			return "glitchSlam()";
 		default:
@@ -255,32 +257,32 @@ function getTransitionPresentation(type: string): string {
 function getTransitionDuration(type: string): number {
 	switch (type) {
 		case "zoom-morph":
-			return 16; // zoom morphs need more time to feel cinematic
+			return 25; // zoom morphs need more time to feel cinematic
 		case "wipe-left":
 		case "wipe-right":
 		case "wipe-up":
 		case "wipe-down":
-			return 12;
+			return 22;
 		case "slide-left":
 		case "slide-right":
 		case "slide-up":
 		case "slide-down":
-			return 10;
+			return 20;
 		case "striped-slam":
 			return 50; // needs time for slam + retract
 		case "vertical-shutter":
-			return 35;
+			return 40;
 		case "diagonal-reveal":
 		case "color-burst":
-			return 40;
+			return 45;
 		case "zoom-punch":
-			return 35;
+			return 40;
 		case "glitch-slam":
-			return 30;
+			return 35;
 		case "fade":
-			return 8;
+			return 15;
 		default:
-			return 8;
+			return 15;
 	}
 }
 
@@ -304,6 +306,7 @@ function defaultBackgroundEffect(sceneType: string): string {
 			return "none"; // already has its own GradientMesh — don't double up
 		case "impact-word":
 		case "stacked-hierarchy":
+		case "contrast-pairs":
 			return "grain";
 		case "echo-hero":
 			return "spotlight";
@@ -344,6 +347,31 @@ function renderSceneByType(
 	logoUrl?: string | null,
 	websiteUrl?: string | null,
 ): string {
+	// ── AI Video Clip scenes ──
+	// If this scene has a generated video clip, render it as a full-bleed <Video>
+	// with optional text overlay on top.
+	if (scene.videoClipPath) {
+		// blob: URLs are already seekable by Remotion; lucid:// for fallback
+		const fileUrl = scene.videoClipPath.startsWith("blob:") || scene.videoClipPath.startsWith("http")
+			? scene.videoClipPath
+			: scene.videoClipPath.startsWith("lucid://")
+				? scene.videoClipPath
+				: `lucid://file/${scene.videoClipPath.replace(/\\/g, "/")}`;
+		const videoSrc = JSON.stringify(fileUrl);
+		const overlayText = scene.videoOverlayText !== false && scene.headline;
+		const textColor = resolveTextColor(scene);
+		const fontSize = scene.fontSize || 80;
+		const animation = scene.animation || "blur-in";
+		return `<AbsoluteFill>
+        <BackgroundVideo src={${videoSrc}} />
+        ${overlayText ? `<AbsoluteFill style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.25)' }}>
+          <AnimatedText text={${JSON.stringify(scene.headline)}} fontSize={${fontSize}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="${animation}" />
+          ${scene.subtitle ? `<div style={{ marginTop: 16 }}><AnimatedText text={${JSON.stringify(scene.subtitle)}} fontSize={36} color="${textColor}90" fontFamily="'Inter', sans-serif" animation="words" delay={8} /></div>` : ""}
+        </AbsoluteFill>` : ""}
+        <Vignette intensity={0.25} />
+      </AbsoluteFill>`;
+	}
+
 	let raw = renderSceneByTypeInner(scene, accent, bg, logoUrl, websiteUrl);
 	// Inject background effect props into the first <Scene bg="..."> tag
 	const effect = scene.backgroundEffect || defaultBackgroundEffect(scene.type);
@@ -483,42 +511,6 @@ function wrapSceneContentInPositioner(raw: string, position: SceneLayer["positio
 
 // ── Extra-layer rendering ──────────────────────────────────────────────
 //
-// User-added layers (those added via the Scene panel's "+ Add" button) have
-// ids like `layer-123` or `l-123`, not the `headline-` / `subtitle-` / `card-`
-// / `fx-` / `screenshot-` / `cta-pill` prefixes that expandSceneToLayers
-// produces. Those "extra" layers aren't referenced by any scene field, so the
-// rich scene renderers don't know about them. This helper renders them as
-// absolutely-positioned overlay elements inside the parent <Scene>.
-
-const PRIMARY_LAYER_PREFIXES = [
-	"headline-",
-	"subtitle-",
-	"card-",
-	"screenshot-",
-	"fx-",
-	"before-",
-	"after-",
-	"camera-word-",
-	"ghost-word-",
-	"stacked-line-",
-	"network-node-",
-	"metric-value-",
-	"metric-label-",
-	"icon-item-",
-	"slot-word-",
-	"scroll-line-",
-	"notif-",
-	"chat-msg-",
-	"browser-tab-",
-	"app-icon-",
-];
-const PRIMARY_LAYER_IDS = new Set(["cta-pill", "slot-prefix", "typewriter-text", "chat-channel"]);
-
-function isPrimaryLayer(layer: SceneLayer): boolean {
-	if (PRIMARY_LAYER_IDS.has(layer.id)) return true;
-	return PRIMARY_LAYER_PREFIXES.some((p) => layer.id.startsWith(p));
-}
-
 function positionStyleFor(position: SceneLayer["position"]): string {
 	switch (position) {
 		case "top":
@@ -542,22 +534,14 @@ function positionStyleFor(position: SceneLayer["position"]): string {
 	}
 }
 
+// Renders ONLY user-added overlay layers (l- prefix). All primary/scene-type
+// layers are now handled by their respective layer-unified renderers.
 function renderExtraLayers(scene: ScenePlanItem, accent: string): string {
 	const layers = scene.layers || [];
 	const extras = layers.filter((l) => {
-		if (isPrimaryLayer(l)) return false;
-		// Safety net: skip stale "headline echo" layers — non-primary layers
-		// whose content matches scene.headline on scene types that don't render
-		// the headline. These are ghost remnants from older expansion logic or
-		// default-fallback layers that survived migration.
-		if (
-			SCENE_TYPES_WITHOUT_HEADLINE.has(scene.type) &&
-			l.type === "text" &&
-			l.content === scene.headline
-		) {
-			return false;
-		}
-		return true;
+		if (l._incompatible) return false;
+		// Only render user-added layers — everything else is handled by renderers
+		return l.id.startsWith("l-") || l.id.startsWith("layer-");
 	});
 	if (extras.length === 0) return "";
 
@@ -671,6 +655,8 @@ function renderSceneByTypeInner(
 			return renderProductGlow(scene, accent, bg);
 		case "stacked-hierarchy":
 			return renderStackedHierarchy(scene, accent, bg);
+		case "contrast-pairs":
+			return renderContrastPairs(scene, accent, bg);
 		case "radial-vortex":
 			return renderRadialVortex(scene, accent, bg);
 		case "outline-hero":
@@ -712,6 +698,7 @@ function renderSceneByTypeInner(
 
 // ── Phase 3: Cinematic scene renderers ──────────────────────────────────
 
+// [LAYER-UNIFIED]
 function renderDeviceShowcase(
 	scene: ScenePlanItem,
 	accent: string,
@@ -719,7 +706,8 @@ function renderDeviceShowcase(
 ): string {
 	const screenshotIndex = scene.screenshotIndex ?? 0;
 	const device = scene.variant === "phone" ? "phone" : "laptop";
-	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
+	const hl = resolveHeadline(scene);
+	const headline = hl ? JSON.stringify(hl) : null;
 	const textColor = resolveTextColor(scene);
 	const pal = accentPalette(accent);
 	const ssLayer = scene.layers?.find((l) => l.id.startsWith("screenshot-"));
@@ -728,7 +716,7 @@ function renderDeviceShowcase(
 	const srcExpr = isRef ? `{${ssContent}}` : `{${JSON.stringify(ssContent)}}`;
 	return `<Scene bg="${bg}">
         <FloatingOrbs colors={["${accent}", "${pal.w}"]} count={3} opacity={0.15} blurAmount={140} />
-        ${headline ? `<div style={{ marginBottom: 48 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="${scene.animation || "blur-in"}" /></div>` : ""}
+        ${headline ? `<div style={{ marginBottom: 48 }}><AnimatedText text={${headline}} fontSize={${resolveHeadlineFontSize(scene, 80)}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="${resolveHeadlineAnimation(scene, "blur-in")}" /></div>` : ""}
         <DeviceMockup device="${device}" tilt={-4}>
           <Img src=${srcExpr} style={{ width: '100%', height: 'auto', display: 'block' }} />
         </DeviceMockup>
@@ -736,25 +724,22 @@ function renderDeviceShowcase(
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderGlassStats(
 	scene: ScenePlanItem,
 	accent: string,
 	bg: string,
 ): string {
-	const metrics = scene.metrics || [
-		{ value: 10, label: "Times faster", suffix: "x" },
-		{ value: 99, label: "Uptime", suffix: "%" },
-		{ value: 500, label: "Users", prefix: "", suffix: "+" },
-	];
-	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
+	const metrics = metricsData(scene);
+	const hl = resolveHeadline(scene);
+	const headline = hl ? JSON.stringify(hl) : null;
 	const textColor = resolveTextColor(scene);
 	const pal = accentPalette(accent);
-	const metricsJson = JSON.stringify(metrics);
 	return `<Scene bg="${bg}">
         <FloatingOrbs colors={["${accent}", "${pal.w}", "${pal.k}"]} count={4} opacity={0.2} blurAmount={120} />
-        ${headline ? `<div style={{ marginBottom: 40 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 72}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="words" /></div>` : ""}
-        <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
-          {${metricsJson}.map((m, i) => (
+        ${headline ? `<div style={{ marginBottom: 40 }}><AnimatedText text={${headline}} fontSize={${resolveHeadlineFontSize(scene, 72)}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="words" /></div>` : ""}
+        <div style={{ display: 'flex', gap: ${scene.layerGap ?? 24}, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {${JSON.stringify(metrics)}.map((m, i) => (
             <GlassCard key={i} width={320} padding={32} borderRadius={20}>
               <div style={{ textAlign: 'center' }}>
                 <MetricCounter value={m.value} prefix={m.prefix || ""} suffix={m.suffix || ""} fontSize={64} color="${textColor}" delay={i * 8} />
@@ -766,28 +751,31 @@ function renderGlassStats(
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderCinematicTitle(
 	scene: ScenePlanItem,
 	accent: string,
 	bg: string,
 ): string {
-	const headline = JSON.stringify(scene.headline || "Cinematic.");
+	const headline = JSON.stringify(resolveHeadline(scene, "Cinematic."));
 	const textColor = resolveTextColor(scene);
 	const pal = accentPalette(accent);
 	const effect = scene.backgroundEffect || "sakura";
+	const sub = resolveSubtitle(scene);
 	return `<Scene bg="${bg}" bgEffect="${effect}" bgEffectColors={["${accent}","${pal.w}","${pal.k}"]} bgEffectIntensity={${scene.backgroundEffectIntensity ?? 0.8}}>
-        <AnimatedText text={${headline}} fontSize={${scene.fontSize || 200}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="${scene.animation || "gradient"}" gradientColors={["${accent}","${pal.w}","${pal.k}"]} />
-        ${scene.subtitle ? `<div style={{ marginTop: 20 }}><AnimatedText text={${JSON.stringify(scene.subtitle)}} fontSize={36} color="${textColor}80" fontFamily="'Inter', sans-serif" animation="words" delay={12} /></div>` : ""}
+        <AnimatedText text={${headline}} fontSize={${resolveHeadlineFontSize(scene, 200)}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="${resolveHeadlineAnimation(scene, "gradient")}" gradientColors={["${accent}","${pal.w}","${pal.k}"]} />
+        ${sub ? `<div style={{ marginTop: 20 }}><AnimatedText text={${JSON.stringify(sub)}} fontSize={36} color="${textColor}80" fontFamily="'Inter', sans-serif" animation="words" delay={12} /></div>` : ""}
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderCountdown(
 	scene: ScenePlanItem,
 	accent: string,
 	bg: string,
 ): string {
 	const targetValue = scene.countdownTarget ?? 1000;
-	const label = JSON.stringify(scene.headline || "milestone reached");
+	const label = JSON.stringify(resolveHeadline(scene, "milestone reached"));
 	const pal = accentPalette(accent);
 	return `<Scene bg="${bg}">
         {React.createElement(() => {
@@ -800,7 +788,7 @@ function renderCountdown(
           const current = Math.floor(eased * ${targetValue});
           const done = frame >= countDur;
           return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: ${scene.layerGap ?? 16} }}>
               <div style={{
                 fontSize: 180, fontWeight: 900, fontFamily: "'Inter', sans-serif",
                 color: done ? '${accent}' : '#ffffff',
@@ -827,34 +815,114 @@ function renderCTA(
 	logoUrl?: string | null,
 	websiteUrl?: string | null,
 ): string {
-	const headline = JSON.stringify(scene.headline || "Get Started");
-	const subtitle = scene.subtitle ? JSON.stringify(scene.subtitle) : null;
-	const fontSize = scene.fontSize || 120;
+	const variant = scene.variant || "centered";
+	switch (variant) {
+		case "split-logo":
+			return renderCtaSplitLogo(scene, accent, bg, logoUrl, websiteUrl);
+		case "gradient-bar":
+			return renderCtaGradientBar(scene, accent, bg, logoUrl, websiteUrl);
+		case "minimal":
+			return renderCtaMinimal(scene, accent, bg, websiteUrl);
+		default:
+			return renderCtaCentered(scene, accent, bg, logoUrl, websiteUrl);
+	}
+}
+
+/** Shared CTA helpers */
+// [LAYER-UNIFIED]
+function ctaShared(scene: ScenePlanItem, accent: string, logoUrl?: string | null, websiteUrl?: string | null) {
+	const headline = JSON.stringify(resolveHeadline(scene, "Get Started"));
+	const sub = resolveSubtitle(scene);
+	const subtitle = sub ? JSON.stringify(sub) : null;
+	const fontSize = resolveHeadlineFontSize(scene, 120);
 	const textColor = resolveTextColor(scene);
 	const dimColor = isLightBg(scene.background) ? "rgba(26,26,26,0.4)" : "rgba(255,255,255,0.4)";
 	const pal = accentPalette(accent);
-	// Use subtitle as URL display if it looks like a domain, otherwise use websiteUrl
-	const displayUrl =
-		subtitle && /\w+\.\w+/.test(scene.subtitle || "")
-			? null // subtitle IS the URL, don't show it twice
-			: websiteUrl;
-	const logoImg = logoUrl
-		? `<div style={{ marginBottom: 28 }}><Img src="${logoUrl}" style={{ height: 60, objectFit: 'contain' }} /></div>`
+	// Logo: read from cta-logo layer. Only fall back if scene has NO layers (old project).
+	const logoLayer = scene.layers?.find((l) => l.id === "cta-logo" && !l._incompatible);
+	const logoSrc = logoLayer?.content || (!scene.layers?.length ? logoUrl : null);
+	const logoHeight = logoLayer?.settings?.fontSize || 60;
+	const logoImg = logoSrc
+		? `<div style={{ marginBottom: 28 }}><Img src="${logoSrc}" style={{ height: ${logoHeight}, objectFit: 'contain' }} /></div>`
 		: "";
-	// Read CTA button text from layer if it exists, otherwise default
-	const ctaPillLayer = scene.layers?.find((l) => l.id === "cta-pill");
+	// URL: read from cta-url layer. Only fall back to websiteUrl if scene has NO layers
+	// (i.e. old project before layer unification). If layers exist, absence of cta-url means user deleted it.
+	const urlLayer = scene.layers?.find((l) => l.id === "cta-url" && !l._incompatible);
+	const displayUrl = urlLayer?.content || (!scene.layers?.length ? websiteUrl : null);
+	const urlColor = urlLayer?.settings?.color || dimColor;
+	const urlFontSize = urlLayer?.settings?.fontSize || 24;
+	// Button: read from cta-pill layer
+	const ctaPillLayer = scene.layers?.find((l) => l.id === "cta-pill" && !l._incompatible);
 	const ctaButtonText = ctaPillLayer?.content || "Get Started";
-	const hasCtaPill = !scene.layers || scene.layers.some((l) => l.id === "cta-pill");
+	const hasCtaPill = !scene.layers || scene.layers.some((l) => l.id === "cta-pill" && !l._incompatible);
+	const btnBg = ctaPillLayer?.settings?.accentColor || accent;
+	const autoColor = isDarkHex(btnBg) ? "#ffffff" : "#1a1a1a";
+	// Use auto-contrast unless the user explicitly set a non-default color.
+	// This catches legacy projects where white was hardcoded before contrast detection existed.
+	const explicitColor = ctaPillLayer?.settings?.color;
+	const btnColor = explicitColor && explicitColor !== "#ffffff" && explicitColor !== "#fff" && explicitColor !== "#1a1a1a"
+		? explicitColor
+		: autoColor;
+	const btnFontSize = ctaPillLayer?.settings?.fontSize || 26;
+	const btnAnimation = ctaPillLayer?.settings?.animation || "none";
+	const btnBorderColor = ctaPillLayer?.settings?.borderColor;
+	const btnPill = `<ButtonPill text={${JSON.stringify(ctaButtonText)}} fontSize={${btnFontSize}} bgColor="${btnBg}" textColor="${btnColor}" animation="${btnAnimation}" delay={15}${btnBorderColor ? ` borderColor="${btnBorderColor}"` : ""} />`;
+	return { headline, subtitle, fontSize, textColor, dimColor, pal, displayUrl, urlColor, urlFontSize, logoImg, ctaButtonText, hasCtaPill, btnBg, btnColor, btnFontSize, btnPill };
+}
 
-	return `<Scene bg="${bg}">
+/** CTA: centered — classic centered layout with logo + headline + button */
+function renderCtaCentered(scene: ScenePlanItem, accent: string, bg: string, logoUrl?: string | null, websiteUrl?: string | null): string {
+	const { headline, subtitle, fontSize, textColor, dimColor, displayUrl, urlColor, urlFontSize, logoImg, hasCtaPill, btnPill } = ctaShared(scene, accent, logoUrl, websiteUrl);
+	return `<Scene bg="${bg}" padding={0}>
         ${logoImg}
         <AnimatedText text={${headline}} fontSize={${fontSize}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="blur-in" />
         ${subtitle ? `<div style={{ marginTop: 16 }}><AnimatedText text={${subtitle}} fontSize={36} color="${dimColor}" fontFamily="'Inter', sans-serif" animation="words" delay={8} /></div>` : ""}
-        ${displayUrl ? `<div style={{ marginTop: 12, fontSize: 24, fontWeight: 500, color: '${dimColor}', fontFamily: "'Inter', sans-serif", letterSpacing: '0.02em' }}>${displayUrl}</div>` : ""}
-        ${hasCtaPill ? `<div style={{ marginTop: 32, padding: '14px 44px', borderRadius: 50, background: '${accent}', color: '#ffffff', fontSize: 26, fontWeight: 700, fontFamily: "'Inter', sans-serif", boxShadow: '0 8px 30px ${pal.a}40', letterSpacing: '-0.01em' }}>
-          ${ctaButtonText}
-        </div>` : ""}
+        ${displayUrl ? `<div style={{ marginTop: 12, fontSize: ${urlFontSize}, fontWeight: 500, color: '${urlColor}', fontFamily: "'Inter', sans-serif", letterSpacing: '0.02em' }}>${displayUrl}</div>` : ""}
+        ${hasCtaPill ? `<div style={{ marginTop: 32 }}>${btnPill}</div>` : ""}
         <Vignette intensity={0.3} />
+      </Scene>`;
+}
+
+/** CTA: split-logo — logo on the left, headline + button stacked on the right */
+function renderCtaSplitLogo(scene: ScenePlanItem, accent: string, bg: string, logoUrl?: string | null, websiteUrl?: string | null): string {
+	const { headline, subtitle, fontSize, textColor, dimColor, displayUrl, urlColor, logoImg, hasCtaPill, btnPill } = ctaShared(scene, accent, logoUrl, websiteUrl);
+	return `<Scene bg="${bg}" padding={0}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 80, maxWidth: 1400 }}>
+          <div style={{ flexShrink: 0 }}>
+            ${logoImg || `<GradientText text={${headline}} fontSize={80} colors={["${accent}","${accentPalette(accent).l}","${accentPalette(accent).w}"]} speed={3} />`}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <AnimatedText text={${headline}} fontSize={${Math.min(fontSize, 90)}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="blur-in" />
+            ${subtitle ? `<div><AnimatedText text={${subtitle}} fontSize={32} color="${dimColor}" fontFamily="'Inter', sans-serif" animation="words" delay={8} /></div>` : ""}
+            ${displayUrl ? `<div style={{ fontSize: 22, fontWeight: 500, color: '${urlColor}', fontFamily: "'Inter', sans-serif" }}>${displayUrl}</div>` : ""}
+            ${hasCtaPill ? `<div style={{ marginTop: 16, alignSelf: 'flex-start' }}>${btnPill}</div>` : ""}
+          </div>
+        </div>
+        <Vignette intensity={0.3} />
+      </Scene>`;
+}
+
+/** CTA: gradient-bar — full-width gradient banner at bottom with text + button */
+function renderCtaGradientBar(scene: ScenePlanItem, accent: string, bg: string, logoUrl?: string | null, websiteUrl?: string | null): string {
+	const { headline, subtitle, fontSize, dimColor, pal, displayUrl, urlColor, logoImg, hasCtaPill, btnPill } = ctaShared(scene, accent, logoUrl, websiteUrl);
+	return `<Scene bg="${bg}" padding={0}>
+        ${logoImg}
+        <GradientText text={${headline}} fontSize={${Math.min(fontSize, 140)}} colors={["${accent}","${pal.l}","${pal.w}","${pal.k}","${accent}"]} speed={3} />
+        ${subtitle ? `<div style={{ marginTop: 16 }}><AnimatedText text={${subtitle}} fontSize={36} color="${dimColor}" fontFamily="'Inter', sans-serif" animation="words" delay={8} /></div>` : ""}
+        ${displayUrl ? `<div style={{ marginTop: 8, fontSize: 24, fontWeight: 500, color: '${urlColor}', fontFamily: "'Inter', sans-serif" }}>${displayUrl}</div>` : ""}
+        ${hasCtaPill ? `<div style={{ marginTop: 36 }}>${btnPill}</div>` : ""}
+        <Vignette intensity={0.25} />
+      </Scene>`;
+}
+
+/** CTA: minimal — just the product name, URL, no button, clean finish */
+function renderCtaMinimal(scene: ScenePlanItem, accent: string, bg: string, websiteUrl?: string | null): string {
+	const { headline, subtitle, fontSize, textColor, displayUrl, urlColor } = ctaShared(scene, accent, undefined, websiteUrl);
+	return `<Scene bg="${bg}" padding={0}>
+        <AnimatedText text={${headline}} fontSize={${Math.min(fontSize, 160)}} color="${textColor}" fontFamily="'Inter', sans-serif" animation="blur-in" />
+        ${subtitle ? `<div style={{ marginTop: 20 }}><AnimatedText text={${subtitle}} fontSize={40} color="${urlColor}" fontFamily="'Inter', sans-serif" animation="words" delay={8} /></div>` : ""}
+        ${displayUrl ? `<div style={{ marginTop: 28, fontSize: 28, fontWeight: 600, color: '${accent}', fontFamily: "'Inter', sans-serif", letterSpacing: '0.02em' }}>${displayUrl}</div>` : ""}
+        <Vignette intensity={0.2} />
       </Scene>`;
 }
 
@@ -862,7 +930,8 @@ function renderCTA(
 
 function renderLegacyLayerBased(scene: ScenePlanItem, accent: string, bg: string): string {
 	const dur = scene.durationFrames || 90;
-	const allLayers = scene.layers !== undefined ? scene.layers : expandSceneToLayers(scene, accent);
+	const rawLayers = scene.layers !== undefined ? scene.layers : expandSceneToLayers(scene, accent);
+	const allLayers = rawLayers.filter((l) => !l._incompatible);
 	const centerLayers = allLayers.filter((l) => l.position === "center" && l.type !== "shape");
 	const otherLayers = allLayers.filter((l) => l.position !== "center" || l.type === "shape");
 	const nonCardCenter = centerLayers.filter((l) => l.type !== "card");
@@ -878,32 +947,31 @@ function renderLegacyLayerBased(scene: ScenePlanItem, accent: string, bg: string
 	const otherCode = otherLayers.map((l) => compileLayer(l, dur, accent)).join("\n        ");
 
 	return `<Scene bg="${bg}">
-        ${centerLayers.length > 0 ? `<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, width: '100%', flex: 1 }}>\n            ${centerCode}\n          </div>` : ""}
+        ${centerLayers.length > 0 ? `<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: ${scene.layerGap ?? 16}, width: '100%', flex: 1 }}>\n            ${centerCode}\n          </div>` : ""}
         ${otherCode}
       </Scene>`;
 }
 
 // ── Rich scene type renderers ──────────────────────────────────────────
 
+// [LAYER-UNIFIED] Reads content from layers, falls back to data fields
 function renderImpactWord(scene: ScenePlanItem, accent: string, bg: string): string {
-	// Honor user-set fontSize and animation from the scene plan (synced from
-	// the headline layer's settings). Only fall back to defaults when absent.
-	const fontSize = scene.fontSize || 280;
-	const animation = scene.animation || "scale";
+	const fontSize = resolveHeadlineFontSize(scene, 280);
+	const animation = resolveHeadlineAnimation(scene, "scale");
 	const fontFamily = resolveFontFamily(scene.font);
 	const color = resolveTextColor(scene);
-	const headline = JSON.stringify(scene.headline || "Finally.");
-	const accentWord = scene.accentWord
-		? `accentWord=${JSON.stringify(scene.accentWord)} accentColor="${accent}"`
-		: "";
+	const headline = JSON.stringify(resolveHeadline(scene, "Finally."));
+	const aw = resolveAccentWord(scene);
+	const accentWord = aw ? `accentWord=${JSON.stringify(aw)} accentColor="${accent}"` : "";
 	return `<Scene bg="${bg}">
         <AnimatedText text={${headline}} fontSize={${fontSize}} color="${color}" fontFamily="${fontFamily}" animation="${animation}" maxWidth={2200} ${accentWord} />
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderGhostHook(scene: ScenePlanItem, _accent: string, bg: string): string {
 	// Clamp to max 3 fragments — more than that overflows the screen at readable sizes
-	const rawWords = scene.ghostWords || scene.headline.split(" ");
+	const rawWords = resolveStringArray(scene, "ghost-word-", "ghostWords", resolveHeadline(scene, "Hello world").split(" "));
 	const fragments = rawWords.slice(0, 3);
 	const words = JSON.stringify(fragments);
 	const activeIndex = Math.min(scene.ghostActiveIndex ?? 0, 2);
@@ -924,23 +992,32 @@ function renderGhostHook(scene: ScenePlanItem, _accent: string, bg: string): str
 	const fontSize = scene.fontSize ? Math.min(scene.fontSize, autoSize) : autoSize;
 	const color = resolveTextColor(scene);
 	return `<Scene bg="${bg}">
-        <GhostSentence words={${words}} activeIndex={${activeIndex}} fontSize={${fontSize}} color="${color}" maxWidth={1700} />
+        <GhostSentence words={${words}} activeIndex={${activeIndex}} fontSize={${fontSize}} color="${color}" maxWidth={1700} gap={${scene.layerGap != null ? scene.layerGap / fontSize : 0.3}} />
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderNotificationChaos(scene: ScenePlanItem, _accent: string, bg: string): string {
+	const defaultNotifs = [
+		{ platform: "instagram", title: "Sarah", subtitle: "liked your post", time: "2m" },
+		{ platform: "linkedin", title: "3 new messages", subtitle: "Connect with...", time: "5m" },
+		{ platform: "twitter", title: "Alex", subtitle: "replied to you", time: "now" },
+		{ platform: "email", title: "Re: Weekly report", subtitle: "Can we discuss...", time: "10m" },
+		{ platform: "slack", title: "#general", subtitle: "@here urgent", time: "1m" },
+		{ platform: "youtube", title: "New comment", subtitle: "This is amazing", time: "15m" },
+	];
+	const notifLayers = (scene.layers || []).filter((l) => l.id.startsWith("notif-") && !l._incompatible)
+		.sort((a, b) => Number.parseInt(a.id.slice(6)) - Number.parseInt(b.id.slice(6)));
 	const notifs = JSON.stringify(
-		scene.notifications || [
-			{ platform: "instagram", title: "Sarah", subtitle: "liked your post", time: "2m" },
-			{ platform: "linkedin", title: "3 new messages", subtitle: "Connect with...", time: "5m" },
-			{ platform: "twitter", title: "Alex", subtitle: "replied to you", time: "now" },
-			{ platform: "email", title: "Re: Weekly report", subtitle: "Can we discuss...", time: "10m" },
-			{ platform: "slack", title: "#general", subtitle: "@here urgent", time: "1m" },
-			{ platform: "youtube", title: "New comment", subtitle: "This is amazing", time: "15m" },
-		],
+		notifLayers.length > 0
+			? notifLayers.map((l, i) => {
+				const existing = scene.notifications?.[i] || defaultNotifs[i] || {};
+				return { ...existing, title: l.content || existing.title || "" };
+			})
+			: scene.notifications || defaultNotifs,
 	);
-	const headline = JSON.stringify(scene.headline || "Notifications everywhere.");
-	const fontSize = scene.fontSize || 110;
+	const headline = JSON.stringify(resolveHeadline(scene, "Notifications everywhere."));
+	const fontSize = resolveHeadlineFontSize(scene, 110);
 	return `<Scene bg="${bg}">
         <NotificationCloud notifications={${notifs}}>
           <AnimatedText text={${headline}} fontSize={${fontSize}} color="#ffffff" fontFamily="'Inter', sans-serif" animation="words" />
@@ -948,15 +1025,24 @@ function renderNotificationChaos(scene: ScenePlanItem, _accent: string, bg: stri
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderChatNarrative(scene: ScenePlanItem, _accent: string, bg: string): string {
+	const defaultMsgs = [
+		{ user: "Sarah", text: "Anyone got the report?", time: "9:42 AM" },
+		{ user: "Mike", text: "Working on it...", time: "9:43 AM" },
+		{ user: "Sarah", text: "Need it in 5 min 🚨", time: "9:45 AM" },
+	];
+	const chatLayers = (scene.layers || []).filter((l) => l.id.startsWith("chat-msg-") && !l._incompatible)
+		.sort((a, b) => Number.parseInt(a.id.slice(9)) - Number.parseInt(b.id.slice(9)));
 	const messages = JSON.stringify(
-		scene.chatMessages || [
-			{ user: "Sarah", text: "Anyone got the report?", time: "9:42 AM" },
-			{ user: "Mike", text: "Working on it...", time: "9:43 AM" },
-			{ user: "Sarah", text: "Need it in 5 min 🚨", time: "9:45 AM" },
-		],
+		chatLayers.length > 0
+			? chatLayers.map((l, i) => {
+				const existing = scene.chatMessages?.[i] || defaultMsgs[i] || {};
+				return { ...existing, text: l.content || existing.text || "" };
+			})
+			: scene.chatMessages || defaultMsgs,
 	);
-	const channel = JSON.stringify(scene.chatChannel || "general");
+	const channel = JSON.stringify(resolveScalarLayer(scene, "chat-channel", "chatChannel", (l) => l.content || "general", "general"));
 	return `<Scene bg="${bg}" padding={40}>
         <div style={{ width: '95%', height: '95%' }}>
           <ChatMessageFlow channel={${channel}} messages={${messages}} messageDelay={25} />
@@ -978,15 +1064,20 @@ function renderBeforeAfter(scene: ScenePlanItem, accent: string, bg: string): st
 	}
 }
 
+// [LAYER-UNIFIED]
 /** Shared helpers for before-after variants */
 function beforeAfterData(scene: ScenePlanItem, accent: string) {
-	const beforeArr = scene.beforeLines || ["Flat.", "Cluttered.", "Forgettable."];
-	const afterArr = scene.afterLines || ["Clean.", "Branded.", "Ready to ship."];
+	const beforeArr = resolveStringArray(scene, "before-", "beforeLines", ["Flat.", "Cluttered.", "Forgettable."]);
+	const afterArr = resolveStringArray(scene, "after-", "afterLines", ["Clean.", "Branded.", "Ready to ship."]);
 	const longest = Math.max(...beforeArr.map((l) => l.length), ...afterArr.map((l) => l.length));
 	const lineSize = longest > 25 ? 36 : longest > 18 ? 42 : longest > 12 ? 52 : 64;
 	const beforeBg = scene.beforeBgColor || "linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)";
 	const afterBg = scene.afterBgColor || "linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)";
 	const afterAccent = scene.afterAccentColor || accent;
+	// Auto-contrast text colors based on panel backgrounds
+	const beforeTextColor = isDarkHex(beforeBg) ? "rgba(255,255,255,0.85)" : "rgba(26,26,26,0.85)";
+	const beforeHeaderColor = isDarkHex(beforeBg) ? "#fff" : "#1a1a1a";
+	const afterTextColor = isDarkHex(afterBg) ? "#ffffff" : "#0f172a";
 	return {
 		beforeArr,
 		afterArr,
@@ -996,28 +1087,31 @@ function beforeAfterData(scene: ScenePlanItem, accent: string) {
 		beforeBg,
 		afterBg,
 		afterAccent,
+		beforeTextColor,
+		beforeHeaderColor,
+		afterTextColor,
 	};
 }
 
 /** before-after: split-card — original side-by-side card */
 function renderBeforeAfterSplitCard(scene: ScenePlanItem, accent: string, bg: string): string {
-	const { beforeLines, afterLines, lineSize, beforeBg, afterBg, afterAccent } = beforeAfterData(scene, accent);
+	const { beforeLines, afterLines, lineSize, beforeBg, afterBg, afterAccent, beforeTextColor, beforeHeaderColor, afterTextColor } = beforeAfterData(scene, accent);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
 	const headlineColor = resolveTextColor(scene);
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 40 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="words" /></div>` : ""}
         <div style={{ width: 1650, borderRadius: 32, overflow: 'hidden', position: 'relative', boxShadow: '0 40px 100px rgba(0,0,0,0.4)', display: 'flex' }}>
-          <div style={{ width: '50%', background: '${beforeBg}', padding: '56px 48px', color: '#fff', display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, opacity: 0.55, letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: "'Inter', sans-serif" }}>Before</div>
+          <div style={{ width: '50%', background: '${beforeBg}', padding: '56px 48px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ fontSize: 20, fontWeight: 700, opacity: 0.55, letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: "'Inter', sans-serif", color: '${beforeHeaderColor}' }}>Before</div>
             {${beforeLines}.map((l, i) => (
               <div key={i} style={{
                 fontSize: ${lineSize}, lineHeight: 1.1, fontWeight: 800, letterSpacing: '-0.03em',
-                fontFamily: "'Inter', 'Helvetica Neue', sans-serif", color: 'rgba(255,255,255,0.85)',
+                fontFamily: "'Inter', 'Helvetica Neue', sans-serif", color: '${beforeTextColor}',
                 textDecoration: 'line-through', textDecorationColor: 'rgba(239,68,68,0.6)', textDecorationThickness: '3px',
               }}>{l}</div>
             ))}
           </div>
-          <div style={{ width: '50%', background: '${afterBg}', padding: '56px 48px', color: '#0f172a', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ width: '50%', background: '${afterBg}', padding: '56px 48px', color: '${afterTextColor}', display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '${afterAccent}', fontFamily: "'Inter', sans-serif" }}>After</div>
             {${afterLines}.map((l, i) => (
               <div key={i} style={{
@@ -1026,7 +1120,7 @@ function renderBeforeAfterSplitCard(scene: ScenePlanItem, accent: string, bg: st
               }}>
                 <span style={{
                   width: ${lineSize * 0.5}, height: ${lineSize * 0.5}, borderRadius: '50%',
-                  background: '${afterAccent}', color: '#fff', display: 'inline-flex', alignItems: 'center',
+                  background: '${afterAccent}', color: '${isDarkHex(afterAccent) ? "#fff" : "#1a1a1a"}', display: 'inline-flex', alignItems: 'center',
                   justifyContent: 'center', fontSize: ${lineSize * 0.35}, fontWeight: 900, flexShrink: 0,
                 }}>✓</span>
                 {l}
@@ -1039,7 +1133,7 @@ function renderBeforeAfterSplitCard(scene: ScenePlanItem, accent: string, bg: st
 
 /** before-after: swipe-reveal — animated wipe revealing "after" over "before" */
 function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: string): string {
-	const { beforeArr, afterArr, lineSize, beforeBg, afterBg, afterAccent } = beforeAfterData(scene, accent);
+	const { beforeArr, afterArr, lineSize, beforeBg, afterBg, afterAccent, beforeTextColor, beforeHeaderColor, afterTextColor } = beforeAfterData(scene, accent);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
 	const headlineColor = resolveTextColor(scene);
 	const beforeLines = JSON.stringify(beforeArr);
@@ -1056,9 +1150,9 @@ function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: 
           return (
             <div style={{ display: 'flex', width: 1600, height: 520, borderRadius: 28, overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.35)' }}>
               <div style={{ width: '50%', background: '${beforeBg}', padding: '52px 48px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 18, overflow: 'hidden', opacity: 1 - wipe * 0.3 }}>
-                <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.55, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fff', fontFamily: "'Inter', sans-serif" }}>Before</div>
+                <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.55, letterSpacing: '0.15em', textTransform: 'uppercase', color: '${beforeHeaderColor}', fontFamily: "'Inter', sans-serif" }}>Before</div>
                 {${beforeLines}.map((l, i) => (
-                  <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: 'rgba(255,255,255,0.85)', fontFamily: "'Inter', sans-serif", textDecoration: wipe > 0.5 ? 'line-through' : 'none', textDecorationColor: 'rgba(239,68,68,0.6)', letterSpacing: '-0.03em', lineHeight: 1.1 }}>{l}</div>
+                  <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: '${beforeTextColor}', fontFamily: "'Inter', sans-serif", textDecoration: wipe > 0.5 ? 'line-through' : 'none', textDecorationColor: 'rgba(239,68,68,0.6)', letterSpacing: '-0.03em', lineHeight: 1.1 }}>{l}</div>
                 ))}
               </div>
               <div style={{ width: 4, background: '${afterAccent}', boxShadow: '0 0 20px ${afterAccent}80', flexShrink: 0, zIndex: 2 }} />
@@ -1067,7 +1161,7 @@ function renderBeforeAfterSwipeReveal(scene: ScenePlanItem, accent: string, bg: 
                 {${afterLines}.map((l, i) => {
                   const stagger = spring({ frame: Math.max(0, frame - ${wipeDelay} - i * 6), fps, config: { damping: 14, stiffness: 120 } });
                   return (
-                    <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: '#0f172a', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 12, letterSpacing: '-0.03em', lineHeight: 1.1, opacity: stagger, transform: 'translateY(' + ((1 - stagger) * 20) + 'px)' }}>
+                    <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: '${afterTextColor}', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 12, letterSpacing: '-0.03em', lineHeight: 1.1, opacity: stagger, transform: 'translateY(' + ((1 - stagger) * 20) + 'px)' }}>
                       <span style={{ color: '${afterAccent}', fontSize: ${lineSize * 0.5}, flexShrink: 0 }}>✓</span>
                       {l}
                     </div>
@@ -1137,7 +1231,7 @@ function renderBeforeAfterStackedMorph(scene: ScenePlanItem, accent: string, bg:
 
 /** before-after: toggle-switch — UI toggle that flips between states */
 function renderBeforeAfterToggleSwitch(scene: ScenePlanItem, accent: string, bg: string): string {
-	const { beforeArr, afterArr, lineSize, beforeBg, afterBg, afterAccent } = beforeAfterData(scene, accent);
+	const { beforeArr, afterArr, lineSize, beforeBg, afterBg, afterAccent, beforeTextColor, afterTextColor } = beforeAfterData(scene, accent);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
 	const headlineColor = resolveTextColor(scene);
 	const light = isLightBg(scene.background);
@@ -1177,7 +1271,7 @@ function renderBeforeAfterToggleSwitch(scene: ScenePlanItem, accent: string, bg:
                   opacity: 1 - toggle, transition: 'opacity 0.1s',
                 }}>
                   {${beforeLines}.map((l, i) => (
-                    <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: 'rgba(255,255,255,0.8)', fontFamily: "'Inter', sans-serif", textDecoration: 'line-through', textDecorationColor: 'rgba(239,68,68,0.5)' }}>{l}</div>
+                    <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: '${beforeTextColor}', fontFamily: "'Inter', sans-serif", textDecoration: 'line-through', textDecorationColor: 'rgba(239,68,68,0.5)' }}>{l}</div>
                   ))}
                 </div>
                 <div style={{
@@ -1187,7 +1281,7 @@ function renderBeforeAfterToggleSwitch(scene: ScenePlanItem, accent: string, bg:
                   opacity: toggle,
                 }}>
                   {${afterLines}.map((l, i) => (
-                    <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: '#0f172a', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div key={i} style={{ fontSize: ${lineSize}, fontWeight: 800, color: '${afterTextColor}', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 12 }}>
                       <span style={{ color: '${afterAccent}', fontSize: ${lineSize * 0.5} }}>✓</span>
                       {l}
                     </div>
@@ -1214,13 +1308,20 @@ function renderMetricsDashboard(scene: ScenePlanItem, accent: string, bg: string
 	}
 }
 
+// [LAYER-UNIFIED]
 function metricsData(scene: ScenePlanItem) {
-	return (
-		scene.metrics || [
-			{ value: 10, label: "Times faster", suffix: "x" },
-			{ value: 99, label: "Uptime", suffix: "%" },
-			{ value: 0, label: "Setup required", suffix: "" },
-		]
+	return resolvePairedArray(
+		scene, "metric-value-", "metric-label-", "metrics",
+		(valLayer, lblLayer, i) => {
+			const existing = scene.metrics?.[i] || { value: 0, label: "", suffix: "" };
+			return {
+				...existing,
+				...(valLayer?.content ? { value: Number(valLayer.content) || valLayer.content } : {}),
+				...(lblLayer?.content ? { label: lblLayer.content } : {}),
+				...(valLayer?.settings?.fontSize ? {} : {}), // fontSize handled by renderer
+			};
+		},
+		[{ value: 10, label: "Times faster", suffix: "x" }, { value: 99, label: "Uptime", suffix: "%" }, { value: 0, label: "Setup required", suffix: "" }],
 	);
 }
 
@@ -1248,7 +1349,7 @@ function renderMetricsBarChart(scene: ScenePlanItem, accent: string, bg: string)
 	const light = isLightBg(scene.background);
 	const headlineColor = light ? "#1a1a1a" : "#ffffff";
 	const labelColor = light ? "#1a1a1a" : "rgba(255,255,255,0.7)";
-	const maxVal = Math.max(...metrics.map((m) => m.value), 1);
+	const maxVal = Math.max(...metrics.map((m) => Number(m.value) || 0), 1);
 	return `<Scene bg="${bg}">
         ${headline ? `<div style={{ marginBottom: 50 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 90}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="blur-in" /></div>` : ""}
         {React.createElement(() => {
@@ -1378,37 +1479,41 @@ function renderMetricsTickerTape(scene: ScenePlanItem, _accent: string, bg: stri
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderIconShowcase(scene: ScenePlanItem, _accent: string, bg: string): string {
-	const items = JSON.stringify(
-		scene.iconItems || [
-			{ icon: "⚡", label: "Fast" },
-			{ icon: "🔒", label: "Secure" },
-			{ icon: "✨", label: "Smart" },
-			{ icon: "🎯", label: "Precise" },
-			{ icon: "🚀", label: "Scalable" },
-			{ icon: "💡", label: "Simple" },
-		],
+	const iconData = resolveStructuredArray(
+		scene, "icon-item-", "iconItems",
+		(l) => {
+			try { return JSON.parse(l.content); } catch { return { icon: "✦", label: l.content || "" }; }
+		},
+		[{ icon: "⚡", label: "Fast" }, { icon: "🔒", label: "Secure" }, { icon: "✨", label: "Smart" }, { icon: "🎯", label: "Precise" }, { icon: "🚀", label: "Scalable" }, { icon: "💡", label: "Simple" }],
 	);
-	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
-	const itemCount = scene.iconItems?.length || 6;
+	const items = JSON.stringify(iconData);
+	const hl = resolveHeadline(scene);
+	const headline = hl ? JSON.stringify(hl) : null;
+	const itemCount = iconData.length;
 	const columns = itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : itemCount % 3 === 0 ? 3 : itemCount % 2 === 0 ? 2 : 3;
 	const textColor = resolveTextColor(scene);
 	return `<Scene bg="${bg}">
-        ${headline ? `<div style={{ marginBottom: 50 }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 80}} color="${textColor}" fontFamily="Georgia, serif" animation="clip" /></div>` : ""}
+        ${headline ? `<div style={{ marginBottom: 50 }}><AnimatedText text={${headline}} fontSize={${resolveHeadlineFontSize(scene, 80)}} color="${textColor}" fontFamily="Georgia, serif" animation="clip" /></div>` : ""}
         <IconGrid items={${items}} columns={${columns}} iconSize={72} gap={48} delay={8} color="${textColor}" />
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderLogoReveal(
 	scene: ScenePlanItem,
 	accent: string,
 	bg: string,
 	logoUrl?: string | null,
 ): string {
-	const title = JSON.stringify(scene.headline || "Product Name");
-	const subtitle = scene.subtitle ? JSON.stringify(scene.subtitle) : null;
-	const fontSize = scene.fontSize || 160;
+	const title = JSON.stringify(resolveHeadline(scene, "Product Name"));
+	const sub = resolveSubtitle(scene);
+	const subtitle = sub ? JSON.stringify(sub) : null;
+	const fontSize = resolveHeadlineFontSize(scene, 160);
 	const pal = accentPalette(accent);
+	const light = isLightBg(bg);
+	const subtitleColor = light ? "rgba(26,26,26,0.6)" : "rgba(255,255,255,0.6)";
 	const logoImg = logoUrl
 		? `<div style={{ marginBottom: 30 }}><Img src="${logoUrl}" style={{ height: 64, objectFit: 'contain' }} /></div>`
 		: "";
@@ -1416,21 +1521,25 @@ function renderLogoReveal(
         <FloatingOrbs colors={["${accent}", "${pal.w}", "${pal.k}"]} count={3} opacity={0.3} blurAmount={120} />
         ${logoImg}
         <GradientText text={${title}} fontSize={${fontSize}} colors={["${accent}","${pal.l}","${pal.w}","${pal.k}","${accent}"]} speed={3} />
-        ${subtitle ? `<div style={{ marginTop: 28 }}><AnimatedText text={${subtitle}} fontSize={48} color="rgba(255,255,255,0.6)" fontFamily="'Inter', sans-serif" animation="blur-in" delay={12} /></div>` : ""}
+        ${subtitle ? `<div style={{ marginTop: 28 }}><AnimatedText text={${subtitle}} fontSize={48} color="${subtitleColor}" fontFamily="'Inter', sans-serif" animation="blur-in" delay={12} /></div>` : ""}
         <LightStreak startFrame={15} durationFrames={25} color="rgba(96,165,250,0.7)" />
         <Vignette intensity={0.4} />
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderTypewriterPrompt(scene: ScenePlanItem, accent: string, bg: string): string {
+	const twLayer = scene.layers?.find((l) => l.id === "typewriter-text");
 	const placeholder = JSON.stringify(
-		scene.typewriterText || scene.headline || "Create something amazing...",
+		twLayer?.content || scene.typewriterText || resolveHeadline(scene, "Create something amazing..."),
 	);
+	const hl = resolveHeadline(scene);
+	const sub = resolveSubtitle(scene);
 	const headline =
-		scene.headline && !scene.typewriterText
+		hl && !scene.typewriterText && !twLayer
 			? null
-			: scene.subtitle
-				? JSON.stringify(scene.subtitle)
+			: sub
+				? JSON.stringify(sub)
 				: null;
 	const pal = accentPalette(accent);
 	return `<Scene bg="${bg}">
@@ -1441,13 +1550,15 @@ function renderTypewriterPrompt(scene: ScenePlanItem, accent: string, bg: string
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderProductGlow(scene: ScenePlanItem, accent: string, bg: string): string {
 	const screenshotIndex = scene.screenshotIndex ?? 0;
 	const perspectiveX = scene.perspectiveX ?? 12;
 	const perspectiveY = scene.perspectiveY ?? -4;
-	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
+	const hl = resolveHeadline(scene);
+	const headline = hl ? JSON.stringify(hl) : null;
 	const textColor = resolveTextColor(scene);
-	const animation = scene.animation || "clip";
+	const animation = resolveHeadlineAnimation(scene, "clip");
 	const light = isLightBg(scene.background);
 	const pal = accentPalette(accent);
 	const glowColors = light
@@ -1472,43 +1583,93 @@ function renderProductGlow(scene: ScenePlanItem, accent: string, bg: string): st
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderStackedHierarchy(scene: ScenePlanItem, _accent: string, bg: string): string {
-	const lines = JSON.stringify(
-		scene.stackedLines || [
-			{ text: "WHY SETTLE", size: 90 },
-			{ text: "FOR", size: 110 },
-			{ text: "LESS", size: 280 },
-		],
+	const stackedData = resolveStructuredArray(
+		scene, "stacked-line-", "stackedLines",
+		(l) => ({ text: l.content || "", size: l.settings?.fontSize || 120 }),
+		[{ text: "WHY SETTLE", size: 90 }, { text: "FOR", size: 110 }, { text: "LESS", size: 280 }],
 	);
+	const lines = JSON.stringify(stackedData);
 	const color = isLightBg(scene.background) ? "#050505" : "#ffffff";
 	return `<Scene bg="${bg}">
-        <StackedText lines={${lines}} color="${color}" animation="drop" />
+        <StackedText lines={${lines}} color="${color}" animation="drop" gap={${scene.layerGap ?? 12}} />
       </Scene>`;
+}
+
+// [LAYER-UNIFIED]
+function renderContrastPairs(scene: ScenePlanItem, _accent: string, bg: string): string {
+	const pairs = resolvePairedArray(
+		scene, "contrast-stmt-", "contrast-ctr-", "contrastPairs",
+		(stmt, ctr) => ({ statement: stmt?.content || "", counter: ctr?.content || "" }),
+		[{ statement: "You might be stable…", counter: "but not growing." }, { statement: "You might be earning…", counter: "but still at risk." }],
+	);
+	const light = isLightBg(scene.background);
+	const mainColor = light ? "#050505" : "#ffffff";
+	const dimColor = light ? "rgba(5,5,5,0.5)" : "rgba(255,255,255,0.5)";
+	const mainSize = resolveHeadlineFontSize(scene, 100);
+	const counterSize = Math.round(mainSize * 0.7);
+	const pairsJson = JSON.stringify(pairs);
+	return `{React.createElement(() => {
+      const frame = useCurrentFrame();
+      const { fps } = useVideoConfig();
+      const pairs = ${pairsJson};
+      return (
+        <Scene bg="${bg}">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: ${scene.layerGap ?? 8}, maxWidth: 1600 }}>
+            {pairs.map((pair, i) => {
+              const pairDelay = i * 40;
+              const stmtEnter = spring({ frame: Math.max(0, frame - pairDelay), fps, config: { damping: 16, stiffness: 100 } });
+              const ctrEnter = spring({ frame: Math.max(0, frame - pairDelay - 15), fps, config: { damping: 14, stiffness: 120 } });
+              return (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginBottom: 16 }}>
+                  <div style={{
+                    fontSize: ${mainSize}, fontWeight: 800, color: '${mainColor}',
+                    fontFamily: "Georgia, 'Times New Roman', serif",
+                    letterSpacing: '-0.03em', lineHeight: 1.1, textAlign: 'center',
+                    opacity: stmtEnter, transform: 'translateY(' + ((1 - stmtEnter) * 30) + 'px)',
+                  }}>{pair.statement}</div>
+                  <div style={{
+                    fontSize: ${counterSize}, fontWeight: 500, color: '${dimColor}',
+                    fontFamily: "'Inter', sans-serif",
+                    letterSpacing: '-0.01em', lineHeight: 1.2, textAlign: 'center',
+                    opacity: ctrEnter, transform: 'translateY(' + ((1 - ctrEnter) * 20) + 'px)',
+                  }}>{pair.counter}</div>
+                </div>
+              );
+            })}
+          </div>
+        </Scene>
+      );
+    })}`;
 }
 
 // ── Round 2 renderers ──────────────────────────────────────────────────
 
+// [LAYER-UNIFIED]
 function renderRadialVortex(scene: ScenePlanItem, _accent: string, bg: string): string {
-	const text = JSON.stringify(scene.headline || "GOOD ENOUGH");
+	const text = JSON.stringify(resolveHeadline(scene, "GOOD ENOUGH"));
 	const color = resolveTextColor(scene);
-	const baseFontSize = scene.fontSize || 80;
+	const baseFontSize = resolveHeadlineFontSize(scene, 80);
 	return `<Scene bg="${bg}">
         <RadialTextVortex text={${text}} rings={5} baseFontSize={${baseFontSize}} color="${color}" rotationSpeed={0.3} />
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderOutlineHero(scene: ScenePlanItem, _accent: string, bg: string): string {
-	const text = JSON.stringify(scene.headline || "AVERAGE");
+	const text = JSON.stringify(resolveHeadline(scene, "AVERAGE"));
 	const color = resolveTextColor(scene);
-	const fontSize = Math.max(220, scene.fontSize || 260);
+	const fontSize = Math.max(220, resolveHeadlineFontSize(scene, 260));
 	return `<Scene bg="${bg}">
         <OutlineText text={${text}} fontSize={${fontSize}} strokeWidth={3} color="${color}" maxWidth={2200} />
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderEchoHero(scene: ScenePlanItem, accent: string, bg: string): string {
-	const text = JSON.stringify(scene.headline || "33% time");
-	const fontSize = scene.fontSize || 220;
+	const text = JSON.stringify(resolveHeadline(scene, "33% time"));
+	const fontSize = resolveHeadlineFontSize(scene, 220);
 	return `<Scene bg="${bg}">
         <EchoText text={${text}} fontSize={${fontSize}} colors={["${accent}","${accentPalette(accent).w}","${accentPalette(accent).c}"]} echoCount={3} maxOffset={70} />
       </Scene>`;
@@ -1528,10 +1689,11 @@ function renderWordSlotMachine(scene: ScenePlanItem, accent: string, bg: string)
 	}
 }
 
+// [LAYER-UNIFIED]
 function slotData(scene: ScenePlanItem) {
 	return {
-		prefix: scene.slotMachinePrefix || "Your",
-		words: scene.slotMachineWords || ["Product", "App", "Agency", "Story"],
+		prefix: resolveScalarLayer(scene, "slot-prefix", "slotMachinePrefix", (l) => l.content || "Your", "Your"),
+		words: resolveStringArray(scene, "slot-word-", "slotMachineWords", ["Product", "App", "Agency", "Story"]),
 		selected: scene.slotMachineSelectedIndex ?? 1,
 	};
 }
@@ -1572,7 +1734,7 @@ function renderSlotTypewriterSwap(scene: ScenePlanItem, accent: string, bg: stri
           const charsToShow = isSettled ? displayWord.length : Math.ceil(displayWord.length * typeProgress);
           const strikeThrough = !isSettled && wordFrame > fpw * 0.75;
           return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, fontFamily: "'Inter', sans-serif" }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: ${scene.layerGap ?? 16}, fontFamily: "'Inter', sans-serif" }}>
               <span style={{ fontSize: ${Math.round(fontSize * 0.5)}, fontWeight: 300, color: '${color}', opacity: 0.5 }}>${prefix}</span>
               <div style={{ position: 'relative', textAlign: 'center' }}>
                 <span style={{
@@ -1618,7 +1780,7 @@ function renderSlotFlipCards(scene: ScenePlanItem, accent: string, bg: string): 
           const displayWord = isSettled ? words[selected] : words[currentIdx];
           const flipProgress = spring({ frame: frame % fpw, fps, config: { damping: 14, stiffness: 90 } });
           return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24, fontFamily: "'Inter', sans-serif", perspective: 800 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: ${scene.layerGap ?? 24}, fontFamily: "'Inter', sans-serif", perspective: 800 }}>
               <span style={{ fontSize: ${Math.round(fontSize * 0.5)}, fontWeight: 300, color: '${color}', opacity: 0.5 }}>${prefix}</span>
               <div style={{
                 transform: isSettled ? 'none' : 'rotateX(' + ((1 - flipProgress) * 45) + 'deg)',
@@ -1680,7 +1842,7 @@ function renderSlotGlitchSwap(scene: ScenePlanItem, accent: string, bg: string):
           const glitchY = isTransitioning ? Math.cos(frame * 11) * 4 : 0;
           const skew = isTransitioning ? Math.sin(frame * 13) * 5 : 0;
           return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, fontFamily: "'Inter', sans-serif", maxWidth: 1600 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: ${scene.layerGap ?? 16}, fontFamily: "'Inter', sans-serif", maxWidth: 1600 }}>
               <span style={{ fontSize: ${Math.round(fontSize * 0.6)}, fontWeight: 300, color: '${color}', opacity: 0.6 }}>${prefix}</span>
               <div style={{ position: 'relative', textAlign: 'center' }}>
                 <span style={{
@@ -1703,10 +1865,11 @@ function renderSlotGlitchSwap(scene: ScenePlanItem, accent: string, bg: string):
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderAvatarConstellation(scene: ScenePlanItem, accent: string, bg: string): string {
 	const count = scene.avatarCount || 8;
-	const headline = JSON.stringify(scene.headline || "Trusted by thousands");
-	const fontSize = scene.fontSize || 110;
+	const headline = JSON.stringify(resolveHeadline(scene, "Trusted by thousands"));
+	const fontSize = resolveHeadlineFontSize(scene, 110);
 	const textColor = resolveTextColor(scene);
 	return `<Scene bg="${bg}">
         <AvatarConstellation avatarCount={${count}} colors={["${accent}", "${accentPalette(accent).w}", "${accentPalette(accent).c}", "${accentPalette(accent).t}", "${accentPalette(accent).k}"]}>
@@ -1715,19 +1878,19 @@ function renderAvatarConstellation(scene: ScenePlanItem, accent: string, bg: str
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderGradientMeshHero(scene: ScenePlanItem, _accent: string, _bg: string): string {
 	const meshColorArr = scene.meshColors || ["#ffd6e7", "#e0d4ff", "#d4fff1", "#ffefd6"];
 	const isDark = isDarkHex(meshColorArr[0]);
 	const textColor = resolveTextColor(scene);
 	const dots = !isDark;
 	const colors = JSON.stringify(meshColorArr);
-	const headline = JSON.stringify(scene.headline || "Premium, by default.");
-	// Read subtitle from layer if available, fall back to scene.subtitle
+	const headline = JSON.stringify(resolveHeadline(scene, "Premium, by default."));
+	const subtitleText = resolveSubtitle(scene);
 	const subtitleLayer = scene.layers?.find((l) => l.id.startsWith("subtitle-"));
-	const subtitleText = subtitleLayer?.content || scene.subtitle;
 	const subtitleColor = subtitleLayer?.settings?.color || (textColor === "#ffffff" ? "rgba(255,255,255,0.7)" : "rgba(26,26,26,0.6)");
 	const subtitle = subtitleText ? JSON.stringify(subtitleText) : null;
-	const fontSize = scene.fontSize || 130;
+	const fontSize = resolveHeadlineFontSize(scene, 130);
 	const effect = scene.backgroundEffect && scene.backgroundEffect !== "none" ? scene.backgroundEffect : null;
 	const pal = accentPalette(_accent);
 	const intensity = scene.backgroundEffectIntensity ?? 0.7;
@@ -1741,6 +1904,7 @@ function renderGradientMeshHero(scene: ScenePlanItem, _accent: string, _bg: stri
       </AbsoluteFill>`;
 }
 
+// [LAYER-UNIFIED]
 function renderDashboardDeconstructed(scene: ScenePlanItem, _accent: string, bg: string): string {
 	const metrics = JSON.stringify(
 		scene.dashboardMetrics || [
@@ -1750,12 +1914,12 @@ function renderDashboardDeconstructed(scene: ScenePlanItem, _accent: string, bg:
 			{ label: "Uptime", value: "99.9%", delta: "Stable" },
 		],
 	);
-	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
+	const hl = resolveHeadline(scene);
+	const headline = hl ? JSON.stringify(hl) : null;
 	const headlineColor = resolveTextColor(scene);
-	// Headline in flow at top, dashboard grid constrained below (not full-height)
 	return `<Scene bg="${bg}">
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', height: '100%', gap: 24 }}>
-          ${headline ? `<div style={{ flexShrink: 0, paddingTop: 40, textAlign: 'center' }}><AnimatedText text={${headline}} fontSize={${scene.fontSize || 72}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="clip" maxWidth={1500} /></div>` : ""}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', height: '100%', gap: ${scene.layerGap ?? 24} }}>
+          ${headline ? `<div style={{ flexShrink: 0, paddingTop: 40, textAlign: 'center' }}><AnimatedText text={${headline}} fontSize={${resolveHeadlineFontSize(scene, 72)}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="clip" maxWidth={1500} /></div>` : ""}
           <div style={{ flex: 1, width: '100%', position: 'relative', minHeight: 0 }}>
             <DashboardGrid metrics={${metrics}} showChart={true} />
           </div>
@@ -1763,25 +1927,16 @@ function renderDashboardDeconstructed(scene: ScenePlanItem, _accent: string, bg:
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderBrowserTabsChaos(scene: ScenePlanItem, _accent: string, bg: string): string {
 	const tabs = JSON.stringify(
-		scene.browserTabs || [
-			"linkedin.com",
-			"twitter.com",
-			"notion.so",
-			"slack.com",
-			"gmail.com",
-			"figma.com",
-			"github.com",
-			"jira.atlassian...",
-			"calendar.google...",
-			"stackoverflow.com",
-			"docs.google.com",
-			"asana.com",
-		],
+		resolveStringArray(scene, "browser-tab-", "browserTabs", [
+			"linkedin.com", "twitter.com", "notion.so", "slack.com", "gmail.com", "figma.com",
+			"github.com", "jira.atlassian...", "calendar.google...", "stackoverflow.com", "docs.google.com", "asana.com",
+		]),
 	);
-	const headline = JSON.stringify(scene.headline || "Endless tabs.");
-	const fontSize = scene.fontSize || 140;
+	const headline = JSON.stringify(resolveHeadline(scene, "Endless tabs."));
+	const fontSize = resolveHeadlineFontSize(scene, 140);
 	return `<Scene bg="${bg}">
         <div style={{ position: 'absolute', top: 40, left: 40, right: 40, background: '#e8e8e8', borderRadius: 12, padding: '12px 16px', border: '1px solid #d0d0d0', display: 'flex', gap: 4, overflow: 'hidden', flexWrap: 'nowrap' }}>
           {${tabs}.map((tab, i) => (
@@ -1806,23 +1961,26 @@ function renderBrowserTabsChaos(scene: ScenePlanItem, _accent: string, bg: strin
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderAppIconCloud(scene: ScenePlanItem, accent: string, bg: string): string {
-	const icons = scene.appIcons || [
-		{ icon: "💬", color: "#4a154b", label: "Chat" },
+	const icons = resolveStructuredArray(
+		scene, "app-icon-", "appIcons",
+		(l) => { try { return JSON.parse(l.content); } catch { return { icon: l.content || "✦", color: accent, label: "" }; } },
+		[{ icon: "💬", color: "#4a154b", label: "Chat" },
 		{ icon: "📧", color: "#ea4335", label: "Mail" },
 		{ icon: "📊", color: "#0077b5", label: "Analytics" },
 		{ icon: "📝", color: "#000000", label: "Docs" },
 		{ icon: "🎯", color: "#ff6900", label: "Goals" },
-		{ icon: "📅", color: "#4285f4", label: "Calendar" },
-	];
+		{ icon: "📅", color: "#4285f4", label: "Calendar" }],
+	);
 	// Generate positions dynamically based on icon count — spread evenly across
 	// the frame with alternating vertical offsets so they don't overlap
 	const n = Math.min(icons.length, 9);
 	// Choose columns that avoid orphans: prefer even rows
 	const cols = n <= 2 ? n : n <= 4 ? 2 : n % 3 === 0 ? 3 : n % 2 === 0 ? 2 : 3;
 	const iconsJson = JSON.stringify(icons.slice(0, n));
-	const headline = JSON.stringify(scene.headline || "Every tool. One flow.");
-	const fontSize = scene.fontSize || 120;
+	const headline = JSON.stringify(resolveHeadline(scene, "Every tool. One flow."));
+	const fontSize = resolveHeadlineFontSize(scene, 120);
 	const textColor = resolveTextColor(scene);
 	return `<Scene bg="${bg}">
         {React.createElement(() => {
@@ -1854,43 +2012,64 @@ function renderAppIconCloud(scene: ScenePlanItem, accent: string, bg: string): s
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderScrollingList(scene: ScenePlanItem, accent: string, bg: string): string {
-	const rawLines = scene.scrollingListLines || [
-		{ text: "Record." },
-		{ text: "Edit." },
-		{ text: "Caption." },
-		{ text: "Polish." },
-		{ text: "Ship." },
-	];
+	// Read from layers first, fall back to data fields
+	const scrollLayers = (scene.layers || [])
+		.filter((l) => l.id.startsWith("scroll-line-") && !l._incompatible)
+		.sort((a, b) => {
+			const ai = Number.parseInt(a.id.slice("scroll-line-".length));
+			const bi = Number.parseInt(b.id.slice("scroll-line-".length));
+			return ai - bi;
+		});
+	const rawLines = scrollLayers.length > 0
+		? scrollLayers.map((l) => ({ text: l.content || "", color: l.settings?.color, fontSize: l.settings?.fontSize, spacingAfter: l.settings?.spacingAfter, accentWord: l.settings?.accentWord, accentColor: l.settings?.accentColor }))
+		: (scene.scrollingListLines || [
+			{ text: "Record." },
+			{ text: "Edit." },
+			{ text: "Caption." },
+			{ text: "Polish." },
+			{ text: "Ship." },
+		]);
 	const textColor = resolveTextColor(scene);
-	// Pick an accent color for 1-2 lines (last or specified)
+	// Use scene.fontSize (synced from first scroll-line layer) as default, not headline fontSize
+	const defaultSize = scene.fontSize || 130;
 	const withColors = rawLines.map((l, i) => ({
 		text: l.text,
-		color: l.color || (i === rawLines.length - 1 ? accent : textColor),
+		color: (l as any).color || (i === rawLines.length - 1 ? accent : textColor),
+		size: (l as any).fontSize || defaultSize,
+		spacingAfter: (l as any).spacingAfter || undefined,
+		accentWord: (l as any).accentWord || undefined,
+		accentColor: (l as any).accentColor || accent,
 	}));
-	// All lines same size — the emphasis comes from sequential reveal, not size hierarchy
-	const lineSize = scene.fontSize || 130;
 	const lines = JSON.stringify(
-		withColors.map((l) => ({ text: l.text, size: lineSize, color: l.color })),
+		withColors.map((l) => ({
+			text: l.text, size: l.size, color: l.color,
+			...(l.spacingAfter ? { spacingAfter: l.spacingAfter } : {}),
+			...(l.accentWord ? { accentWord: l.accentWord, accentColor: l.accentColor } : {}),
+		})),
 	);
+	const hl = resolveHeadline(scene);
 	const headline =
-		scene.headline && scene.headline !== rawLines[0].text ? JSON.stringify(scene.headline) : null;
+		hl && hl !== rawLines[0].text ? JSON.stringify(hl) : null;
 	const headlineColor = resolveTextColor(scene);
 	// Compute stagger from scene duration so lines are paced across the full
 	// scene. Reserve ~30% of the scene for the final "all-visible" hold.
 	const sceneDur = clampDuration(scene);
 	const revealPortion = Math.floor(sceneDur * 0.7);
 	const stagger = Math.max(6, Math.floor(revealPortion / Math.max(1, rawLines.length)));
+	const headlineLayer = scene.layers?.find((l) => l.id.startsWith("headline-"));
+	const headlineSpacing = headlineLayer?.settings?.spacingAfter ?? 36;
 	return `<Scene bg="${bg}">
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 36 }}>
-          ${headline ? `<AnimatedText text={${headline}} fontSize={60} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="words" />` : ""}
-          <StackedText lines={${lines}} color="${textColor}" animation="scroll-up" stagger={${stagger}} gap={12} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: ${scene.layerGap ?? 12} }}>
+          ${headline ? `<div style={{ marginBottom: ${headlineSpacing - (scene.layerGap ?? 12)} }}><AnimatedText text={${headline}} fontSize={${resolveHeadlineFontSize(scene, 60)}} color="${headlineColor}" fontFamily="'Inter', sans-serif" animation="words" /></div>` : ""}
+          <StackedText lines={${lines}} color="${textColor}" animation="scroll-up" stagger={${stagger}} gap={${scene.layerGap ?? 12}} />
         </div>
       </Scene>`;
 }
 
+// [LAYER-UNIFIED]
 function renderCameraText(scene: ScenePlanItem, accent: string, bg: string): string {
-	// Clamp extreme scale values in user-provided camera keyframes.
 	const sanitizeCamera = (
 		keys: Array<{ frame: number; scale?: number; translateX?: number; translateY?: number }>,
 	) =>
@@ -1898,14 +2077,21 @@ function renderCameraText(scene: ScenePlanItem, accent: string, bg: string): str
 			...k,
 			scale: k.scale !== undefined ? Math.max(0.25, Math.min(2.5, k.scale)) : undefined,
 		}));
-	// Default to a compelling "Meet [Product]" sequence if no data provided
-	const words = JSON.stringify(
-		scene.cameraTextWords || [
-			{ text: "Meet", appearsAt: 0 },
-			{ text: "●", appearsAt: 30, isLogo: true, logoContent: "●", logoColor: accent },
-			{ text: scene.headline || "Product", appearsAt: 15, color: accent },
-		],
-	);
+	const defaultWords = [
+		{ text: "Meet", appearsAt: 0 },
+		{ text: "●", appearsAt: 30, isLogo: true, logoContent: "●", logoColor: accent },
+		{ text: resolveHeadline(scene, "Product"), appearsAt: 15, color: accent },
+	];
+	const cameraWordLayers = (scene.layers || [])
+		.filter((l) => l.id.startsWith("camera-word-") && !l._incompatible)
+		.sort((a, b) => Number.parseInt(a.id.slice(12)) - Number.parseInt(b.id.slice(12)));
+	const wordData = cameraWordLayers.length > 0
+		? cameraWordLayers.map((l, i) => {
+			const existing = scene.cameraTextWords?.[i] || defaultWords[i] || {};
+			return { ...existing, text: l.content || existing.text || "", appearsAt: l.startFrame || existing.appearsAt || 0, ...(l.settings?.color ? { color: l.settings.color } : {}) };
+		})
+		: scene.cameraTextWords || defaultWords;
+	const words = JSON.stringify(wordData);
 	const camera = JSON.stringify(
 		sanitizeCamera(
 			scene.cameraTextCamera || [
@@ -1945,7 +2131,7 @@ function renderDataFlowNetwork(scene: ScenePlanItem, accent: string, bg: string)
 
 /** data-flow-network: circles — original connected floating circles */
 function renderDataFlowCircles(scene: ScenePlanItem, accent: string, bg: string): string {
-	const nodes = scene.networkNodes || ["Input", "Process", "Analyze", "Decide", "Output"];
+	const nodes = resolveStringArray(scene, "network-node-", "networkNodes", ["Input", "Process", "Analyze", "Decide", "Output"]);
 	const nodesJson = JSON.stringify(nodes);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
 	const light = isLightBg(scene.background);
@@ -2012,7 +2198,7 @@ function renderDataFlowCircles(scene: ScenePlanItem, accent: string, bg: string)
 
 /** data-flow-network: timeline-arrows — horizontal timeline with arrow connectors */
 function renderDataFlowTimelineArrows(scene: ScenePlanItem, accent: string, bg: string): string {
-	const nodes = scene.networkNodes || ["Input", "Process", "Analyze", "Decide", "Output"];
+	const nodes = resolveStringArray(scene, "network-node-", "networkNodes", ["Input", "Process", "Analyze", "Decide", "Output"]);
 	const nodesJson = JSON.stringify(nodes);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
 	const light = isLightBg(scene.background);
@@ -2068,7 +2254,7 @@ function renderDataFlowTimelineArrows(scene: ScenePlanItem, accent: string, bg: 
 
 /** data-flow-network: hex-grid — hexagonal nodes with glowing edges */
 function renderDataFlowHexGrid(scene: ScenePlanItem, accent: string, bg: string): string {
-	const nodes = scene.networkNodes || ["Input", "Process", "Analyze", "Decide", "Output"];
+	const nodes = resolveStringArray(scene, "network-node-", "networkNodes", ["Input", "Process", "Analyze", "Decide", "Output"]);
 	const nodesJson = JSON.stringify(nodes);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
 	const light = isLightBg(scene.background);
@@ -2132,7 +2318,7 @@ function renderDataFlowHexGrid(scene: ScenePlanItem, accent: string, bg: string)
 
 /** data-flow-network: isometric-blocks — 3D blocks connected by pipes */
 function renderDataFlowIsometricBlocks(scene: ScenePlanItem, accent: string, bg: string): string {
-	const nodes = scene.networkNodes || ["Input", "Process", "Analyze", "Decide", "Output"];
+	const nodes = resolveStringArray(scene, "network-node-", "networkNodes", ["Input", "Process", "Analyze", "Decide", "Output"]);
 	const nodesJson = JSON.stringify(nodes);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
 	const light = isLightBg(scene.background);
@@ -2198,7 +2384,7 @@ function renderDataFlowIsometricBlocks(scene: ScenePlanItem, accent: string, bg:
 
 /** data-flow-network: orbital-rings — nodes orbiting a center point */
 function renderDataFlowOrbitalRings(scene: ScenePlanItem, accent: string, bg: string): string {
-	const nodes = scene.networkNodes || ["Input", "Process", "Analyze", "Decide", "Output"];
+	const nodes = resolveStringArray(scene, "network-node-", "networkNodes", ["Input", "Process", "Analyze", "Decide", "Output"]);
 	const nodesJson = JSON.stringify(nodes);
 	const headline = scene.headline ? JSON.stringify(scene.headline) : null;
 	const light = isLightBg(scene.background);
@@ -2261,6 +2447,7 @@ const SCENE_TYPES_WITHOUT_HEADLINE = new Set<string>([
 	"ghost-hook", // reads ghostWords
 	"camera-text", // reads cameraTextWords
 	"stacked-hierarchy", // reads stackedLines
+	"contrast-pairs", // reads contrastPairs
 	"word-slot-machine", // reads slotMachineWords
 ]);
 
@@ -2415,6 +2602,36 @@ export function expandSceneToLayers(scene: ScenePlanItem, accent: string): Scene
 				startFrame: i * 4,
 				endFrame: -1,
 				settings: { fontSize: line.size || 120, color, animation: "drop" },
+			});
+		});
+	}
+
+	// ── Contrast pairs (for contrast-pairs scene type) ──
+	if (scene.type === "contrast-pairs" && scene.contrastPairs && scene.contrastPairs.length > 0) {
+		scene.contrastPairs.forEach((pair, i) => {
+			layers.push({
+				id: `contrast-stmt-${i}`,
+				type: "text",
+				content: pair.statement,
+				position: "center",
+				size: 60,
+				startFrame: i * 40,
+				endFrame: -1,
+				settings: { fontSize: scene.fontSize || 100, color, animation: "words", fontFamily: "Georgia, 'Times New Roman', serif" },
+			});
+			layers.push({
+				id: `contrast-ctr-${i}`,
+				type: "text",
+				content: pair.counter,
+				position: "center",
+				size: 60,
+				startFrame: i * 40 + 15,
+				endFrame: -1,
+				settings: {
+					fontSize: Math.round((scene.fontSize || 100) * 0.7),
+					color: isLightBg(scene.background) ? "rgba(5,5,5,0.5)" : "rgba(255,255,255,0.5)",
+					animation: "words",
+				},
 			});
 		});
 	}
@@ -2677,21 +2894,53 @@ export function expandSceneToLayers(scene: ScenePlanItem, accent: string): Scene
 		});
 	}
 
-	// ── CTA pill layer ──
+	// ── CTA layers: logo, button, URL ──
 	if (scene.type === "cta") {
+		// Logo layer (uses image type)
+		const logoSrc = (scene as any)._logoUrl || "";
+		if (logoSrc) {
+			layers.push({
+				id: "cta-logo",
+				type: "image",
+				content: logoSrc,
+				position: "center",
+				size: 20,
+				startFrame: 0,
+				endFrame: -1,
+				settings: { fontSize: 60 }, // used as height
+			});
+		}
+		// Button layer
 		layers.push({
 			id: "cta-pill",
-			type: "text",
+			type: "button",
 			content: "Get Started",
 			position: "center",
 			size: 30,
 			startFrame: 15,
 			endFrame: -1,
 			settings: {
-				fontSize: 18,
-				animation: "pill",
+				fontSize: 26,
 			},
 		});
+		// URL layer
+		const urlText = (scene as any)._websiteUrl || "";
+		if (urlText) {
+			layers.push({
+				id: "cta-url",
+				type: "text",
+				content: urlText,
+				position: "center",
+				size: 30,
+				startFrame: 10,
+				endFrame: -1,
+				settings: {
+					fontSize: 24,
+					color: isLightBg(scene.background) ? "rgba(26,26,26,0.4)" : "rgba(255,255,255,0.4)",
+					animation: "none",
+				},
+			});
+		}
 	}
 
 	// ── Effect layers ──
@@ -2762,6 +3011,8 @@ export function expandSceneToLayers(scene: ScenePlanItem, accent: string): Scene
 function compileCenterLayer(layer: SceneLayer, accent: string): string {
 	const s = layer.settings || {};
 	const delay = layer.startFrame || 0;
+	const wrapSpacing = (content: string) =>
+		s.spacingAfter ? `<div style={{ marginBottom: ${s.spacingAfter} }}>${content}</div>` : content;
 
 	if (layer.type === "text") {
 		const fontSize = Math.max(32, s.fontSize || 60);
@@ -2769,12 +3020,21 @@ function compileCenterLayer(layer: SceneLayer, accent: string): string {
 		const color = s.color || "#ffffff";
 		const animation = s.animation || "words";
 		if (animation === "gradient")
-			return `<GradientText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} delay={${delay}} />`;
+			return wrapSpacing(`<GradientText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} delay={${delay}} />`);
 		if (animation === "glitch")
-			return `<GlitchText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} color="${color}" delay={${delay}} />`;
+			return wrapSpacing(`<GlitchText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} color="${color}" delay={${delay}} />`);
 		if (animation === "none")
-			return `<div style={{ fontSize: ${fontSize}, fontFamily: "${fontFamily}", color: "${color}", textAlign: "center", maxWidth: 1400 }}>{${JSON.stringify(layer.content)}}</div>`;
-		return `<AnimatedText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} color="${color}" fontFamily="${fontFamily}" animation="${animation}" delay={${delay}} ${s.accentWord ? `accentWord="${s.accentWord}" accentColor="${s.accentColor || accent}"` : ""} />`;
+			return wrapSpacing(`<div style={{ fontSize: ${fontSize}, fontFamily: "${fontFamily}", color: "${color}", textAlign: "center", maxWidth: 1400 }}>{${JSON.stringify(layer.content)}}</div>`);
+		return wrapSpacing(`<AnimatedText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} color="${color}" fontFamily="${fontFamily}" animation="${animation}" delay={${delay}} ${s.accentWord ? `accentWord="${s.accentWord}" accentColor="${s.accentColor || accent}"` : ""} />`);
+	}
+	if (layer.type === "button") {
+		const btnFontSize = Math.max(16, s.fontSize || 26);
+		const bgColor = s.accentColor || accent;
+		const autoBtn = isDarkHex(bgColor) ? "#ffffff" : "#1a1a1a";
+		const btnTextColor = s.color && s.color !== "#ffffff" && s.color !== "#fff" && s.color !== "#1a1a1a" ? s.color : autoBtn;
+		const btnAnim = s.animation || "none";
+		const btnBorder = s.borderColor ? ` borderColor="${s.borderColor}"` : "";
+		return wrapSpacing(`<ButtonPill text={${JSON.stringify(layer.content || "Get Started")}} fontSize={${btnFontSize}} bgColor="${bgColor}" textColor="${btnTextColor}" animation="${btnAnim}" delay={${delay}}${btnBorder} />`);
 	}
 	if (layer.type === "card") {
 		try {
@@ -2844,12 +3104,24 @@ function compileLayer(layer: SceneLayer, sceneDuration: number, accent: string):
 			} else if (animation === "glitch") {
 				content = `<GlitchText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} color="${color}" />`;
 			} else if (animation === "pill") {
-				content = `<Pill text={${JSON.stringify(layer.content)}} delay={0} color="#fff" bg="rgba(255,255,255,0.1)" />`;
+				const pillBg = color === "#ffffff" ? "rgba(255,255,255,0.1)" : "rgba(26,26,26,0.1)";
+				content = `<Pill text={${JSON.stringify(layer.content)}} delay={0} color="${color}" bg="${pillBg}" />`;
 			} else if (animation === "none") {
 				content = `<div style={{ fontSize: ${fontSize}, fontFamily: "${fontFamily}", color: "${color}", textAlign: "center", maxWidth: 1000 }}>{${JSON.stringify(layer.content)}}</div>`;
 			} else {
 				content = `<AnimatedText text={${JSON.stringify(layer.content)}} fontSize={${fontSize}} color="${color}" fontFamily="${fontFamily}" animation="${animation}" ${s.accentWord ? `accentWord="${s.accentWord}" accentColor="${s.accentColor || accent}"` : ""} />`;
 			}
+			break;
+		}
+
+		case "button": {
+			const btnFs = Math.max(16, s.fontSize || 26);
+			const btnBg = s.accentColor || accent;
+			const autoBtnClr = isDarkHex(btnBg) ? "#ffffff" : "#1a1a1a";
+			const btnClr = s.color && s.color !== "#ffffff" && s.color !== "#fff" && s.color !== "#1a1a1a" ? s.color : autoBtnClr;
+			const btnAnim = s.animation || "none";
+			const btnBdr = s.borderColor ? ` borderColor="${s.borderColor}"` : "";
+			content = `<ButtonPill text={${JSON.stringify(layer.content || "Get Started")}} fontSize={${btnFs}} bgColor="${btnBg}" textColor="${btnClr}" animation="${btnAnim}"${btnBdr} />`;
 			break;
 		}
 
@@ -3063,7 +3335,7 @@ function accentPalette(accent: string): {
 	};
 }
 
-function isLightBg(bg: string): boolean {
+export function isLightBg(bg: string): boolean {
 	return [
 		"white",
 		"cream",
@@ -3108,6 +3380,121 @@ function resolveTextColor(scene: ScenePlanItem): string {
 	const headlineLayer = scene.layers?.find((l) => l.id.startsWith("headline-"));
 	if (headlineLayer?.settings?.color) return headlineLayer.settings.color;
 	return isLightBg(scene.background) ? "#1a1a1a" : "#ffffff";
+}
+
+// ── Layer-first resolve helpers ────────────────────────────────────────
+// These read content from layers first, falling back to data fields.
+// This is the unification bridge: renderers call these instead of
+// reading scene.headline / scene.fontSize directly.
+
+/** Resolve headline text from layers, fall back to scene.headline */
+function resolveHeadline(scene: ScenePlanItem, fallback = ""): string {
+	const layer = scene.layers?.find((l) => l.id.startsWith("headline-"));
+	return layer?.content || scene.headline || fallback;
+}
+
+/** Resolve subtitle text from layers, fall back to scene.subtitle */
+function resolveSubtitle(scene: ScenePlanItem): string | undefined {
+	const layer = scene.layers?.find((l) => l.id.startsWith("subtitle-"));
+	return layer?.content || scene.subtitle;
+}
+
+/** Resolve fontSize from headline layer settings, fall back to scene.fontSize */
+function resolveHeadlineFontSize(scene: ScenePlanItem, defaultSize: number): number {
+	const layer = scene.layers?.find((l) => l.id.startsWith("headline-"));
+	return layer?.settings?.fontSize || scene.fontSize || defaultSize;
+}
+
+/** Resolve animation from headline layer settings, fall back to scene.animation */
+function resolveHeadlineAnimation(scene: ScenePlanItem, defaultAnim: string): string {
+	const layer = scene.layers?.find((l) => l.id.startsWith("headline-"));
+	return layer?.settings?.animation || scene.animation || defaultAnim;
+}
+
+/** Resolve accent word from headline layer settings, fall back to scene.accentWord */
+function resolveAccentWord(scene: ScenePlanItem): string | undefined {
+	const layer = scene.layers?.find((l) => l.id.startsWith("headline-"));
+	return layer?.settings?.accentWord || scene.accentWord;
+}
+
+/** Resolve a string array from layers (ghost-word-N, before-N, etc.), fall back to data field */
+function resolveStringArray(
+	scene: ScenePlanItem,
+	prefix: string,
+	field: keyof ScenePlanItem,
+	fallback: string[],
+): string[] {
+	if (scene.layers?.length) {
+		const matched = scene.layers
+			.filter((l) => l.id.startsWith(prefix) && !l._incompatible)
+			.sort((a, b) => Number.parseInt(a.id.slice(prefix.length)) - Number.parseInt(b.id.slice(prefix.length)));
+		if (matched.length > 0) return matched.map((l) => l.content || "");
+	}
+	return ((scene as any)[field] as string[] | undefined) || fallback;
+}
+
+/** Resolve a structured array from layers with a transform function */
+function resolveStructuredArray<T>(
+	scene: ScenePlanItem,
+	prefix: string,
+	field: keyof ScenePlanItem,
+	fromLayer: (layer: SceneLayer, index: number) => T,
+	fallback: T[],
+): T[] {
+	if (scene.layers?.length) {
+		const matched = scene.layers
+			.filter((l) => l.id.startsWith(prefix) && !l._incompatible)
+			.sort((a, b) => Number.parseInt(a.id.slice(prefix.length)) - Number.parseInt(b.id.slice(prefix.length)));
+		if (matched.length > 0) return matched.map((l, i) => fromLayer(l, i));
+	}
+	return ((scene as any)[field] as T[] | undefined) || fallback;
+}
+
+/** Resolve paired arrays (metric-value-N + metric-label-N, contrast-stmt-N + contrast-ctr-N) */
+function resolvePairedArray<T>(
+	scene: ScenePlanItem,
+	prefixA: string,
+	prefixB: string,
+	field: keyof ScenePlanItem,
+	fromPair: (a: SceneLayer | undefined, b: SceneLayer | undefined, i: number) => T,
+	fallback: T[],
+): T[] {
+	if (scene.layers?.length) {
+		let maxIdx = -1;
+		for (const l of scene.layers) {
+			if (l._incompatible) continue;
+			for (const pfx of [prefixA, prefixB]) {
+				if (l.id.startsWith(pfx)) {
+					const idx = Number.parseInt(l.id.slice(pfx.length));
+					if (!Number.isNaN(idx) && idx > maxIdx) maxIdx = idx;
+				}
+			}
+		}
+		if (maxIdx >= 0) {
+			const result: T[] = [];
+			for (let i = 0; i <= maxIdx; i++) {
+				const a = scene.layers.find((l) => l.id === `${prefixA}${i}`);
+				const b = scene.layers.find((l) => l.id === `${prefixB}${i}`);
+				if (a || b) result.push(fromPair(a, b, i));
+			}
+			if (result.length > 0) return result;
+		}
+	}
+	return ((scene as any)[field] as T[] | undefined) || fallback;
+}
+
+/** Resolve a scalar value from an exact layer ID */
+function resolveScalarLayer<T>(
+	scene: ScenePlanItem,
+	layerId: string,
+	field: keyof ScenePlanItem,
+	fromLayer: (layer: SceneLayer) => T,
+	fallback: T,
+): T {
+	const layer = scene.layers?.find((l) => l.id === layerId && !l._incompatible);
+	if (layer) return fromLayer(layer);
+	const val = (scene as any)[field];
+	return val !== undefined && val !== null ? val as T : fallback;
 }
 
 function resolveFontFamily(font?: string): string {

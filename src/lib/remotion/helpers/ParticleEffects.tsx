@@ -381,3 +381,71 @@ export const FlowingGradient: React.FC<FlowingGradientProps> = ({ colors, speed 
 
 	return <AbsoluteFill style={{ background: bg, pointerEvents: "none" }} />;
 };
+
+// ── Money Rain ─────────────────────────────────────────────────────────
+
+interface MoneyRainProps {
+	count?: number;
+	intensity?: number;
+	symbol?: string;
+	colors?: string[];
+}
+
+export const MoneyRain: React.FC<MoneyRainProps> = ({
+	count = 50,
+	intensity = 1,
+	symbol = "$",
+	colors = ["#22c55e", "#16a34a", "#4ade80", "#86efac", "#fbbf24", "#f59e0b"],
+}) => {
+	const frame = useCurrentFrame();
+	const { height } = useVideoConfig();
+
+	const drops = useMemo(
+		() =>
+			Array.from({ length: count }, (_, i) => ({
+				x: random(`mr-x-${i}`) * 100,
+				delay: random(`mr-d-${i}`) * 60,
+				speed: (random(`mr-sp-${i}`) * 1.5 + 0.4) * intensity,
+				size: random(`mr-s-${i}`) * 28 + 16,
+				opacity: random(`mr-o-${i}`) * 0.5 + 0.2,
+				rotation: random(`mr-r-${i}`) * 360,
+				rotSpeed: (random(`mr-rs-${i}`) - 0.5) * 4,
+				color: colors[Math.floor(random(`mr-c-${i}`) * colors.length)],
+			})),
+		[count, intensity, colors],
+	);
+
+	return (
+		<AbsoluteFill style={{ overflow: "hidden", pointerEvents: "none" }}>
+			{drops.map((d, i) => {
+				const t = frame - d.delay;
+				if (t < 0) return null;
+				const y = -40 + t * d.speed;
+				if (y > height + 40) return null;
+				const wobble = Math.sin(t * 0.03 + d.x) * 25;
+				const rot = d.rotation + t * d.rotSpeed;
+
+				return (
+					<div
+						key={i}
+						style={{
+							position: "absolute",
+							left: `${d.x}%`,
+							top: y,
+							fontSize: d.size,
+							fontWeight: 900,
+							fontFamily: "'Inter', system-ui, sans-serif",
+							color: d.color,
+							transform: `translateX(${wobble}px) rotate(${rot}deg)`,
+							opacity: d.opacity,
+							textShadow: `0 0 12px ${d.color}40`,
+							userSelect: "none",
+						}}
+					>
+						{symbol}
+					</div>
+				);
+			})}
+		</AbsoluteFill>
+	);
+};

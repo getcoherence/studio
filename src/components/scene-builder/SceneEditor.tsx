@@ -53,6 +53,7 @@ const BG_EFFECT_OPTIONS = [
 	"fireflies",
 	"sakura",
 	"sparks",
+	"money-rain",
 	// Grid/geometric
 	"pulse-grid",
 	"wave-grid",
@@ -188,6 +189,7 @@ import { LayerPanel } from "./LayerPanel";
 import { LottieBrowser } from "./LottieBrowser";
 import { SceneCanvas } from "./SceneCanvas";
 import { SceneLayerEditor } from "./SceneLayerEditor";
+import { SceneTypePicker } from "./SceneTypePicker";
 import { SceneLayerTimeline } from "./SceneLayerTimeline";
 import { SceneTimeline } from "./SceneTimeline";
 
@@ -258,13 +260,21 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 	});
 	const [selectedSceneIndex, setSelectedSceneIndex] = useState(0);
 	const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+	const [collapsedScenes, setCollapsedScenes] = useState<Set<number>>(new Set());
+	const [videoPromptScene, setVideoPromptScene] = useState<number | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [currentTimeMs, setCurrentTimeMs] = useState(0);
 	const [isExporting, setIsExporting] = useState(false);
 	const [lastExportPath, setLastExportPath] = useState<string | null>(null);
 	const [isUploadingYT, setIsUploadingYT] = useState(false);
 	const [exportProgress, setExportProgress] = useState<SceneExportProgress | null>(null);
-	const [aspectRatio, setAspectRatio] = useState("16/9");
+	const [aspectRatio, _setAspectRatio] = useState(() => (project as any)._aspectRatio || "16/9");
+	const setAspectRatio = useCallback((ratio: string) => {
+		_setAspectRatio(ratio);
+		(project as any)._aspectRatio = ratio;
+		const res = getResolution(ratio);
+		setProject((prev) => ({ ...prev, resolution: res }));
+	}, [project]);
 	const [aiComposition, setAiComposition] = useState<AiCompositionData | null>(() => {
 		const proj = project as any;
 		if (project.styleId === "ai-cinematic" && proj._aiCode) {
@@ -299,6 +309,11 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 			}
 			const accent = plan.accentColor || "#2563eb";
 			for (const scene of plan.scenes) {
+				// Stamp plan-level assets onto CTA scenes so expandSceneToLayers can generate logo/URL layers
+				if (scene.type === "cta") {
+					(scene as any)._logoUrl = (scene as any)._logoUrl || plan.logoUrl || null;
+					(scene as any)._websiteUrl = (scene as any)._websiteUrl || plan.websiteUrl || null;
+				}
 				// Always re-expand if layers are empty or missing.
 				// Note: we NO LONGER create a "default text layer" fallback when
 				// expansion returns empty. For scene types like word-slot-machine
@@ -389,6 +404,26 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 											l.content = `${item.icon} ${item.label}`;
 										}
 									}
+								}
+							}
+						}
+
+						// Backfill CTA layers: logo, button, URL (added post-launch)
+						// Only backfill if the scene has NEVER had a cta-pill button layer —
+						// meaning it's from before the CTA layer unification. If pill exists,
+						// any missing logo/URL was deliberately deleted by the user.
+						if (scene.type === "cta") {
+							const hasPill = scene.layers!.some((l) => l.id === "cta-pill");
+							if (!hasPill) {
+								// First time through new system — add all CTA layers
+								const logoSrc = plan.logoUrl;
+								const urlText = plan.websiteUrl;
+								if (logoSrc) {
+									scene.layers!.push({ id: "cta-logo", type: "image", content: logoSrc, position: "center", size: 20, startFrame: 0, endFrame: -1, settings: { fontSize: 60 } });
+								}
+								scene.layers!.push({ id: "cta-pill", type: "button" as any, content: "Get Started", position: "center", size: 30, startFrame: 15, endFrame: -1, settings: { fontSize: 26 } });
+								if (urlText) {
+									scene.layers!.push({ id: "cta-url", type: "text", content: urlText, position: "center", size: 30, startFrame: 10, endFrame: -1, settings: { fontSize: 24, color: "rgba(255,255,255,0.4)", animation: "none" } });
 								}
 							}
 						}
@@ -924,6 +959,7 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 					const { estimateAiDuration } = await import("@/lib/remotion/compileCode");
 					const durationInFrames = estimateAiDuration(aiComposition.code, 30);
 
+					const exportRes = getResolution(aspectRatio);
 					const result = await window.electronAPI.exportRemotion({
 						code: aiComposition.code,
 						screenshots: aiComposition.screenshots,
@@ -932,6 +968,8 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 						fileName: project.name || "export",
 						musicPath: musicPath || undefined,
 						musicVolume,
+						width: exportRes.width,
+						height: exportRes.height,
 					});
 
 					toast.dismiss("export");
@@ -1285,15 +1323,77 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 			// 1. Type switch: seed new type's fields, clear stale fields, re-expand layers
 			if (isTypeSwitch && updates.type) {
-				const seeded = seedFieldsForType(updates.type, currentScene);
+				// Carry text content from current layers to the new type's data fields,
+				// but ONLY between types with compatible content shapes (multi-line text).
+				// Types like word-slot-machine, notifications, chat need short/structured
+				// data that doesn't map from paragraph text.
+				const MULTI_LINE_TEXT_TYPES = new Set([
+					"scrolling-list", "stacked-hierarchy", "ghost-hook",
+					"contrast-pairs", "before-after", "stacked-text",
+				]);
+				const textFromLayers = (currentScene.layers || [])
+					.filter((l) => l.type === "text" && !l._incompatible && l.content)
+					.map((l) => l.content);
+				const carriedFields: Partial<ScenePlanItem> = {};
+				const t = updates.type;
+				if (textFromLayers.length > 1 && MULTI_LINE_TEXT_TYPES.has(t)) {
+					if (t === "scrolling-list") {
+						carriedFields.scrollingListLines = textFromLayers.map((text) => ({ text }));
+					} else if (t === "stacked-hierarchy") {
+						carriedFields.stackedLines = textFromLayers.map((text) => ({ text, size: 120 }));
+					} else if (t === "ghost-hook") {
+						carriedFields.ghostWords = textFromLayers.slice(0, 3);
+					} else if (t === "contrast-pairs") {
+						const pairs: Array<{ statement: string; counter: string }> = [];
+						for (let j = 0; j < textFromLayers.length; j += 2) {
+							pairs.push({ statement: textFromLayers[j], counter: textFromLayers[j + 1] || "" });
+						}
+						carriedFields.contrastPairs = pairs;
+					} else if (t === "before-after") {
+						const half = Math.ceil(textFromLayers.length / 2);
+						carriedFields.beforeLines = textFromLayers.slice(0, half);
+						carriedFields.afterLines = textFromLayers.slice(half);
+					}
+				}
+				// Smart carry-over for word-slot-machine: first layer → headline,
+				// second layer → try to split into words (detect →, |, comma separators)
+				if (t === "word-slot-machine" && textFromLayers.length >= 2) {
+					carriedFields.headline = textFromLayers[0];
+					const listText = textFromLayers[1];
+					const delimiters = /\s*[→|,/]\s*/;
+					if (delimiters.test(listText)) {
+						const words = listText.split(delimiters).map((w) => w.trim()).filter(Boolean);
+						if (words.length >= 2) {
+							carriedFields.slotMachineWords = words;
+							carriedFields.slotMachineSelectedIndex = words.length - 1;
+							carriedFields.slotMachinePrefix = "";
+						}
+					}
+				}
+				// Smart carry-over for icon-showcase: each text layer → icon item
+				if (t === "icon-showcase" && textFromLayers.length >= 2) {
+					carriedFields.headline = textFromLayers[0];
+					carriedFields.iconItems = textFromLayers.slice(1).map((text) => ({ icon: "✦", label: text }));
+				}
+				// Always carry first text as headline for simple types
+				if (!carriedFields.headline && !currentScene.headline && textFromLayers[0]) {
+					carriedFields.headline = textFromLayers[0];
+				}
+				// Merge carried fields first, then let seedFieldsForType fill any remaining gaps
+				mergedUpdates = { ...mergedUpdates, ...carriedFields };
+				const sceneForSeed = { ...currentScene, ...mergedUpdates };
+				const seeded = seedFieldsForType(updates.type, sceneForSeed);
 				mergedUpdates = { ...mergedUpdates, ...seeded };
 
 				const newScene = { ...currentScene, ...mergedUpdates };
 				const freshLayers = expandSceneToLayers(newScene, accent);
-				const userLayers = (currentScene.layers || []).filter(
-					(l) => l.id.startsWith("layer-") || l.id.startsWith("l-"),
+				// Keep ALL old layers — pruneLayersForType will mark incompatible ones
+				// instead of deleting them, so users don't lose content when switching types
+				const freshIds = new Set(freshLayers.map((l) => l.id));
+				const oldLayers = (currentScene.layers || []).filter(
+					(l) => !freshIds.has(l.id), // don't duplicate layers that the new type also generates
 				);
-				mergedUpdates.layers = [...freshLayers, ...userLayers];
+				mergedUpdates.layers = [...freshLayers, ...oldLayers];
 
 				const { clearedFields } = pruneLayersForType(
 					mergedUpdates.layers,
@@ -1812,6 +1912,52 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 						YouTube
 					</button>
 				)}
+				{lastExportPath && (
+					<button
+						type="button"
+						onClick={async () => {
+							// Open file location so user can drag to TikTok/Instagram/LinkedIn
+							await window.electronAPI.openExternalUrl(
+								`https://www.tiktok.com/upload`
+							);
+							toast.success("TikTok upload page opened — drag your exported video there", { duration: 5000 });
+						}}
+						className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors text-xs"
+						title="Open TikTok upload page"
+					>
+						TikTok
+					</button>
+				)}
+				{lastExportPath && (
+					<button
+						type="button"
+						onClick={async () => {
+							await window.electronAPI.openExternalUrl(
+								`https://www.instagram.com/reels/create/`
+							);
+							toast.success("Instagram Reels page opened — upload your exported video", { duration: 5000 });
+						}}
+						className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors text-xs"
+						title="Open Instagram Reels upload"
+					>
+						Instagram
+					</button>
+				)}
+				{lastExportPath && (
+					<button
+						type="button"
+						onClick={async () => {
+							await window.electronAPI.openExternalUrl(
+								`https://www.linkedin.com/video/upload/`
+							);
+							toast.success("LinkedIn video page opened — upload your exported video", { duration: 5000 });
+						}}
+						className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors text-xs"
+						title="Open LinkedIn video upload"
+					>
+						LinkedIn
+					</button>
+				)}
 			</div>
 
 			{/* ── Main Content Area ────────────────────────────────────── */}
@@ -1841,11 +1987,11 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 									</div>
 								)}
 
-								{previewMode === "canvas" &&
-									[
+								{[
 										{ label: "16:9", ratio: "16/9" },
 										{ label: "9:16", ratio: "9/16" },
 										{ label: "1:1", ratio: "1/1" },
+										{ label: "4:5", ratio: "4/5" },
 										{ label: "4:3", ratio: "4/3" },
 									].map((preset) => (
 										<button
@@ -2279,17 +2425,41 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 
 								{rightPanelTab === "plan" && scenePlan && (
 									<div className="flex-1 overflow-y-auto p-3 space-y-3">
+										<div className="flex items-center justify-between mb-1">
+											<span className="text-[10px] text-white/20">Scenes ({scenePlan.scenes.length})</span>
+											<button
+												type="button"
+												onClick={() => {
+													if (collapsedScenes.size === scenePlan.scenes.length) {
+														setCollapsedScenes(new Set());
+													} else {
+														setCollapsedScenes(new Set(scenePlan.scenes.map((_, idx) => idx)));
+													}
+												}}
+												className="text-[9px] text-white/25 hover:text-white/50"
+											>
+												{collapsedScenes.size === scenePlan.scenes.length ? "Expand All" : "Collapse All"}
+											</button>
+										</div>
 										{scenePlan.scenes.map((scene, i) => (
 											<Fragment key={scene._id || i}>
 												<div className="p-3 rounded-lg bg-white/[0.03] border border-white/5 space-y-2">
 													{/* Row 1: Scene header with action buttons */}
 													<div className="flex items-center justify-between">
-														<span
-															className="text-[11px] text-white/30 font-medium"
-															title="Scene number — click a scene in the timeline to jump here"
+														<button
+															type="button"
+															onClick={() => setCollapsedScenes((prev) => {
+																const next = new Set(prev);
+																if (next.has(i)) next.delete(i); else next.add(i);
+																return next;
+															})}
+															className="text-[11px] text-white/30 font-medium hover:text-white/50 flex items-center gap-1 cursor-pointer"
+															title="Click to collapse/expand this scene"
 														>
+															<span className="text-[8px] text-white/20">{collapsedScenes.has(i) ? "▶" : "▼"}</span>
 															Scene {i + 1}
-														</span>
+															{collapsedScenes.has(i) && <span className="text-[9px] text-white/15 ml-1 truncate max-w-[80px]">{scene.type}</span>}
+														</button>
 														<div className="flex items-center gap-1.5">
 															<button
 																onClick={() => moveSceneInPlan(i, "up")}
@@ -2324,24 +2494,15 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 															</button>
 														</div>
 													</div>
+													{!collapsedScenes.has(i) && (<>
 													{/* Row 2: Scene type, theme, frames */}
 													<div className="flex items-center gap-1 flex-wrap">
-														<select
-															value={scene.type}
-															onChange={(e) =>
-																updateScenePlan(i, {
-																	type: e.target.value as ScenePlanItem["type"],
-																})
-															}
-															title="Scene template"
-															className="text-[10px] bg-[#141417] border border-white/10 rounded px-1 py-0.5 text-purple-400/70 [&>option]:bg-[#141417] [&>option]:text-white max-w-[130px] truncate"
-														>
-															{pluginRegistry.getSceneTypeIds().map((t) => (
-																<option key={t} value={t}>
-																	{t}
-																</option>
-															))}
-														</select>
+														<SceneTypePicker
+															currentType={scene.type}
+															scene={scene}
+															accent={scenePlan.accentColor || "#2563eb"}
+															onSelect={(typeId) => updateScenePlan(i, { type: typeId as ScenePlanItem["type"] })}
+														/>
 														{SCENE_VARIANT_OPTIONS[scene.type] && (
 															<select
 																value={scene.variant || SCENE_VARIANT_OPTIONS[scene.type]![0]}
@@ -2495,12 +2656,85 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 															</label>
 														</div>
 													)}
+													{/* Layer gap control */}
+													<div className="flex items-center gap-1">
+														<span className="text-[9px] text-white/20 shrink-0">Gap</span>
+														<input
+															type="range"
+															min={0}
+															max={80}
+															value={scene.layerGap ?? 16}
+															onChange={(e) => updateScenePlan(i, { layerGap: Number(e.target.value) })}
+															className="flex-1 h-1 accent-violet-500 cursor-pointer"
+														/>
+														<span className="text-[9px] text-white/25 w-5 text-right">{scene.layerGap ?? 16}</span>
+													</div>
+													{/* AI Video Clip controls */}
+													<div className="flex items-center gap-2 flex-wrap">
+														{scene.videoClipPath ? (
+															<div className="flex items-center gap-2 w-full">
+																<span className="text-[9px] text-emerald-400/70">Video clip attached</span>
+																<button
+																	type="button"
+																	className="text-[9px] text-red-400/50 hover:text-red-400 cursor-pointer"
+																	onClick={() => updateScenePlan(i, { videoClipPath: undefined, videoPrompt: undefined })}
+																>remove</button>
+															</div>
+														) : videoPromptScene === i ? (
+															<div className="flex flex-col gap-1 w-full">
+																<input
+																	type="text"
+																	defaultValue={scene.videoPrompt || "Smooth tracking shot, cinematic lighting, shallow depth of field"}
+																	onKeyDown={async (e) => {
+																		if (e.key === "Enter") {
+																			const prompt = (e.target as HTMLInputElement).value.trim();
+																			if (!prompt) return;
+																			setVideoPromptScene(null);
+																			updateScenePlan(i, { videoPrompt: prompt });
+																			toast.loading("Generating AI video clip... this may take a few minutes", { id: `video-${i}` });
+																			try {
+																				const result = await window.electronAPI.aiGenerateVideo(prompt, { durationSec: 6 });
+																				if (result.success && result.videoPath) {
+																					const fileResult = await window.electronAPI.readBinaryFile(result.videoPath);
+																					let clipPath = result.videoPath;
+																					if (fileResult?.success && fileResult.data) {
+																						const blob = new Blob([new Uint8Array(fileResult.data)], { type: "video/mp4" });
+																						clipPath = URL.createObjectURL(blob);
+																					}
+																					updateScenePlan(i, { videoClipPath: clipPath, videoPrompt: prompt, durationFrames: 180 });
+																					toast.success("Video clip generated!", { id: `video-${i}` });
+																				} else {
+																					toast.error(result.error || "Video generation failed", { id: `video-${i}` });
+																				}
+																			} catch (err) {
+																				toast.error(`Video generation error: ${err}`, { id: `video-${i}` });
+																			}
+																		} else if (e.key === "Escape") {
+																			setVideoPromptScene(null);
+																		}
+																	}}
+																	placeholder="Describe the cinematic video clip..."
+																	autoFocus
+																	className="w-full text-[10px] bg-white/5 border border-violet-500/30 rounded px-2 py-1 text-white/70 placeholder:text-white/20 outline-none focus:border-violet-500/50"
+																/>
+																<span className="text-[8px] text-white/20">Press Enter to generate, Escape to cancel</span>
+															</div>
+														) : (
+															<button
+																type="button"
+																className="text-[9px] px-2 py-0.5 rounded bg-violet-500/10 text-violet-300/60 hover:text-violet-300 hover:bg-violet-500/20 cursor-pointer transition-colors"
+																onClick={() => setVideoPromptScene(i)}
+															>+ AI Video Clip</button>
+														)}
+													</div>
 													<SceneLayerEditor
 														scene={scene}
 														sceneIndex={i}
 														onUpdate={updateScenePlan}
 														readonly={!!scenePlan.readonly}
+														accentColor={scenePlan.accentColor}
 													/>
+													</>)}
 												</div>
 												{/* Transition control between this scene and the next */}
 												{i < scenePlan.scenes.length - 1 && (
@@ -2525,6 +2759,15 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 																<option key={t.id} value={t.id}>{t.name}</option>
 															))}
 														</select>
+														{["vertical-shutter", "striped-slam", "diagonal-reveal", "color-burst"].includes(scene.transitionOut || "") && (
+															<input
+																type="color"
+																value={scene.transitionColor || scenePlan.accentColor || "#2563eb"}
+																onChange={(e) => updateScenePlan(i, { transitionColor: e.target.value })}
+																title="Transition color"
+																className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent"
+															/>
+														)}
 														<input
 															type="number"
 															value={scene.transitionDurationFrames || ""}
@@ -2565,13 +2808,13 @@ export function SceneEditor({ onBack, initialProject }: SceneEditorProps) {
 										}}
 										onPlanUpdate={(updatedPlan) => {
 											// Apply the director's updated plan: normalize, expand layers, compile.
-											// Clear existing layers first — expandSceneToLayers appends scene.layers
-											// at the end (for user-added layers), so leaving stale layers from the
-											// Director's JSON would cause duplicates.
+											// The director may return scenes with stale auto-generated layers.
+											// We must strip ALL auto layers and re-expand from the data fields
+											// to avoid duplicates. Only truly user-added layers are preserved.
 											const accent = updatedPlan.accentColor || "#2563eb";
 											for (const scene of updatedPlan.scenes) {
 												const userLayers = (scene.layers || []).filter(
-													(l) => l.id.startsWith("layer-") || l.id.startsWith("l-"),
+													(l) => l.id.startsWith("l-"),
 												);
 												scene.layers = undefined as any;
 												scene.layers = [...expandSceneToLayers(scene, accent), ...userLayers];

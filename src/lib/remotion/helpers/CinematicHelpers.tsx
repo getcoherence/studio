@@ -6,12 +6,13 @@
 //
 // The AI uses these instead of raw divs — guarantees visual quality.
 
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import {
 	Confetti,
 	Fireflies,
 	FlowingGradient,
+	MoneyRain,
 	PerspectiveGrid,
 	Sakura,
 	Snow,
@@ -407,7 +408,7 @@ export const AnimatedText: React.FC<{
 						config: { damping: 8, stiffness: 200, mass: 0.6 },
 					});
 					const isAccent =
-						accentWord && word.replace(/[^\w]/g, "") === accentWord.replace(/[^\w]/g, "");
+						accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
 					const bounceY =
 						progress < 1 ? (1 - progress) * -60 : Math.sin((localFrame - wordDelay) * 0.3) * 3;
 					return (
@@ -452,7 +453,7 @@ export const AnimatedText: React.FC<{
 			>
 				{words.map((word, wi) => {
 					const isAccent =
-						accentWord && word.replace(/[^\w]/g, "") === accentWord.replace(/[^\w]/g, "");
+						accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
 					return (
 						<span key={wi} style={{ display: "inline-block", whiteSpace: "nowrap" }}>
 							{word.split("").map((char, ci) => {
@@ -540,7 +541,7 @@ export const AnimatedText: React.FC<{
 						extrapolateRight: "clamp",
 					});
 					const isAccent =
-						accentWord && word.replace(/[^\w]/g, "") === accentWord.replace(/[^\w]/g, "");
+						accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
 					return (
 						<span
 							key={wi}
@@ -587,7 +588,7 @@ export const AnimatedText: React.FC<{
 					});
 					const offsetX = (1 - progress) * distance * 60;
 					const isAccent =
-						accentWord && word.replace(/[^\w]/g, "") === accentWord.replace(/[^\w]/g, "");
+						accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
 					return (
 						<span
 							key={wi}
@@ -630,7 +631,7 @@ export const AnimatedText: React.FC<{
 			>
 				{words.map((word, wi) => {
 					const isAccent =
-						accentWord && word.replace(/[^\w]/g, "") === accentWord.replace(/[^\w]/g, "");
+						accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
 					return (
 						<span key={wi} style={{ display: "inline-block", whiteSpace: "nowrap" }}>
 							{word.split("").map((char, ci) => {
@@ -721,7 +722,7 @@ export const AnimatedText: React.FC<{
 						config: { damping: 12, stiffness: 200 },
 					});
 					const isAccent =
-						accentWord && word.replace(/[^\w]/g, "") === accentWord.replace(/[^\w]/g, "");
+						accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
 					return (
 						<span
 							key={wi}
@@ -765,7 +766,7 @@ export const AnimatedText: React.FC<{
 		>
 			{words.map((word, wi) => {
 				const isAccent =
-					accentWord && word.replace(/[^\w]/g, "") === accentWord.replace(/[^\w]/g, "");
+					accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
 				const wordNode = (
 					<span
 						key={wi}
@@ -948,7 +949,6 @@ export const GradientText: React.FC<{
 	maxWidth = 1400,
 }) => {
 	const frame = useCurrentFrame();
-	const textRef = useRef<HTMLDivElement>(null);
 	const localFrame = Math.max(0, frame - delay);
 	const angle = localFrame * speed;
 	const opacity = interpolate(localFrame, [0, 15], [0, 1], {
@@ -960,19 +960,8 @@ export const GradientText: React.FC<{
 		extrapolateRight: "clamp",
 	});
 
-	// Apply background-clip: text via DOM ref (React strips it from style prop)
-	useEffect(() => {
-		if (textRef.current) {
-			const el = textRef.current;
-			el.style.setProperty("-webkit-background-clip", "text");
-			el.style.setProperty("background-clip", "text");
-			el.style.setProperty("-webkit-text-fill-color", "transparent");
-		}
-	});
-
 	return (
 		<div
-			ref={textRef}
 			style={{
 				fontSize,
 				fontFamily,
@@ -985,10 +974,15 @@ export const GradientText: React.FC<{
 				backgroundImage: `linear-gradient(${angle}deg, ${colors.join(", ")})`,
 				backgroundSize: "200% 200%",
 				backgroundRepeat: "no-repeat",
+				// background-clip: text must be set as inline styles (not via useEffect)
+				// because Remotion SSR export doesn't run useEffect
+				WebkitBackgroundClip: "text",
+				backgroundClip: "text",
+				WebkitTextFillColor: "transparent",
 				color: "transparent",
 				opacity,
 				transform: `scale(${scale})`,
-			}}
+			} as React.CSSProperties}
 		>
 			{text}
 		</div>
@@ -1464,7 +1458,7 @@ export const GhostSentence: React.FC<{
 			style={{
 				display: "flex",
 				flexWrap: "wrap",
-				gap: `0 ${fontSize * gap}px`,
+				gap: `${fontSize * gap}px`,
 				justifyContent: "center",
 				fontSize,
 				fontFamily,
@@ -2363,6 +2357,7 @@ type BackgroundVariant =
 	| "sparks"
 	| "perspective-grid"
 	| "flowing-gradient"
+	| "money-rain"
 	| "none";
 
 export const AnimatedBackground: React.FC<{
@@ -2709,6 +2704,7 @@ export const AnimatedBackground: React.FC<{
 	if (variant === "fireflies") return <Fireflies color={colors[0]} intensity={intensity} />;
 	if (variant === "sakura") return <Sakura intensity={intensity} />;
 	if (variant === "sparks") return <Sparks color={colors[0]} intensity={intensity} />;
+	if (variant === "money-rain") return <MoneyRain colors={colors} intensity={intensity} />;
 	if (variant === "perspective-grid")
 		return <PerspectiveGrid color={colors[0]} intensity={intensity} />;
 	if (variant === "flowing-gradient") return <FlowingGradient colors={colors} />;
@@ -3324,6 +3320,174 @@ export const ChatMessageFlow: React.FC<{
 	);
 };
 
+// ── BackgroundVideo ────────────────────────────────────────────────────
+
+/**
+ * Simple background video for AI-generated clips. Uses Remotion's Video
+ * for frame-accurate scrubbing, but renders as a plain <img> poster frame
+ * when Remotion's seeking causes issues.
+ *
+ * Strategy: render the video with a large acceptable time shift so Remotion
+ * doesn't re-seek constantly, and let the browser handle smooth playback.
+ */
+/**
+ * Background video for AI-generated clips. Uses a plain <video> element
+ * that plays naturally during playback and seeks during scrubbing.
+ * Includes built-in error fallback (shows nothing on error).
+ */
+export const BackgroundVideo: React.FC<{
+	src: string;
+	fallbackBg?: string;
+	onError?: () => void;
+}> = ({ src, onError }) => {
+	const videoRef = React.useRef<HTMLVideoElement>(null);
+	const lastFrameRef = React.useRef(-1);
+	const [hasError, setHasError] = React.useState(false);
+	const frame = useCurrentFrame();
+	const { fps } = useVideoConfig();
+
+	const delta = frame - lastFrameRef.current;
+	const isPlaying = delta === 1;
+	lastFrameRef.current = frame;
+
+	React.useEffect(() => {
+		const video = videoRef.current;
+		if (!video || hasError) return;
+
+		if (frame === 0) {
+			video.currentTime = 0;
+			video.play().catch(() => {});
+		} else if (!isPlaying) {
+			video.pause();
+			video.currentTime = frame / fps;
+		} else if (video.paused) {
+			video.play().catch(() => {});
+		}
+	});
+
+	if (hasError) return null;
+
+	return (
+		<video
+			ref={videoRef}
+			src={src}
+			muted
+			playsInline
+			loop
+			onError={() => { setHasError(true); onError?.(); }}
+			style={{
+				position: "absolute",
+				inset: 0,
+				width: "100%",
+				height: "100%",
+				objectFit: "cover",
+			}}
+		/>
+	);
+};
+
+// ── ButtonPill ─────────────────────────────────────────────────────────
+
+/**
+ * Animated button component with multiple animation styles.
+ * - none: static pill button
+ * - racing-border: glowing border traces clockwise around the button
+ * - pulse: subtle scale pulse loop
+ * - glow-pulse: box-shadow intensity pulses
+ * - slide-in: button slides up with spring
+ */
+export const ButtonPill: React.FC<{
+	text?: string;
+	fontSize?: number;
+	bgColor?: string;
+	textColor?: string;
+	borderColor?: string;
+	borderRadius?: number;
+	animation?: "none" | "racing-border" | "pulse" | "glow-pulse" | "slide-in";
+	delay?: number;
+}> = ({
+	text = "Get Started",
+	fontSize = 26,
+	bgColor = "#2563eb",
+	textColor = "#ffffff",
+	borderColor,
+	borderRadius = 50,
+	animation = "none",
+	delay = 0,
+}) => {
+	const frame = useCurrentFrame();
+	const { fps } = useVideoConfig();
+	const localFrame = Math.max(0, frame - delay);
+
+	const padY = Math.round(fontSize * 0.55);
+	const padX = Math.round(fontSize * 1.7);
+
+	// Slide-in entrance
+	const entrance = animation === "slide-in"
+		? spring({ frame: localFrame, fps, config: { damping: 14, stiffness: 120 } })
+		: 1;
+	const translateY = animation === "slide-in" ? (1 - entrance) * 40 : 0;
+	const opacity = animation === "slide-in" ? entrance : 1;
+
+	// Pulse scale
+	const pulseScale = animation === "pulse"
+		? 1 + Math.sin(localFrame * 0.08) * 0.03
+		: 1;
+
+	// Glow pulse
+	const glowIntensity = animation === "glow-pulse"
+		? 30 + Math.sin(localFrame * 0.1) * 20
+		: 30;
+
+	// Racing border: a conic-gradient that rotates
+	const racingAngle = (localFrame * 4) % 360;
+	const racingBorder = animation === "racing-border";
+	const effectiveBC = borderColor || bgColor;
+
+	return (
+		<div
+			style={{
+				position: "relative",
+				display: "inline-block",
+				transform: `translateY(${translateY}px) scale(${pulseScale})`,
+				opacity,
+			}}
+		>
+			{racingBorder && (
+				<div
+					style={{
+						position: "absolute",
+						inset: -3,
+						borderRadius: borderRadius + 3,
+						background: `conic-gradient(from ${racingAngle}deg, transparent 0%, ${effectiveBC} 25%, transparent 50%)`,
+						zIndex: 0,
+						filter: `blur(1px)`,
+					}}
+				/>
+			)}
+			<div
+				style={{
+					position: "relative",
+					zIndex: 1,
+					padding: `${padY}px ${padX}px`,
+					borderRadius,
+					background: bgColor,
+					color: textColor,
+					fontSize,
+					fontWeight: 700,
+					fontFamily: "'Inter', sans-serif",
+					boxShadow: `0 8px ${glowIntensity}px ${bgColor}40`,
+					letterSpacing: "-0.01em",
+					textAlign: "center",
+					...(borderColor && !racingBorder ? { border: `2px solid ${borderColor}` } : {}),
+				}}
+			>
+				{text}
+			</div>
+		</div>
+	);
+};
+
 // ── StackedText ────────────────────────────────────────────────────────
 
 /**
@@ -3331,7 +3495,7 @@ export const ChatMessageFlow: React.FC<{
  * Extracted from PostSyncer ("WHY SETTLE / FOR / LESS") — key word is MASSIVE.
  */
 export const StackedText: React.FC<{
-	lines: Array<{ text: string; size: number; weight?: number; color?: string }>;
+	lines: Array<{ text: string; size: number; weight?: number; color?: string; spacingAfter?: number; accentWord?: string; accentColor?: string }>;
 	color?: string;
 	fontFamily?: string;
 	gap?: number;
@@ -3411,6 +3575,20 @@ export const StackedText: React.FC<{
 				} else if (animation === "scale") {
 					scale = 0.85 + progress * 0.15;
 				}
+				const lineContent = line.accentWord
+					? line.text.split(/\s+/).map((word, wi) => {
+						const isAccent = line.accentWord!.toLowerCase().split(/\s+/).some(
+							aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase()
+						);
+						return (
+							<React.Fragment key={wi}>
+								{wi > 0 ? " " : ""}
+								<span style={isAccent ? { color: line.accentColor || color } : undefined}>{word}</span>
+							</React.Fragment>
+						);
+					})
+					: line.text;
+
 				return (
 					<div
 						key={i}
@@ -3421,9 +3599,10 @@ export const StackedText: React.FC<{
 							opacity: animation === "none" ? 1 : progress,
 							transform: `translateY(${translateY}px) scale(${scale})`,
 							whiteSpace: "nowrap",
+							...(line.spacingAfter ? { marginBottom: line.spacingAfter } : {}),
 						}}
 					>
-						{line.text}
+						{lineContent}
 					</div>
 				);
 			})}

@@ -46,7 +46,8 @@ export type SceneType =
 	| "device-showcase" // screenshot in laptop/phone mockup with floating animation
 	| "glass-stats" // glassmorphism cards with animated metric counters
 	| "cinematic-title" // gradient text with particle effects
-	| "countdown"; // animated number countdown with confetti burst
+	| "countdown" // animated number countdown with confetti burst
+	| "contrast-pairs"; // statement/counter pairs with staggered reveals
 
 export interface ScenePlanItem {
 	/** Stable unique ID for React keys — survives reordering/insertion */
@@ -145,6 +146,8 @@ export interface ScenePlanItem {
 	perspectiveY?: number;
 	/** For stacked-hierarchy: multiple text lines with varying sizes */
 	stackedLines?: Array<{ text: string; size: number }>;
+	/** For contrast-pairs: alternating statement/counter pairs with staggered reveals */
+	contrastPairs?: Array<{ statement: string; counter: string }>;
 	/** For word-slot-machine: prefix + list of options + which is selected */
 	slotMachinePrefix?: string;
 	slotMachineWords?: string[];
@@ -201,7 +204,8 @@ export interface ScenePlanItem {
 		| "sakura"
 		| "sparks"
 		| "perspective-grid"
-		| "flowing-gradient";
+		| "flowing-gradient"
+		| "money-rain";
 	/** Colors for the animated background effect (defaults to brand accent + complementary) */
 	backgroundEffectColors?: string[];
 	/** Intensity/opacity of the background effect (0-1, default 0.7) */
@@ -229,7 +233,19 @@ export interface ScenePlanItem {
 		| "cut"; // instant, no transition
 	/** Transition duration in frames (default 10, or 15 for zoom-morph) */
 	transitionDurationFrames?: number;
+	/** Custom color for transitions that support it (vertical-shutter, striped-slam, diagonal-reveal, color-burst) */
+	transitionColor?: string;
 
+	/** AI video generation prompt — when set, this scene uses an AI-generated video clip
+	 *  instead of (or composited with) Remotion motion graphics. */
+	videoPrompt?: string;
+	/** Local file path to a generated/downloaded video clip (populated at generation time) */
+	videoClipPath?: string;
+	/** Whether to overlay Remotion text/layers on top of the video clip (default: true) */
+	videoOverlayText?: boolean;
+
+	/** Gap between center-positioned layers in pixels (default 16) */
+	layerGap?: number;
 	/** Composable layers within this scene — enables multi-layer compositions */
 	layers?: SceneLayer[];
 }
@@ -237,8 +253,13 @@ export interface ScenePlanItem {
 /** A positioned, timed layer within a scene */
 export interface SceneLayer {
 	id: string;
+	/** When true, this layer exists from a previous scene type and isn't rendered
+	 *  by the current type's renderer. Shown as dimmed in the UI but not deleted,
+	 *  so switching back to the original type restores them. */
+	_incompatible?: boolean;
 	type:
 		| "text"
+		| "button"
 		| "card"
 		| "lottie"
 		| "image"
@@ -295,6 +316,10 @@ export interface SceneLayer {
 		fontStyle?: string;
 		/** Text decoration (e.g., "underline", "line-through") */
 		textDecoration?: string;
+		/** Extra spacing below this layer in pixels (adds margin-bottom) */
+		spacingAfter?: number;
+		/** Border color for button layers */
+		borderColor?: string;
 	};
 }
 

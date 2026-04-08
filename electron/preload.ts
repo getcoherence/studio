@@ -200,6 +200,29 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		return ipcRenderer.invoke("music-library-delete", filePath);
 	},
 
+	// ── Video generation ──
+	aiGenerateVideo: (
+		prompt: string,
+		options?: {
+			model?: string;
+			durationSec?: number;
+			resolution?: "720P" | "768P" | "1080P";
+		},
+	) => {
+		return ipcRenderer.invoke("ai-generate-video", prompt, options);
+	},
+	aiGenerateVideoBatch: (
+		clips: Array<{
+			prompt: string;
+			sceneIndex: number;
+			model?: string;
+			durationSec?: number;
+			resolution?: "720P" | "768P" | "1080P";
+		}>,
+	) => {
+		return ipcRenderer.invoke("ai-generate-video-batch", clips);
+	},
+
 	// ── YouTube ──
 	youtubeIsConnected: () => ipcRenderer.invoke("youtube-is-connected"),
 	youtubeConnect: () => ipcRenderer.invoke("youtube-connect"),
