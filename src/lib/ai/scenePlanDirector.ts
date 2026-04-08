@@ -31,7 +31,17 @@ export async function refineScenePlan(
 ): Promise<{ response: string; updatedPlan?: ScenePlan; error?: string }> {
 	opts?.onStatus?.("Director is reviewing your feedback...");
 
-	const planJson = JSON.stringify(currentPlan, null, 2);
+	// Strip layers from the plan sent to the AI — they're derived from data fields
+	// and including them causes the AI to return stale/duplicate layers in its response.
+	// The editor re-expands layers from data fields after the director's changes.
+	const planForAI = {
+		...currentPlan,
+		scenes: currentPlan.scenes.map((s) => {
+			const { layers, ...rest } = s;
+			return rest;
+		}),
+	};
+	const planJson = JSON.stringify(planForAI, null, 2);
 
 	// Build conversation context (last 10 messages max)
 	const historyBlock = conversationHistory
@@ -66,28 +76,32 @@ export async function refineScenePlan(
 		"   - If the user asks to cut scenes, remove them and adjust transitions",
 		"   - If the user asks to add scenes, insert them at the right narrative position",
 		"   - Output valid JSON matching the ScenePlan schema",
+		"   - Do NOT include a `layers` field on scenes — layers are auto-generated from the data fields",
 		"",
 		"If the user's feedback is just a question or doesn't require plan changes,",
 		"respond conversationally WITHOUT the ---PLAN--- section.",
 		"",
 		"## Scene Type Reference (for adding new scenes)",
-		"Types: ghost-hook, camera-text, impact-word, stacked-hierarchy, before-after, metrics-dashboard,",
-		"icon-showcase, data-flow-network, word-slot-machine, scrolling-list, notification-chaos,",
-		"chat-narrative, browser-tabs-chaos, app-icon-cloud, avatar-constellation, echo-hero,",
-		"outline-hero, radial-vortex, gradient-mesh-hero, dashboard-deconstructed, product-glow,",
-		"typewriter-prompt, logo-reveal, cards, cta, hero-text.",
+		"Types: ghost-hook, camera-text, impact-word, stacked-hierarchy, contrast-pairs, before-after,",
+		"metrics-dashboard, icon-showcase, data-flow-network, word-slot-machine, scrolling-list,",
+		"notification-chaos, chat-narrative, browser-tabs-chaos, app-icon-cloud, avatar-constellation,",
+		"echo-hero, outline-hero, radial-vortex, gradient-mesh-hero, dashboard-deconstructed,",
+		"product-glow, typewriter-prompt, logo-reveal, glass-stats, cinematic-title, countdown,",
+		"device-showcase, cards, cta, hero-text, full-bleed.",
 		"",
 		"Backgrounds: white, cream, warm-gray, cool-gray, soft-blue, soft-green, soft-rose,",
 		"black, charcoal, dark-slate, dark-teal, dark-wine, navy, brand-dark, deep-purple,",
 		"midnight-teal, warm-night, steel-gradient, aurora-dark.",
 		"",
 		"Background effects: flowing-lines, drifting-orbs, mesh-shift, particle-field, grain,",
-		"pulse-grid, aurora, spotlight, wave-grid, gradient-wipe, bokeh, liquid-glass, none.",
+		"pulse-grid, aurora, spotlight, wave-grid, gradient-wipe, bokeh, liquid-glass,",
+		"confetti, snow, fireflies, sakura, sparks, perspective-grid, flowing-gradient, money-rain, none.",
 		"",
 		"Variants: data-flow-network (circles/timeline-arrows/hex-grid/isometric-blocks/orbital-rings),",
 		"before-after (split-card/swipe-reveal/stacked-morph/toggle-switch),",
 		"metrics-dashboard (counter-row/bar-chart/pie-radial/ticker-tape),",
-		"word-slot-machine (wheel/typewriter-swap/flip-cards/glitch-swap).",
+		"word-slot-machine (wheel/typewriter-swap/flip-cards/glitch-swap),",
+		"cta (centered/split-logo/gradient-bar/minimal).",
 	].join("\n");
 
 	const systemPrompt = [

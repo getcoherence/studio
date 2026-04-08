@@ -11,6 +11,7 @@ import {
 	type ScenePlan,
 	type ScenePlanItem,
 } from "./scenePlan";
+import { pluginRegistry } from "../plugins";
 
 // ── Main compiler ───────────────────────────────────────────────────────
 
@@ -691,8 +692,15 @@ function renderSceneByTypeInner(
 			return renderCountdown(scene, accent, bg);
 		case "cta":
 			return renderCTA(scene, accent, bg, logoUrl, websiteUrl);
-		default:
+		default: {
+			// Check plugin registry for a custom renderer (pro/third-party scene types)
+			const plugin = pluginRegistry.getSceneType(scene.type);
+			if (plugin?.render) {
+				const rendered = plugin.render(scene, accent, bg);
+				if (rendered) return rendered;
+			}
 			return renderLegacyLayerBased(scene, accent, bg);
+		}
 	}
 }
 
