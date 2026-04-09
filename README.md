@@ -2,19 +2,19 @@
   <img src="public/lucidstudio-logo.svg" alt="Lucid Studio Logo" width="80" />
 </p>
 
-# <p align="center">Lucid Studio</p>
+# <p align="center">Coherence Studio</p>
 
 <p align="center"><strong>AI-powered screen recording and editing. Free and open source.</strong></p>
 
 <p align="center">
-  <a href="https://getlucid.studio">Website</a> &middot;
-  <a href="https://github.com/getcoherence/lucid/releases">Download</a> &middot;
-  <a href="https://github.com/getcoherence/lucid/issues">Issues</a>
+  <a href="https://getcoherence.studio">Website</a> &middot;
+  <a href="https://github.com/getcoherence/studio/releases">Download</a> &middot;
+  <a href="https://github.com/getcoherence/studio/issues">Issues</a>
 </p>
 
 ---
 
-Lucid Studio is a free, open-source screen recorder with AI-powered editing. Record your screen, and let AI handle the polish — auto-captions, smart trimming, narration, and one-click professional output.
+Coherence Studio is a free, open-source screen recorder with AI-powered editing. Record your screen, and let AI handle the polish — auto-captions, smart trimming, narration, and one-click professional output.
 
 Built by the team behind [Coherence](https://getcoherence.io). Originally forked from [OpenScreen](https://github.com/siddharthvaddem/openscreen) by Siddharth Vaddem.
 
@@ -33,20 +33,20 @@ Built by the team behind [Coherence](https://getcoherence.io). Originally forked
 
 ## Installation
 
-Download the latest installer from the [GitHub Releases](https://github.com/getcoherence/lucid/releases) page.
+Download the latest installer from the [GitHub Releases](https://github.com/getcoherence/studio/releases) page.
 
 ### macOS
 
 If macOS blocks the app, run:
 ```bash
-xattr -rd com.apple.quarantine /Applications/Lucid\ Studio.app
+xattr -rd com.apple.quarantine /Applications/Studio\ Studio.app
 ```
 
 ### Linux
 
 ```bash
-chmod +x Lucid-Studio-Linux-*.AppImage
-./Lucid-Studio-Linux-*.AppImage
+chmod +x Coherence-Studio-Linux-*.AppImage
+./Coherence-Studio-Linux-*.AppImage
 ```
 
 ## Development
