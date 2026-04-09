@@ -31,7 +31,7 @@ const DEFAULT_CONFIG: ProAuthConfig = {
 	baseUrl: "https://app.getcoherence.io",
 	authUrl: "https://app.getcoherence.io/login?redirect=studio-desktop",
 	subscriptionUrl: "https://app.getcoherence.io/api/v1/auth/studio/subscription",
-	bundleUrl: "https://app.getcoherence.io/api/v1/auth/studio/pro-bundle.js",
+	bundleUrl: "https://app.getcoherence.io/api/v1/content/studio/pro-bundle.js",
 	tokenKey: "studio-pro-token",
 	providerName: "Coherence",
 };
@@ -42,7 +42,7 @@ const DEV_CONFIG: ProAuthConfig = {
 	baseUrl: "http://localhost:5175",
 	authUrl: "http://localhost:5175/login?redirect=studio-desktop",
 	subscriptionUrl: "http://localhost:4100/studio/subscription",
-	bundleUrl: "http://localhost:4100/studio/pro-bundle.js",
+	bundleUrl: "http://localhost:4900/studio/pro-bundle.js",
 	tokenKey: "studio-pro-token",
 	providerName: "Coherence (dev)",
 };
