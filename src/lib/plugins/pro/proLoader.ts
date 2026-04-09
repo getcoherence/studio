@@ -125,10 +125,55 @@ function storeToken(token: string): void {
 	}
 }
 
-/** Clear stored token */
+/** Store refresh token */
+function storeRefreshToken(token: string): void {
+	try {
+		localStorage.setItem(`${config.tokenKey}-refresh`, token);
+	} catch {
+		/* ignore */
+	}
+}
+
+/** Get stored refresh token */
+function getStoredRefreshToken(): string | null {
+	try {
+		return localStorage.getItem(`${config.tokenKey}-refresh`);
+	} catch {
+		return null;
+	}
+}
+
+/** Use refresh token to get a fresh access token */
+async function refreshAccessToken(): Promise<string | null> {
+	const refreshToken = getStoredRefreshToken();
+	if (!refreshToken) return null;
+
+	try {
+		const baseUrl = config.subscriptionUrl.replace("/studio/subscription", "");
+		const res = await fetch(`${baseUrl}/refresh`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ refreshToken }),
+		});
+		if (!res.ok) return null;
+		const data = await res.json();
+		if (data.accessToken) {
+			proToken = data.accessToken;
+			storeToken(data.accessToken);
+			if (data.refreshToken) storeRefreshToken(data.refreshToken);
+			return data.accessToken;
+		}
+	} catch {
+		// refresh failed
+	}
+	return null;
+}
+
+/** Clear stored tokens */
 function clearToken(): void {
 	try {
 		localStorage.removeItem(config.tokenKey);
+		localStorage.removeItem(`${config.tokenKey}-refresh`);
 	} catch {
 		/* ignore */
 	}
@@ -146,6 +191,7 @@ export async function authenticatePro(): Promise<{ success: boolean; error?: str
 		if (result.success && result.token) {
 			proToken = result.token;
 			storeToken(result.token);
+			if (result.refreshToken) storeRefreshToken(result.refreshToken);
 			return { success: true };
 		}
 		return { success: false, error: result.error || "Authentication failed" };
@@ -229,6 +275,17 @@ export async function checkSubscription(): Promise<{
 		clearTimeout(timeout);
 
 		if (res.status === 401) {
+			// Try refreshing the access token before giving up
+			const newToken = await refreshAccessToken();
+			if (newToken) {
+				const retryRes = await fetch(config.subscriptionUrl, {
+					headers: { Authorization: `Bearer ${newToken}` },
+				});
+				if (retryRes.ok) {
+					const data = await retryRes.json();
+					return { active: data.active === true, plan: data.plan, expiresAt: data.expiresAt };
+				}
+			}
 			return { active: false, authFailed: true };
 		}
 
