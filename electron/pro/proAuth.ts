@@ -56,11 +56,12 @@ export function handleProAuthDeepLink(url: string): boolean {
 	try {
 		const parsed = new URL(url);
 		const token = parsed.searchParams.get("token");
+		const refreshToken = parsed.searchParams.get("refreshToken");
 		const error = parsed.searchParams.get("error");
 
 		if (token && pendingResolve) {
 			clearTimeout(authTimeout!);
-			pendingResolve({ success: true, token });
+			pendingResolve({ success: true, token, refreshToken: refreshToken || undefined });
 			pendingResolve = null;
 			authTimeout = null;
 
@@ -94,6 +95,7 @@ export function handleProAuthDeepLink(url: string): boolean {
 export async function authenticateCoherence(): Promise<{
 	success: boolean;
 	token?: string;
+	refreshToken?: string;
 	error?: string;
 }> {
 	const redirectUrl = encodeURIComponent(CALLBACK_URL);
