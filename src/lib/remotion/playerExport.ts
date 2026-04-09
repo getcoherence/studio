@@ -22,8 +22,6 @@ export interface PlayerExportOptions {
 export async function exportPlayerToVideo(options: PlayerExportOptions): Promise<Blob> {
 	const { playerElement, durationMs, fps = 30, seekToFrame, onProgress } = options;
 	const totalFrames = Math.ceil((durationMs / 1000) * fps);
-	const _frameInterval = 1000 / fps;
-
 	// Create capture canvas
 	const captureCanvas = document.createElement("canvas");
 	captureCanvas.width = 1920;
