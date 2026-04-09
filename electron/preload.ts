@@ -193,6 +193,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	aiGenerateLyrics: (themePrompt: string, title?: string) => {
 		return ipcRenderer.invoke("ai-generate-lyrics", themePrompt, title);
 	},
+	// Pro authentication
+	proAuthenticate: () => {
+		return ipcRenderer.invoke("pro-authenticate") as Promise<{ success: boolean; token?: string; error?: string }>;
+	},
+
 	musicLibraryList: () => {
 		return ipcRenderer.invoke("music-library-list");
 	},

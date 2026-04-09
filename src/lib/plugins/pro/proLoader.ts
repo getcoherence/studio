@@ -36,7 +36,18 @@ const DEFAULT_CONFIG: ProAuthConfig = {
 	providerName: "Coherence",
 };
 
-let config: ProAuthConfig = { ...DEFAULT_CONFIG };
+// Auto-detect local development and use localhost URLs
+const isDev = typeof window !== "undefined" && window.location.hostname === "localhost";
+const DEV_CONFIG: ProAuthConfig = {
+	baseUrl: "http://localhost:5175",
+	authUrl: "http://localhost:5175/login?redirect=lucid-desktop",
+	subscriptionUrl: "http://localhost:4100/lucid/subscription",
+	bundleUrl: "http://localhost:4100/lucid/pro-bundle.js",
+	tokenKey: "lucid-pro-token",
+	providerName: "Coherence (dev)",
+};
+
+let config: ProAuthConfig = isDev ? { ...DEV_CONFIG } : { ...DEFAULT_CONFIG };
 
 /**
  * Configure the pro auth provider. Call this before activatePro()
@@ -114,9 +125,20 @@ function clearToken(): void {
  * Returns the JWT token on success.
  */
 export async function authenticatePro(): Promise<{ success: boolean; error?: string }> {
+	// Use Electron IPC for OAuth (opens BrowserWindow + local HTTP server)
+	// Falls back to window.open for web builds
+	if ((window as any).electronAPI?.proAuthenticate) {
+		const result = await (window as any).electronAPI.proAuthenticate();
+		if (result.success && result.token) {
+			proToken = result.token;
+			storeToken(result.token);
+			return { success: true };
+		}
+		return { success: false, error: result.error || "Authentication failed" };
+	}
+
+	// Web fallback: use popup + postMessage
 	return new Promise((resolve) => {
-		// Open Coherence login in Electron BrowserWindow via IPC
-		// Falls back to regular window.open for web builds
 		const width = 500;
 		const height = 650;
 		const left = Math.round((window.screen.width - width) / 2);
@@ -134,7 +156,6 @@ export async function authenticatePro(): Promise<{ success: boolean; error?: str
 			return;
 		}
 
-		// Listen for the auth callback message
 		const handler = (event: MessageEvent) => {
 			if (event.origin !== config.baseUrl) return;
 			const data = event.data;

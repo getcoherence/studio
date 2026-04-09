@@ -430,6 +430,9 @@ app.on("activate", () => {
 	}
 });
 
+// Pro auth uses local HTTP server callback — no deep links needed
+import "./pro/proAuth";
+
 // Register lucid:// protocol for secure local file access (replaces webSecurity: false)
 protocol.registerSchemesAsPrivileged([
 	{
