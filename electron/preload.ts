@@ -198,6 +198,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		return ipcRenderer.invoke("pro-authenticate") as Promise<{
 			success: boolean;
 			token?: string;
+			refreshToken?: string;
 			error?: string;
 		}>;
 	},
