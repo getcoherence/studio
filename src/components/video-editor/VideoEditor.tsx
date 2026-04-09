@@ -13,7 +13,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
-import { DemoStudioPage } from "@/components/demo-studio/DemoStudioPage";
 import { ProjectBrowser } from "@/components/project-browser/ProjectBrowser";
 import { CountdownOverlay } from "@/components/recording/CountdownOverlay";
 import { LiveMonitor } from "@/components/recording/LiveMonitor";
@@ -22,7 +21,7 @@ import {
 	RecordingSetupDialog,
 } from "@/components/recording/RecordingSetupDialog";
 import { WelcomeScreen } from "@/components/recording/WelcomeScreen";
-import { SceneEditor } from "@/components/scene-builder/SceneEditor";
+// SceneEditor + DemoStudioPage loaded dynamically from pro bundle via plugin registry
 import { useI18n, useScopedT } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import type { EditorState } from "@/hooks/useEditorHistory";
@@ -45,6 +44,8 @@ import {
 	type GifSizePreset,
 	VideoExporter,
 } from "@/lib/exporter";
+import { ProGate } from "@/lib/plugins/pro/ProGate";
+import { useProView } from "@/lib/plugins/pro/useProView";
 import type { ProjectMedia } from "@/lib/recordingSession";
 import { matchesShortcut } from "@/lib/shortcuts";
 import {
@@ -174,6 +175,10 @@ export default function VideoEditor() {
 	const sceneEditorInitialRef = useRef<unknown>(null);
 	const [showDemoStudio, setShowDemoStudio] = useState(false);
 
+	// Pro views — dynamically loaded from plugin registry (null until pro bundle arrives)
+	const SceneEditorView = useProView("scene-editor");
+	const DemoStudioView = useProView("demo-studio");
+
 	const playerContainerRef = useRef<HTMLDivElement>(null);
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
 	const cursorContainerRef = useRef<HTMLDivElement>(null);
@@ -184,7 +189,9 @@ export default function VideoEditor() {
 	const nextSpeedIdRef = useRef(1);
 
 	// Refs used by keyboard shortcut handler to avoid stale closures
-	const handleOpenExportDialogRef = useRef<() => void>(() => {});
+	const handleOpenExportDialogRef = useRef<() => void>(() => {
+		// placeholder — set in effect
+	});
 	const captionTrackStashRef = useRef<CaptionTrack | null>(null);
 	const captionTrackRef = useRef<CaptionTrack | null>(null);
 	const [, setCaptionsHidden] = useState(false);
@@ -1682,7 +1689,7 @@ export default function VideoEditor() {
 		const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
 		const result = await window.electronAPI.saveScreenshot(
 			buffer,
-			`lucid-screenshot-${timestamp}.png`,
+			`coherence-studio-screenshot-${timestamp}.png`,
 		);
 		if (result.success) {
 			toast.success("Screenshot saved", {
@@ -1840,8 +1847,25 @@ export default function VideoEditor() {
 		);
 	}
 	if (showSceneEditor) {
+		if (!SceneEditorView) {
+			return (
+				<div className="flex items-center justify-center h-screen bg-[#09090b]">
+					<ProGate feature="Scene Editor — AI Video Creation">
+						<div className="flex flex-col items-center gap-3 p-6">
+							<div className="text-sm text-white/60">Loading Scene Editor...</div>
+							<button
+								onClick={() => setShowSceneEditor(false)}
+								className="text-xs text-white/30 hover:text-white/50"
+							>
+								Go back
+							</button>
+						</div>
+					</ProGate>
+				</div>
+			);
+		}
 		return (
-			<SceneEditor
+			<SceneEditorView
 				key={sceneEditorKey}
 				onBack={() => {
 					setShowSceneEditor(false);
@@ -1854,8 +1878,25 @@ export default function VideoEditor() {
 		);
 	}
 	if (showDemoStudio) {
+		if (!DemoStudioView) {
+			return (
+				<div className="flex items-center justify-center h-screen bg-[#09090b]">
+					<ProGate feature="Demo Studio — AI Video Generation">
+						<div className="flex flex-col items-center gap-3 p-6">
+							<div className="text-sm text-white/60">Loading Demo Studio...</div>
+							<button
+								onClick={() => setShowDemoStudio(false)}
+								className="text-xs text-white/30 hover:text-white/50"
+							>
+								Go back
+							</button>
+						</div>
+					</ProGate>
+				</div>
+			);
+		}
 		return (
-			<DemoStudioPage
+			<DemoStudioView
 				onBack={() => setShowDemoStudio(false)}
 				onOpenInEditor={handleDemoOpenInEditor}
 			/>

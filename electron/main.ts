@@ -22,11 +22,11 @@ import { registerDemoHandlers } from "./ipc/demoHandlers";
 import { registerExportHandlers } from "./ipc/exportHandlers";
 import { registerFfmpegHandlers } from "./ipc/ffmpegHandlers";
 import { registerIpcHandlers } from "./ipc/handlers";
-import { registerYouTubeHandlers } from "./ipc/youtubeHandlers";
 import { registerProjectHandlers } from "./ipc/projectHandlers";
 import { registerSettingsHandlers } from "./ipc/settingsHandlers";
 import { registerUpdaterHandlers } from "./ipc/updaterHandlers";
 import { registerWhisperHandlers } from "./ipc/whisperHandlers";
+import { registerYouTubeHandlers } from "./ipc/youtubeHandlers";
 import { createEditorWindow, createSourceSelectorWindow } from "./windows";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -77,7 +77,7 @@ let tray: Tray | null = null;
 let selectedSourceName = "";
 
 // Tray Icons
-const defaultTrayIcon = getTrayIcon("lucid.png");
+const defaultTrayIcon = getTrayIcon("coherence-studio.png");
 const recordingTrayIcon = getTrayIcon("rec-button.png");
 
 function createWindow() {
@@ -238,21 +238,20 @@ function setupApplicationMenu() {
 			label: "Help",
 			submenu: [
 				{
-					label: "About Lucid Studio",
+					label: "About Coherence Studio",
 					click: () => {
 						dialog
 							.showMessageBox({
 								type: "info",
-								title: "About Lucid Studio",
-								message: "Lucid Studio",
+								title: "About Coherence Studio",
+								message: "Coherence Studio",
 								detail:
 									"AI-powered screen recording and editing.\n\n" +
 									"Built by the team at Coherence — the AI-native work platform " +
 									"for modern teams.\n\n" +
 									"Originally forked from OpenScreen by Siddharth Vaddem.\n\n" +
 									"Version 0.1.0\n" +
-									"https://getcoherence.io\n" +
-									"https://getlucid.studio",
+									"https://getcoherence.io",
 								buttons: ["OK", "Visit Coherence", "View on GitHub"],
 								defaultId: 0,
 							})
@@ -260,7 +259,7 @@ function setupApplicationMenu() {
 								if (result.response === 1) {
 									shell.openExternal("https://getcoherence.io");
 								} else if (result.response === 2) {
-									shell.openExternal("https://github.com/getcoherence/lucid");
+									shell.openExternal("https://github.com/getcoherence/studio");
 								}
 							});
 					},
@@ -271,7 +270,7 @@ function setupApplicationMenu() {
 				},
 				{
 					label: "Report a Bug",
-					click: () => shell.openExternal("https://github.com/getcoherence/lucid/issues"),
+					click: () => shell.openExternal("https://github.com/getcoherence/studio/issues"),
 				},
 			],
 		},
@@ -304,7 +303,7 @@ function getTrayIcon(filename: string) {
 function updateTrayMenu(recording: boolean = false) {
 	if (!tray) return;
 	const trayIcon = recording ? recordingTrayIcon : defaultTrayIcon;
-	const trayToolTip = recording ? `Recording: ${selectedSourceName}` : "Lucid Studio";
+	const trayToolTip = recording ? `Recording: ${selectedSourceName}` : "Coherence Studio";
 	const menuTemplate = recording
 		? [
 				{
@@ -433,10 +432,10 @@ app.on("activate", () => {
 // Pro auth uses local HTTP server callback — no deep links needed
 import "./pro/proAuth";
 
-// Register lucid:// protocol for secure local file access (replaces webSecurity: false)
+// Register studio:// protocol for secure local file access (replaces webSecurity: false)
 protocol.registerSchemesAsPrivileged([
 	{
-		scheme: "lucid",
+		scheme: "studio",
 		privileges: {
 			standard: true,
 			secure: true,
@@ -449,10 +448,10 @@ protocol.registerSchemesAsPrivileged([
 
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
-	// Handle lucid:// protocol — serves local files securely
-	protocol.handle("lucid", (request) => {
-		// lucid://file/C:/path/to/file.webm → file:///C:/path/to/file.webm
-		const url = request.url.replace("lucid://file/", "file:///");
+	// Handle studio:// protocol — serves local files securely
+	protocol.handle("studio", (request) => {
+		// studio://file/C:/path/to/file.webm → file:///C:/path/to/file.webm
+		const url = request.url.replace("studio://file/", "file:///");
 		return net.fetch(url);
 	});
 

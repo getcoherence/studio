@@ -59,12 +59,12 @@
 		"saveGif": "Save Exported GIF",
 		"saveVideo": "Save Exported Video",
 		"selectVideo": "Select Video File",
-		"saveProject": "Save Lucid Studio Project",
-		"openProject": "Open Lucid Studio Project",
+		"saveProject": "Save Coherence Studio Project",
+		"openProject": "Open Coherence Studio Project",
 		"gifImage": "GIF Image",
 		"mp4Video": "MP4 Video",
 		"videoFiles": "Video Files",
-		"lucidProject": "Lucid Studio Project",
+		"lucidProject": "Coherence Studio Project",
 		"allFiles": "All Files"
 	}
 }

@@ -7,12 +7,8 @@ import { Check, Crown, Loader2, Settings, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AI_PROVIDERS, type AIProvider, type AIServiceConfig } from "@/lib/ai/types";
-import {
-	getLicenseTier,
-	type LicenseTier,
-	setLicenseTier,
-	validateLicenseKey,
-} from "@/lib/license";
+import { getLicenseTier, type LicenseTier, setLicenseTier } from "@/lib/license";
+import { activatePro, disconnectPro } from "@/lib/plugins/pro/proLoader";
 
 type SettingsTab = "ai" | "license";
 
@@ -41,7 +37,7 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 
 	// License state
 	const [licenseTier, setLicenseTierLocal] = useState<LicenseTier>("free");
-	const [licenseKey, setLicenseKeyInput] = useState("");
+	const [_licenseKey, setLicenseKeyInput] = useState("");
 	const [licenseValidating, setLicenseValidating] = useState(false);
 	const [licenseError, setLicenseError] = useState("");
 	const [licenseSuccess, setLicenseSuccess] = useState(false);
@@ -59,16 +55,18 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 			setTestResult(null);
 		});
 		// Load ALL provider keys + models so switching tabs doesn't lose them
-		window.electronAPI?.aiGetAllKeys?.().then((result: { keys: Record<string, string>; models: Record<string, string> }) => {
-			setKeyCache(result.keys);
-			setModelCache(result.models);
-			// Set current input fields from the active provider's cached values
-			window.electronAPI?.aiGetConfig().then((config: AIServiceConfig) => {
-				const p = config.provider ?? "openai";
-				setApiKey(result.keys[p] || config.apiKey || "");
-				setModel(result.models[p] || config.model || "");
+		window.electronAPI
+			?.aiGetAllKeys?.()
+			.then((result: { keys: Record<string, string>; models: Record<string, string> }) => {
+				setKeyCache(result.keys);
+				setModelCache(result.models);
+				// Set current input fields from the active provider's cached values
+				window.electronAPI?.aiGetConfig().then((config: AIServiceConfig) => {
+					const p = config.provider ?? "openai";
+					setApiKey(result.keys[p] || config.apiKey || "");
+					setModel(result.models[p] || config.model || "");
+				});
 			});
-		});
 		getLicenseTier().then(setLicenseTierLocal);
 		setLicenseKeyInput("");
 		setLicenseError("");
@@ -124,25 +122,30 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 	}
 
 	async function handleActivateLicense() {
-		if (!licenseKey.trim()) return;
 		setLicenseValidating(true);
 		setLicenseError("");
 		setLicenseSuccess(false);
-		const valid = await validateLicenseKey(licenseKey.trim());
-		setLicenseValidating(false);
-		if (valid) {
-			setLicenseTierLocal("pro");
-			setLicenseSuccess(true);
-		} else {
-			setLicenseError("Invalid license key. Please check and try again.");
+		try {
+			const result = await activatePro();
+			if (result.success) {
+				await setLicenseTier("pro");
+				setLicenseTierLocal("pro");
+				setLicenseSuccess(true);
+			} else {
+				setLicenseError(result.error || "Could not activate Pro. Check your subscription.");
+			}
+		} catch (err) {
+			setLicenseError(err instanceof Error ? err.message : "Connection failed");
+		} finally {
+			setLicenseValidating(false);
 		}
 	}
 
 	async function handleDeactivateLicense() {
+		disconnectPro();
 		await setLicenseTier("free");
 		setLicenseTierLocal("free");
 		setLicenseSuccess(false);
-		setLicenseKeyInput("");
 	}
 
 	if (!open) return null;
@@ -325,7 +328,7 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 							<div>
 								<div className="text-xs text-white/40">Current plan</div>
 								<div className="text-sm font-semibold text-white mt-0.5">
-									{licenseTier === "pro" ? "Lucid Studio Pro" : "Lucid Studio Free"}
+									{licenseTier === "pro" ? "Coherence Studio Pro" : "Coherence Studio Free"}
 								</div>
 							</div>
 							{licenseTier === "pro" ? (
@@ -345,50 +348,42 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 									onClick={handleDeactivateLicense}
 									className="w-full px-3 py-2 rounded-md text-xs text-white/30 hover:text-white/50 hover:bg-white/5 border border-white/8 transition-colors"
 								>
-									Deactivate License
+									Disconnect
 								</button>
 							</>
 						) : (
 							<>
 								<div className="space-y-1">
 									<p className="text-xs text-white/50">
-										Upgrade to Pro to unlock AI features, scene builder, animated backgrounds, demo
-										recorder, and more.
+										Connect your Coherence account to unlock AI features, scene builder, animated
+										backgrounds, demo recorder, and more.
 									</p>
 								</div>
 
-								<div className="space-y-2">
-									<label className="text-xs text-white/40 font-medium">License Key</label>
-									<input
-										type="text"
-										value={licenseKey}
-										onChange={(e) => {
-											setLicenseKeyInput(e.target.value);
-											setLicenseError("");
-											setLicenseSuccess(false);
-										}}
-										placeholder="LUCID-PRO-XXXX-XXXX-XXXX"
-										className="w-full px-3 py-2 rounded-md bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-500/50"
-										onKeyDown={(e) => {
-											if (e.key === "Enter") handleActivateLicense();
-										}}
-									/>
-									{licenseError && <p className="text-xs text-red-400">{licenseError}</p>}
-									{licenseSuccess && (
-										<div className="flex items-center gap-2 text-xs text-emerald-400">
-											<Check size={12} />
-											Pro activated successfully!
-										</div>
-									)}
-								</div>
+								{licenseError && <p className="text-xs text-red-400">{licenseError}</p>}
+								{licenseSuccess && (
+									<div className="flex items-center gap-2 text-xs text-emerald-400">
+										<Check size={12} />
+										Pro activated successfully!
+									</div>
+								)}
 
 								<button
 									onClick={handleActivateLicense}
-									disabled={!licenseKey.trim() || licenseValidating}
-									className="w-full px-4 py-2.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-medium text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+									disabled={licenseValidating}
+									className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-medium text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
 								>
-									{licenseValidating ? "Validating..." : "Activate Pro"}
+									{licenseValidating ? "Connecting..." : "Connect to Coherence"}
 								</button>
+
+								<a
+									href="https://getcoherence.io/pricing"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="block text-center text-[11px] text-white/30 hover:text-white/50 transition-colors"
+								>
+									Don't have an account? View plans
+								</a>
 							</>
 						)}
 					</>

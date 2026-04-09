@@ -42,7 +42,7 @@ export class BrowserDriver {
 			width: viewport.width,
 			height: viewport.height,
 			show: !options?.headless,
-			title: "Lucid Demo Browser",
+			title: "Coherence Studio Demo Browser",
 			webPreferences: {
 				nodeIntegration: false,
 				contextIsolation: true,
@@ -214,7 +214,8 @@ export class BrowserDriver {
 		`);
 
 		return {
-			url, title,
+			url,
+			title,
 			visibleText: result.visibleText,
 			elements: result.elements,
 			headings: result.headings,

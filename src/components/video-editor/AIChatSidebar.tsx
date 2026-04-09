@@ -134,7 +134,7 @@ export function AIChatSidebar({
 	// Auto-scroll to bottom when messages change
 	useLayoutEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [messages]);
+	}, []);
 
 	// Auto-resize textarea
 	useEffect(() => {
@@ -142,7 +142,7 @@ export function AIChatSidebar({
 			textareaRef.current.style.height = "auto";
 			textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
 		}
-	}, [input]);
+	}, []);
 
 	// Build recording profile (memoized)
 	const recordingProfile = useMemo<RecordingProfile | null>(() => {

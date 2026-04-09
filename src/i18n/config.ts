@@ -13,4 +13,4 @@ export const I18N_NAMESPACES = [
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export type I18nNamespace = (typeof I18N_NAMESPACES)[number];
 
-export const LOCALE_STORAGE_KEY = "lucid-studio-locale";
+export const LOCALE_STORAGE_KEY = "coherence-studio-locale";

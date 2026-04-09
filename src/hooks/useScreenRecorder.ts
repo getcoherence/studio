@@ -304,7 +304,7 @@ export function useScreenRecorder(options?: {
 				}
 			})();
 		},
-		[teardownMedia],
+		[teardownMedia, options?.onRecordingFinalized],
 	);
 
 	const stopRecording = useRef(() => {

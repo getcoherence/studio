@@ -296,7 +296,6 @@ export function CursorOverlay({
 		containerHeight,
 		cursorSmoothing,
 		swayIntensity,
-		cursorStyle,
 		showClickRings,
 		showCursor,
 		style,

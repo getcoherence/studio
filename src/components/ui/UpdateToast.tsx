@@ -1,14 +1,14 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
 
-const GITHUB_RELEASES_URL = "https://github.com/getcoherence/lucid/releases/latest";
+const GITHUB_RELEASES_URL = "https://github.com/getcoherence/studio/releases/latest";
 
 export function UpdateToast() {
 	useEffect(() => {
 		if (!window.electronAPI?.onUpdateAvailable) return;
 
 		const cleanup = window.electronAPI.onUpdateAvailable((version: string) => {
-			toast(`Lucid Studio v${version} is available`, {
+			toast(`Coherence Studio v${version} is available`, {
 				duration: 15_000,
 				action: {
 					label: "Download",

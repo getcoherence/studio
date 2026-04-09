@@ -57,12 +57,12 @@
 		"saveGif": "Guardar GIF exportado",
 		"saveVideo": "Guardar video exportado",
 		"selectVideo": "Seleccionar archivo de video",
-		"saveProject": "Guardar proyecto Lucid Studio",
-		"openProject": "Abrir proyecto Lucid Studio",
+		"saveProject": "Guardar proyecto Coherence Studio",
+		"openProject": "Abrir proyecto Coherence Studio",
 		"gifImage": "Imagen GIF",
 		"mp4Video": "Video MP4",
 		"videoFiles": "Archivos de video",
-		"lucidProject": "Proyecto Lucid Studio",
+		"lucidProject": "Proyecto Coherence Studio",
 		"allFiles": "Todos los archivos"
 	}
 }

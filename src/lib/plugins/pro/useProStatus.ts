@@ -16,7 +16,7 @@ export function useProStatus() {
 				setLoading(false);
 			});
 		}
-	}, []);
+	}, [status]);
 
 	const upgrade = useCallback(async () => {
 		setLoading(true);

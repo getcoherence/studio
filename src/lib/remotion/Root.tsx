@@ -48,7 +48,7 @@ const DynamicVideoComposition: React.FC<{ code: string; screenshots: string[] }>
 			console.error("[DynamicVideoComposition] Compilation failed:", msg);
 			return { component: null, error: msg };
 		}
-	}, [code]);
+	}, [code, screenshots?.length]);
 
 	if (error || !Component) {
 		return (

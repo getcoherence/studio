@@ -1,9 +1,9 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "studio.getlucid.app",
+  "appId": "io.getcoherence.studio",
   "asar": true,
-  "productName": "Lucid Studio",
+  "productName": "Coherence Studio",
   "npmRebuild": true,
   "buildDependenciesFromSource": true,
   "compression": "normal",
@@ -47,9 +47,9 @@
     "icon": "icons/icons/mac/icon.icns",
     "artifactName": "${productName}-Mac-${arch}-${version}-Installer.${ext}",
     "extendInfo": {
-      "NSAudioCaptureUsageDescription": "Lucid Studio needs audio capture permission to record system audio.",
-      "NSMicrophoneUsageDescription": "Lucid Studio needs microphone access to record voice audio.",
-      "NSCameraUsageDescription": "Lucid Studio needs camera access to record webcam video.",
+      "NSAudioCaptureUsageDescription": "Coherence Studio needs audio capture permission to record system audio.",
+      "NSMicrophoneUsageDescription": "Coherence Studio needs microphone access to record voice audio.",
+      "NSCameraUsageDescription": "Coherence Studio needs camera access to record webcam video.",
       "NSCameraUseContinuityCameraDeviceType": true,
       "com.apple.security.device.audio-input": true
     }

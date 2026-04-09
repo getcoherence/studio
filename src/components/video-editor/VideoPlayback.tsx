@@ -1151,7 +1151,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					animatedBgRafRef.current = null;
 				}
 			};
-		}, [isAnimatedWallpaper, wallpaper]);
+		}, [isAnimatedWallpaper, wallpaper, animatedBgSpeed]);
 
 		useEffect(() => {
 			return () => {

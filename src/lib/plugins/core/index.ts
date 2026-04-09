@@ -19,8 +19,8 @@ export function loadCorePlugins(): void {
 
 	console.log(
 		`[Plugins] Core loaded: ${pluginRegistry.getSceneTypes().length} scene types, ` +
-		`${pluginRegistry.getTransitions().length} transitions, ` +
-		`${pluginRegistry.getEffects().length} effects, ` +
-		`${pluginRegistry.getAnimations().length} animations`,
+			`${pluginRegistry.getTransitions().length} transitions, ` +
+			`${pluginRegistry.getEffects().length} effects, ` +
+			`${pluginRegistry.getAnimations().length} animations`,
 	);
 }

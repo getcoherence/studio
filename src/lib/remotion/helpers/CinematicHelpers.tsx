@@ -211,20 +211,32 @@ export const AnimatedText: React.FC<{
 		return (
 			<div
 				style={{
-					fontSize: effectiveFontSize, fontFamily: "'Courier New', monospace", fontWeight,
-					letterSpacing: "0.05em", lineHeight, color: gradientStyle ? undefined : color,
-					textAlign: align, maxWidth, ...gradientStyle,
+					fontSize: effectiveFontSize,
+					fontFamily: "'Courier New', monospace",
+					fontWeight,
+					letterSpacing: "0.05em",
+					lineHeight,
+					color: gradientStyle ? undefined : color,
+					textAlign: align,
+					maxWidth,
+					...gradientStyle,
 				}}
 			>
 				{chars.map((char, i) => {
 					const settleFrame = i * 2 + 8;
 					const settled = localFrame >= settleFrame;
-					const displayChar = char === " " ? "\u00A0"
-						: settled ? char
-						: matrixGlyphs[Math.floor((localFrame * 7 + i * 13) % matrixGlyphs.length)];
+					const displayChar =
+						char === " "
+							? "\u00A0"
+							: settled
+								? char
+								: matrixGlyphs[Math.floor((localFrame * 7 + i * 13) % matrixGlyphs.length)];
 					const opacity = localFrame < i * 2 ? 0 : settled ? 1 : 0.6;
 					return (
-						<span key={i} style={{ opacity, color: settled ? undefined : (accentColor || "#22c55e") }}>
+						<span
+							key={i}
+							style={{ opacity, color: settled ? undefined : accentColor || "#22c55e" }}
+						>
 							{displayChar}
 						</span>
 					);
@@ -239,15 +251,25 @@ export const AnimatedText: React.FC<{
 		return (
 			<div
 				style={{
-					fontSize: effectiveFontSize, fontFamily, fontWeight, letterSpacing, lineHeight,
-					textAlign: align, maxWidth, perspective: 800, display: "flex",
-					flexWrap: "wrap", justifyContent: align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start",
+					fontSize: effectiveFontSize,
+					fontFamily,
+					fontWeight,
+					letterSpacing,
+					lineHeight,
+					textAlign: align,
+					maxWidth,
+					perspective: 800,
+					display: "flex",
+					flexWrap: "wrap",
+					justifyContent:
+						align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start",
 				}}
 			>
 				{chars.map((char, i) => {
 					const progress = spring({
 						frame: Math.max(0, localFrame - i * 1.5),
-						fps, config: { damping: 16, stiffness: 140 },
+						fps,
+						config: { damping: 16, stiffness: 140 },
 					});
 					const rotateY = (1 - progress) * 90;
 					const rotateX = (1 - progress) * -20;
@@ -273,38 +295,67 @@ export const AnimatedText: React.FC<{
 
 	// ── Glitch in: text appears with chromatic aberration and offset layers ──
 	if (animation === "glitch-in") {
-		const revealProgress = spring({ frame: localFrame, fps, config: { damping: 10, stiffness: 200 } });
+		const revealProgress = spring({
+			frame: localFrame,
+			fps,
+			config: { damping: 10, stiffness: 200 },
+		});
 		const glitchIntensity = Math.max(0, 1 - revealProgress) * 15;
 		const offsetR = Math.sin(localFrame * 0.7) * glitchIntensity;
 		const offsetB = Math.cos(localFrame * 0.9) * glitchIntensity;
 		const clipLeft = (1 - revealProgress) * 100;
 		return (
-			<div style={{ position: "relative", fontSize: effectiveFontSize, fontFamily, fontWeight, letterSpacing, lineHeight, textAlign: align, maxWidth }}>
+			<div
+				style={{
+					position: "relative",
+					fontSize: effectiveFontSize,
+					fontFamily,
+					fontWeight,
+					letterSpacing,
+					lineHeight,
+					textAlign: align,
+					maxWidth,
+				}}
+			>
 				{/* Red channel offset */}
 				{glitchIntensity > 0.5 && (
-					<div style={{
-						position: "absolute", inset: 0, color: "#ff000060",
-						transform: `translate(${offsetR}px, ${-offsetR * 0.5}px)`,
-						clipPath: `inset(0 ${clipLeft}% 0 0)`, ...gradientStyle,
-					}}>
+					<div
+						style={{
+							position: "absolute",
+							inset: 0,
+							color: "#ff000060",
+							transform: `translate(${offsetR}px, ${-offsetR * 0.5}px)`,
+							clipPath: `inset(0 ${clipLeft}% 0 0)`,
+							...gradientStyle,
+						}}
+					>
 						{cleanText}
 					</div>
 				)}
 				{/* Blue channel offset */}
 				{glitchIntensity > 0.5 && (
-					<div style={{
-						position: "absolute", inset: 0, color: "#0000ff60",
-						transform: `translate(${offsetB}px, ${offsetB * 0.5}px)`,
-						clipPath: `inset(0 ${clipLeft}% 0 0)`, ...gradientStyle,
-					}}>
+					<div
+						style={{
+							position: "absolute",
+							inset: 0,
+							color: "#0000ff60",
+							transform: `translate(${offsetB}px, ${offsetB * 0.5}px)`,
+							clipPath: `inset(0 ${clipLeft}% 0 0)`,
+							...gradientStyle,
+						}}
+					>
 						{cleanText}
 					</div>
 				)}
 				{/* Main text */}
-				<div style={{
-					position: "relative", color: gradientStyle ? undefined : color,
-					clipPath: `inset(0 ${clipLeft}% 0 0)`, ...gradientStyle,
-				}}>
+				<div
+					style={{
+						position: "relative",
+						color: gradientStyle ? undefined : color,
+						clipPath: `inset(0 ${clipLeft}% 0 0)`,
+						...gradientStyle,
+					}}
+				>
 					{cleanText}
 				</div>
 			</div>
@@ -408,7 +459,15 @@ export const AnimatedText: React.FC<{
 						config: { damping: 8, stiffness: 200, mass: 0.6 },
 					});
 					const isAccent =
-						accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
+						accentWord &&
+						accentWord
+							.toLowerCase()
+							.split(/\s+/)
+							.some(
+								(aw) =>
+									word.replace(/[^\w]/g, "").toLowerCase() ===
+									aw.replace(/[^\w]/g, "").toLowerCase(),
+							);
 					const bounceY =
 						progress < 1 ? (1 - progress) * -60 : Math.sin((localFrame - wordDelay) * 0.3) * 3;
 					return (
@@ -453,7 +512,15 @@ export const AnimatedText: React.FC<{
 			>
 				{words.map((word, wi) => {
 					const isAccent =
-						accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
+						accentWord &&
+						accentWord
+							.toLowerCase()
+							.split(/\s+/)
+							.some(
+								(aw) =>
+									word.replace(/[^\w]/g, "").toLowerCase() ===
+									aw.replace(/[^\w]/g, "").toLowerCase(),
+							);
 					return (
 						<span key={wi} style={{ display: "inline-block", whiteSpace: "nowrap" }}>
 							{word.split("").map((char, ci) => {
@@ -541,7 +608,15 @@ export const AnimatedText: React.FC<{
 						extrapolateRight: "clamp",
 					});
 					const isAccent =
-						accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
+						accentWord &&
+						accentWord
+							.toLowerCase()
+							.split(/\s+/)
+							.some(
+								(aw) =>
+									word.replace(/[^\w]/g, "").toLowerCase() ===
+									aw.replace(/[^\w]/g, "").toLowerCase(),
+							);
 					return (
 						<span
 							key={wi}
@@ -588,7 +663,15 @@ export const AnimatedText: React.FC<{
 					});
 					const offsetX = (1 - progress) * distance * 60;
 					const isAccent =
-						accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
+						accentWord &&
+						accentWord
+							.toLowerCase()
+							.split(/\s+/)
+							.some(
+								(aw) =>
+									word.replace(/[^\w]/g, "").toLowerCase() ===
+									aw.replace(/[^\w]/g, "").toLowerCase(),
+							);
 					return (
 						<span
 							key={wi}
@@ -631,7 +714,15 @@ export const AnimatedText: React.FC<{
 			>
 				{words.map((word, wi) => {
 					const isAccent =
-						accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
+						accentWord &&
+						accentWord
+							.toLowerCase()
+							.split(/\s+/)
+							.some(
+								(aw) =>
+									word.replace(/[^\w]/g, "").toLowerCase() ===
+									aw.replace(/[^\w]/g, "").toLowerCase(),
+							);
 					return (
 						<span key={wi} style={{ display: "inline-block", whiteSpace: "nowrap" }}>
 							{word.split("").map((char, ci) => {
@@ -722,7 +813,15 @@ export const AnimatedText: React.FC<{
 						config: { damping: 12, stiffness: 200 },
 					});
 					const isAccent =
-						accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
+						accentWord &&
+						accentWord
+							.toLowerCase()
+							.split(/\s+/)
+							.some(
+								(aw) =>
+									word.replace(/[^\w]/g, "").toLowerCase() ===
+									aw.replace(/[^\w]/g, "").toLowerCase(),
+							);
 					return (
 						<span
 							key={wi}
@@ -766,7 +865,14 @@ export const AnimatedText: React.FC<{
 		>
 			{words.map((word, wi) => {
 				const isAccent =
-					accentWord && accentWord.toLowerCase().split(/\s+/).some(aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase());
+					accentWord &&
+					accentWord
+						.toLowerCase()
+						.split(/\s+/)
+						.some(
+							(aw) =>
+								word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase(),
+						);
 				const wordNode = (
 					<span
 						key={wi}
@@ -962,27 +1068,29 @@ export const GradientText: React.FC<{
 
 	return (
 		<div
-			style={{
-				fontSize,
-				fontFamily,
-				fontWeight,
-				letterSpacing: "-0.04em",
-				lineHeight: 1.0,
-				textAlign: align,
-				maxWidth,
-				overflow: "hidden",
-				backgroundImage: `linear-gradient(${angle}deg, ${colors.join(", ")})`,
-				backgroundSize: "200% 200%",
-				backgroundRepeat: "no-repeat",
-				// background-clip: text must be set as inline styles (not via useEffect)
-				// because Remotion SSR export doesn't run useEffect
-				WebkitBackgroundClip: "text",
-				backgroundClip: "text",
-				WebkitTextFillColor: "transparent",
-				color: "transparent",
-				opacity,
-				transform: `scale(${scale})`,
-			} as React.CSSProperties}
+			style={
+				{
+					fontSize,
+					fontFamily,
+					fontWeight,
+					letterSpacing: "-0.04em",
+					lineHeight: 1.0,
+					textAlign: align,
+					maxWidth,
+					overflow: "hidden",
+					backgroundImage: `linear-gradient(${angle}deg, ${colors.join(", ")})`,
+					backgroundSize: "200% 200%",
+					backgroundRepeat: "no-repeat",
+					// background-clip: text must be set as inline styles (not via useEffect)
+					// because Remotion SSR export doesn't run useEffect
+					WebkitBackgroundClip: "text",
+					backgroundClip: "text",
+					WebkitTextFillColor: "transparent",
+					color: "transparent",
+					opacity,
+					transform: `scale(${scale})`,
+				} as React.CSSProperties
+			}
 		>
 			{text}
 		</div>
@@ -1927,17 +2035,21 @@ export const DeviceMockup: React.FC<{
 	const frame = useCurrentFrame();
 	const { fps } = useVideoConfig();
 	const enter = spring({ frame, fps, config: { damping: 14, stiffness: 100 } });
-	const float = Math.sin(frame / fps * 1.2) * 4;
+	const float = Math.sin((frame / fps) * 1.2) * 4;
 
 	if (device === "phone") {
 		return (
-			<div style={{
-				transform: `perspective(1200px) rotateY(${tilt}deg) translateY(${(1 - enter) * 60 + float}px)`,
-				opacity: enter,
-				width: 320, borderRadius: 40,
-				background: "#1a1a1a", padding: "12px 8px",
-				boxShadow: shadow ? "0 40px 80px rgba(0,0,0,0.4)" : undefined,
-			}}>
+			<div
+				style={{
+					transform: `perspective(1200px) rotateY(${tilt}deg) translateY(${(1 - enter) * 60 + float}px)`,
+					opacity: enter,
+					width: 320,
+					borderRadius: 40,
+					background: "#1a1a1a",
+					padding: "12px 8px",
+					boxShadow: shadow ? "0 40px 80px rgba(0,0,0,0.4)" : undefined,
+				}}
+			>
 				<div style={{ borderRadius: 28, overflow: "hidden", aspectRatio: "9/19.5" }}>
 					{children}
 				</div>
@@ -1946,42 +2058,67 @@ export const DeviceMockup: React.FC<{
 	}
 
 	return (
-		<div style={{
-			transform: `perspective(1600px) rotateX(${tilt * 0.5}deg) rotateY(${tilt}deg) translateY(${(1 - enter) * 80 + float}px)`,
-			opacity: enter,
-		}}>
+		<div
+			style={{
+				transform: `perspective(1600px) rotateX(${tilt * 0.5}deg) rotateY(${tilt}deg) translateY(${(1 - enter) * 80 + float}px)`,
+				opacity: enter,
+			}}
+		>
 			{/* Screen */}
-			<div style={{
-				width: 900, borderRadius: "16px 16px 0 0",
-				background: "#0a0a0a", padding: "8px 8px 0",
-				boxShadow: shadow ? "0 40px 100px rgba(0,0,0,0.5)" : undefined,
-			}}>
+			<div
+				style={{
+					width: 900,
+					borderRadius: "16px 16px 0 0",
+					background: "#0a0a0a",
+					padding: "8px 8px 0",
+					boxShadow: shadow ? "0 40px 100px rgba(0,0,0,0.5)" : undefined,
+				}}
+			>
 				{/* Browser chrome */}
-				<div style={{
-					height: 32, background: "#1a1a1a", borderRadius: "8px 8px 0 0",
-					display: "flex", alignItems: "center", gap: 6, padding: "0 12px",
-				}}>
+				<div
+					style={{
+						height: 32,
+						background: "#1a1a1a",
+						borderRadius: "8px 8px 0 0",
+						display: "flex",
+						alignItems: "center",
+						gap: 6,
+						padding: "0 12px",
+					}}
+				>
 					<div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
 					<div style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
 					<div style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840" }} />
-					<div style={{
-						flex: 1, height: 20, borderRadius: 4, background: "#0a0a0a",
-						marginLeft: 8, display: "flex", alignItems: "center", padding: "0 8px",
-						fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "'Inter', sans-serif",
-					}}>
-						getlucid.studio
+					<div
+						style={{
+							flex: 1,
+							height: 20,
+							borderRadius: 4,
+							background: "#0a0a0a",
+							marginLeft: 8,
+							display: "flex",
+							alignItems: "center",
+							padding: "0 8px",
+							fontSize: 10,
+							color: "rgba(255,255,255,0.3)",
+							fontFamily: "'Inter', sans-serif",
+						}}
+					>
+						getcoherence.io/studio
 					</div>
 				</div>
-				<div style={{ overflow: "hidden", borderRadius: "0 0 0 0" }}>
-					{children}
-				</div>
+				<div style={{ overflow: "hidden", borderRadius: "0 0 0 0" }}>{children}</div>
 			</div>
 			{/* Keyboard base */}
-			<div style={{
-				width: 980, height: 14, margin: "0 auto",
-				background: "linear-gradient(180deg, #2a2a2a, #1a1a1a)",
-				borderRadius: "0 0 12px 12px",
-			}} />
+			<div
+				style={{
+					width: 980,
+					height: 14,
+					margin: "0 auto",
+					background: "linear-gradient(180deg, #2a2a2a, #1a1a1a)",
+					borderRadius: "0 0 12px 12px",
+				}}
+			/>
 		</div>
 	);
 };
@@ -3346,7 +3483,12 @@ export const BackgroundVideo: React.FC<{
 		if (!playingRef.current) {
 			// First mount — start from beginning
 			video.currentTime = 0;
-			video.play().then(() => { playingRef.current = true; }).catch(() => {});
+			video
+				.play()
+				.then(() => {
+					playingRef.current = true;
+				})
+				.catch(() => {});
 			return;
 		}
 
@@ -3361,7 +3503,9 @@ export const BackgroundVideo: React.FC<{
 
 	// Reset when sequence restarts
 	React.useEffect(() => {
-		return () => { playingRef.current = false; };
+		return () => {
+			playingRef.current = false;
+		};
 	}, []);
 
 	if (hasError) return null;
@@ -3372,7 +3516,10 @@ export const BackgroundVideo: React.FC<{
 			src={src}
 			muted
 			playsInline
-			onError={() => { setHasError(true); onError?.(); }}
+			onError={() => {
+				setHasError(true);
+				onError?.();
+			}}
 			style={{
 				position: "absolute",
 				inset: 0,
@@ -3421,21 +3568,18 @@ export const ButtonPill: React.FC<{
 	const padX = Math.round(fontSize * 1.7);
 
 	// Slide-in entrance
-	const entrance = animation === "slide-in"
-		? spring({ frame: localFrame, fps, config: { damping: 14, stiffness: 120 } })
-		: 1;
+	const entrance =
+		animation === "slide-in"
+			? spring({ frame: localFrame, fps, config: { damping: 14, stiffness: 120 } })
+			: 1;
 	const translateY = animation === "slide-in" ? (1 - entrance) * 40 : 0;
 	const opacity = animation === "slide-in" ? entrance : 1;
 
 	// Pulse scale
-	const pulseScale = animation === "pulse"
-		? 1 + Math.sin(localFrame * 0.08) * 0.03
-		: 1;
+	const pulseScale = animation === "pulse" ? 1 + Math.sin(localFrame * 0.08) * 0.03 : 1;
 
 	// Glow pulse
-	const glowIntensity = animation === "glow-pulse"
-		? 30 + Math.sin(localFrame * 0.1) * 20
-		: 30;
+	const glowIntensity = animation === "glow-pulse" ? 30 + Math.sin(localFrame * 0.1) * 20 : 30;
 
 	// Racing border: a conic-gradient that rotates
 	const racingAngle = (localFrame * 4) % 360;
@@ -3493,7 +3637,15 @@ export const ButtonPill: React.FC<{
  * Extracted from PostSyncer ("WHY SETTLE / FOR / LESS") — key word is MASSIVE.
  */
 export const StackedText: React.FC<{
-	lines: Array<{ text: string; size: number; weight?: number; color?: string; spacingAfter?: number; accentWord?: string; accentColor?: string }>;
+	lines: Array<{
+		text: string;
+		size: number;
+		weight?: number;
+		color?: string;
+		spacingAfter?: number;
+		accentWord?: string;
+		accentColor?: string;
+	}>;
 	color?: string;
 	fontFamily?: string;
 	gap?: number;
@@ -3575,16 +3727,23 @@ export const StackedText: React.FC<{
 				}
 				const lineContent = line.accentWord
 					? line.text.split(/\s+/).map((word, wi) => {
-						const isAccent = line.accentWord!.toLowerCase().split(/\s+/).some(
-							aw => word.replace(/[^\w]/g, "").toLowerCase() === aw.replace(/[^\w]/g, "").toLowerCase()
-						);
-						return (
-							<React.Fragment key={wi}>
-								{wi > 0 ? " " : ""}
-								<span style={isAccent ? { color: line.accentColor || color } : undefined}>{word}</span>
-							</React.Fragment>
-						);
-					})
+							const isAccent = line
+								.accentWord!.toLowerCase()
+								.split(/\s+/)
+								.some(
+									(aw) =>
+										word.replace(/[^\w]/g, "").toLowerCase() ===
+										aw.replace(/[^\w]/g, "").toLowerCase(),
+								);
+							return (
+								<React.Fragment key={wi}>
+									{wi > 0 ? " " : ""}
+									<span style={isAccent ? { color: line.accentColor || color } : undefined}>
+										{word}
+									</span>
+								</React.Fragment>
+							);
+						})
 					: line.text;
 
 				return (

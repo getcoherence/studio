@@ -29,10 +29,10 @@ interface ProAuthConfig {
 
 const DEFAULT_CONFIG: ProAuthConfig = {
 	baseUrl: "https://app.getcoherence.io",
-	authUrl: "https://app.getcoherence.io/login?redirect=lucid-desktop",
-	subscriptionUrl: "https://app.getcoherence.io/api/v1/auth/lucid/subscription",
-	bundleUrl: "https://app.getcoherence.io/api/v1/auth/lucid/pro-bundle.js",
-	tokenKey: "lucid-pro-token",
+	authUrl: "https://app.getcoherence.io/login?redirect=studio-desktop",
+	subscriptionUrl: "https://app.getcoherence.io/api/v1/auth/studio/subscription",
+	bundleUrl: "https://app.getcoherence.io/api/v1/auth/studio/pro-bundle.js",
+	tokenKey: "studio-pro-token",
 	providerName: "Coherence",
 };
 
@@ -40,10 +40,10 @@ const DEFAULT_CONFIG: ProAuthConfig = {
 const isDev = typeof window !== "undefined" && window.location.hostname === "localhost";
 const DEV_CONFIG: ProAuthConfig = {
 	baseUrl: "http://localhost:5175",
-	authUrl: "http://localhost:5175/login?redirect=lucid-desktop",
-	subscriptionUrl: "http://localhost:4100/lucid/subscription",
-	bundleUrl: "http://localhost:4100/lucid/pro-bundle.js",
-	tokenKey: "lucid-pro-token",
+	authUrl: "http://localhost:5175/login?redirect=studio-desktop",
+	subscriptionUrl: "http://localhost:4100/studio/subscription",
+	bundleUrl: "http://localhost:4100/studio/pro-bundle.js",
+	tokenKey: "studio-pro-token",
 	providerName: "Coherence (dev)",
 };
 
@@ -97,7 +97,7 @@ export function getProStatus(): typeof proStatus {
 	return proStatus;
 }
 
-/** Get stored token */
+/** Get stored token (internal) */
 function getStoredToken(): string | null {
 	try {
 		return localStorage.getItem(config.tokenKey);
@@ -106,18 +106,32 @@ function getStoredToken(): string | null {
 	}
 }
 
+/** Get stored token (exported for silent init check in license.ts) */
+export function getStoredProToken(): string | null {
+	return getStoredToken();
+}
+
+/** Get the in-memory token (may still be valid even if localStorage was cleared) */
+export function getProToken(): string | null {
+	return proToken || getStoredToken();
+}
+
 /** Store token */
 function storeToken(token: string): void {
 	try {
 		localStorage.setItem(config.tokenKey, token);
-	} catch { /* ignore */ }
+	} catch {
+		/* ignore */
+	}
 }
 
 /** Clear stored token */
 function clearToken(): void {
 	try {
 		localStorage.removeItem(config.tokenKey);
-	} catch { /* ignore */ }
+	} catch {
+		/* ignore */
+	}
 }
 
 /**
@@ -159,13 +173,13 @@ export async function authenticatePro(): Promise<{ success: boolean; error?: str
 		const handler = (event: MessageEvent) => {
 			if (event.origin !== config.baseUrl) return;
 			const data = event.data;
-			if (data?.type === "lucid-auth-success" && data.token) {
+			if (data?.type === "studio-auth-success" && data.token) {
 				window.removeEventListener("message", handler);
 				proToken = data.token;
 				storeToken(data.token);
 				popup.close();
 				resolve({ success: true });
-			} else if (data?.type === "lucid-auth-error") {
+			} else if (data?.type === "studio-auth-error") {
 				window.removeEventListener("message", handler);
 				popup.close();
 				resolve({ success: false, error: data.error || "Authentication failed" });
@@ -197,6 +211,7 @@ export async function authenticatePro(): Promise<{ success: boolean; error?: str
  */
 export async function checkSubscription(): Promise<{
 	active: boolean;
+	authFailed?: boolean;
 	plan?: string;
 	expiresAt?: string;
 }> {
@@ -204,14 +219,17 @@ export async function checkSubscription(): Promise<{
 	if (!token) return { active: false };
 
 	try {
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 10_000); // 10s timeout
+
 		const res = await fetch(config.subscriptionUrl, {
 			headers: { Authorization: `Bearer ${token}` },
+			signal: controller.signal,
 		});
+		clearTimeout(timeout);
 
 		if (res.status === 401) {
-			clearToken();
-			proStatus = "inactive";
-			return { active: false };
+			return { active: false, authFailed: true };
 		}
 
 		const data = await res.json();
@@ -248,13 +266,13 @@ async function loadProBundle(): Promise<void> {
 	const code = await res.text();
 
 	// Execute the bundle in a controlled scope
-	// The bundle should set window.__LUCID_PRO_PLUGIN__
+	// The bundle should set window.__STUDIO_PRO_PLUGIN__
 	const script = document.createElement("script");
 	script.textContent = code;
 	document.head.appendChild(script);
 	document.head.removeChild(script);
 
-	const proPlugin = (window as any).__LUCID_PRO_PLUGIN__ as LucidPlugin | undefined;
+	const proPlugin = (window as any).__STUDIO_PRO_PLUGIN__ as LucidPlugin | undefined;
 	if (!proPlugin) {
 		throw new Error("Pro bundle did not export a valid plugin");
 	}
@@ -269,7 +287,11 @@ async function loadProBundle(): Promise<void> {
  * 2. Verify subscription
  * 3. Download + load pro bundle
  */
-export async function activatePro(): Promise<{ success: boolean; error?: string }> {
+export async function activatePro(): Promise<{
+	success: boolean;
+	error?: string;
+	code?: "no_subscription" | "auth_failed" | "bundle_failed";
+}> {
 	proStatus = "checking";
 
 	// Try stored token first
@@ -299,9 +321,19 @@ export async function activatePro(): Promise<{ success: boolean; error?: string 
 	}
 
 	const sub = await checkSubscription();
+	if (sub.authFailed) {
+		// Token was accepted by Electron callback but rejected by API — re-auth needed
+		clearToken();
+		proStatus = "inactive";
+		return {
+			success: false,
+			code: "auth_failed",
+			error: "Authentication failed — please try again",
+		};
+	}
 	if (!sub.active) {
 		proStatus = "inactive";
-		return { success: false, error: "No active Pro subscription. Subscribe at getcoherence.io/pricing" };
+		return { success: false, code: "no_subscription", error: "No active Studio Pro subscription" };
 	}
 
 	try {

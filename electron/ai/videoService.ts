@@ -78,7 +78,9 @@ export async function generateVideo(
 	const duration = rawDur >= 8 ? 10 : 6;
 	const resolution = options?.resolution || "1080P";
 
-	console.log(`[Video] Generating clip: model=${model}, duration=${duration}s, resolution=${resolution}`);
+	console.log(
+		`[Video] Generating clip: model=${model}, duration=${duration}s, resolution=${resolution}`,
+	);
 	console.log(`[Video] Prompt: ${prompt.slice(0, 150)}`);
 
 	try {
@@ -134,9 +136,7 @@ export async function generateVideoBatch(
 				model: clip.model,
 				durationSec: clip.durationSec,
 				resolution: clip.resolution,
-				onProgress: onProgress
-					? (p) => onProgress(clip.sceneIndex, p)
-					: undefined,
+				onProgress: onProgress ? (p) => onProgress(clip.sceneIndex, p) : undefined,
 			});
 			return { sceneIndex: clip.sceneIndex, result };
 		}),
@@ -222,7 +222,9 @@ async function pollForCompletion(
 		};
 
 		const status = data.status as VideoGenerationProgress["status"];
-		console.log(`[Video] Poll: ${status} (${Math.round((Date.now() - startTime) / 1000)}s elapsed)`);
+		console.log(
+			`[Video] Poll: ${status} (${Math.round((Date.now() - startTime) / 1000)}s elapsed)`,
+		);
 
 		if (onProgress) {
 			onProgress({ status, taskId });
@@ -249,14 +251,11 @@ async function pollForCompletion(
 }
 
 async function getDownloadUrl(apiKey: string, fileId: string): Promise<string> {
-	const response = await fetch(
-		`https://api.minimax.io/v1/files/retrieve?file_id=${fileId}`,
-		{
-			method: "GET",
-			headers: { Authorization: `Bearer ${apiKey}` },
-			signal: AbortSignal.timeout(15_000),
-		},
-	);
+	const response = await fetch(`https://api.minimax.io/v1/files/retrieve?file_id=${fileId}`, {
+		method: "GET",
+		headers: { Authorization: `Bearer ${apiKey}` },
+		signal: AbortSignal.timeout(15_000),
+	});
 
 	if (!response.ok) {
 		const errBody = await response.text().catch(() => "");

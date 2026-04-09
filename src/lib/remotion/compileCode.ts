@@ -31,7 +31,9 @@ import {
 	AnimatedBackground,
 	AnimatedText,
 	AvatarConstellation,
+	BackgroundVideo,
 	BlurredUI,
+	ButtonPill,
 	CameraText,
 	Card,
 	CharacterCardRow,
@@ -40,11 +42,13 @@ import {
 	CornerTriangleFrame,
 	CredibilityLogos,
 	DashboardGrid,
+	DeviceMockup,
 	Divider,
 	EchoText,
 	FloatingAppIcon,
 	FloatingOrbs,
 	GhostSentence,
+	GlassCard,
 	GlitchText,
 	GlowFrame,
 	GradientMesh,
@@ -66,10 +70,6 @@ import {
 	WordCarousel,
 	WordSlotMachine,
 	zoomMorph,
-	GlassCard,
-	DeviceMockup,
-	ButtonPill,
-	BackgroundVideo,
 } from "./helpers/CinematicHelpers";
 import {
 	colorBurst,
@@ -89,16 +89,80 @@ import {
 	Snow,
 	Sparks,
 } from "./helpers/ParticleEffects";
+import {
+	CinematicAnime,
+	CinematicDocumentary,
+	CinematicEpic,
+	CinematicNoir,
+	CinematicSciFi,
+} from "./helpers/scenes/CinematicAnimations";
+import {
+	DataBarChart,
+	DataGauge,
+	DataPieChart,
+	DataProgressBars,
+	DataTimeline,
+} from "./helpers/scenes/DataAnimations";
 // Scene library (adapted from remotion-scenes)
-import { EffectFilmGrain, EffectVHS, EffectChromaticAberration, EffectGlow, EffectLightLeak, EffectDuotone, EffectKaleidoscope } from "./helpers/scenes/EffectAnimations";
-import { LiquidBlob, LiquidInkSplash, LiquidFluidWave, LiquidSwirl, LiquidMorphBlob, LiquidCalligraphyInk } from "./helpers/scenes/LiquidAnimations";
-import { ShapeRipples, ShapeHexGrid, ShapeSpinningRings, ShapeMorphing, ShapeCircularProgress, ShapeExplosion, ShapeHelix } from "./helpers/scenes/ShapeAnimations";
-import { TextNeon, TextKinetic, TextExplode, Text3DFlip, TextScramble, TextGradient, TextWave, TextCounter } from "./helpers/scenes/TextAnimations";
-import { Logo3DRotate, LogoStroke, LogoNeonSign, LogoParticles, LogoGlitch, LogoMaskReveal, LogoLightTrail } from "./helpers/scenes/LogoAnimations";
-import { CinematicEpic, CinematicSciFi, CinematicNoir, CinematicAnime, CinematicDocumentary } from "./helpers/scenes/CinematicAnimations";
-import { DataBarChart, DataPieChart, DataTimeline, DataProgressBars, DataGauge } from "./helpers/scenes/DataAnimations";
-import { ListHeroWithList, ListTimeline, ListStaggered, ListNumberedVertical, ListTwoColumnCompare } from "./helpers/scenes/ListAnimations";
-import { RollerFlip, Roller3DCarousel, RollerSplitFlap, RollerTypewriter, RollerGlitch } from "./helpers/scenes/RollerAnimations";
+import {
+	EffectChromaticAberration,
+	EffectDuotone,
+	EffectFilmGrain,
+	EffectGlow,
+	EffectKaleidoscope,
+	EffectLightLeak,
+	EffectVHS,
+} from "./helpers/scenes/EffectAnimations";
+import {
+	LiquidBlob,
+	LiquidCalligraphyInk,
+	LiquidFluidWave,
+	LiquidInkSplash,
+	LiquidMorphBlob,
+	LiquidSwirl,
+} from "./helpers/scenes/LiquidAnimations";
+import {
+	ListHeroWithList,
+	ListNumberedVertical,
+	ListStaggered,
+	ListTimeline,
+	ListTwoColumnCompare,
+} from "./helpers/scenes/ListAnimations";
+import {
+	Logo3DRotate,
+	LogoGlitch,
+	LogoLightTrail,
+	LogoMaskReveal,
+	LogoNeonSign,
+	LogoParticles,
+	LogoStroke,
+} from "./helpers/scenes/LogoAnimations";
+import {
+	Roller3DCarousel,
+	RollerFlip,
+	RollerGlitch,
+	RollerSplitFlap,
+	RollerTypewriter,
+} from "./helpers/scenes/RollerAnimations";
+import {
+	ShapeCircularProgress,
+	ShapeExplosion,
+	ShapeHelix,
+	ShapeHexGrid,
+	ShapeMorphing,
+	ShapeRipples,
+	ShapeSpinningRings,
+} from "./helpers/scenes/ShapeAnimations";
+import {
+	Text3DFlip,
+	TextCounter,
+	TextExplode,
+	TextGradient,
+	TextKinetic,
+	TextNeon,
+	TextScramble,
+	TextWave,
+} from "./helpers/scenes/TextAnimations";
 
 /**
  * Render-prop component that provides the Sequence-local frame.
@@ -110,7 +174,11 @@ import { RollerFlip, Roller3DCarousel, RollerSplitFlap, RollerTypewriter, Roller
  *   <FrameScope>{(frame, fps) => <div>Frame: {frame}</div>}</FrameScope>
  */
 const FrameScope: React.FC<{
-	children: (frame: number, fps: number, videoConfig: ReturnType<typeof useVideoConfig>) => React.ReactNode;
+	children: (
+		frame: number,
+		fps: number,
+		videoConfig: ReturnType<typeof useVideoConfig>,
+	) => React.ReactNode;
 }> = ({ children }) => {
 	const frame = useCurrentFrame();
 	const config = useVideoConfig();
