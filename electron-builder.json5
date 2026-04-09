@@ -69,8 +69,13 @@
     "icon": "icons/icons/win/icon.ico"
   },
   "nsis": {
-    "oneClick": false,
-    "allowToChangeInstallationDirectory": true
+    "oneClick": true,
+    "perMachine": false,
+    "allowElevation": true,
+    "deleteAppDataOnUninstall": false,
+    "uninstallDisplayName": "Coherence Studio",
+    "installerIcon": "icons/icons/win/icon.ico",
+    "uninstallerIcon": "icons/icons/win/icon.ico"
   },
   "protocols": [
     {
