@@ -67,4 +67,7 @@ export default defineConfig({
 		},
 		chunkSizeWarningLimit: 1000,
 	},
+	server: {
+		port: 5174, // Avoid conflict with Coherence web app (5173)
+	},
 });

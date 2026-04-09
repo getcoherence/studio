@@ -28,6 +28,7 @@ import {
 } from "../ai/musicService";
 import { synthesize, type TTSVoice } from "../ai/ttsService";
 import { generateVideo, generateVideoBatch } from "../ai/videoService";
+import { authenticateCoherence } from "../pro/proAuth";
 
 export function registerAIHandlers(): void {
 	ipcMain.handle(
@@ -132,6 +133,11 @@ export function registerAIHandlers(): void {
 			return generateVideo(prompt, options);
 		},
 	);
+
+	// Pro authentication via Coherence OAuth
+	ipcMain.handle("pro-authenticate", async () => {
+		return authenticateCoherence();
+	});
 
 	ipcMain.handle(
 		"ai-generate-video-batch",
