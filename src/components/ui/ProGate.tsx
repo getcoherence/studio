@@ -20,7 +20,6 @@ import {
 	activatePro,
 	checkSubscription,
 	getProToken,
-	getStoredProToken,
 } from "@/lib/plugins/pro/proLoader";
 
 // ── ProBadge ────────────────────────────────────────────────────────────
