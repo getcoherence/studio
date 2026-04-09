@@ -2,6 +2,7 @@ import { Bot, Clapperboard, Film, FolderOpen, PlayCircle, Settings } from "lucid
 import { useState } from "react";
 import { AISettingsDialog } from "@/components/ui/AISettingsDialog";
 import { ProBadge, useProGate } from "@/components/ui/ProGate";
+import studioLogo from "/coherence-studio-logo.png";
 
 interface WelcomeScreenProps {
 	onNewRecording: () => void;
@@ -26,7 +27,7 @@ export function WelcomeScreen({
 			{gateDialog}
 
 			<div className="flex flex-col items-center gap-3">
-				<img src="/coherence-studio-logo.png" alt="Studio" className="w-20 h-20" />
+				<img src={studioLogo} alt="Studio" className="w-20 h-20" />
 				<h1 className="text-2xl font-semibold text-white">Studio</h1>
 				<p className="text-sm text-white/40">AI-powered screen recording and editing</p>
 			</div>
