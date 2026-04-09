@@ -79,6 +79,7 @@ Incompatible layers are marked (not deleted) when switching scene types.
 - `src/lib/remotion/helpers/scenes/*.tsx` — 179 adapted components from remotion-scenes
 - `src/lib/plugins/` — plugin system (types, registry, core plugins, pro loader)
 - `electron/ai/videoService.ts` — MiniMax video generation
+- `electron/pro/proAuth.ts` — system browser OAuth + local HTTP callback
 - `electron/export/remotionExport.ts` — SSR export pipeline
 
 ### Critical patterns
@@ -92,12 +93,20 @@ Incompatible layers are marked (not deleted) when switching scene types.
 - `renderExtraLayers` only renders `l-` / `layer-` prefixed user-added overlays
 - `LEGACY_SCENE_TYPES` render ALL layers via `compileCenterLayer`/`compileLayer`
 
+## Pro Auth (working end-to-end)
+- `electron/pro/proAuth.ts` — system browser + local HTTP server callback (port 19385)
+- Flow: Lucid opens Chrome → login at auth app (5175) → redirect to localhost:19385 → token captured
+- Subscription check: `GET /api/v1/auth/lucid/subscription` — checks StudioPlan (separate from Coherence Plan)
+- Pro bundle: `GET /api/v1/auth/lucid/pro-bundle.js` — 7 premium scene types with renderers
+- Coherence Team plan grants Studio access (bundled)
+- Two systems exist: old `license.ts` (dev mode override) and new `proLoader.ts` (Coherence OAuth) — NOT YET CONNECTED
+
 ## Immediate priorities
 
-1. **Build remaining pro renderers** — 5 of 7 premium scene types are stubs
-2. **Video clip playback** — BackgroundVideo needs more robust Remotion integration
-3. **Lint cleanup** — Biome errors from this session
-4. **Coherence pro endpoints** — test the full OAuth + subscription + bundle flow end-to-end
+1. **Rebrand Lucid → Coherence Studio** — app name, window titles, package.json, userData paths, GitHub repo
+2. **Connect pro UI** — wire `activatePro()` to ProGateDialog, replace license key with OAuth, disable dev mode override
+3. **Stripe integration** — create "Coherence Studio Pro" product, checkout session, webhook for StudioPlan updates
+4. **Video clip playback** — BackgroundVideo needs more robust Remotion integration
 
 ## Running the app
 ```bash
