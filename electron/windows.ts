@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BrowserWindow, screen } from "electron";
+import { app, BrowserWindow, screen } from "electron";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -8,6 +8,7 @@ const APP_ROOT = path.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const RENDERER_DIST = path.join(APP_ROOT, "dist");
 const HEADLESS = process.env["HEADLESS"] === "true";
+const IS_DEV = !!VITE_DEV_SERVER_URL || !app.isPackaged;
 
 export function createEditorWindow(): BrowserWindow {
 	const isMac = process.platform === "darwin";
@@ -38,6 +39,7 @@ export function createEditorWindow(): BrowserWindow {
 			webSecurity: true,
 			backgroundThrottling: false,
 			webviewTag: true,
+			devTools: IS_DEV,
 		},
 	});
 
