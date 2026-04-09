@@ -429,8 +429,37 @@ app.on("activate", () => {
 	}
 });
 
-// Pro auth uses local HTTP server callback — no deep links needed
-import "./pro/proAuth";
+// Pro auth via coherence-studio:// deep link protocol
+import { handleProAuthDeepLink, registerProAuthProtocol } from "./pro/proAuth";
+
+// Register the protocol before app is ready
+registerProAuthProtocol();
+
+// macOS: handle deep link when app is already running
+app.on("open-url", (event, url) => {
+	event.preventDefault();
+	handleProAuthDeepLink(url);
+});
+
+// Windows/Linux: second instance receives the deep link URL in argv
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+	app.quit();
+} else {
+	app.on("second-instance", (_event, argv) => {
+		// The deep link URL is the last argument
+		const deepLink = argv.find((arg) => arg.startsWith("coherence-studio://"));
+		if (deepLink) {
+			handleProAuthDeepLink(deepLink);
+		}
+		// Focus the existing window
+		const win = BrowserWindow.getAllWindows()[0];
+		if (win) {
+			if (win.isMinimized()) win.restore();
+			win.focus();
+		}
+	});
+}
 
 // Register studio:// protocol for secure local file access (replaces webSecurity: false)
 protocol.registerSchemesAsPrivileged([
