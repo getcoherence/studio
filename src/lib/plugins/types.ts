@@ -4,8 +4,8 @@
 // (scene types, transitions, effects, animations, export targets) register
 // through this system.
 
-import type React from "react";
 import type { TransitionPresentation } from "@remotion/transitions";
+import type React from "react";
 
 // ── Scene Type Plugin ───────────────────────────────────────────────────
 
@@ -141,6 +141,24 @@ export interface ExportTargetPlugin {
 	}) => Promise<{ success: boolean; url?: string; error?: string }>;
 }
 
+// ── View Plugin (UI panels registered by pro bundle) ───────────────────
+
+export interface ViewPlugin {
+	/** Unique view ID (e.g., "scene-editor", "demo-studio") */
+	id: string;
+	/** The React component to render */
+	component: React.FC<any>;
+}
+
+// ── Engine Plugin (AI engines registered by pro bundle) ────────────────
+
+export interface EnginePlugin {
+	/** Unique engine ID (e.g., "cinematic", "composition") */
+	id: string;
+	/** Map of callable API methods */
+	api: Record<string, (...args: any[]) => any>;
+}
+
 // ── Plugin Package ──────────────────────────────────────────────────────
 
 export interface LucidPlugin {
@@ -164,6 +182,8 @@ export interface PluginRegistry {
 	registerEffect(plugin: EffectPlugin): void;
 	registerAnimation(plugin: AnimationPlugin): void;
 	registerExportTarget(plugin: ExportTargetPlugin): void;
+	registerView(plugin: ViewPlugin): void;
+	registerEngine(plugin: EnginePlugin): void;
 
 	// Getters
 	getSceneTypes(): SceneTypePlugin[];
@@ -174,4 +194,6 @@ export interface PluginRegistry {
 	getEffect(id: string): EffectPlugin | undefined;
 	getAnimations(): AnimationPlugin[];
 	getExportTargets(): ExportTargetPlugin[];
+	getView(id: string): ViewPlugin | undefined;
+	getEngine(id: string): EnginePlugin | undefined;
 }

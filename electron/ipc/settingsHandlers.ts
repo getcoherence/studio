@@ -1,5 +1,5 @@
 import { ipcMain } from "electron";
-import { getSetting, type LucidSettings, loadSettings, setSetting } from "../settings";
+import { getSetting, loadSettings, type StudioSettings, setSetting } from "../settings";
 
 export function registerSettingsHandlers() {
 	ipcMain.handle("get-settings", async () => {
@@ -12,7 +12,7 @@ export function registerSettingsHandlers() {
 		}
 	});
 
-	ipcMain.handle("get-setting", async (_, key: keyof LucidSettings) => {
+	ipcMain.handle("get-setting", async (_, key: keyof StudioSettings) => {
 		try {
 			const value = await getSetting(key);
 			return { success: true, value };
@@ -22,9 +22,9 @@ export function registerSettingsHandlers() {
 		}
 	});
 
-	ipcMain.handle("set-setting", async (_, key: keyof LucidSettings, value: unknown) => {
+	ipcMain.handle("set-setting", async (_, key: keyof StudioSettings, value: unknown) => {
 		try {
-			await setSetting(key, value as LucidSettings[typeof key]);
+			await setSetting(key, value as StudioSettings[typeof key]);
 			return { success: true };
 		} catch (error) {
 			console.error(`Failed to set setting ${key}:`, error);

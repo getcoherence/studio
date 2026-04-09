@@ -295,7 +295,10 @@ interface Window {
 		youtubeIsConnected: () => Promise<boolean>;
 		youtubeConnect: () => Promise<{ success: boolean; error?: string }>;
 		youtubeDisconnect: () => Promise<{ success: boolean }>;
-		youtubeSetCredentials: (clientId: string, clientSecret: string) => Promise<{ success: boolean }>;
+		youtubeSetCredentials: (
+			clientId: string,
+			clientSecret: string,
+		) => Promise<{ success: boolean }>;
 		youtubeUpload: (opts: {
 			filePath: string;
 			title: string;

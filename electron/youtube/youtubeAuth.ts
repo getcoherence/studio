@@ -5,7 +5,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { BrowserWindow, app } from "electron";
+import { app, BrowserWindow } from "electron";
 import { google } from "googleapis";
 
 const SCOPES = ["https://www.googleapis.com/auth/youtube.upload"];
@@ -23,7 +23,9 @@ export function setYouTubeCredentials(id: string, secret: string) {
 
 function getOAuth2Client() {
 	if (!clientId || !clientSecret) {
-		throw new Error("YouTube API credentials not configured. Set Client ID and Secret in Settings → YouTube.");
+		throw new Error(
+			"YouTube API credentials not configured. Set Client ID and Secret in Settings → YouTube.",
+		);
 	}
 	return new google.auth.OAuth2(clientId, clientSecret, REDIRECT_URI);
 }
@@ -67,7 +69,9 @@ export async function authenticateYouTube(): Promise<{ success: boolean; error?:
 
 			if (code) {
 				res.writeHead(200, { "Content-Type": "text/html" });
-				res.end("<html><body><h2>YouTube connected! You can close this window.</h2><script>window.close()</script></body></html>");
+				res.end(
+					"<html><body><h2>YouTube connected! You can close this window.</h2><script>window.close()</script></body></html>",
+				);
 
 				try {
 					const { tokens } = await oauth2Client.getToken(code);
@@ -109,7 +113,9 @@ export async function authenticateYouTube(): Promise<{ success: boolean; error?:
 export function disconnectYouTube(): void {
 	try {
 		fs.unlinkSync(TOKEN_PATH);
-	} catch { /* ignore */ }
+	} catch {
+		/* ignore */
+	}
 }
 
 /** Upload a video to YouTube */

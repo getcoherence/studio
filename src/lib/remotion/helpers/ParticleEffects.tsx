@@ -41,7 +41,7 @@ export const Confetti: React.FC<ConfettiProps> = ({
 				angle: random(`cf-a-${i}`) * Math.PI * 2,
 				burstSpeed: (random(`cf-bs-${i}`) * 8 + 4) * intensity,
 			})),
-		[count, colors.join(","), intensity],
+		[count, intensity, colors.length, colors[i % colors.length]],
 	);
 
 	return (

@@ -4,7 +4,17 @@
  * Free: Screen recording, basic video editing (trim, zoom, speed, export)
  * Pro:  AI features (chat, scene generation, demo recorder), scene builder,
  *       animated backgrounds, AI captions, TTS
+ *
+ * Pro is unlocked by connecting to a Coherence account with an active
+ * Studio Pro subscription (or Coherence Team plan).
  */
+
+import {
+	checkSubscription,
+	getProStatus,
+	getStoredProToken,
+	isProActive,
+} from "./plugins/pro/proLoader";
 
 export type LicenseTier = "free" | "pro";
 
@@ -42,36 +52,22 @@ const PRO_FEATURE_LABELS: Record<ProFeature, string> = {
 
 let cachedTier: LicenseTier | null = null;
 
-/** In dev mode, everything is unlocked. */
-function isDevMode(): boolean {
-	try {
-		return import.meta.env?.DEV === true;
-	} catch {
-		return false;
-	}
-}
-
 /**
- * Load the current license tier from settings.
- * Dev mode always returns "pro".
+ * Load the current license tier.
+ * Only trusts proLoader — the stored setting is no longer authoritative.
  */
 export async function getLicenseTier(): Promise<LicenseTier> {
-	if (isDevMode()) {
+	if (isProActive()) {
 		cachedTier = "pro";
 		return "pro";
 	}
 	if (cachedTier) return cachedTier;
-	try {
-		const tier = (await window.electronAPI?.getSetting("licenseTier")) as LicenseTier | undefined;
-		cachedTier = tier === "pro" ? "pro" : "free";
-	} catch {
-		cachedTier = "free";
-	}
+	cachedTier = "free";
 	return cachedTier;
 }
 
 /**
- * Set the license tier (called after purchase or license key validation).
+ * Set the license tier (called after successful pro activation).
  */
 export async function setLicenseTier(tier: LicenseTier): Promise<void> {
 	cachedTier = tier;
@@ -92,6 +88,7 @@ export async function isFeatureAvailable(feature: ProFeature): Promise<boolean> 
  */
 export function isFeatureAvailableSync(feature: ProFeature): boolean {
 	if (!PRO_FEATURES.has(feature)) return true;
+	if (isProActive()) return true;
 	return cachedTier === "pro";
 }
 
@@ -104,21 +101,32 @@ export function getFeatureLabel(feature: ProFeature): string {
 
 /**
  * Warm the license cache at app startup.
+ * Only does a SILENT check — if a stored token exists, verify the subscription.
+ * Never opens the browser. The explicit "Connect to Coherence" button handles that.
  */
 export async function initLicense(): Promise<LicenseTier> {
 	cachedTier = null;
-	return getLicenseTier();
-}
 
-/**
- * Validate a license key (placeholder — will call a license server in the future).
- */
-export async function validateLicenseKey(key: string): Promise<boolean> {
-	// TODO: Call license validation API
-	// For now, accept any key starting with "LUCID-PRO-"
-	if (key.startsWith("LUCID-PRO-") && key.length > 15) {
-		await setLicenseTier("pro");
-		return true;
+	// If proLoader already verified, trust it
+	if (getProStatus() === "active" || isProActive()) {
+		cachedTier = "pro";
+		return "pro";
 	}
-	return false;
+
+	// Silent check: if we have a stored token, verify the subscription without UI
+	const storedToken = getStoredProToken();
+	if (storedToken) {
+		try {
+			const sub = await checkSubscription();
+			if (sub.active) {
+				cachedTier = "pro";
+				return "pro";
+			}
+		} catch {
+			// Token expired or service unreachable — stay on free
+		}
+	}
+
+	cachedTier = "free";
+	return "free";
 }

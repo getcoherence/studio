@@ -28,7 +28,7 @@ export function createEditorWindow(): BrowserWindow {
 		resizable: true,
 		alwaysOnTop: false,
 		skipTaskbar: false,
-		title: "Lucid Studio",
+		title: "Coherence Studio",
 		backgroundColor: "#000000",
 		show: !HEADLESS,
 		webPreferences: {

@@ -7,9 +7,7 @@
  * Detect BPM and beat timestamps from an audio file path.
  * Returns the estimated BPM and an array of beat times in seconds.
  */
-export async function detectBeats(
-	audioPath: string,
-): Promise<{ bpm: number; beats: number[] }> {
+export async function detectBeats(audioPath: string): Promise<{ bpm: number; beats: number[] }> {
 	// Load audio file as ArrayBuffer
 	const response = await window.electronAPI.readBinaryFile(audioPath);
 	if (!response.success || !response.data) {
@@ -69,8 +67,8 @@ export async function detectBeats(
 	}
 
 	// Search BPM range 60-200
-	const minLag = Math.floor(energies.length / ((200 / 60) * (audioBuffer.duration)));
-	const maxLag = Math.floor(energies.length / ((60 / 60) * (audioBuffer.duration)));
+	const minLag = Math.floor(energies.length / ((200 / 60) * audioBuffer.duration));
+	const maxLag = Math.floor(energies.length / ((60 / 60) * audioBuffer.duration));
 	const framesPerSec = energies.length / audioBuffer.duration;
 
 	let bestLag = minLag;
@@ -96,9 +94,7 @@ export async function detectBeats(
 	const beats: number[] = [];
 
 	// Find the first strong onset as the downbeat
-	const firstOnsetTime = onsets.length > 0
-		? (onsets[0] * hopSize) / sampleRate
-		: 0;
+	const firstOnsetTime = onsets.length > 0 ? (onsets[0] * hopSize) / sampleRate : 0;
 
 	// Align beat grid to nearest beat from the first onset
 	const gridStart = firstOnsetTime % beatInterval;
@@ -114,11 +110,7 @@ export async function detectBeats(
  * Each scene boundary is moved to the nearest beat, maintaining scene order.
  * Returns new durationFrames for each scene.
  */
-export function snapScenesToBeats(
-	sceneDurations: number[],
-	beats: number[],
-	fps = 30,
-): number[] {
+export function snapScenesToBeats(sceneDurations: number[], beats: number[], fps = 30): number[] {
 	if (beats.length === 0 || sceneDurations.length === 0) return sceneDurations;
 
 	const beatFrames = beats.map((t) => Math.round(t * fps));

@@ -68,7 +68,7 @@ export async function saveAIConfig(config: Partial<AIServiceConfig>): Promise<vo
 		updates.aiApiKey = config.apiKey;
 	}
 
-	await saveSettings(updates as Partial<import("../settings").LucidSettings>);
+	await saveSettings(updates as Partial<import("../settings").StudioSettings>);
 }
 
 /** Return all per-provider API keys and models (for settings dialog) */

@@ -11,7 +11,7 @@ export interface UpdateInfo {
 	error?: string;
 }
 
-const GITHUB_REPO = "getcoherence/lucid";
+const GITHUB_REPO = "getcoherence/studio";
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 let currentState: UpdateInfo = { state: "idle" };
@@ -45,7 +45,7 @@ function fetchLatestRelease(): Promise<{
 			path: `/repos/${GITHUB_REPO}/releases/latest`,
 			method: "GET",
 			headers: {
-				"User-Agent": `LucidStudio/${getCurrentVersion()}`,
+				"User-Agent": `CoherenceStudio/${getCurrentVersion()}`,
 				Accept: "application/vnd.github.v3+json",
 			},
 		};

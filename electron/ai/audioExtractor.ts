@@ -31,7 +31,7 @@ function findFfmpegBinary(): string {
  * @returns          Absolute path to the temporary WAV file
  */
 export async function extractAudio(videoPath: string): Promise<string> {
-	const tmpDir = path.join(os.tmpdir(), "lucid-whisper");
+	const tmpDir = path.join(os.tmpdir(), "coherence-studio-whisper");
 	await fs.mkdir(tmpDir, { recursive: true });
 
 	const baseName = path.parse(videoPath).name;

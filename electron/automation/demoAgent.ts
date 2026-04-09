@@ -108,7 +108,7 @@ GOOD examples (notice each is different, specific, and short):
 - "Built-in narration generates a professional voiceover from your content."
 
 BAD (too long, too generic, repeats the pitch):
-- "Lucid Studio turns raw screen recordings into polished professional videos with AI-powered captions smart trimming and narration so you can create content."`;
+- "Coherence Studio turns raw screen recordings into polished professional videos with AI-powered captions smart trimming and narration so you can create content."`;
 
 // Fallback narration prompt for non-vision providers (text-only)
 const TEXT_NARRATION_PROMPT = `You are narrating a SaaS product explainer video. Write ONE short sentence (max 20 words) about a SPECIFIC feature visible on this page. Do NOT repeat anything from the previous narrations listed below.
@@ -207,8 +207,8 @@ export class DemoAgent {
 		};
 		console.log(
 			`[DemoAgent] Landing page: ${this.landingPageContent.headings?.length} headings, ` +
-			`${this.landingPageContent.stats?.length} stats, ` +
-			`${this.landingPageContent.features?.length} features`
+				`${this.landingPageContent.stats?.length} stats, ` +
+				`${this.landingPageContent.features?.length} features`,
 		);
 
 		const maxSteps = config.maxSteps ?? 15;

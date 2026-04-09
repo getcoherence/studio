@@ -7,11 +7,13 @@
 import type {
 	AnimationPlugin,
 	EffectPlugin,
+	EnginePlugin,
 	ExportTargetPlugin,
 	LucidPlugin,
 	PluginRegistry,
 	SceneTypePlugin,
 	TransitionPlugin,
+	ViewPlugin,
 } from "./types";
 
 class PluginRegistryImpl implements PluginRegistry {
@@ -20,6 +22,8 @@ class PluginRegistryImpl implements PluginRegistry {
 	private effects = new Map<string, EffectPlugin>();
 	private animations = new Map<string, AnimationPlugin>();
 	private exportTargets = new Map<string, ExportTargetPlugin>();
+	private views = new Map<string, ViewPlugin>();
+	private engines = new Map<string, EnginePlugin>();
 	private plugins = new Map<string, LucidPlugin>();
 
 	// ── Registration ────────────────────────────────────────────────────
@@ -44,6 +48,14 @@ class PluginRegistryImpl implements PluginRegistry {
 		this.exportTargets.set(plugin.id, plugin);
 	}
 
+	registerView(plugin: ViewPlugin): void {
+		this.views.set(plugin.id, plugin);
+	}
+
+	registerEngine(plugin: EnginePlugin): void {
+		this.engines.set(plugin.id, plugin);
+	}
+
 	/** Register a full plugin package (calls its register function) */
 	loadPlugin(plugin: LucidPlugin): void {
 		if (this.plugins.has(plugin.id)) {
@@ -53,6 +65,13 @@ class PluginRegistryImpl implements PluginRegistry {
 		this.plugins.set(plugin.id, plugin);
 		plugin.register(this);
 		console.log(`[PluginRegistry] Loaded: ${plugin.name} v${plugin.version}`);
+
+		// Notify listeners (e.g., useProView) that new views/engines may be available
+		if (typeof window !== "undefined") {
+			window.dispatchEvent(
+				new CustomEvent("studio-pro-loaded", { detail: { pluginId: plugin.id } }),
+			);
+		}
 	}
 
 	// ── Getters ─────────────────────────────────────────────────────────
@@ -87,6 +106,14 @@ class PluginRegistryImpl implements PluginRegistry {
 
 	getExportTargets(): ExportTargetPlugin[] {
 		return Array.from(this.exportTargets.values());
+	}
+
+	getView(id: string): ViewPlugin | undefined {
+		return this.views.get(id);
+	}
+
+	getEngine(id: string): EnginePlugin | undefined {
+		return this.engines.get(id);
 	}
 
 	getLoadedPlugins(): LucidPlugin[] {

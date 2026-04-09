@@ -7,9 +7,11 @@ export { pluginRegistry } from "./registry";
 export type {
 	AnimationPlugin,
 	EffectPlugin,
+	EnginePlugin,
 	ExportTargetPlugin,
 	LucidPlugin,
 	PluginRegistry,
 	SceneTypePlugin,
 	TransitionPlugin,
+	ViewPlugin,
 } from "./types";

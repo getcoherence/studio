@@ -10,7 +10,7 @@
 //         → AI-generated code uses it for beat-reactive springs
 
 import React, { useContext } from "react";
-import { useCurrentFrame, useVideoConfig, spring } from "remotion";
+import { spring, useCurrentFrame, useVideoConfig } from "remotion";
 
 // Lazy-load @remotion/media-utils to avoid errors if not installed
 let _useAudioData: ((src: string) => any) | null = null;

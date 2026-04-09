@@ -38,7 +38,7 @@ export function buildSystemPrompt(context: ChatPromptContext): string {
 	const durationStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 
 	const parts: string[] = [
-		`You are an AI video editing assistant for Lucid Studio, a screen recording editor. You help users edit their recordings through natural language conversation.`,
+		`You are an AI video editing assistant for Coherence Studio, a screen recording editor. You help users edit their recordings through natural language conversation.`,
 		``,
 		`## Recording Context`,
 		`- Duration: ${durationStr} (${context.durationSec.toFixed(1)} seconds)`,

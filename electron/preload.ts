@@ -195,7 +195,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	// Pro authentication
 	proAuthenticate: () => {
-		return ipcRenderer.invoke("pro-authenticate") as Promise<{ success: boolean; token?: string; error?: string }>;
+		return ipcRenderer.invoke("pro-authenticate") as Promise<{
+			success: boolean;
+			token?: string;
+			error?: string;
+		}>;
 	},
 
 	musicLibraryList: () => {
@@ -234,8 +238,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	youtubeDisconnect: () => ipcRenderer.invoke("youtube-disconnect"),
 	youtubeSetCredentials: (clientId: string, clientSecret: string) =>
 		ipcRenderer.invoke("youtube-set-credentials", clientId, clientSecret),
-	youtubeUpload: (opts: { filePath: string; title: string; description?: string; privacy: "public" | "unlisted" | "private" }) =>
-		ipcRenderer.invoke("youtube-upload", opts),
+	youtubeUpload: (opts: {
+		filePath: string;
+		title: string;
+		description?: string;
+		privacy: "public" | "unlisted" | "private";
+	}) => ipcRenderer.invoke("youtube-upload", opts),
 	onYoutubeUploadProgress: (callback: (percent: number) => void) => {
 		const listener = (_: unknown, percent: number) => callback(percent);
 		ipcRenderer.on("youtube-upload-progress", listener);

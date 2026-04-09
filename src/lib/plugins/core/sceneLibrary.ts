@@ -3,30 +3,30 @@
 // Registers 179 adapted components from remotion-scenes as available
 // effects, animations, and overlay components in the plugin registry.
 
-import type { LucidPlugin } from "../types";
 import {
 	EffectChromaticAberration,
+	EffectDepthOfField,
+	EffectDuotone,
 	EffectFilmGrain,
-	EffectVHS,
 	EffectGlow,
 	EffectLightLeak,
 	EffectNoise,
-	EffectDuotone,
-	EffectDepthOfField,
+	EffectVHS,
 } from "@/lib/remotion/helpers/scenes/EffectAnimations";
 import {
 	LiquidBlob,
-	LiquidInkSplash,
 	LiquidFluidWave,
-	LiquidSwirl,
+	LiquidInkSplash,
 	LiquidMorphBlob,
+	LiquidSwirl,
 } from "@/lib/remotion/helpers/scenes/LiquidAnimations";
 import {
-	ShapeRipples,
 	ShapeHexGrid,
-	ShapeSpinningRings,
 	ShapeMorphing,
+	ShapeRipples,
+	ShapeSpinningRings,
 } from "@/lib/remotion/helpers/scenes/ShapeAnimations";
+import type { LucidPlugin } from "../types";
 
 export const sceneLibraryPlugin: LucidPlugin = {
 	id: "scene-library",

@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
-project(lucid-native-helpers LANGUAGES C CXX)
+project(coherence-studio-native-helpers LANGUAGES C CXX)
 
 # ---------------------------------------------------------------------------
-# Lucid Studio — Native Helpers
+# Coherence Studio — Native Helpers
 #
 # This CMake project builds platform-specific screen-capture and window-
 # management helpers that the Electron main process loads at runtime.

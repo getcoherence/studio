@@ -425,7 +425,7 @@ async function generateMiniMaxMusic(
 	}
 
 	if (!response || !response.ok) {
-		const errBody = await response?.text().catch(() => "") || "";
+		const errBody = (await response?.text().catch(() => "")) || "";
 		console.error("[Music] API error:", response?.status, errBody.slice(0, 300));
 		throw new Error(`MiniMax Music API ${response?.status}: ${errBody.slice(0, 200)}`);
 	}

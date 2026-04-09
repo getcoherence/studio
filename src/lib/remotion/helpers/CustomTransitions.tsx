@@ -4,9 +4,9 @@
 // TransitionPresentation API from @remotion/transitions.
 // Inspired by github.com/Ashad001/remotion-transitions
 
+import type { TransitionPresentation } from "@remotion/transitions";
 import React from "react";
 import { AbsoluteFill, interpolate } from "remotion";
-import type { TransitionPresentation } from "@remotion/transitions";
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
@@ -37,28 +37,37 @@ export function stripedSlam(
 
 			let x: number;
 			if (presentationDirection === "exiting") {
-				x = fromLeft
-					? interpolate(pe, [0, 1], [-112, 0])
-					: interpolate(pe, [0, 1], [112, 0]);
+				x = fromLeft ? interpolate(pe, [0, 1], [-112, 0]) : interpolate(pe, [0, 1], [112, 0]);
 			} else {
 				const revStagger = ((stripes - 1 - i) / stripes) * 0.3;
 				const rp = Math.max(0, Math.min(1, (presentationProgress - revStagger) / (1 - revStagger)));
 				const rpe = 1 - Math.pow(1 - rp, 3);
-				x = fromLeft
-					? interpolate(rpe, [0, 1], [0, -112])
-					: interpolate(rpe, [0, 1], [0, 112]);
+				x = fromLeft ? interpolate(rpe, [0, 1], [0, -112]) : interpolate(rpe, [0, 1], [0, 112]);
 			}
 
 			return (
-				<div key={i} style={{
-					position: "absolute", top: `${i * h}%`, left: 0,
-					width: "112%", height: `${h + 0.4}%`,
-					background: color, transform: `translateX(${x}%)`, pointerEvents: "none",
-				}} />
+				<div
+					key={i}
+					style={{
+						position: "absolute",
+						top: `${i * h}%`,
+						left: 0,
+						width: "112%",
+						height: `${h + 0.4}%`,
+						background: color,
+						transform: `translateX(${x}%)`,
+						pointerEvents: "none",
+					}}
+				/>
 			);
 		});
 
-		return <AbsoluteFill>{children}{bars}</AbsoluteFill>;
+		return (
+			<AbsoluteFill>
+				{children}
+				{bars}
+			</AbsoluteFill>
+		);
 	};
 	return { component, props: {} };
 }
@@ -129,24 +138,43 @@ export function diagonalReveal(
 		return (
 			<AbsoluteFill>
 				{children}
-				<div style={{
-					position: "absolute", top: 0, bottom: 0,
-					left: `${bx}%`, right: 0,
-					background: bgColor, pointerEvents: "none",
-				}} />
-				<div style={{
-					position: "absolute", top: "-10%", bottom: "-10%",
-					left: `${bx - 7}%`, width: "10%",
-					background: bgColor, transform: "skewX(-9deg)",
-					transformOrigin: "top left", pointerEvents: "none",
-				}} />
-				<div style={{
-					position: "absolute", top: 0, bottom: 0,
-					left: `${bx - 0.5}%`, width: 3,
-					background: accentColor, transform: "skewX(-9deg)",
-					boxShadow: `0 0 14px ${accentColor}, 0 0 32px ${accentColor}80`,
-					pointerEvents: "none",
-				}} />
+				<div
+					style={{
+						position: "absolute",
+						top: 0,
+						bottom: 0,
+						left: `${bx}%`,
+						right: 0,
+						background: bgColor,
+						pointerEvents: "none",
+					}}
+				/>
+				<div
+					style={{
+						position: "absolute",
+						top: "-10%",
+						bottom: "-10%",
+						left: `${bx - 7}%`,
+						width: "10%",
+						background: bgColor,
+						transform: "skewX(-9deg)",
+						transformOrigin: "top left",
+						pointerEvents: "none",
+					}}
+				/>
+				<div
+					style={{
+						position: "absolute",
+						top: 0,
+						bottom: 0,
+						left: `${bx - 0.5}%`,
+						width: 3,
+						background: accentColor,
+						transform: "skewX(-9deg)",
+						boxShadow: `0 0 14px ${accentColor}, 0 0 32px ${accentColor}80`,
+						pointerEvents: "none",
+					}}
+				/>
 			</AbsoluteFill>
 		);
 	};
@@ -156,9 +184,7 @@ export function diagonalReveal(
 // ── Emerald Burst ───────────────────────────────────────────────────────
 // Sharp radial flash peaks at the cut, dissolves quickly.
 
-export function colorBurst(
-	color = "#2563eb",
-): TransitionPresentation<Record<string, never>> {
+export function colorBurst(color = "#2563eb"): TransitionPresentation<Record<string, never>> {
 	const component = ({
 		presentationProgress,
 		presentationDirection,
@@ -180,10 +206,13 @@ export function colorBurst(
 		return (
 			<AbsoluteFill>
 				<AbsoluteFill style={sceneStyle}>{children}</AbsoluteFill>
-				<AbsoluteFill style={{
-					background: `radial-gradient(circle at 50% 50%, #ffffff 0%, ${color} 18%, ${color}88 40%, transparent 62%)`,
-					opacity: burstOpacity, pointerEvents: "none",
-				}} />
+				<AbsoluteFill
+					style={{
+						background: `radial-gradient(circle at 50% 50%, #ffffff 0%, ${color} 18%, ${color}88 40%, transparent 62%)`,
+						opacity: burstOpacity,
+						pointerEvents: "none",
+					}}
+				/>
 			</AbsoluteFill>
 		);
 	};
@@ -212,22 +241,36 @@ export function verticalShutter(
 			const stagger = (i / panels) * 0.25;
 			const p = Math.max(0, Math.min(1, (presentationProgress - stagger) / (1 - stagger)));
 			const pe = 1 - Math.pow(1 - p, 3);
-			const scaleX = presentationDirection === "exiting"
-				? interpolate(pe, [0, 1], [0, 1])
-				: interpolate(pe, [0, 1], [1, 0]);
+			const scaleX =
+				presentationDirection === "exiting"
+					? interpolate(pe, [0, 1], [0, 1])
+					: interpolate(pe, [0, 1], [1, 0]);
 			const color = colors[i % colors.length];
 
 			return (
-				<div key={i} style={{
-					position: "absolute", top: 0, bottom: 0,
-					left: `${i * w}%`, width: `${w + 0.3}%`,
-					background: color, transform: `scaleX(${scaleX})`,
-					transformOrigin: "left center", pointerEvents: "none",
-				}} />
+				<div
+					key={i}
+					style={{
+						position: "absolute",
+						top: 0,
+						bottom: 0,
+						left: `${i * w}%`,
+						width: `${w + 0.3}%`,
+						background: color,
+						transform: `scaleX(${scaleX})`,
+						transformOrigin: "left center",
+						pointerEvents: "none",
+					}}
+				/>
 			);
 		});
 
-		return <AbsoluteFill>{children}{shutters}</AbsoluteFill>;
+		return (
+			<AbsoluteFill>
+				{children}
+				{shutters}
+			</AbsoluteFill>
+		);
 	};
 	return { component, props: {} };
 }
@@ -250,13 +293,12 @@ export function glitchSlam(): TransitionPresentation<Record<string, never>> {
 			const opacity = interpolate(presentationProgress, [0, 0.12, 1], [0, 1, 1], clamp);
 			const scale = interpolate(presentationProgress, [0, 0.25, 1], [1.05, 1.01, 1], clamp);
 			return (
-				<AbsoluteFill style={{ opacity, transform: `scale(${scale})` }}>
-					{children}
-				</AbsoluteFill>
+				<AbsoluteFill style={{ opacity, transform: `scale(${scale})` }}>{children}</AbsoluteFill>
 			);
 		}
 
-		const shake = Math.sin(presentationProgress * Math.PI * 12) * 30 * Math.pow(1 - presentationProgress, 1.5);
+		const shake =
+			Math.sin(presentationProgress * Math.PI * 12) * 30 * Math.pow(1 - presentationProgress, 1.5);
 		const opacity = 1 - Math.pow(presentationProgress, 0.5);
 		const STRIPS = [
 			{ top: "18%", h: "4%", dx: 28, color: "rgba(239,68,68,0.55)" },
@@ -270,11 +312,21 @@ export function glitchSlam(): TransitionPresentation<Record<string, never>> {
 			<AbsoluteFill style={{ opacity, transform: `translateX(${shake}px)` }}>
 				{children}
 				{STRIPS.map((s, i) => (
-					<div key={i} style={{
-						position: "absolute", top: s.top, left: 0, right: 0, height: s.h,
-						background: s.color, transform: `translateX(${s.dx * presentationProgress * 2}px)`,
-						opacity: stripOpacity, pointerEvents: "none", mixBlendMode: "screen",
-					}} />
+					<div
+						key={i}
+						style={{
+							position: "absolute",
+							top: s.top,
+							left: 0,
+							right: 0,
+							height: s.h,
+							background: s.color,
+							transform: `translateX(${s.dx * presentationProgress * 2}px)`,
+							opacity: stripOpacity,
+							pointerEvents: "none",
+							mixBlendMode: "screen",
+						}}
+					/>
 				))}
 			</AbsoluteFill>
 		);

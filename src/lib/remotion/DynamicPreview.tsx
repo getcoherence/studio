@@ -17,7 +17,7 @@ interface DynamicPreviewProps {
 	screenshots: string[];
 	/** Sync play/pause from parent */
 	isPlaying?: boolean;
-	/** Optional background music URL (lucid:// protocol) */
+	/** Optional background music URL (studio:// protocol) */
 	musicSrc?: string;
 	/** Increment to reset playback to frame 0 */
 	resetSignal?: number;

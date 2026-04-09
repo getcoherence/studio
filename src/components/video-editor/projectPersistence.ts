@@ -93,23 +93,23 @@ function encodePathSegments(pathname: string, keepWindowsDrive = false): string 
 export function toFileUrl(filePath: string): string {
 	const normalized = filePath.replace(/\\/g, "/");
 
-	// Use lucid:// custom protocol for secure local file access
-	// lucid://file/C:/path/to/file → handled by protocol.handle in main.ts
+	// Use studio:// custom protocol for secure local file access
+	// studio://file/C:/path/to/file → handled by protocol.handle in main.ts
 
 	// Windows drive path: C:/Users/...
 	if (/^[a-zA-Z]:\//.test(normalized)) {
-		return `lucid://file/${encodePathSegments(normalized, true)}`;
+		return `studio://file/${encodePathSegments(normalized, true)}`;
 	}
 
 	// UNC path: //server/share/...
 	if (normalized.startsWith("//")) {
 		const [host, ...pathParts] = normalized.replace(/^\/+/, "").split("/");
 		const encodedPath = pathParts.map((part) => encodeURIComponent(part)).join("/");
-		return encodedPath ? `lucid://file/${host}/${encodedPath}` : `lucid://file/${host}/`;
+		return encodedPath ? `studio://file/${host}/${encodedPath}` : `studio://file/${host}/`;
 	}
 
 	const absolutePath = normalized.startsWith("/") ? normalized : `/${normalized}`;
-	return `lucid://file${encodePathSegments(absolutePath)}`;
+	return `studio://file${encodePathSegments(absolutePath)}`;
 }
 
 export function fromFileUrl(fileUrl: string): string {
@@ -118,7 +118,7 @@ export function fromFileUrl(fileUrl: string): string {
 		return fileUrl;
 	}
 
-	// Handle lucid://file/C:/path → C:/path
+	// Handle studio://file/C:/path → C:/path
 	if (/^lucid:\/\/file\//i.test(value)) {
 		const raw = value.replace(/^lucid:\/\/file\//i, "");
 		try {

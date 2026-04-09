@@ -94,7 +94,7 @@ export function RecordingSetupDialog({
 			}
 		}
 		loadDevices();
-	}, [open]);
+	}, [open, selectedMicId, selectedWebcamId]);
 
 	useEffect(() => {
 		if (!open) return;
@@ -130,7 +130,7 @@ export function RecordingSetupDialog({
 			}
 		}
 		fetchSources();
-	}, [open]);
+	}, [open, selectedSource]);
 
 	const screenSources = sources.filter((s) => s.id.startsWith("screen:"));
 	const windowSources = sources.filter((s) => s.id.startsWith("window:"));

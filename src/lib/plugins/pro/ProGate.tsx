@@ -40,7 +40,9 @@ export const ProGate: React.FC<{
 
 	return (
 		<div className="flex flex-col items-center justify-center gap-3 p-6 rounded-lg border border-white/10 bg-white/[0.02]">
-			<div className="text-xs text-violet-400 font-medium uppercase tracking-wider">Pro Feature</div>
+			<div className="text-xs text-violet-400 font-medium uppercase tracking-wider">
+				Pro Feature
+			</div>
 			<div className="text-sm text-white/60 text-center">{feature}</div>
 			<button
 				onClick={upgrade}
