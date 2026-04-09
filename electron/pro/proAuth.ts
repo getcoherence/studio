@@ -20,8 +20,8 @@ interface ProAuthConfig {
 
 const isDev = !app.isPackaged;
 const config: ProAuthConfig = isDev
-	? { authBaseUrl: "http://localhost:5175" }
-	: { authBaseUrl: "https://app.getcoherence.io" };
+	? { authBaseUrl: "http://localhost:5175" }          // auth app: /login
+	: { authBaseUrl: "https://app.getcoherence.io" };   // web app: /auth/login
 
 // Pending auth promise resolver
 let pendingResolve: ((result: { success: boolean; token?: string; error?: string }) => void) | null = null;
@@ -97,7 +97,8 @@ export async function authenticateCoherence(): Promise<{
 	error?: string;
 }> {
 	const redirectUrl = encodeURIComponent(CALLBACK_URL);
-	const loginUrl = `${config.authBaseUrl}/login?redirect=${redirectUrl}`;
+	const loginPath = isDev ? "/login" : "/auth/login";
+	const loginUrl = `${config.authBaseUrl}${loginPath}?redirect=${redirectUrl}`;
 
 	console.log("[ProAuth] Starting auth flow via", PROTOCOL, "protocol");
 
