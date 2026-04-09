@@ -71,5 +71,11 @@
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true
-  }
+  },
+  "protocols": [
+    {
+      "name": "Coherence Studio",
+      "schemes": ["coherence-studio"]
+    }
+  ]
 }
