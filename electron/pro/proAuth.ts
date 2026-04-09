@@ -24,7 +24,7 @@ const config: ProAuthConfig = isDev
 	: { authBaseUrl: "https://auth.getcoherence.io" };
 
 // Pending auth promise resolver
-let pendingResolve: ((result: { success: boolean; token?: string; error?: string }) => void) | null = null;
+let pendingResolve: ((result: { success: boolean; token?: string; refreshToken?: string; error?: string }) => void) | null = null;
 let authTimeout: ReturnType<typeof setTimeout> | null = null;
 
 /**
