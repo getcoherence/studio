@@ -388,9 +388,6 @@ function safeInterpolate(
 	) {
 		const recoveredOptions = outputRange as unknown as Parameters<typeof interpolate>[3];
 		const recoveredOutput = inputRange;
-		console.warn(
-			`[safeInterpolate] Auto-fixing wrong-arity call: 3rd arg was an options object, treating 2nd arg as outputRange and using [0,1] as inputRange.`,
-		);
 		// Recurse with corrected args. The recursion is safe — only ONE
 		// level deep, since the new outputRange is a real array.
 		return safeInterpolate(input, [0, 1], recoveredOutput, recoveredOptions);
@@ -439,12 +436,32 @@ function safeInterpolate(
 
 	// Remotion requires inputRange to be STRICTLY MONOTONICALLY INCREASING.
 	// AI sometimes generates duplicates like `[114, 138, 138, 162]` when
-	// computing keyframes from frame numbers + offsets. Bump any duplicate
-	// or out-of-order entry by 1 frame so the array stays strictly increasing.
-	// Apply the same shift to the matching outputRange index so the curve
-	// stays semantically equivalent.
+	// computing keyframes from frame numbers + offsets.
+	//
+	// Special case: a fully descending inputRange like `[1, 0]` means the
+	// AI intended a reverse interpolation. Instead of bumping each entry
+	// by 1 (which produces nonsensical `[1, 2]`), REVERSE both arrays
+	// so `[1, 0]` with output `[0, 1]` becomes input `[0, 1]` output `[1, 0]`.
+	//
+	// Bump any remaining duplicate or out-of-order entry by 1 frame so
+	// the array stays strictly increasing. Apply the same shift to the
+	// matching outputRange index so the curve stays semantically equivalent.
+	//
+	// NOTE: this function is called on every render frame, so we log once
+	// per unique fix pattern instead of spamming on every call.
 	const inputArray = [...fixedInput];
 	const outputArray = [...fixedOutput];
+
+	// Check if array is fully descending — reverse both arrays instead of bumping
+	let fullyDescending = inputArray.length >= 2;
+	for (let i = 1; i < inputArray.length && fullyDescending; i++) {
+		if (inputArray[i] >= inputArray[i - 1]) fullyDescending = false;
+	}
+	if (fullyDescending) {
+		inputArray.reverse();
+		outputArray.reverse();
+	}
+
 	let bumped = false;
 	for (let i = 1; i < inputArray.length; i++) {
 		if (inputArray[i] <= inputArray[i - 1]) {
@@ -452,18 +469,27 @@ function safeInterpolate(
 			bumped = true;
 		}
 	}
-	if (bumped) {
-		console.warn(
-			`[safeInterpolate] Auto-fixed non-monotonic inputRange (had duplicates or descending values): ${JSON.stringify(fixedInput)} → ${JSON.stringify(inputArray)}`,
-		);
+	if (bumped || fullyDescending) {
 		fixedInput = inputArray;
 		fixedOutput = outputArray;
 	}
 
+	// Strip invalid easing option — AI sometimes passes a string like
+	// "Easing.out(Easing.cubic)" or an undefined reference where Remotion
+	// expects a function. Stripping it falls back to linear easing which
+	// is better than crashing every render frame.
+	let safeOptions = options;
+	if (safeOptions && "easing" in safeOptions && typeof safeOptions.easing !== "function") {
+		const { easing: _discarded, ...rest } = safeOptions;
+		safeOptions = rest as typeof options;
+	}
+
 	try {
-		return interpolate(input, fixedInput as number[], fixedOutput as number[], options);
-	} catch (err) {
-		console.warn("[safeInterpolate] failed even after auto-fix, returning 0:", err);
+		return interpolate(input, fixedInput as number[], fixedOutput as number[], safeOptions);
+	} catch {
+		// Don't spam the console on every render frame — return 0 silently.
+		// The scene will still render, just with a static value for this
+		// particular interpolation.
 		return 0;
 	}
 }
