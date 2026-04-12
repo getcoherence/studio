@@ -6,6 +6,14 @@
 import { fade } from "@remotion/transitions/fade";
 import { slide } from "@remotion/transitions/slide";
 import { wipe } from "@remotion/transitions/wipe";
+import {
+	depthParallax,
+	irisZoom,
+	portal,
+	shatter,
+	warpDissolve,
+	zoomThrough,
+} from "@/lib/remotion/helpers/CinematicTransitions";
 import type { LucidPlugin } from "../types";
 
 export const coreTransitionsPlugin: LucidPlugin = {
@@ -171,6 +179,63 @@ export const coreTransitionsPlugin: LucidPlugin = {
 			defaultDuration: 1,
 			codeExpression: "fade()",
 			create: () => fade(),
+		});
+
+		// ── Cinematic 3D transitions ──
+
+		registry.registerTransition({
+			id: "zoom-through",
+			name: "Zoom Through",
+			description: "Camera flies through current scene into the next — portal/dimension shift feel",
+			energy: "maximum",
+			defaultDuration: 40,
+			codeExpression: "zoomThrough()",
+			create: () => (zoomThrough as any)(),
+		});
+		registry.registerTransition({
+			id: "portal",
+			name: "Portal",
+			description: "Circular reveal expanding from focal point — dimensional rift",
+			energy: "high",
+			defaultDuration: 35,
+			codeExpression: "portal()",
+			create: (accent) => (portal as any)({ glowColor: accent }),
+		});
+		registry.registerTransition({
+			id: "depth-parallax",
+			name: "Depth Parallax",
+			description: "3D perspective shift — scenes arranged in spatial depth",
+			energy: "medium",
+			defaultDuration: 30,
+			codeExpression: "depthParallax()",
+			create: () => (depthParallax as any)(),
+		});
+		registry.registerTransition({
+			id: "warp-dissolve",
+			name: "Warp Dissolve",
+			description: "Reality bends and warps — dream sequence / dimension shift",
+			energy: "high",
+			defaultDuration: 35,
+			codeExpression: "warpDissolve()",
+			create: () => (warpDissolve as any)(),
+		});
+		registry.registerTransition({
+			id: "iris-zoom",
+			name: "Iris Zoom",
+			description: "Camera aperture closes on old scene, reveals new — cinematic iris",
+			energy: "medium",
+			defaultDuration: 30,
+			codeExpression: "irisZoom()",
+			create: () => (irisZoom as any)(),
+		});
+		registry.registerTransition({
+			id: "shatter",
+			name: "Shatter",
+			description: "Scene breaks into geometric shards flying outward — high-energy dramatic",
+			energy: "maximum",
+			defaultDuration: 40,
+			codeExpression: "shatter()",
+			create: () => (shatter as any)(),
 		});
 	},
 };

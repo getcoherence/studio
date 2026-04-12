@@ -37,7 +37,14 @@ const DEFAULT_CONFIG: ProAuthConfig = {
 };
 
 // Auto-detect local development and use localhost URLs
-const isDev = typeof window !== "undefined" && window.location.hostname === "localhost";
+const isDev =
+	typeof window !== "undefined" &&
+	(window.location.hostname === "localhost" ||
+		window.location.hostname === "127.0.0.1" ||
+		window.location.protocol === "file:" ||
+		import.meta.env?.DEV === true ||
+		!!(import.meta as any).env?.MODE?.includes("development") ||
+		window.location.port !== "");
 const DEV_CONFIG: ProAuthConfig = {
 	baseUrl: "http://localhost:5175",
 	authUrl: "http://localhost:5175/login?redirect=studio-desktop",
@@ -82,6 +89,8 @@ const REVALIDATION_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
 /** Check if pro is currently active */
 export function isProActive(): boolean {
+	// Dev mode: always pro
+	if (isDev) return true;
 	if (proStatus !== "active") return false;
 	// Even if status says active, check the validity window
 	if (Date.now() > proValidUntil) {
@@ -343,6 +352,9 @@ async function loadProBundle(): Promise<void> {
  * 1. Check stored token
  * 2. Verify subscription
  * 3. Download + load pro bundle
+ *
+ * In dev mode, skips auth entirely and loads the pro bundle from
+ * the local studio-pro dist folder.
  */
 export async function activatePro(): Promise<{
 	success: boolean;
@@ -350,6 +362,25 @@ export async function activatePro(): Promise<{
 	code?: "no_subscription" | "auth_failed" | "bundle_failed";
 }> {
 	proStatus = "checking";
+
+	// ── Dev mode bypass: skip auth, load local bundle if available ──
+	if (isDev) {
+		console.log("[Pro] Dev mode — bypassing auth, activating pro directly");
+		proStatus = "active";
+		proValidUntil = Date.now() + GRACE_PERIOD_MS;
+
+		// Try to load the local pro bundle (non-blocking — pro features
+		// work even if the bundle fails since core components are in the host app)
+		try {
+			await loadLocalProBundle();
+		} catch (err) {
+			console.warn(
+				"[Pro] Dev mode — local pro bundle not available (pro views disabled, core features still work):",
+				err,
+			);
+		}
+		return { success: true };
+	}
 
 	// Try stored token first
 	const storedToken = getStoredToken();
@@ -403,6 +434,34 @@ export async function activatePro(): Promise<{
 		proStatus = "error";
 		return { success: false, error: err instanceof Error ? err.message : String(err) };
 	}
+}
+
+/**
+ * Load the pro bundle from the local studio-pro dist folder (dev mode only).
+ * Reads from the filesystem via Electron's Node.js integration.
+ */
+async function loadLocalProBundle(): Promise<void> {
+	// Load the pro bundle via a <script> tag from Vite's public directory.
+	// The bundle is symlinked/copied to public/pro-bundle.js so Vite serves
+	// it directly without CORS issues.
+	const bundleUrl = "/pro-bundle.js";
+
+	return new Promise<void>((resolve, reject) => {
+		const script = document.createElement("script");
+		script.src = bundleUrl;
+		script.onload = () => {
+			const proPlugin = (window as any).__STUDIO_PRO_PLUGIN__ as LucidPlugin | undefined;
+			if (proPlugin) {
+				pluginRegistry.loadPlugin(proPlugin);
+				console.log(`[Pro] Loaded local bundle: ${proPlugin.name} v${proPlugin.version}`);
+				resolve();
+			} else {
+				reject(new Error("Pro bundle loaded but no plugin exported"));
+			}
+		};
+		script.onerror = () => reject(new Error("Failed to load /pro-bundle.js"));
+		document.head.appendChild(script);
+	});
 }
 
 /** Periodically re-validate the subscription while the app is running */

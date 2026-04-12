@@ -1,5 +1,64 @@
 // ── Scene Builder Data Model ──────────────────────────────────────────────
 
+/**
+ * Metadata captured when an AI-generated SceneProject is created.
+ * Persisted with the .lucid file so you can see model, aesthetic, brand,
+ * scene counts, and which production-team agents ran for each project.
+ *
+ * All fields optional so old projects without metadata still load.
+ */
+export interface GenerationMetadata {
+	// ── AI context ──
+	/** Provider name: "openai" | "anthropic" | "minimax" | etc. */
+	aiProvider?: string;
+	/** Model identifier, e.g. "claude-sonnet-4-6", "gpt-5.4-pro" */
+	aiModel?: string;
+	/** ISO timestamp when generation started */
+	generatedAt?: string;
+	/** Total pipeline duration in milliseconds */
+	generationDurationMs?: number;
+	/** Studio app version that produced this project */
+	studioVersion?: string;
+
+	// ── Source ──
+	/** Source URL or research:// sentinel */
+	sourceUrl?: string;
+	/** Video type / demo mode (e.g. "saas-teaser", "feature-spotlight") */
+	videoType?: string;
+	/** The user's original prompt/brief */
+	userBrief?: string;
+	/** Aesthetic name picked by the generator (e.g. "Vox Documentary") */
+	aestheticName?: string;
+
+	// ── Pipeline config snapshot ──
+	/** Snapshot of which production-team agents were enabled for this run */
+	productionTeamFlags?: Record<string, boolean>;
+
+	// ── Brand context ──
+	/** Brand category from BrandBrief (e.g. "AI Email Service Provider") */
+	brandCategory?: string;
+	/** Compact brand palette for display */
+	brandPalette?: { primary?: string; background?: string; foreground?: string };
+
+	// ── Stats ──
+	sceneCount?: number;
+	heroSceneCount?: number;
+	totalDurationFrames?: number;
+	totalDurationSec?: number;
+
+	// ── Quality scores (when those agents ran) ──
+	qualityScores?: {
+		/** Test Audience overall score (1-10) */
+		testAudience?: number;
+		/** Motion Director average craft score (1-10) */
+		motionDirector?: number;
+		/** Continuity editor scores */
+		rhythm?: number;
+		variety?: number;
+		unity?: number;
+	};
+}
+
 export interface SceneProject {
 	id: string;
 	name: string;
@@ -7,6 +66,8 @@ export interface SceneProject {
 	scenes: Scene[];
 	resolution: { width: number; height: number };
 	fps: number;
+	/** Generation metadata — present on AI-generated projects */
+	metadata?: GenerationMetadata;
 }
 
 export interface Scene {

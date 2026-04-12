@@ -99,6 +99,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		ipcRenderer.on("menu-new-recording", listener);
 		return () => ipcRenderer.removeListener("menu-new-recording", listener);
 	},
+	onMenuOpenWindowForRecording: (callback: () => void) => {
+		const listener = () => callback();
+		ipcRenderer.on("menu-open-window-for-recording", listener);
+		return () => ipcRenderer.removeListener("menu-open-window-for-recording", listener);
+	},
 	onMenuCreateVideo: (callback: () => void) => {
 		const listener = () => callback();
 		ipcRenderer.on("menu-create-video", listener);
@@ -106,6 +111,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	loadProjectByPath: (filePath: string) => {
 		return ipcRenderer.invoke("load-project-by-path", filePath);
+	},
+	// ── Studio site cache (Phase 1 outputs) ──
+	studioCacheGet: (url: string) => {
+		return ipcRenderer.invoke("studio-cache-get", url);
+	},
+	studioCacheSet: (url: string, entry: unknown) => {
+		return ipcRenderer.invoke("studio-cache-set", url, entry);
+	},
+	studioCacheClear: (url?: string) => {
+		return ipcRenderer.invoke("studio-cache-clear", url);
+	},
+	studioCacheList: () => {
+		return ipcRenderer.invoke("studio-cache-list");
 	},
 	onMenuOpenVideo: (callback: () => void) => {
 		const listener = () => callback();
@@ -173,6 +191,48 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	aiTtsSynthesize: (text: string, voice?: string) => {
 		return ipcRenderer.invoke("ai-tts-synthesize", text, voice);
+	},
+	// MiniMax TTS — preferred for multi-scene narration (higher quality, voice picker)
+	aiMinimaxTts: (
+		text: string,
+		options?: {
+			voiceId?: string;
+			speed?: number;
+			volume?: number;
+			pitch?: number;
+			model?: string;
+		},
+	) => {
+		return ipcRenderer.invoke("ai-minimax-tts", text, options);
+	},
+	aiMinimaxTtsBatch: (
+		items: Array<{
+			text: string;
+			sceneIndex: number;
+			options?: {
+				voiceId?: string;
+				speed?: number;
+				volume?: number;
+				pitch?: number;
+				model?: string;
+			};
+		}>,
+	) => {
+		return ipcRenderer.invoke("ai-minimax-tts-batch", items);
+	},
+	aiMinimaxVoices: () => {
+		return ipcRenderer.invoke("ai-minimax-voices");
+	},
+	// MiniMax image generation — backgrounds, subject references
+	aiMinimaxImage: (
+		prompt: string,
+		options?: {
+			aspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+			count?: number;
+			subjectReferenceUrl?: string;
+		},
+	) => {
+		return ipcRenderer.invoke("ai-minimax-image", prompt, options);
 	},
 	aiGenerateMusic: (
 		mood: string,
@@ -283,6 +343,59 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	setHasUnsavedChanges: (hasChanges: boolean) => {
 		ipcRenderer.send("set-has-unsaved-changes", hasChanges);
+	},
+
+	/** Update the OS window title for the calling renderer. Used to show
+	 *  the loaded project name in the title bar (and Window menu) so the
+	 *  user can tell windows apart in multi-window mode. */
+	setWindowTitle: (title: string) => {
+		ipcRenderer.send("set-window-title", title);
+	},
+
+	/** One-click "Open Window for Recording" — spawns a new editor window
+	 *  and tells the calling window to open its source picker pre-targeted
+	 *  at the new window. The dogfood "record one window from another"
+	 *  flow without manual setup. */
+	openWindowForRecording: () => {
+		return ipcRenderer.invoke("open-window-for-recording");
+	},
+
+	/** Listen for the open-source-picker event sent by the main process
+	 *  after openWindowForRecording finishes. Returns an unsubscribe fn. */
+	onOpenSourcePicker: (
+		callback: (data: { preferredSourceId: string; targetWindowTitle: string }) => void,
+	) => {
+		const handler = (
+			_event: Electron.IpcRendererEvent,
+			data: { preferredSourceId: string; targetWindowTitle: string },
+		) => callback(data);
+		ipcRenderer.on("open-source-picker", handler);
+		return () => ipcRenderer.removeListener("open-source-picker", handler);
+	},
+
+	/** Tell the main process that a recording is starting/stopping for a
+	 *  given source. If the source is one of our editor windows, the main
+	 *  process forwards a `capture-mode-changed` event to that window so
+	 *  it can hide dev-only UI for a clean capture. */
+	setCaptureTargetMode: (sourceId: string, recording: boolean) => {
+		return ipcRenderer.invoke("set-capture-target-mode", sourceId, recording);
+	},
+
+	/** Listen for capture-mode changes — fires when THIS window becomes a
+	 *  recording target so the renderer can toggle the clean-capture mode
+	 *  body class. Returns an unsubscribe fn. */
+	onCaptureModeChanged: (callback: (data: { recording: boolean }) => void) => {
+		const handler = (_event: Electron.IpcRendererEvent, data: { recording: boolean }) =>
+			callback(data);
+		ipcRenderer.on("capture-mode-changed", handler);
+		return () => ipcRenderer.removeListener("capture-mode-changed", handler);
+	},
+
+	/** Fetch a YouTube channel's recent video IDs from the public RSS feed.
+	 *  Used by the Chit TV arcade tab to show a scrollable shorts list.
+	 *  Pass a channel handle (with or without leading @). */
+	youtubeFetchChannelShorts: (channelHandle: string) => {
+		return ipcRenderer.invoke("youtube-fetch-channel-shorts", channelHandle);
 	},
 
 	// Settings

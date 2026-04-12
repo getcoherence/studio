@@ -7,6 +7,28 @@ html, body {
 	overflow: hidden;
 }
 
+/* ── Clean-capture mode ──────────────────────────────────────────────── */
+/* Applied when this editor window is being recorded by a sibling window
+ * (the dogfood loop). Hides toasts, dev overlays, and other ephemeral UI
+ * so the captured video isn't polluted by notification bubbles. Toggled
+ * via the `recording-target` body class set by the App.tsx
+ * onCaptureModeChanged listener. Wrap any element you want to hide
+ * during capture in `[data-hide-on-capture]` or use the `.recording-target`
+ * descendant selectors below. */
+body.recording-target [data-sonner-toaster],
+body.recording-target [data-radix-popper-content-wrapper],
+body.recording-target [data-hide-on-capture],
+body.recording-target .update-toast,
+body.recording-target .dev-overlay {
+	display: none !important;
+}
+/* Subtle visual indicator on the recorded window itself: a thin red
+ * border so the user can tell at a glance which window is being captured.
+ * Avoids confusion when scrubbing back through long recording sessions. */
+body.recording-target {
+	box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.6);
+}
+
 /* Dark scrollbars globally */
 * {
 	scrollbar-color: rgba(255, 255, 255, 0.15) transparent;

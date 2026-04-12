@@ -123,6 +123,21 @@ interface Window {
 		onMenuSaveProjectAs: (callback: () => void) => () => void;
 		setMicrophoneExpanded: (expanded: boolean) => void;
 		setHasUnsavedChanges: (hasChanges: boolean) => void;
+		setWindowTitle: (title: string) => void;
+		openWindowForRecording: () => Promise<{
+			success: boolean;
+			targetWindowId?: number;
+			error?: string;
+		}>;
+		onOpenSourcePicker: (
+			callback: (data: { preferredSourceId: string; targetWindowTitle: string }) => void,
+		) => () => void;
+		setCaptureTargetMode: (
+			sourceId: string,
+			recording: boolean,
+		) => Promise<{ success: boolean; targetId?: number; error?: string }>;
+		onCaptureModeChanged: (callback: (data: { recording: boolean }) => void) => () => void;
+		onMenuOpenWindowForRecording: (callback: () => void) => () => void;
 		onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => () => void;
 		setLocale: (locale: string) => Promise<void>;
 
@@ -153,5 +168,15 @@ interface Window {
 		onWhisperModelDownloadProgress: (
 			callback: (progress: import("./lib/ai/types").ModelDownloadProgress) => void,
 		) => () => void;
+
+		/** Fetch a YouTube channel's recent video IDs from the public RSS
+		 *  feed. Used by the Chit TV arcade tab to show a scrollable shorts
+		 *  list without needing the YouTube Data API. */
+		youtubeFetchChannelShorts: (channelHandle: string) => Promise<{
+			success: boolean;
+			channelId?: string;
+			videoIds?: string[];
+			error?: string;
+		}>;
 	};
 }

@@ -9,7 +9,7 @@ import {
 	uploadToYouTube,
 } from "../youtube/youtubeAuth";
 
-export function registerYouTubeHandlers(getMainWindow: () => BrowserWindow | null) {
+export function registerYouTubeHandlers(_getMainWindow: () => BrowserWindow | null) {
 	ipcMain.handle("youtube-is-connected", () => {
 		return isYouTubeConnected();
 	});
@@ -31,7 +31,7 @@ export function registerYouTubeHandlers(getMainWindow: () => BrowserWindow | nul
 	ipcMain.handle(
 		"youtube-upload",
 		async (
-			_event,
+			event,
 			opts: {
 				filePath: string;
 				title: string;
@@ -42,9 +42,11 @@ export function registerYouTubeHandlers(getMainWindow: () => BrowserWindow | nul
 			return uploadToYouTube({
 				...opts,
 				onProgress: (percent) => {
-					const win = getMainWindow();
-					if (win && !win.isDestroyed()) {
-						win.webContents.send("youtube-upload-progress", percent);
+					// Progress goes back to the window that started the upload,
+					// not whichever window happens to be focused.
+					const senderWindow = BrowserWindow.fromWebContents(event.sender);
+					if (senderWindow && !senderWindow.isDestroyed()) {
+						senderWindow.webContents.send("youtube-upload-progress", percent);
 					}
 				},
 			});

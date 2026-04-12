@@ -27,6 +27,18 @@ export default function App() {
 		});
 	}, []);
 
+	// Clean-capture mode — when this window is being recorded by another
+	// editor, the main process fires `capture-mode-changed`. We toggle a
+	// `recording-target` body class so dev-only UI (toasts, popovers, dev
+	// overlays, the update toast) can hide via CSS.
+	useEffect(() => {
+		if (!window.electronAPI?.onCaptureModeChanged) return;
+		const cleanup = window.electronAPI.onCaptureModeChanged(({ recording }) => {
+			document.body.classList.toggle("recording-target", recording);
+		});
+		return cleanup;
+	}, []);
+
 	const content = (() => {
 		switch (windowType) {
 			case "recording-bar":

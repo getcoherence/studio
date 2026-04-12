@@ -41,15 +41,30 @@ export async function synthesize(text: string, voice: TTSVoice = "nova"): Promis
 		try {
 			return await synthesizeOpenAI(text, voice, config.apiKey);
 		} catch (err) {
-			console.warn("OpenAI TTS failed:", err);
+			// Surface the ACTUAL error so the user can see why TTS failed (quota,
+			// invalid key, network, etc.) rather than the misleading
+			// "TTS not available" message that suggests no key is configured.
+			const msg = err instanceof Error ? err.message : String(err);
+			console.warn("[OpenAI TTS] failed:", msg);
+			// Detect quota errors and give a friendly hint
+			if (/quota|429|billing|insufficient/i.test(msg)) {
+				return {
+					success: false,
+					error: `OpenAI TTS quota exceeded — top up your OpenAI billing or configure a MiniMax API key (settings.aiApiKey_minimax) for higher-quality narration.`,
+				};
+			}
+			return {
+				success: false,
+				error: `OpenAI TTS failed: ${msg.slice(0, 200)}`,
+			};
 		}
 	}
 
-	// Local placeholder — Piper TTS not yet integrated
+	// No API key configured at all
 	return {
 		success: false,
 		error:
-			"TTS not available. Configure an OpenAI API key for cloud TTS, or install Piper for local TTS (coming soon).",
+			"TTS not available. Configure an OpenAI API key for cloud TTS, or set a MiniMax API key (aiApiKey_minimax) for higher-quality narration.",
 	};
 }
 

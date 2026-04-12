@@ -382,6 +382,301 @@ export const FlowingGradient: React.FC<FlowingGradientProps> = ({ colors, speed 
 	return <AbsoluteFill style={{ background: bg, pointerEvents: "none" }} />;
 };
 
+// ── Mist (slow-moving translucent cloud layers) ──────────────────────
+
+interface MistProps {
+	count?: number;
+	color?: string;
+	intensity?: number;
+}
+
+export const Mist: React.FC<MistProps> = ({ count = 8, color = "#ffffff", intensity = 1 }) => {
+	const frame = useCurrentFrame();
+	const { fps } = useVideoConfig();
+
+	const clouds = useMemo(
+		() =>
+			Array.from({ length: count }, (_, i) => ({
+				x: random(`ms-x-${i}`) * 120 - 10,
+				y: random(`ms-y-${i}`) * 100,
+				width: random(`ms-w-${i}`) * 40 + 20,
+				height: random(`ms-h-${i}`) * 15 + 8,
+				speed: (random(`ms-sp-${i}`) * 0.3 + 0.1) * intensity,
+				phase: random(`ms-ph-${i}`) * Math.PI * 2,
+				opacity: random(`ms-o-${i}`) * 0.15 + 0.05,
+			})),
+		[count, intensity],
+	);
+
+	const t = frame / fps;
+
+	return (
+		<AbsoluteFill style={{ pointerEvents: "none" }}>
+			{clouds.map((c, i) => {
+				const x = c.x + Math.sin(t * c.speed + c.phase) * 5;
+				const y = c.y + Math.cos(t * c.speed * 0.5 + c.phase) * 3;
+				const pulse = (Math.sin(t * 0.3 + c.phase) + 1) / 2;
+
+				return (
+					<div
+						key={i}
+						style={{
+							position: "absolute",
+							left: `${x}%`,
+							top: `${y}%`,
+							width: `${c.width}%`,
+							height: `${c.height}%`,
+							background: `radial-gradient(ellipse, ${color}${Math.round(
+								(c.opacity + pulse * 0.05) * 255,
+							)
+								.toString(16)
+								.padStart(2, "0")}, transparent 70%)`,
+							filter: "blur(30px)",
+							transform: "translate(-50%, -50%)",
+						}}
+					/>
+				);
+			})}
+		</AbsoluteFill>
+	);
+};
+
+// ── Light Rays (diagonal light shafts) ────────────────────────────────
+
+interface LightRaysProps {
+	count?: number;
+	color?: string;
+	angle?: number;
+	intensity?: number;
+}
+
+export const LightRays: React.FC<LightRaysProps> = ({
+	count = 5,
+	color = "#ffffff",
+	angle = 35,
+	intensity = 1,
+}) => {
+	const frame = useCurrentFrame();
+	const { fps } = useVideoConfig();
+
+	const rays = useMemo(
+		() =>
+			Array.from({ length: count }, (_, i) => ({
+				x: random(`lr-x-${i}`) * 100,
+				width: random(`lr-w-${i}`) * 8 + 3,
+				opacity: (random(`lr-o-${i}`) * 0.12 + 0.03) * intensity,
+				speed: random(`lr-sp-${i}`) * 0.5 + 0.2,
+				phase: random(`lr-ph-${i}`) * Math.PI * 2,
+			})),
+		[count, intensity],
+	);
+
+	const t = frame / fps;
+
+	return (
+		<AbsoluteFill style={{ overflow: "hidden", pointerEvents: "none" }}>
+			{rays.map((r, i) => {
+				const pulse = (Math.sin(t * r.speed + r.phase) + 1) / 2;
+				return (
+					<div
+						key={i}
+						style={{
+							position: "absolute",
+							left: `${r.x}%`,
+							top: "-20%",
+							width: `${r.width}%`,
+							height: "140%",
+							background: `linear-gradient(180deg, ${color}00, ${color}${Math.round(
+								r.opacity * pulse * 255,
+							)
+								.toString(16)
+								.padStart(2, "0")}, ${color}00)`,
+							transform: `rotate(${angle}deg)`,
+							transformOrigin: "center center",
+							filter: "blur(8px)",
+						}}
+					/>
+				);
+			})}
+		</AbsoluteFill>
+	);
+};
+
+// ── Bubbles (rising translucent circles) ──────────────────────────────
+
+interface BubblesProps {
+	count?: number;
+	color?: string;
+	intensity?: number;
+}
+
+export const Bubbles: React.FC<BubblesProps> = ({
+	count = 30,
+	color = "#60a5fa",
+	intensity = 1,
+}) => {
+	const frame = useCurrentFrame();
+	const { height } = useVideoConfig();
+
+	const particles = useMemo(
+		() =>
+			Array.from({ length: count }, (_, i) => ({
+				x: random(`bb-x-${i}`) * 100,
+				delay: random(`bb-d-${i}`) * 60,
+				speed: (random(`bb-sp-${i}`) * 1.5 + 0.5) * intensity,
+				size: random(`bb-s-${i}`) * 16 + 6,
+				opacity: random(`bb-o-${i}`) * 0.3 + 0.1,
+				wobbleSpeed: random(`bb-ws-${i}`) * 0.08 + 0.02,
+				wobbleAmp: random(`bb-wa-${i}`) * 30 + 10,
+			})),
+		[count, intensity],
+	);
+
+	return (
+		<AbsoluteFill style={{ overflow: "hidden", pointerEvents: "none" }}>
+			{particles.map((b, i) => {
+				const t = frame - b.delay;
+				if (t < 0) return null;
+				const y = height + 20 - t * b.speed;
+				if (y < -30) return null;
+				const wobble = Math.sin(t * b.wobbleSpeed + b.x) * b.wobbleAmp;
+
+				return (
+					<div
+						key={i}
+						style={{
+							position: "absolute",
+							left: `${b.x}%`,
+							top: y,
+							width: b.size,
+							height: b.size,
+							borderRadius: "50%",
+							border: `1.5px solid ${color}60`,
+							background: `radial-gradient(circle at 35% 35%, ${color}30, transparent 60%)`,
+							transform: `translateX(${wobble}px)`,
+							opacity: b.opacity,
+						}}
+					/>
+				);
+			})}
+		</AbsoluteFill>
+	);
+};
+
+// ── Embers (rising glowing particles) ─────────────────────────────────
+
+interface EmbersProps {
+	count?: number;
+	colors?: string[];
+	intensity?: number;
+}
+
+export const Embers: React.FC<EmbersProps> = ({
+	count = 35,
+	colors = ["#f97316", "#ef4444", "#fbbf24"],
+	intensity = 1,
+}) => {
+	const frame = useCurrentFrame();
+	const { height } = useVideoConfig();
+
+	const particles = useMemo(
+		() =>
+			Array.from({ length: count }, (_, i) => ({
+				x: random(`em-x-${i}`) * 100,
+				delay: random(`em-d-${i}`) * 50,
+				speed: (random(`em-sp-${i}`) * 2 + 0.8) * intensity,
+				size: random(`em-s-${i}`) * 5 + 2,
+				drift: (random(`em-dr-${i}`) - 0.5) * 2,
+				opacity: random(`em-o-${i}`) * 0.6 + 0.3,
+				color: colors[Math.floor(random(`em-c-${i}`) * colors.length)],
+				flickerPhase: random(`em-fp-${i}`) * Math.PI * 2,
+			})),
+		[count, intensity, colors],
+	);
+
+	return (
+		<AbsoluteFill style={{ overflow: "hidden", pointerEvents: "none" }}>
+			{particles.map((e, i) => {
+				const t = frame - e.delay;
+				if (t < 0) return null;
+				const y = height + 10 - t * e.speed;
+				if (y < -20) return null;
+				const x = e.x + t * e.drift * 0.1 + Math.sin(t * 0.05) * 10;
+				const flicker = 0.5 + Math.sin(t * 0.3 + e.flickerPhase) * 0.5;
+
+				return (
+					<div
+						key={i}
+						style={{
+							position: "absolute",
+							left: `${x}%`,
+							top: y,
+							width: e.size,
+							height: e.size,
+							borderRadius: "50%",
+							background: e.color,
+							opacity: e.opacity * flicker,
+							boxShadow: `0 0 ${e.size * 3}px ${e.size}px ${e.color}80`,
+						}}
+					/>
+				);
+			})}
+		</AbsoluteFill>
+	);
+};
+
+// ── Stars (twinkling star field) ──────────────────────────────────────
+
+interface StarsProps {
+	count?: number;
+	color?: string;
+	intensity?: number;
+}
+
+export const Stars: React.FC<StarsProps> = ({ count = 80, color = "#ffffff", intensity = 1 }) => {
+	const frame = useCurrentFrame();
+	const { fps } = useVideoConfig();
+
+	const stars = useMemo(
+		() =>
+			Array.from({ length: count }, (_, i) => ({
+				x: random(`st-x-${i}`) * 100,
+				y: random(`st-y-${i}`) * 100,
+				size: (random(`st-s-${i}`) * 3 + 1) * intensity,
+				twinkleSpeed: random(`st-ts-${i}`) * 3 + 0.5,
+				twinklePhase: random(`st-tp-${i}`) * Math.PI * 2,
+				baseOpacity: random(`st-o-${i}`) * 0.5 + 0.2,
+			})),
+		[count, intensity],
+	);
+
+	const t = frame / fps;
+
+	return (
+		<AbsoluteFill style={{ pointerEvents: "none" }}>
+			{stars.map((s, i) => {
+				const twinkle = (Math.sin(t * s.twinkleSpeed + s.twinklePhase) + 1) / 2;
+				return (
+					<div
+						key={i}
+						style={{
+							position: "absolute",
+							left: `${s.x}%`,
+							top: `${s.y}%`,
+							width: s.size,
+							height: s.size,
+							borderRadius: "50%",
+							background: color,
+							opacity: s.baseOpacity * (0.3 + twinkle * 0.7),
+							boxShadow: twinkle > 0.7 ? `0 0 ${s.size * 3}px ${s.size}px ${color}40` : "none",
+						}}
+					/>
+				);
+			})}
+		</AbsoluteFill>
+	);
+};
+
 // ── Money Rain ─────────────────────────────────────────────────────────
 
 interface MoneyRainProps {

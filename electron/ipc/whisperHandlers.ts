@@ -1,4 +1,4 @@
-import { type BrowserWindow, ipcMain } from "electron";
+import { BrowserWindow, ipcMain } from "electron";
 import type {
 	CaptionTrack,
 	ModelDownloadProgress,
@@ -11,9 +11,11 @@ import { createCaptionTrack, isWhisperAvailable, type TranscribeOptions } from "
 /**
  * Register all Whisper / caption-related IPC handlers.
  *
- * @param getMainWindow  Returns the current main BrowserWindow (for sending progress events)
+ * @param _getMainWindow Unused — kept for signature compatibility. Progress
+ *   events now go back to the window that initiated each call via event.sender,
+ *   which is multi-window safe.
  */
-export function registerWhisperHandlers(getMainWindow: () => BrowserWindow | null): void {
+export function registerWhisperHandlers(_getMainWindow: () => BrowserWindow | null): void {
 	// ── Transcribe a video file ──
 	ipcMain.handle(
 		"whisper-transcribe",
@@ -68,13 +70,17 @@ export function registerWhisperHandlers(getMainWindow: () => BrowserWindow | nul
 	// ── Download a model with progress ──
 	ipcMain.handle(
 		"whisper-model-download",
-		async (_, modelId: string): Promise<{ success: boolean; path?: string; error?: string }> => {
+		async (
+			event,
+			modelId: string,
+		): Promise<{ success: boolean; path?: string; error?: string }> => {
 			try {
 				const filePath = await downloadModel(modelId, (progress: ModelDownloadProgress) => {
-					// Send progress events to the renderer
-					const mainWindow = getMainWindow();
-					if (mainWindow && !mainWindow.isDestroyed()) {
-						mainWindow.webContents.send("whisper-model-download-progress", progress);
+					// Send progress to the window that initiated the download —
+					// multi-window safe.
+					const senderWindow = BrowserWindow.fromWebContents(event.sender);
+					if (senderWindow && !senderWindow.isDestroyed()) {
+						senderWindow.webContents.send("whisper-model-download-progress", progress);
 					}
 				});
 

@@ -42,7 +42,7 @@ export interface RemotionExportOptions {
 
 export async function exportWithRemotion(opts: RemotionExportOptions) {
 	const {
-		code,
+		code: rawCode,
 		screenshots,
 		outputPath,
 		fps = 30,
@@ -55,12 +55,33 @@ export async function exportWithRemotion(opts: RemotionExportOptions) {
 	// 1. Resolve the serve URL (pre-bundled in prod, on-the-fly in dev)
 	const serveUrl = await resolveServeUrl();
 
-	// 2. Write screenshots to the bundle directory as static files.
-	const screenshotUrls = await writeScreenshotsToBundle(serveUrl, screenshots);
+	// 2. The studio:// custom protocol only exists in the renderer process
+	//    where we registered it. The headless Chromium that Remotion's
+	//    renderer spawns has no idea what studio:// is, AND it can't fetch
+	//    arbitrary absolute paths either — Remotion prepends file:/// and
+	//    routes everything through its HTTP downloader, which only accepts
+	//    http/https. The pattern that DOES work is the same one we use for
+	//    screenshots: copy the asset into the bundle directory (which
+	//    Remotion serves as a static HTTP root) and reference it via a
+	//    relative path. So we walk every studio://file/ URL in the code,
+	//    copy each file into <bundle>/_external_assets/, and rewrite the
+	//    URL to a relative path.
+	const { code, copiedCount } = await copyExternalAssetsIntoBundle(rawCode, serveUrl);
+	if (copiedCount > 0) {
+		console.log(
+			`[remotionExport] Copied ${copiedCount} external asset(s) into bundle and rewrote URLs`,
+		);
+	}
+
+	// 3. Write screenshots to the bundle directory as static files. If any
+	//    screenshot is a studio:// URL (rare but possible), rewrite it too.
+	const screenshotUrls = (await writeScreenshotsToBundle(serveUrl, screenshots)).map((url) =>
+		rewriteStudioUrls(url),
+	);
 
 	console.log(`[remotionExport] Code length: ${code.length}, screenshots: ${screenshots.length}`);
 
-	// 3. Select the DynamicVideo composition
+	// 4. Select the DynamicVideo composition
 	const inputProps = { code, screenshots: screenshotUrls };
 
 	const composition = await selectComposition({
@@ -69,7 +90,7 @@ export async function exportWithRemotion(opts: RemotionExportOptions) {
 		inputProps,
 	});
 
-	// 4. Override duration/resolution if explicitly provided
+	// 5. Override duration/resolution if explicitly provided
 	if (durationInFrames && durationInFrames > 0) {
 		composition.durationInFrames = durationInFrames;
 	}
@@ -81,7 +102,7 @@ export async function exportWithRemotion(opts: RemotionExportOptions) {
 		`[remotionExport] Rendering ${composition.durationInFrames} frames @ ${composition.fps}fps`,
 	);
 
-	// 5. Render to a temp file — Remotion's output may not be Windows-compatible
+	// 6. Render to a temp file — Remotion's output may not be Windows-compatible
 	const tempPath = outputPath.replace(/\.mp4$/i, "_raw.mp4");
 
 	await renderMedia({
@@ -99,7 +120,7 @@ export async function exportWithRemotion(opts: RemotionExportOptions) {
 
 	console.log("[remotionExport] Remotion render complete, post-processing for compatibility...");
 
-	// 6. Re-encode with our ffmpeg for universal playback + mux music in one pass:
+	// 7. Re-encode with our ffmpeg for universal playback + mux music in one pass:
 	//    - baseline profile (no B-frames, CAVLC — works on every device)
 	//    - level 4.0 (safe for 1080p30)
 	//    - yuv420p + limited/TV range + bt709 color space
@@ -109,15 +130,16 @@ export async function exportWithRemotion(opts: RemotionExportOptions) {
 	await reencodeForCompatibility(tempPath, outputPath, musicPath, musicVolume);
 	onProgress?.(1);
 
-	// 7. Clean up temp files
+	// 8. Clean up temp files
 	try {
 		fs.unlinkSync(tempPath);
 	} catch {
 		/* best-effort */
 	}
 	cleanupScreenshots(serveUrl);
+	cleanupExternalAssets(serveUrl);
 
-	// 8. Log file details for diagnostics
+	// 9. Log file details for diagnostics
 	await logFileInfo(outputPath);
 
 	console.log("[remotionExport] Export complete:", outputPath);
@@ -126,6 +148,95 @@ export async function exportWithRemotion(opts: RemotionExportOptions) {
 /** Invalidate the cached dev bundle (e.g. after source changes). */
 export function invalidateRemotionBundle() {
 	cachedBundleLocation = null;
+}
+
+const EXTERNAL_ASSETS_SUBDIR = "_external_assets";
+
+/** Walk the AI-generated code, copy every asset referenced by a
+ *  `studio://file/<abs-path>` URL into <bundlePath>/_external_assets/, and
+ *  rewrite the URL to a relative path that Remotion's static server can
+ *  resolve. This is the only path that actually works for arbitrary local
+ *  files: Remotion's downloader can't handle bare absolute paths, can't
+ *  handle file:// URLs, and obviously doesn't know about studio://. But
+ *  files INSIDE the bundle directory are served as static HTTP assets
+ *  during render, the same way we already do for screenshots. */
+async function copyExternalAssetsIntoBundle(
+	code: string,
+	bundlePath: string,
+): Promise<{ code: string; copiedCount: number }> {
+	if (!code.includes("studio://file/")) return { code, copiedCount: 0 };
+
+	const targetDir = path.join(bundlePath, EXTERNAL_ASSETS_SUBDIR);
+	fs.mkdirSync(targetDir, { recursive: true });
+
+	// Collect unique asset paths first so we don't copy the same file twice
+	// when it's referenced by multiple <Audio> elements.
+	const uniquePaths = new Set<string>();
+	for (const match of code.matchAll(/studio:\/\/file\/([^"'\s)]+)/g)) {
+		uniquePaths.add(match[1]);
+	}
+
+	const replacements = new Map<string, string>();
+	let copiedCount = 0;
+	let nextIndex = 0;
+
+	for (const rawPath of uniquePaths) {
+		// Strip any leading slashes from "/C:/..." → "C:/..."
+		const absPath = rawPath.replace(/^\/+/, "");
+
+		if (!fs.existsSync(absPath)) {
+			console.warn(`[remotionExport] external asset not found, skipping: ${absPath}`);
+			continue;
+		}
+
+		// Generate a collision-free filename. Narration mp3s already have
+		// timestamps but we add an index suffix anyway as a guarantee.
+		const ext = path.extname(absPath);
+		const base = path.basename(absPath, ext);
+		const uniqueName = `${base}-${nextIndex++}${ext}`;
+		const destPath = path.join(targetDir, uniqueName);
+
+		try {
+			fs.copyFileSync(absPath, destPath);
+			copiedCount++;
+			replacements.set(rawPath, `${EXTERNAL_ASSETS_SUBDIR}/${uniqueName}`);
+		} catch (err) {
+			console.warn(`[remotionExport] failed to copy ${absPath}:`, err);
+		}
+	}
+
+	// Single-pass replacement using the captured map. Anything that wasn't
+	// successfully copied falls back to the bare path (best effort — it'll
+	// still fail in Remotion but the diagnostics group will tell us which
+	// file was missing).
+	const rewritten = code.replace(/studio:\/\/file\/([^"'\s)]+)/g, (_match, p1) => {
+		const replacement = replacements.get(p1);
+		return replacement ?? p1.replace(/^\/+/, "");
+	});
+
+	return { code: rewritten, copiedCount };
+}
+
+function cleanupExternalAssets(bundlePath: string) {
+	const dir = path.join(bundlePath, EXTERNAL_ASSETS_SUBDIR);
+	try {
+		if (fs.existsSync(dir)) {
+			fs.rmSync(dir, { recursive: true });
+		}
+	} catch {
+		/* best-effort */
+	}
+}
+
+/** Fallback rewrite for screenshot URLs that may have come in as
+ *  `studio://file/...`. Strips the scheme and any leading slashes so the
+ *  bare path can be used. Used only for screenshots — code references go
+ *  through `copyExternalAssetsIntoBundle` instead. */
+function rewriteStudioUrls(input: string): string {
+	if (!input.includes("studio://file/")) return input;
+	return input.replace(/studio:\/\/file\/([^"'\s)]+)/g, (_match, p1) => {
+		return p1.replace(/^\/+/, "");
+	});
 }
 
 // ── Post-processing ─────────────────────────────────────────────────────
@@ -143,6 +254,11 @@ async function reencodeForCompatibility(
 		return;
 	}
 
+	// The Remotion output (input 0) always contains an audio stream — even
+	// when the composition has no <Audio> elements, Remotion emits a silent
+	// track. When the scene plan has narration + SFX, those are in [0:a].
+	// When music is also provided, we amix Remotion audio with music.
+	const hasRemotionAudio = await checkForAudioStream(inputPath, ffmpegPath);
 	const args: string[] = ["-i", inputPath];
 
 	if (musicPath) {
@@ -166,7 +282,28 @@ async function reencodeForCompatibility(
 		"fast",
 	);
 
-	if (musicPath) {
+	// Audio handling — 4 cases:
+	// 1. Remotion audio + music → amix both (narration/SFX at 1.0, music ducked)
+	// 2. Remotion audio only → map through
+	// 3. Music only → use music as the audio track
+	// 4. Neither → silent output (-an)
+	if (hasRemotionAudio && musicPath) {
+		args.push(
+			"-filter_complex",
+			`[0:a]volume=1.0[narr];[1:a]volume=${musicVolume}[mus];[narr][mus]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]`,
+			"-map",
+			"0:v",
+			"-map",
+			"[aout]",
+			"-c:a",
+			"aac",
+			"-b:a",
+			"192k",
+			"-shortest",
+		);
+	} else if (hasRemotionAudio) {
+		args.push("-map", "0:v", "-map", "0:a", "-c:a", "aac", "-b:a", "192k");
+	} else if (musicPath) {
 		args.push(
 			"-filter_complex",
 			`[1:a]volume=${musicVolume}[aout]`,
@@ -186,9 +323,25 @@ async function reencodeForCompatibility(
 
 	args.push("-movflags", "+faststart", "-y", outputPath);
 
-	console.log(`[remotionExport] Post-processing: ffmpeg ${args.join(" ")}`);
+	console.log(
+		`[remotionExport] Post-processing (remotion-audio=${hasRemotionAudio}, music=${!!musicPath}): ffmpeg ${args.join(" ")}`,
+	);
 
 	await execFile(ffmpegPath, args, { timeout: 600_000 });
+}
+
+/** Probe a file with ffmpeg -i to detect whether it has an audio stream.
+ *  ffmpeg prints stream info to stderr and always exits with code 1 when
+ *  given no output file, so we parse stderr instead of checking exit code. */
+async function checkForAudioStream(filePath: string, ffmpegPath: string): Promise<boolean> {
+	try {
+		await execFile(ffmpegPath, ["-i", filePath, "-hide_banner"], { timeout: 10_000 });
+		return false;
+	} catch (err: any) {
+		const stderr = String(err?.stderr || "");
+		// Match "Stream #0:1(und): Audio: aac" or similar
+		return /Stream #\d+:\d+[^:]*: Audio:/i.test(stderr);
+	}
 }
 
 async function logFileInfo(filePath: string) {

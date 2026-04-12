@@ -123,6 +123,45 @@ interface Window {
 			project?: unknown;
 			message?: string;
 		}>;
+		// ── Studio site cache (Phase 1 outputs) ──
+		studioCacheGet: (url: string) => Promise<{
+			success: boolean;
+			expired?: boolean;
+			reason?: string;
+			ageMs?: number;
+			entry?: {
+				url: string;
+				cachedAt: string;
+				schemaVersion: number;
+				demoSteps?: unknown[];
+				landingPageContent?: unknown;
+				brandInfo?: unknown;
+				brandBrief?: unknown;
+				designReferences?: unknown;
+			};
+		}>;
+		studioCacheSet: (
+			url: string,
+			entry: unknown,
+		) => Promise<{
+			success: boolean;
+			path?: string;
+			error?: string;
+		}>;
+		studioCacheClear: (url?: string) => Promise<{
+			success: boolean;
+			cleared?: number;
+		}>;
+		studioCacheList: () => Promise<{
+			success: boolean;
+			entries: Array<{
+				url: string;
+				cachedAt: string;
+				sizeKB: number;
+				stepCount: number;
+				hasBrandBrief: boolean;
+			}>;
+		}>;
 		loadProjectFile: () => Promise<{
 			success: boolean;
 			path?: string;
@@ -140,6 +179,7 @@ interface Window {
 			error?: string;
 		}>;
 		onMenuNewRecording: (callback: () => void) => () => void;
+		onMenuOpenWindowForRecording: (callback: () => void) => () => void;
 		onMenuCreateVideo: (callback: () => void) => () => void;
 		onMenuOpenVideo: (callback: () => void) => () => void;
 		onMenuLoadProject: (callback: () => void) => () => void;
@@ -177,6 +217,65 @@ interface Window {
 			text: string,
 			voice?: string,
 		) => Promise<{ success: boolean; audioPath?: string; error?: string }>;
+		aiMinimaxTts: (
+			text: string,
+			options?: {
+				voiceId?: string;
+				speed?: number;
+				volume?: number;
+				pitch?: number;
+				model?: string;
+			},
+		) => Promise<{
+			success: boolean;
+			audioPath?: string;
+			durationMs?: number;
+			error?: string;
+		}>;
+		aiMinimaxTtsBatch: (
+			items: Array<{
+				text: string;
+				sceneIndex: number;
+				options?: {
+					voiceId?: string;
+					speed?: number;
+					volume?: number;
+					pitch?: number;
+					model?: string;
+				};
+			}>,
+		) => Promise<
+			Array<{
+				sceneIndex: number;
+				result: {
+					success: boolean;
+					audioPath?: string;
+					durationMs?: number;
+					error?: string;
+				};
+			}>
+		>;
+		aiMinimaxVoices: () => Promise<{
+			voices: Array<{
+				id: string;
+				name: string;
+				description: string;
+				gender: "male" | "female" | "neutral";
+				tone: "warm" | "authoritative" | "energetic" | "calm" | "dramatic" | "playful";
+			}>;
+		}>;
+		aiMinimaxImage: (
+			prompt: string,
+			options?: {
+				aspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+				count?: number;
+				subjectReferenceUrl?: string;
+			},
+		) => Promise<{
+			success: boolean;
+			imagePaths?: string[];
+			error?: string;
+		}>;
 		aiGenerateMusic: (
 			mood: string,
 			customPrompt?: string,
@@ -287,6 +386,7 @@ interface Window {
 			path?: string;
 			canceled?: boolean;
 			error?: string;
+			stack?: string;
 			logs?: string[];
 		}>;
 		onExportRemotionProgress: (callback: (percent: number) => void) => () => void;
@@ -309,6 +409,20 @@ interface Window {
 
 		setMicrophoneExpanded: (expanded: boolean) => void;
 		setHasUnsavedChanges: (hasChanges: boolean) => void;
+		setWindowTitle: (title: string) => void;
+		openWindowForRecording: () => Promise<{
+			success: boolean;
+			targetWindowId?: number;
+			error?: string;
+		}>;
+		onOpenSourcePicker: (
+			callback: (data: { preferredSourceId: string; targetWindowTitle: string }) => void,
+		) => () => void;
+		setCaptureTargetMode: (
+			sourceId: string,
+			recording: boolean,
+		) => Promise<{ success: boolean; targetId?: number; error?: string }>;
+		onCaptureModeChanged: (callback: (data: { recording: boolean }) => void) => () => void;
 		onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => () => void;
 		setLocale: (locale: string) => Promise<void>;
 
@@ -336,6 +450,16 @@ interface Window {
 		}>;
 		dismissUpdate: () => Promise<{ success: boolean }>;
 		onUpdateAvailable: (callback: (version: string) => void) => () => void;
+
+		/** Fetch a YouTube channel's recent video IDs from the public RSS
+		 *  feed. Used by the Chit TV arcade tab to show a scrollable shorts
+		 *  list without needing the YouTube Data API. */
+		youtubeFetchChannelShorts: (channelHandle: string) => Promise<{
+			success: boolean;
+			channelId?: string;
+			videoIds?: string[];
+			error?: string;
+		}>;
 
 		// Project browser
 		getRecentProjects: () => Promise<RecentProject[]>;
@@ -444,6 +568,7 @@ interface RecentProject {
 	fileName: string;
 	lastModified: number;
 	fileSize: number;
+	metadata?: import("../src/lib/scene-renderer/types").GenerationMetadata;
 }
 
 interface ProcessedDesktopSource {

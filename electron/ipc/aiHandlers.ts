@@ -18,6 +18,13 @@ import {
 	getPopularLotties,
 	searchLottieAnimations,
 } from "../ai/lottieSearch";
+import { generateImage, type ImageGenOptions } from "../ai/minimaxImageService";
+import {
+	MINIMAX_VOICES,
+	type MinimaxTTSOptions,
+	synthesizeMinimax,
+	synthesizeMinimaxBatch,
+} from "../ai/minimaxTtsService";
 import {
 	deleteMusicLibraryEntry,
 	generateLyrics,
@@ -77,6 +84,30 @@ export function registerAIHandlers(): void {
 
 	ipcMain.handle("ai-tts-synthesize", async (_event, text: string, voice?: TTSVoice) => {
 		return synthesize(text, voice);
+	});
+
+	// ── MiniMax TTS (preferred for narrated scene plans) ──
+	ipcMain.handle("ai-minimax-tts", async (_event, text: string, options?: MinimaxTTSOptions) => {
+		return synthesizeMinimax(text, options);
+	});
+
+	ipcMain.handle(
+		"ai-minimax-tts-batch",
+		async (
+			_event,
+			items: Array<{ text: string; sceneIndex: number; options?: MinimaxTTSOptions }>,
+		) => {
+			return synthesizeMinimaxBatch(items);
+		},
+	);
+
+	ipcMain.handle("ai-minimax-voices", async () => {
+		return { voices: MINIMAX_VOICES };
+	});
+
+	// ── MiniMax Image Generation ──
+	ipcMain.handle("ai-minimax-image", async (_event, prompt: string, options?: ImageGenOptions) => {
+		return generateImage(prompt, options);
 	});
 
 	ipcMain.handle(

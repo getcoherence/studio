@@ -32,44 +32,43 @@ export interface SerializedDemoResult {
 	narrationText: string;
 }
 
-export function registerDemoHandlers(getMainWindow: () => BrowserWindow | null): void {
-	ipcMain.handle(
-		"demo-start",
-		async (_event, config: DemoConfig): Promise<SerializedDemoResult> => {
-			if (isRunning) {
-				throw new Error("A demo is already running");
+export function registerDemoHandlers(_getMainWindow: () => BrowserWindow | null): void {
+	ipcMain.handle("demo-start", async (event, config: DemoConfig): Promise<SerializedDemoResult> => {
+		if (isRunning) {
+			throw new Error("A demo is already running");
+		}
+
+		isRunning = true;
+
+		// Use the window that initiated the demo so progress events go
+		// back to the requesting window — multi-window safe.
+		const senderWindow = BrowserWindow.fromWebContents(event.sender);
+
+		activeAgent = new DemoAgent((step: DemoStep, stepIndex: number) => {
+			// Send progress events to the renderer
+			if (senderWindow && !senderWindow.isDestroyed()) {
+				senderWindow.webContents.send("demo-progress", {
+					step: serializeStep(step),
+					stepIndex,
+				});
 			}
+		});
 
-			isRunning = true;
+		try {
+			const result = await activeAgent.run(config);
 
-			const mainWindow = getMainWindow();
+			const serialized: SerializedDemoResult = {
+				steps: result.steps.map(serializeStep),
+				totalDurationMs: result.totalDurationMs,
+				narrationText: result.narrationText,
+			};
 
-			activeAgent = new DemoAgent((step: DemoStep, stepIndex: number) => {
-				// Send progress events to the renderer
-				if (mainWindow && !mainWindow.isDestroyed()) {
-					mainWindow.webContents.send("demo-progress", {
-						step: serializeStep(step),
-						stepIndex,
-					});
-				}
-			});
-
-			try {
-				const result = await activeAgent.run(config);
-
-				const serialized: SerializedDemoResult = {
-					steps: result.steps.map(serializeStep),
-					totalDurationMs: result.totalDurationMs,
-					narrationText: result.narrationText,
-				};
-
-				return serialized;
-			} finally {
-				activeAgent = null;
-				isRunning = false;
-			}
-		},
-	);
+			return serialized;
+		} finally {
+			activeAgent = null;
+			isRunning = false;
+		}
+	});
 
 	ipcMain.handle("demo-stop", async () => {
 		if (activeAgent) {
