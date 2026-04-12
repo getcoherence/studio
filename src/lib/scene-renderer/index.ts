@@ -12,6 +12,7 @@ export {
 	DEFAULT_SCENE,
 	DEFAULT_SHAPE_LAYER,
 	DEFAULT_TEXT_LAYER,
+	type GenerationMetadata,
 	type ImageContent,
 	type LayerAnimation,
 	type LayerTransform,

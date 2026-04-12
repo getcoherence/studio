@@ -96,6 +96,18 @@ export function RecordingSetupDialog({
 		loadDevices();
 	}, [open, selectedMicId, selectedWebcamId]);
 
+	// "Open Window for Recording" pre-target — when the main process spawns
+	// a sibling editor and tells us to record it, remember the source ID so
+	// we can preselect it once the source list loads.
+	const [preferredSourceId, setPreferredSourceId] = useState<string | null>(null);
+	useEffect(() => {
+		if (!window.electronAPI?.onOpenSourcePicker) return;
+		const cleanup = window.electronAPI.onOpenSourcePicker(({ preferredSourceId }) => {
+			setPreferredSourceId(preferredSourceId);
+		});
+		return cleanup;
+	}, []);
+
 	useEffect(() => {
 		if (!open) return;
 
@@ -118,7 +130,18 @@ export function RecordingSetupDialog({
 					appIcon: source.appIcon,
 				}));
 				setSources(processed);
-				// Auto-select first screen source
+				// Pre-select the target window if "Open Window for Recording"
+				// fired the picker — the main process passes us the exact
+				// source ID via the open-source-picker event.
+				if (preferredSourceId) {
+					const preferred = processed.find((s) => s.id === preferredSourceId);
+					if (preferred) {
+						setSelectedSource(preferred);
+						setPreferredSourceId(null); // one-shot
+						return;
+					}
+				}
+				// Otherwise auto-select the first screen source
 				const firstScreen = processed.find((s) => s.id.startsWith("screen:"));
 				if (firstScreen && !selectedSource) {
 					setSelectedSource(firstScreen);
@@ -130,7 +153,7 @@ export function RecordingSetupDialog({
 			}
 		}
 		fetchSources();
-	}, [open, selectedSource]);
+	}, [open, selectedSource, preferredSourceId]);
 
 	const screenSources = sources.filter((s) => s.id.startsWith("screen:"));
 	const windowSources = sources.filter((s) => s.id.startsWith("window:"));

@@ -8,7 +8,6 @@ import {
 	ipcMain,
 	Menu,
 	nativeImage,
-	net,
 	protocol,
 	session,
 	shell,
@@ -24,6 +23,7 @@ import { registerFfmpegHandlers } from "./ipc/ffmpegHandlers";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { registerProjectHandlers } from "./ipc/projectHandlers";
 import { registerSettingsHandlers } from "./ipc/settingsHandlers";
+import { registerStudioCacheHandlers } from "./ipc/studioCacheHandlers";
 import { registerUpdaterHandlers } from "./ipc/updaterHandlers";
 import { registerWhisperHandlers } from "./ipc/whisperHandlers";
 import { registerYouTubeHandlers } from "./ipc/youtubeHandlers";
@@ -70,8 +70,19 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 	? path.join(process.env.APP_ROOT, "public")
 	: RENDERER_DIST;
 
-// Window references
-let mainWindow: BrowserWindow | null = null;
+// ── Multi-window state ────────────────────────────────────────────────
+//
+// `editorWindows` is the canonical set of open editor windows. Use the
+// helpers (`getFocusedEditorWindow`, `getFirstEditorWindow`,
+// `getEditorWindowFromEvent`) to find the right window in any handler —
+// never reach for a global "main" reference because there isn't one.
+//
+// Use cases that drive multi-window:
+//   1. Agency / freelancer multi-client — Window A on Brand A, Window B on
+//      Brand B, generate in parallel.
+//   2. Dogfood recording — Window A runs the AI Generator while Window B
+//      records it via desktopCapturer to produce a demo of the tool.
+const editorWindows = new Set<BrowserWindow>();
 let sourceSelectorWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let selectedSourceName = "";
@@ -80,20 +91,40 @@ let selectedSourceName = "";
 const defaultTrayIcon = getTrayIcon("coherence-studio.png");
 const recordingTrayIcon = getTrayIcon("rec-button.png");
 
+/** Returns the focused editor window, or any open editor as a fallback,
+ *  or null if there are none. Prefer this over reaching for a "main"
+ *  window because the user may have several windows open. */
+function getFocusedEditorWindow(): BrowserWindow | null {
+	const focused = BrowserWindow.getFocusedWindow();
+	if (focused && editorWindows.has(focused) && !focused.isDestroyed()) {
+		return focused;
+	}
+	for (const win of editorWindows) {
+		if (!win.isDestroyed()) return win;
+	}
+	return null;
+}
+
+/** Returns the first open editor window, or null if there are none. */
+function getFirstEditorWindow(): BrowserWindow | null {
+	for (const win of editorWindows) {
+		if (!win.isDestroyed()) return win;
+	}
+	return null;
+}
+
 function createWindow() {
 	createEditorWindowWrapper();
 }
 
 function showMainWindow() {
-	if (mainWindow && !mainWindow.isDestroyed()) {
-		if (mainWindow.isMinimized()) {
-			mainWindow.restore();
-		}
-		mainWindow.show();
-		mainWindow.focus();
+	const existing = getFocusedEditorWindow();
+	if (existing) {
+		if (existing.isMinimized()) existing.restore();
+		existing.show();
+		existing.focus();
 		return;
 	}
-
 	createEditorWindowWrapper();
 }
 
@@ -104,21 +135,49 @@ function isEditorWindow(window: BrowserWindow) {
 function sendEditorMenuAction(
 	channel: "menu-load-project" | "menu-save-project" | "menu-save-project-as",
 ) {
-	let targetWindow = BrowserWindow.getFocusedWindow() ?? mainWindow;
-
+	let targetWindow: BrowserWindow | null = BrowserWindow.getFocusedWindow();
 	if (!targetWindow || targetWindow.isDestroyed() || !isEditorWindow(targetWindow)) {
-		createEditorWindowWrapper();
-		targetWindow = mainWindow;
-		if (!targetWindow || targetWindow.isDestroyed()) return;
+		targetWindow = getFirstEditorWindow();
+	}
 
-		targetWindow.webContents.once("did-finish-load", () => {
-			if (!targetWindow || targetWindow.isDestroyed()) return;
-			targetWindow.webContents.send(channel);
+	if (!targetWindow) {
+		// No editor open at all — spawn one and forward the action once it loads
+		const newWin = createEditorWindowWrapper();
+		if (!newWin) return;
+		newWin.webContents.once("did-finish-load", () => {
+			if (!newWin.isDestroyed()) newWin.webContents.send(channel);
 		});
 		return;
 	}
 
 	targetWindow.webContents.send(channel);
+}
+
+/** Build a list of menu items, one per open editor window, that focus
+ *  that window when clicked. Lets the user jump between windows from
+ *  the Window menu without alt-tabbing. */
+function buildOpenWindowMenuItems(): Electron.MenuItemConstructorOptions[] {
+	const items: Electron.MenuItemConstructorOptions[] = [];
+	let index = 1;
+	for (const win of editorWindows) {
+		if (win.isDestroyed()) continue;
+		const title = win.getTitle() || `Window ${index}`;
+		items.push({
+			label: `${index}. ${title}`,
+			click: () => {
+				if (!win.isDestroyed()) {
+					if (win.isMinimized()) win.restore();
+					win.show();
+					win.focus();
+				}
+			},
+		});
+		index++;
+	}
+	if (items.length === 0) {
+		items.push({ label: "(no editor windows)", enabled: false });
+	}
+	return items;
 }
 
 function setupApplicationMenu() {
@@ -147,31 +206,45 @@ function setupApplicationMenu() {
 			label: "File",
 			submenu: [
 				{
+					label: "New Window",
+					accelerator: "CmdOrCtrl+Shift+T",
+					click: () => {
+						createEditorWindowWrapper();
+					},
+				},
+				{
+					label: "Open Window for Recording…",
+					click: () => {
+						// Forward to the focused editor as if it had called the IPC.
+						// The renderer side fires the actual open-window-for-recording
+						// invoke, which spawns the new window and pre-targets the picker.
+						const target = getFocusedEditorWindow();
+						if (target) target.webContents.send("menu-open-window-for-recording");
+					},
+				},
+				{ type: "separator" },
+				{
 					label: "New Recording",
 					accelerator: "CmdOrCtrl+N",
 					click: () => {
-						if (mainWindow && !mainWindow.isDestroyed()) {
-							mainWindow.webContents.send("menu-new-recording");
-						}
+						const target = getFocusedEditorWindow();
+						if (target) target.webContents.send("menu-new-recording");
 					},
 				},
 				{
 					label: "Create Video",
 					accelerator: "CmdOrCtrl+Shift+N",
 					click: () => {
-						if (mainWindow && !mainWindow.isDestroyed()) {
-							mainWindow.webContents.send("menu-create-video");
-						}
+						const target = getFocusedEditorWindow();
+						if (target) target.webContents.send("menu-create-video");
 					},
 				},
 				{ type: "separator" },
 				{
 					label: "Open Video File…",
 					click: () => {
-						const targetWindow = BrowserWindow.getFocusedWindow() ?? mainWindow;
-						if (targetWindow && !targetWindow.isDestroyed()) {
-							targetWindow.webContents.send("menu-open-video");
-						}
+						const target = getFocusedEditorWindow();
+						if (target) target.webContents.send("menu-open-video");
 					},
 				},
 				{
@@ -182,10 +255,8 @@ function setupApplicationMenu() {
 				{
 					label: "Recent Projects…",
 					click: () => {
-						const targetWindow = BrowserWindow.getFocusedWindow() ?? mainWindow;
-						if (targetWindow && !targetWindow.isDestroyed()) {
-							targetWindow.webContents.send("menu-recent-projects");
-						}
+						const target = getFocusedEditorWindow();
+						if (target) target.webContents.send("menu-recent-projects");
 					},
 				},
 				{ type: "separator" },
@@ -230,9 +301,26 @@ function setupApplicationMenu() {
 		},
 		{
 			label: "Window",
-			submenu: isMac
-				? [{ role: "minimize" }, { role: "zoom" }, { type: "separator" }, { role: "front" }]
-				: [{ role: "minimize" }, { role: "close" }],
+			submenu: [
+				{
+					label: "New Window",
+					accelerator: "CmdOrCtrl+Shift+T",
+					click: () => {
+						createEditorWindowWrapper();
+					},
+				},
+				{ type: "separator" as const },
+				...(isMac
+					? ([
+							{ role: "minimize" },
+							{ role: "zoom" },
+							{ type: "separator" },
+							{ role: "front" },
+						] as Electron.MenuItemConstructorOptions[])
+					: ([{ role: "minimize" }, { role: "close" }] as Electron.MenuItemConstructorOptions[])),
+				{ type: "separator" as const },
+				...buildOpenWindowMenuItems(),
+			],
 		},
 		{
 			label: "Help",
@@ -300,6 +388,64 @@ function getTrayIcon(filename: string) {
 		});
 }
 
+/**
+ * Restart / reload the app.
+ *
+ * Behavior depends on environment:
+ * - **Production**: full app restart via `app.relaunch() + app.exit()`.
+ *   Picks up everything (main, preload, renderer).
+ * - **Dev**: hard-reload the renderer only. A true relaunch is impossible
+ *   in dev because vite-plugin-electron kills the Vite dev server when
+ *   Electron exits, and the new Electron process has nothing to connect
+ *   to (black screen). Instead we reload the renderer (which picks up
+ *   the latest pro-bundle.js + Vite HMR) and tell the user how to
+ *   restart main process changes.
+ *
+ * If the editor has unsaved changes, prompts the user first.
+ */
+function restartApp() {
+	const isDev = !app.isPackaged;
+
+	if (isDev) {
+		// Dev mode: just reload every editor's renderer. Picks up:
+		//   - Latest pro-bundle.js (via studio-pro/build.mjs auto-sync)
+		//   - Vite HMR for renderer source
+		// Does NOT pick up:
+		//   - Main process / preload / IPC handler changes
+		//     → vite-plugin-electron auto-restarts Electron when those
+		//       files change on disk, no manual action needed
+		//     → Or quit fully (File → Quit) and re-run `npm run dev`
+		for (const win of editorWindows) {
+			if (!win.isDestroyed()) win.webContents.reloadIgnoringCache();
+		}
+		console.log(
+			"[Tray] Dev mode reload — renderer refreshed. Main process unchanged. " +
+				"Save a main process file to trigger auto-restart, or quit fully to relaunch.",
+		);
+		return;
+	}
+
+	// Production: full app relaunch
+	if (anyEditorHasUnsavedChanges()) {
+		const target = getFocusedEditorWindow();
+		if (target) {
+			const choice = dialog.showMessageBoxSync(target, {
+				type: "warning",
+				buttons: ["Restart Anyway", "Cancel"],
+				defaultId: 1,
+				cancelId: 1,
+				title: "Restart Coherence Studio",
+				message: "You have unsaved changes that will be lost.",
+				detail: "Restart and discard changes?",
+			});
+			if (choice !== 0) return;
+		}
+	}
+	isForceClosing = true;
+	app.relaunch();
+	app.exit(0);
+}
+
 function updateTrayMenu(recording: boolean = false) {
 	if (!tray) return;
 	const trayIcon = recording ? recordingTrayIcon : defaultTrayIcon;
@@ -309,19 +455,41 @@ function updateTrayMenu(recording: boolean = false) {
 				{
 					label: mainT("common", "actions.stopRecording") || "Stop Recording",
 					click: () => {
-						if (mainWindow && !mainWindow.isDestroyed()) {
-							mainWindow.webContents.send("stop-recording-from-tray");
+						// Tell every editor window to stop — only the one that's
+						// actually recording will respond. Without this, the user
+						// could be in window B and not get the stop event because
+						// recording is owned by window A.
+						for (const win of editorWindows) {
+							if (!win.isDestroyed()) {
+								win.webContents.send("stop-recording-from-tray");
+							}
 						}
 					},
 				},
 			]
 		: [
 				{
+					label: "New Window",
+					click: () => {
+						createEditorWindowWrapper();
+					},
+				},
+				{
 					label: mainT("common", "actions.open") || "Open",
 					click: () => {
 						showMainWindow();
 					},
 				},
+				{
+					// In dev, label as "Reload Window" since true restart breaks
+					// vite-plugin-electron's parent process. In prod, "Restart" does
+					// a real app.relaunch() + app.exit().
+					label: !app.isPackaged ? "Reload Window" : "Restart",
+					click: () => {
+						restartApp();
+					},
+				},
+				{ type: "separator" as const },
 				{
 					label: mainT("common", "actions.quit") || "Quit",
 					click: () => {
@@ -334,12 +502,103 @@ function updateTrayMenu(recording: boolean = false) {
 	tray.setContextMenu(Menu.buildFromTemplate(menuTemplate));
 }
 
-let editorHasUnsavedChanges = false;
+// Per-window unsaved-changes tracking. Keyed by webContents.id so each
+// editor window's dirty state is independent. The renderer sends an IPC
+// event whenever its dirty bit changes; we look up the sender to know
+// which window the event came from.
+const editorUnsavedChanges = new Map<number, boolean>();
 let isForceClosing = false;
 
-ipcMain.on("set-has-unsaved-changes", (_, hasChanges: boolean) => {
-	editorHasUnsavedChanges = hasChanges;
+function anyEditorHasUnsavedChanges(): boolean {
+	for (const [id, dirty] of editorUnsavedChanges) {
+		if (dirty) {
+			// Verify the window is still alive — stale entries shouldn't count
+			const win = BrowserWindow.fromId(id);
+			if (win && !win.isDestroyed()) return true;
+		}
+	}
+	return false;
+}
+
+ipcMain.on("set-has-unsaved-changes", (event, hasChanges: boolean) => {
+	const win = BrowserWindow.fromWebContents(event.sender);
+	if (!win) return;
+	editorUnsavedChanges.set(win.id, hasChanges);
 });
+
+// Per-window title update from the renderer. The renderer dispatches this
+// when a project loads or saves so the OS title bar reflects the project
+// name (e.g. "Coherence Studio — getcoherence.io"). Multi-window: keys off
+// event.sender so each window updates only its own title.
+ipcMain.on("set-window-title", (event, title: string) => {
+	const win = BrowserWindow.fromWebContents(event.sender);
+	if (!win || win.isDestroyed()) return;
+	const safe = (title || "").trim();
+	const finalTitle = safe ? `Coherence Studio — ${safe}` : "Coherence Studio";
+	win.setTitle(finalTitle);
+	// Refresh the Window menu so the new title shows up in the dropdown.
+	setupApplicationMenu();
+});
+
+// Notify a target editor window that it's being recorded by another window.
+// The renderer toggles a `recording-target` body class so dev-only UI
+// (toasts, popovers, debug overlays) hides during capture for clean output.
+// Sent by the renderer when a recording starts on a `window:` source ID.
+ipcMain.handle("set-capture-target-mode", (_event, sourceId: string, recording: boolean) => {
+	// Look up the editor window whose getMediaSourceId() matches sourceId.
+	// Only fires for window-targeting captures — screen captures don't
+	// trigger clean-capture mode (the user is recording the whole desktop).
+	for (const win of editorWindows) {
+		if (win.isDestroyed()) continue;
+		if (win.getMediaSourceId() === sourceId) {
+			win.webContents.send("capture-mode-changed", { recording });
+			return { success: true, targetId: win.id };
+		}
+	}
+	return { success: false, error: "Source ID does not match any editor window" };
+});
+
+// One-click "Open Window for Recording" — creates a fresh editor window
+// (the target) and tells the requesting window to open its source picker
+// pre-targeted at the new window. Used by the dogfood loop: Window A
+// records Window B running the AI Generator.
+ipcMain.handle("open-window-for-recording", async (event) => {
+	const requester = BrowserWindow.fromWebContents(event.sender);
+	if (!requester || requester.isDestroyed()) {
+		return { success: false, error: "No requesting window" };
+	}
+	const target = createEditorWindowWrapper();
+
+	// Wait for the new window to finish loading so its native handle is
+	// stable and getMediaSourceId() returns the right value.
+	if (!target.webContents.isLoading()) {
+		// Already loaded — fire immediately
+		fireOpenSourcePicker();
+	} else {
+		target.webContents.once("did-finish-load", fireOpenSourcePicker);
+	}
+
+	function fireOpenSourcePicker() {
+		if (!requester || requester.isDestroyed() || target.isDestroyed()) return;
+		const targetSourceId = target.getMediaSourceId();
+		// Position the new window so it's not stacked on the requester
+		offsetWindow(target, requester);
+		requester.webContents.send("open-source-picker", {
+			preferredSourceId: targetSourceId,
+			targetWindowTitle: target.getTitle(),
+		});
+	}
+
+	return { success: true, targetWindowId: target.id };
+});
+
+/** Offset a newly-created window so it doesn't sit directly on top of an
+ *  existing one. Cascades by ~40px down-and-right from the reference. */
+function offsetWindow(target: BrowserWindow, reference: BrowserWindow) {
+	if (target.isDestroyed() || reference.isDestroyed()) return;
+	const [refX, refY] = reference.getPosition();
+	target.setPosition(refX + 40, refY + 40, true);
+}
 
 function forceCloseEditorWindow(windowToClose: BrowserWindow | null) {
 	if (!windowToClose || windowToClose.isDestroyed()) return;
@@ -356,22 +615,22 @@ function forceCloseEditorWindow(windowToClose: BrowserWindow | null) {
 	});
 }
 
-function createEditorWindowWrapper() {
-	if (mainWindow && !mainWindow.isDestroyed()) {
-		isForceClosing = true;
-		mainWindow.close();
-		isForceClosing = false;
-	}
-	mainWindow = null;
-	mainWindow = createEditorWindow();
-	editorHasUnsavedChanges = false;
+/** Create a new editor window. Multi-window safe — does NOT close any
+ *  existing windows. Returns the new window so callers can wait for
+ *  did-finish-load if they need to forward an action to it. */
+function createEditorWindowWrapper(): BrowserWindow {
+	const win = createEditorWindow();
+	editorWindows.add(win);
+	editorUnsavedChanges.set(win.id, false);
 
-	mainWindow.on("close", (event) => {
-		if (isForceClosing || !editorHasUnsavedChanges) return;
+	win.on("close", (event) => {
+		if (isForceClosing) return;
+		const isDirty = editorUnsavedChanges.get(win.id) ?? false;
+		if (!isDirty) return;
 
 		event.preventDefault();
 
-		const choice = dialog.showMessageBoxSync(mainWindow!, {
+		const choice = dialog.showMessageBoxSync(win, {
 			type: "warning",
 			buttons: [
 				mainT("dialogs", "unsavedChanges.saveAndClose"),
@@ -385,26 +644,32 @@ function createEditorWindowWrapper() {
 			detail: mainT("dialogs", "unsavedChanges.detail"),
 		});
 
-		const windowToClose = mainWindow;
-		if (!windowToClose || windowToClose.isDestroyed()) return;
+		if (win.isDestroyed()) return;
 
 		if (choice === 0) {
 			// Save & Close — tell renderer to save, then close
-			windowToClose.webContents.send("request-save-before-close");
+			win.webContents.send("request-save-before-close");
 			ipcMain.once("save-before-close-done", (_, shouldClose: boolean) => {
 				if (!shouldClose) return;
-				forceCloseEditorWindow(windowToClose);
+				forceCloseEditorWindow(win);
 			});
 		} else if (choice === 1) {
 			// Discard & Close
-			forceCloseEditorWindow(windowToClose);
+			forceCloseEditorWindow(win);
 		}
 		// choice === 2: Cancel — do nothing, window stays open
 	});
 
-	mainWindow.on("closed", () => {
-		mainWindow = null;
+	win.on("closed", () => {
+		editorWindows.delete(win);
+		editorUnsavedChanges.delete(win.id);
+		// Refresh the Window menu so the closed window disappears from the list
+		setupApplicationMenu();
 	});
+
+	// Refresh the Window menu so the new window appears in the list
+	setupApplicationMenu();
+	return win;
 }
 
 function createSourceSelectorWindowWrapper() {
@@ -452,8 +717,8 @@ if (!gotTheLock) {
 		if (deepLink) {
 			handleProAuthDeepLink(deepLink);
 		}
-		// Focus the existing window
-		const win = BrowserWindow.getAllWindows()[0];
+		// Focus an existing editor window — preference order: focused, first
+		const win = getFocusedEditorWindow() ?? getFirstEditorWindow();
 		if (win) {
 			if (win.isMinimized()) win.restore();
 			win.focus();
@@ -477,11 +742,108 @@ protocol.registerSchemesAsPrivileged([
 
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
-	// Handle studio:// protocol — serves local files securely
-	protocol.handle("studio", (request) => {
-		// studio://file/C:/path/to/file.webm → file:///C:/path/to/file.webm
-		const url = request.url.replace("studio://file/", "file:///");
-		return net.fetch(url);
+	// Handle studio:// protocol — serves local files securely with Range
+	// support so Remotion can seek into long media (TTS narration, music,
+	// recordings). Without 206 Partial Content, audio elements stutter and
+	// stop because they can't jump to a specific position.
+	protocol.handle("studio", async (request) => {
+		// studio://file/C:/path/to/file.webm → C:/path/to/file.webm
+		const filePath = decodeURIComponent(request.url.replace("studio://file/", ""));
+
+		const mimeFor = (p: string): string => {
+			const ext = path.extname(p).toLowerCase();
+			switch (ext) {
+				case ".mp3":
+					return "audio/mpeg";
+				case ".wav":
+					return "audio/wav";
+				case ".ogg":
+					return "audio/ogg";
+				case ".m4a":
+					return "audio/mp4";
+				case ".webm":
+					return "video/webm";
+				case ".mp4":
+					return "video/mp4";
+				case ".mov":
+					return "video/quicktime";
+				case ".png":
+					return "image/png";
+				case ".jpg":
+				case ".jpeg":
+					return "image/jpeg";
+				case ".gif":
+					return "image/gif";
+				case ".webp":
+					return "image/webp";
+				case ".json":
+					return "application/json";
+				default:
+					return "application/octet-stream";
+			}
+		};
+
+		try {
+			const stat = await fs.stat(filePath);
+			const fileSize = stat.size;
+			const mimeType = mimeFor(filePath);
+			const rangeHeader = request.headers.get("range");
+
+			if (rangeHeader) {
+				// "bytes=start-end" — either side may be omitted
+				const match = /bytes=(\d*)-(\d*)/.exec(rangeHeader);
+				if (match) {
+					const start = match[1] ? parseInt(match[1], 10) : 0;
+					const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
+					if (
+						Number.isNaN(start) ||
+						Number.isNaN(end) ||
+						start < 0 ||
+						end >= fileSize ||
+						start > end
+					) {
+						return new Response("Invalid range", {
+							status: 416,
+							headers: { "Content-Range": `bytes */${fileSize}` },
+						});
+					}
+					const chunkSize = end - start + 1;
+					const handle = await fs.open(filePath, "r");
+					try {
+						const buffer = Buffer.alloc(chunkSize);
+						await handle.read(buffer, 0, chunkSize, start);
+						return new Response(buffer, {
+							status: 206,
+							headers: {
+								"Content-Type": mimeType,
+								"Content-Length": String(chunkSize),
+								"Content-Range": `bytes ${start}-${end}/${fileSize}`,
+								"Accept-Ranges": "bytes",
+								"Cache-Control": "no-cache",
+							},
+						});
+					} finally {
+						await handle.close();
+					}
+				}
+			}
+
+			// No Range header — return the full file but advertise byte ranges
+			// so the next request can seek.
+			const data = await fs.readFile(filePath);
+			return new Response(data, {
+				status: 200,
+				headers: {
+					"Content-Type": mimeType,
+					"Content-Length": String(fileSize),
+					"Accept-Ranges": "bytes",
+					"Cache-Control": "no-cache",
+				},
+			});
+		} catch (err) {
+			console.error("[studio://] failed to serve", filePath, err);
+			return new Response("Not found", { status: 404 });
+		}
 	});
 
 	// Allow microphone/media permission checks
@@ -519,11 +881,14 @@ app.whenReady().then(async () => {
 	registerCaptureHandlers();
 
 	registerAIHandlers();
-	registerDemoHandlers(() => mainWindow);
+	registerDemoHandlers(getFocusedEditorWindow);
 	registerIpcHandlers(
-		createEditorWindowWrapper,
+		// createEditorWindowWrapper now returns the new window (multi-window safe)
+		() => {
+			createEditorWindowWrapper();
+		},
 		createSourceSelectorWindowWrapper,
-		() => mainWindow,
+		getFocusedEditorWindow,
 		() => sourceSelectorWindow,
 		(recording: boolean, sourceName: string) => {
 			selectedSourceName = sourceName;
@@ -535,14 +900,15 @@ app.whenReady().then(async () => {
 		},
 	);
 	registerSettingsHandlers();
-	registerExportHandlers(() => mainWindow);
-	registerYouTubeHandlers(() => mainWindow);
+	registerStudioCacheHandlers();
+	registerExportHandlers(getFocusedEditorWindow);
+	registerYouTubeHandlers(getFocusedEditorWindow);
 	registerFfmpegHandlers();
 	registerUpdaterHandlers();
 	registerProjectHandlers();
 
 	// Register Whisper / caption IPC handlers
-	registerWhisperHandlers(() => mainWindow);
+	registerWhisperHandlers(getFocusedEditorWindow);
 
 	createWindow();
 });

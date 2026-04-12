@@ -131,6 +131,12 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 				compositionWidth={1920}
 				compositionHeight={1080}
 				fps={fps}
+				// Default is 5 simultaneous Audio tags. Narrated videos can mount
+				// up to ~30 (one per scene narration + per SFX cue + 1 music track),
+				// and Remotion pre-mounts all of them at scene seams. Bump well
+				// above the worst case so the Player doesn't crash with
+				// "Tried to simultaneously mount N <Html5Audio /> tags".
+				numberOfSharedAudioTags={40}
 				style={{
 					width: "100%",
 					maxHeight: "100%",

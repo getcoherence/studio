@@ -35,8 +35,67 @@ type SelectedSource = {
 
 let selectedSource: SelectedSource | null = null;
 let recordingBarWindow: BrowserWindow | null = null;
-let currentProjectPath: string | null = null;
-let currentRecordingSession: RecordingSession | null = null;
+/** Owning editor window for the current recording bar — set when the bar
+ *  is created so stop-recording fires back to the right editor when the
+ *  user has multiple windows open. */
+let recordingBarOwnerId: number | null = null;
+
+// ── Per-window state ─────────────────────────────────────────────────
+//
+// Each editor window has its own "current project" and "current recording
+// session" — without this, opening Window B and loading a project there
+// would clobber Window A's project state and break Save (Cmd+S).
+//
+// Keyed by webContents.id. Cleaned up automatically when a window closes
+// (via the closed listener registered in ensureWindowCleanup below).
+const currentProjectPathByWindow = new Map<number, string | null>();
+const currentRecordingSessionByWindow = new Map<number, RecordingSession | null>();
+const cleanupListenersAttached = new Set<number>();
+
+/** Returns the editor window that fired this IPC event, or null if the
+ *  event came from a destroyed window. Use this in every handler that
+ *  reads/writes per-window state. */
+function getSenderWindow(event: Electron.IpcMainInvokeEvent): BrowserWindow | null {
+	const win = BrowserWindow.fromWebContents(event.sender);
+	if (!win || win.isDestroyed()) return null;
+	ensureWindowCleanup(win);
+	return win;
+}
+
+/** Attach a one-time `closed` listener to a window so its per-window state
+ *  is removed from the maps when it goes away. Idempotent — safe to call
+ *  every IPC turn. */
+function ensureWindowCleanup(win: BrowserWindow) {
+	if (cleanupListenersAttached.has(win.id)) return;
+	cleanupListenersAttached.add(win.id);
+	win.once("closed", () => {
+		currentProjectPathByWindow.delete(win.id);
+		currentRecordingSessionByWindow.delete(win.id);
+		cleanupListenersAttached.delete(win.id);
+		// If the recording bar was owned by this editor, drop the link.
+		if (recordingBarOwnerId === win.id) recordingBarOwnerId = null;
+	});
+}
+
+function getProjectPath(win: BrowserWindow | null): string | null {
+	if (!win) return null;
+	return currentProjectPathByWindow.get(win.id) ?? null;
+}
+
+function setProjectPath(win: BrowserWindow | null, p: string | null): void {
+	if (!win) return;
+	currentProjectPathByWindow.set(win.id, p);
+}
+
+function getRecordingSession(win: BrowserWindow | null): RecordingSession | null {
+	if (!win) return null;
+	return currentRecordingSessionByWindow.get(win.id) ?? null;
+}
+
+function setRecordingSession(win: BrowserWindow | null, s: RecordingSession | null): void {
+	if (!win) return;
+	currentRecordingSessionByWindow.set(win.id, s);
+}
 
 function normalizePath(filePath: string) {
 	return path.resolve(filePath);
@@ -63,15 +122,17 @@ function normalizeVideoSourcePath(videoPath?: string | null): string | null {
 	return trimmed;
 }
 
-function isTrustedProjectPath(filePath?: string | null) {
-	if (!filePath || !currentProjectPath) {
-		return false;
-	}
-	return normalizePath(filePath) === normalizePath(currentProjectPath);
+function isTrustedProjectPath(win: BrowserWindow | null, filePath?: string | null) {
+	const known = getProjectPath(win);
+	if (!filePath || !known) return false;
+	return normalizePath(filePath) === normalizePath(known);
 }
 
-function setCurrentRecordingSessionState(session: RecordingSession | null) {
-	currentRecordingSession = session;
+function setCurrentRecordingSessionState(
+	win: BrowserWindow | null,
+	session: RecordingSession | null,
+) {
+	setRecordingSession(win, session);
 }
 
 function getSessionManifestPathForVideo(videoPath: string) {
@@ -121,7 +182,10 @@ async function loadRecordedSessionForVideoPath(
 	}
 }
 
-async function storeRecordedSessionFiles(payload: StoreRecordedSessionInput) {
+async function storeRecordedSessionFiles(
+	win: BrowserWindow | null,
+	payload: StoreRecordedSessionInput,
+) {
 	const createdAt =
 		typeof payload.createdAt === "number" && Number.isFinite(payload.createdAt)
 			? payload.createdAt
@@ -138,8 +202,8 @@ async function storeRecordedSessionFiles(payload: StoreRecordedSessionInput) {
 	const session: RecordingSession = webcamVideoPath
 		? { screenVideoPath, webcamVideoPath, createdAt }
 		: { screenVideoPath, createdAt };
-	setCurrentRecordingSessionState(session);
-	currentProjectPath = null;
+	setCurrentRecordingSessionState(win, session);
+	setProjectPath(win, null);
 
 	const telemetryPath = `${screenVideoPath}.cursor.json`;
 	if (pendingCursorSamples.length > 0) {
@@ -226,15 +290,27 @@ export function registerIpcHandlers(
 	getSourceSelectorWindow: () => BrowserWindow | null,
 	onRecordingStateChange?: (recording: boolean, sourceName: string) => void,
 ) {
-	ipcMain.handle("get-sources", async (_, opts) => {
+	ipcMain.handle("get-sources", async (event, opts) => {
 		const sources = await desktopCapturer.getSources(opts);
-		return sources.map((source) => ({
-			id: source.id,
-			name: source.name,
-			display_id: source.display_id,
-			thumbnail: source.thumbnail ? source.thumbnail.toDataURL() : null,
-			appIcon: source.appIcon ? source.appIcon.toDataURL() : null,
-		}));
+
+		// Exclude the requesting window from its own source list. Without
+		// this, when the user is in window A and wants to record window B
+		// (the dogfood "record the AI generator" use case), window A would
+		// show up in its own picker — clicking it creates an infinite-mirror
+		// effect that pegs the GPU. Use BrowserWindow.getMediaSourceId() to
+		// get the same `window:N:M` identifier the OS gave to desktopCapturer.
+		const senderWindow = BrowserWindow.fromWebContents(event.sender);
+		const excludeId = senderWindow ? senderWindow.getMediaSourceId() : null;
+
+		return sources
+			.filter((source) => !excludeId || source.id !== excludeId)
+			.map((source) => ({
+				id: source.id,
+				name: source.name,
+				display_id: source.display_id,
+				thumbnail: source.thumbnail ? source.thumbnail.toDataURL() : null,
+				appIcon: source.appIcon ? source.appIcon.toDataURL() : null,
+			}));
 	});
 
 	ipcMain.handle("select-source", (_, source: SelectedSource) => {
@@ -282,35 +358,51 @@ export function registerIpcHandlers(
 		}
 	});
 
+	/** Find the editor window that owns the current recording bar (set by
+	 *  show-recording-bar). Falls back to the focused window if the owner
+	 *  link was lost. */
+	function getRecordingBarOwner(): BrowserWindow | null {
+		if (recordingBarOwnerId !== null) {
+			const owner = BrowserWindow.fromId(recordingBarOwnerId);
+			if (owner && !owner.isDestroyed()) return owner;
+			recordingBarOwnerId = null;
+		}
+		return getMainWindow();
+	}
+
 	ipcMain.handle("switch-to-editor", () => {
 		// Close recording bar if open
 		if (recordingBarWindow && !recordingBarWindow.isDestroyed()) {
 			recordingBarWindow.close();
 			recordingBarWindow = null;
 		}
-		// Restore/show/focus the main editor window
-		const mainWin = getMainWindow();
-		if (mainWin && !mainWin.isDestroyed()) {
-			if (mainWin.isMinimized()) {
-				mainWin.restore();
-			}
-			mainWin.show();
-			mainWin.focus();
+		// Restore/show/focus the OWNING editor window (not just any focused
+		// one) so the right window comes back when the user has multiples.
+		const owner = getRecordingBarOwner();
+		if (owner && !owner.isDestroyed()) {
+			if (owner.isMinimized()) owner.restore();
+			owner.show();
+			owner.focus();
 		}
+		recordingBarOwnerId = null;
 	});
 
-	ipcMain.handle("show-recording-bar", () => {
+	ipcMain.handle("show-recording-bar", (event) => {
 		if (recordingBarWindow && !recordingBarWindow.isDestroyed()) {
 			recordingBarWindow.close();
 		}
 		recordingBarWindow = createRecordingBarWindow();
+		// Remember which editor opened the bar so stop-recording fires back
+		// to the right window in multi-window setups.
+		const owner = getSenderWindow(event);
+		recordingBarOwnerId = owner ? owner.id : null;
 		recordingBarWindow.on("closed", () => {
 			recordingBarWindow = null;
+			recordingBarOwnerId = null;
 		});
-		// Minimize the editor
-		const mainWin = getMainWindow();
-		if (mainWin && !mainWin.isDestroyed()) {
-			mainWin.minimize();
+		// Minimize the OWNING editor (not all of them)
+		if (owner && !owner.isDestroyed()) {
+			owner.minimize();
 		}
 		return { success: true };
 	});
@@ -320,22 +412,23 @@ export function registerIpcHandlers(
 			recordingBarWindow.close();
 			recordingBarWindow = null;
 		}
+		recordingBarOwnerId = null;
 		return { success: true };
 	});
 
 	ipcMain.handle("stop-recording-from-bar", () => {
-		const mainWin = getMainWindow();
-		if (mainWin && !mainWin.isDestroyed()) {
-			mainWin.webContents.send("stop-recording-from-bar");
+		// Fire ONLY to the owning editor — if we sent to all editors, every
+		// window would think it should stop recording (and only one is).
+		const owner = getRecordingBarOwner();
+		if (owner && !owner.isDestroyed()) {
+			owner.webContents.send("stop-recording-from-bar");
 		}
 		return { success: true };
 	});
 
-	ipcMain.handle("minimize-editor", () => {
-		const mainWin = getMainWindow();
-		if (mainWin && !mainWin.isDestroyed()) {
-			mainWin.minimize();
-		}
+	ipcMain.handle("minimize-editor", (event) => {
+		const win = getSenderWindow(event);
+		if (win && !win.isDestroyed()) win.minimize();
 		return { success: true };
 	});
 
@@ -345,20 +438,19 @@ export function registerIpcHandlers(
 			recordingBarWindow.close();
 			recordingBarWindow = null;
 		}
-		const mainWin = getMainWindow();
-		if (mainWin && !mainWin.isDestroyed()) {
-			if (mainWin.isMinimized()) {
-				mainWin.restore();
-			}
-			mainWin.show();
-			mainWin.focus();
+		const owner = getRecordingBarOwner();
+		if (owner && !owner.isDestroyed()) {
+			if (owner.isMinimized()) owner.restore();
+			owner.show();
+			owner.focus();
 		}
+		recordingBarOwnerId = null;
 		return { success: true };
 	});
 
-	ipcMain.handle("store-recorded-session", async (_, payload: StoreRecordedSessionInput) => {
+	ipcMain.handle("store-recorded-session", async (event, payload: StoreRecordedSessionInput) => {
 		try {
-			return await storeRecordedSessionFiles(payload);
+			return await storeRecordedSessionFiles(getSenderWindow(event), payload);
 		} catch (error) {
 			console.error("Failed to store recording session:", error);
 			return {
@@ -369,26 +461,30 @@ export function registerIpcHandlers(
 		}
 	});
 
-	ipcMain.handle("store-recorded-video", async (_, videoData: ArrayBuffer, fileName: string) => {
-		try {
-			return await storeRecordedSessionFiles({
-				screen: { videoData, fileName },
-				createdAt: Date.now(),
-			});
-		} catch (error) {
-			console.error("Failed to store recorded video:", error);
-			return {
-				success: false,
-				message: "Failed to store recorded video",
-				error: String(error),
-			};
-		}
-	});
+	ipcMain.handle(
+		"store-recorded-video",
+		async (event, videoData: ArrayBuffer, fileName: string) => {
+			try {
+				return await storeRecordedSessionFiles(getSenderWindow(event), {
+					screen: { videoData, fileName },
+					createdAt: Date.now(),
+				});
+			} catch (error) {
+				console.error("Failed to store recorded video:", error);
+				return {
+					success: false,
+					message: "Failed to store recorded video",
+					error: String(error),
+				};
+			}
+		},
+	);
 
-	ipcMain.handle("get-recorded-video-path", async () => {
+	ipcMain.handle("get-recorded-video-path", async (event) => {
 		try {
-			if (currentRecordingSession?.screenVideoPath) {
-				return { success: true, path: currentRecordingSession.screenVideoPath };
+			const session = getRecordingSession(getSenderWindow(event));
+			if (session?.screenVideoPath) {
+				return { success: true, path: session.screenVideoPath };
 			}
 
 			const files = await fs.readdir(RECORDINGS_DIR);
@@ -455,10 +551,9 @@ export function registerIpcHandlers(
 		}
 	});
 
-	ipcMain.handle("get-cursor-telemetry", async (_, videoPath?: string) => {
-		const targetVideoPath = normalizeVideoSourcePath(
-			videoPath ?? currentRecordingSession?.screenVideoPath,
-		);
+	ipcMain.handle("get-cursor-telemetry", async (event, videoPath?: string) => {
+		const session = getRecordingSession(getSenderWindow(event));
+		const targetVideoPath = normalizeVideoSourcePath(videoPath ?? session?.screenVideoPath);
 		if (!targetVideoPath) {
 			return { success: true, samples: [] };
 		}
@@ -632,7 +727,7 @@ export function registerIpcHandlers(
 		}
 	});
 
-	ipcMain.handle("open-video-file-picker", async () => {
+	ipcMain.handle("open-video-file-picker", async (event) => {
 		try {
 			const result = await dialog.showOpenDialog({
 				title: mainT("dialogs", "fileDialogs.selectVideo"),
@@ -651,7 +746,7 @@ export function registerIpcHandlers(
 				return { success: false, canceled: true };
 			}
 
-			currentProjectPath = null;
+			setProjectPath(getSenderWindow(event), null);
 			return {
 				success: true,
 				path: result.filePaths[0],
@@ -692,9 +787,20 @@ export function registerIpcHandlers(
 
 	ipcMain.handle(
 		"save-project-file",
-		async (_, projectData: unknown, suggestedName?: string, existingProjectPath?: string) => {
+		async (event, projectData: unknown, suggestedName?: string, existingProjectPath?: string) => {
 			try {
-				const trustedExistingProjectPath = isTrustedProjectPath(existingProjectPath)
+				const win = getSenderWindow(event);
+				// Extract metadata from the project payload (if it's an AI-generated SceneProject)
+				const projectMetadata =
+					projectData && typeof projectData === "object" && "metadata" in projectData
+						? (
+								projectData as {
+									metadata?: import("../../src/lib/scene-renderer/types").GenerationMetadata;
+								}
+							).metadata
+						: undefined;
+
+				const trustedExistingProjectPath = isTrustedProjectPath(win, existingProjectPath)
 					? existingProjectPath
 					: null;
 
@@ -704,8 +810,8 @@ export function registerIpcHandlers(
 						JSON.stringify(projectData, null, 2),
 						"utf-8",
 					);
-					currentProjectPath = trustedExistingProjectPath;
-					addRecentProject(trustedExistingProjectPath).catch(() => {
+					setProjectPath(win, trustedExistingProjectPath);
+					addRecentProject(trustedExistingProjectPath, projectMetadata).catch(() => {
 						/* fire-and-forget */
 					});
 					return {
@@ -742,8 +848,8 @@ export function registerIpcHandlers(
 				}
 
 				await fs.writeFile(result.filePath, JSON.stringify(projectData, null, 2), "utf-8");
-				currentProjectPath = result.filePath;
-				addRecentProject(result.filePath).catch(() => {
+				setProjectPath(win, result.filePath);
+				addRecentProject(result.filePath, projectMetadata).catch(() => {
 					/* fire-and-forget */
 				});
 
@@ -783,7 +889,7 @@ export function registerIpcHandlers(
 	});
 
 	// Silent auto-save — saves directly to recordings dir without dialog
-	ipcMain.handle("auto-save-project", async (_, projectData: unknown, fileName: string) => {
+	ipcMain.handle("auto-save-project", async (event, projectData: unknown, fileName: string) => {
 		try {
 			const safeName = fileName.replace(/[^a-zA-Z0-9-_. ]/g, "_");
 			const fullName = safeName.endsWith(`.${PROJECT_FILE_EXTENSION}`)
@@ -791,10 +897,20 @@ export function registerIpcHandlers(
 				: `${safeName}.${PROJECT_FILE_EXTENSION}`;
 			const filePath = path.join(RECORDINGS_DIR, fullName);
 
+			// Extract metadata if present so the recent projects browser can show it
+			const projectMetadata =
+				projectData && typeof projectData === "object" && "metadata" in projectData
+					? (
+							projectData as {
+								metadata?: import("../../src/lib/scene-renderer/types").GenerationMetadata;
+							}
+						).metadata
+					: undefined;
+
 			await fs.mkdir(RECORDINGS_DIR, { recursive: true });
 			await fs.writeFile(filePath, JSON.stringify(projectData, null, 2), "utf-8");
-			currentProjectPath = filePath;
-			addRecentProject(filePath).catch(() => {
+			setProjectPath(getSenderWindow(event), filePath);
+			addRecentProject(filePath, projectMetadata).catch(() => {
 				/* fire-and-forget */
 			});
 
@@ -805,8 +921,9 @@ export function registerIpcHandlers(
 		}
 	});
 
-	ipcMain.handle("load-project-file", async () => {
+	ipcMain.handle("load-project-file", async (event) => {
 		try {
+			const win = getSenderWindow(event);
 			const result = await dialog.showOpenDialog({
 				title: mainT("dialogs", "fileDialogs.openProject"),
 				defaultPath: RECORDINGS_DIR,
@@ -828,8 +945,17 @@ export function registerIpcHandlers(
 			const filePath = result.filePaths[0];
 			const content = await fs.readFile(filePath, "utf-8");
 			const project = JSON.parse(content);
-			currentProjectPath = filePath;
-			addRecentProject(filePath).catch(() => {
+			setProjectPath(win, filePath);
+			// Refresh recent-project metadata snapshot from the loaded file
+			const loadedMetadata =
+				project && typeof project === "object" && "metadata" in project
+					? (
+							project as {
+								metadata?: import("../../src/lib/scene-renderer/types").GenerationMetadata;
+							}
+						).metadata
+					: undefined;
+			addRecentProject(filePath, loadedMetadata).catch(() => {
 				/* fire-and-forget */
 			});
 			if (project && typeof project === "object") {
@@ -842,7 +968,7 @@ export function registerIpcHandlers(
 									normalizeVideoSourcePath(rawProject.videoPath) ?? rawProject.videoPath,
 							}
 						: null);
-				setCurrentRecordingSessionState(media ? { ...media, createdAt: Date.now() } : null);
+				setCurrentRecordingSessionState(win, media ? { ...media, createdAt: Date.now() } : null);
 			}
 
 			return {
@@ -860,13 +986,15 @@ export function registerIpcHandlers(
 		}
 	});
 
-	ipcMain.handle("load-current-project-file", async () => {
+	ipcMain.handle("load-current-project-file", async (event) => {
 		try {
-			if (!currentProjectPath) {
+			const win = getSenderWindow(event);
+			const projectPath = getProjectPath(win);
+			if (!projectPath) {
 				return { success: false, message: "No active project" };
 			}
 
-			const content = await fs.readFile(currentProjectPath, "utf-8");
+			const content = await fs.readFile(projectPath, "utf-8");
 			const project = JSON.parse(content);
 			if (project && typeof project === "object") {
 				const rawProject = project as { media?: unknown; videoPath?: unknown };
@@ -878,11 +1006,11 @@ export function registerIpcHandlers(
 									normalizeVideoSourcePath(rawProject.videoPath) ?? rawProject.videoPath,
 							}
 						: null);
-				setCurrentRecordingSessionState(media ? { ...media, createdAt: Date.now() } : null);
+				setCurrentRecordingSessionState(win, media ? { ...media, createdAt: Date.now() } : null);
 			}
 			return {
 				success: true,
-				path: currentProjectPath,
+				path: projectPath,
 				project,
 			};
 		} catch (error) {
@@ -894,38 +1022,52 @@ export function registerIpcHandlers(
 			};
 		}
 	});
-	ipcMain.handle("set-current-recording-session", (_, session: RecordingSession | null) => {
+	ipcMain.handle("set-current-recording-session", (event, session: RecordingSession | null) => {
+		const win = getSenderWindow(event);
 		const normalized = normalizeRecordingSession(session);
-		setCurrentRecordingSessionState(normalized);
-		currentProjectPath = null;
+		setCurrentRecordingSessionState(win, normalized);
+		setProjectPath(win, null);
 		return { success: true, session: normalized ?? undefined };
 	});
 
-	ipcMain.handle("get-current-recording-session", () => {
-		return currentRecordingSession
-			? { success: true, session: currentRecordingSession }
-			: { success: false };
+	ipcMain.handle("get-current-recording-session", (event) => {
+		const session = getRecordingSession(getSenderWindow(event));
+		return session ? { success: true, session } : { success: false };
 	});
 
-	ipcMain.handle("set-current-video-path", async (_, path: string) => {
+	ipcMain.handle("set-current-video-path", async (event, path: string) => {
+		const win = getSenderWindow(event);
 		const restoredSession = await loadRecordedSessionForVideoPath(path);
 		if (restoredSession) {
-			setCurrentRecordingSessionState(restoredSession);
+			setCurrentRecordingSessionState(win, restoredSession);
 		} else {
-			setCurrentRecordingSessionState({
+			setCurrentRecordingSessionState(win, {
 				screenVideoPath: normalizeVideoSourcePath(path) ?? path,
 				createdAt: Date.now(),
 			});
 		}
-		currentProjectPath = null;
+		setProjectPath(win, null);
 		return { success: true };
 	});
 
-	ipcMain.handle("load-project-by-path", async (_, filePath: string) => {
+	ipcMain.handle("load-project-by-path", async (event, filePath: string) => {
 		try {
+			const win = getSenderWindow(event);
 			const content = await fs.readFile(filePath, "utf-8");
 			const project = JSON.parse(content);
-			currentProjectPath = filePath;
+			setProjectPath(win, filePath);
+			// Refresh recent-project metadata snapshot from the loaded file
+			const loadedMetadata =
+				project && typeof project === "object" && "metadata" in project
+					? (
+							project as {
+								metadata?: import("../../src/lib/scene-renderer/types").GenerationMetadata;
+							}
+						).metadata
+					: undefined;
+			addRecentProject(filePath, loadedMetadata).catch(() => {
+				/* fire-and-forget */
+			});
 			if (project && typeof project === "object") {
 				const rawProject = project as { media?: unknown; videoPath?: unknown };
 				const media =
@@ -936,7 +1078,7 @@ export function registerIpcHandlers(
 									normalizeVideoSourcePath(rawProject.videoPath) ?? rawProject.videoPath,
 							}
 						: null);
-				setCurrentRecordingSessionState(media ? { ...media, createdAt: Date.now() } : null);
+				setCurrentRecordingSessionState(win, media ? { ...media, createdAt: Date.now() } : null);
 			}
 			return { success: true, path: filePath, project };
 		} catch (error) {
@@ -945,20 +1087,102 @@ export function registerIpcHandlers(
 		}
 	});
 
-	ipcMain.handle("get-current-video-path", () => {
-		return currentRecordingSession?.screenVideoPath
-			? { success: true, path: currentRecordingSession.screenVideoPath }
+	ipcMain.handle("get-current-video-path", (event) => {
+		const session = getRecordingSession(getSenderWindow(event));
+		return session?.screenVideoPath
+			? { success: true, path: session.screenVideoPath }
 			: { success: false };
 	});
 
-	ipcMain.handle("clear-current-video-path", () => {
-		setCurrentRecordingSessionState(null);
+	ipcMain.handle("clear-current-video-path", (event) => {
+		setCurrentRecordingSessionState(getSenderWindow(event), null);
 		return { success: true };
 	});
 
 	ipcMain.handle("get-platform", () => {
 		return process.platform;
 	});
+
+	// Fetch a YouTube channel's recent video IDs from the public RSS feed.
+	// Used by the Chit TV arcade tab to get a scrollable list of shorts
+	// from a creator without needing the YouTube Data API. Two-step:
+	//   1. Fetch the channel page to extract the channelId
+	//      (you can't query the RSS feed by @handle directly).
+	//   2. Fetch the channel's RSS feed and parse out video IDs.
+	// Lives in main process so it bypasses renderer CORS restrictions.
+	ipcMain.handle(
+		"youtube-fetch-channel-shorts",
+		async (
+			_event,
+			channelHandle: string,
+		): Promise<{
+			success: boolean;
+			channelId?: string;
+			videoIds?: string[];
+			error?: string;
+		}> => {
+			try {
+				// Normalize: strip leading @ if present
+				const handle = channelHandle.replace(/^@/, "");
+
+				// Step 1: fetch the channel page and extract channelId
+				const channelPageRes = await fetch(`https://www.youtube.com/@${handle}`, {
+					headers: {
+						// Pretend to be a real browser so YouTube returns the full HTML
+						// instead of a stripped-down bot response
+						"User-Agent":
+							"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+					},
+					signal: AbortSignal.timeout(10_000),
+				});
+				if (!channelPageRes.ok) {
+					return { success: false, error: `Channel page HTTP ${channelPageRes.status}` };
+				}
+				const channelHtml = await channelPageRes.text();
+				// Channel ID lives in a few places — try the most reliable one first
+				const channelIdMatch =
+					channelHtml.match(/"channelId":"(UC[\w-]{22})"/) ??
+					channelHtml.match(/<meta itemprop="channelId" content="(UC[\w-]{22})"/) ??
+					channelHtml.match(/channel\/(UC[\w-]{22})"/);
+				const channelId = channelIdMatch?.[1];
+				if (!channelId) {
+					return { success: false, error: "Could not extract channelId from channel page" };
+				}
+
+				// Step 2: fetch the RSS feed (no auth required)
+				const feedRes = await fetch(
+					`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
+					{ signal: AbortSignal.timeout(10_000) },
+				);
+				if (!feedRes.ok) {
+					return {
+						success: false,
+						channelId,
+						error: `RSS feed HTTP ${feedRes.status}`,
+					};
+				}
+				const feedXml = await feedRes.text();
+				// Parse out video IDs — they appear as <yt:videoId>...</yt:videoId>
+				const videoIds: string[] = [];
+				const videoIdRe = /<yt:videoId>([\w-]{11})<\/yt:videoId>/g;
+				let match: RegExpExecArray | null;
+				match = videoIdRe.exec(feedXml);
+				while (match !== null) {
+					videoIds.push(match[1]);
+					match = videoIdRe.exec(feedXml);
+				}
+				if (videoIds.length === 0) {
+					return { success: false, channelId, error: "No videos found in RSS feed" };
+				}
+				return { success: true, channelId, videoIds };
+			} catch (err) {
+				return {
+					success: false,
+					error: err instanceof Error ? err.message : String(err),
+				};
+			}
+		},
+	);
 
 	ipcMain.handle("get-shortcuts", async () => {
 		try {

@@ -9,14 +9,19 @@
 import React from "react";
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import {
+	Bubbles,
 	Confetti,
+	Embers,
 	Fireflies,
 	FlowingGradient,
+	LightRays,
+	Mist,
 	MoneyRain,
 	PerspectiveGrid,
 	Sakura,
 	Snow,
 	Sparks,
+	Stars,
 } from "./ParticleEffects";
 
 // ── Scene ───────────────────────────────────────────────────────────────
@@ -130,6 +135,12 @@ export const AnimatedText: React.FC<{
 	/** Gradient colors for "gradient" animation or gradient text fill.
 	 *  When set, text uses background-clip: text with an animated gradient. */
 	gradientColors?: string[];
+	/** Defensive: AI sometimes passes the text under the wrong prop name
+	 *  (`value`, `children`, `content`). Accept those too so a typo doesn't
+	 *  crash the entire scene. */
+	value?: string;
+	content?: string;
+	children?: React.ReactNode;
 }> = ({
 	text,
 	fontSize = 100,
@@ -145,13 +156,23 @@ export const AnimatedText: React.FC<{
 	animation = "chars",
 	delay = 0,
 	gradientColors,
+	value,
+	content,
+	children,
 }) => {
 	const frame = useCurrentFrame();
 	const { fps } = useVideoConfig();
 	const localFrame = Math.max(0, frame - delay);
 
+	// Defensive: pull the text from any of the common prop names the AI
+	// might use, then coerce to string. If we still have nothing, render
+	// null — the rest of the scene keeps playing.
+	const rawText: unknown = text ?? value ?? content ?? children ?? "";
+	const safeText: string = typeof rawText === "string" ? rawText : String(rawText ?? "");
+	if (!safeText) return null;
+
 	// Sanitize: replace literal \n with spaces (AI sometimes puts these in)
-	const cleanText = text.replace(/\\n/g, " ").replace(/\n/g, " ");
+	const cleanText = safeText.replace(/\\n/g, " ").replace(/\n/g, " ");
 	const words = cleanText.split(" ").filter(Boolean);
 
 	// Auto-fit: estimate if text overflows and scale down fontSize
@@ -171,7 +192,7 @@ export const AnimatedText: React.FC<{
 				const angle = 90 + Math.sin(frame * 0.03) * 30;
 				const shift = frame * 2;
 				return {
-					background: `linear-gradient(${angle}deg, ${colors.map((c, i) => `${c} ${(i / (colors.length - 1)) * 100 + shift}%`).join(", ")})`,
+					background: `linear-gradient(${angle}deg, ${(colors as string[]).map((c: string, i: number) => `${c} ${(i / (colors.length - 1)) * 100 + shift}%`).join(", ")})`,
 					backgroundSize: "200% 200%",
 					backgroundClip: "text",
 					WebkitBackgroundClip: "text",
@@ -1033,28 +1054,39 @@ export const Underline: React.FC<{
 // ── GradientText ────────────────────────────────────────────────────────
 
 /** Animated gradient/shimmer text — Apple/Linear style */
-export const GradientText: React.FC<{
-	text: string;
-	fontSize?: number;
-	fontFamily?: string;
-	fontWeight?: number;
-	colors?: string[];
-	speed?: number;
-	delay?: number;
-	align?: "center" | "left" | "right";
-	maxWidth?: number;
-}> = ({
-	text,
-	fontSize = 120,
-	fontFamily = "'Inter', 'Helvetica Neue', sans-serif",
-	fontWeight = 900,
-	colors = ["#ff6b6b", "#feca57", "#48dbfb", "#ff9ff3", "#ff6b6b"],
-	speed = 4,
-	delay = 0,
-	align = "center",
-	maxWidth = 1400,
-}) => {
+export const GradientText: React.FC<any> = (props: any) => {
+	const {
+		text,
+		value,
+		content,
+		children,
+		fontSize = 120,
+		fontFamily = "'Inter', 'Helvetica Neue', sans-serif",
+		fontWeight = 900,
+		colors = ["#ff6b6b", "#feca57", "#48dbfb", "#ff9ff3", "#ff6b6b"],
+		speed = 4,
+		delay = 0,
+		align = "center",
+		maxWidth = 1400,
+	}: {
+		text?: unknown;
+		value?: unknown;
+		content?: unknown;
+		children?: unknown;
+		fontSize?: number;
+		fontFamily?: string;
+		fontWeight?: number;
+		colors?: string[];
+		speed?: number;
+		delay?: number;
+		align?: "center" | "left" | "right";
+		maxWidth?: number;
+	} = props || {};
 	const frame = useCurrentFrame();
+	// Defensive: pull text from any common prop name and bail on missing.
+	const rawText: unknown = text ?? value ?? content ?? children ?? "";
+	const safeText = typeof rawText === "string" ? rawText : String(rawText ?? "");
+	if (!safeText) return null;
 	const localFrame = Math.max(0, frame - delay);
 	const angle = localFrame * speed;
 	const opacity = interpolate(localFrame, [0, 15], [0, 1], {
@@ -1092,7 +1124,7 @@ export const GradientText: React.FC<{
 				} as React.CSSProperties
 			}
 		>
-			{text}
+			{safeText}
 		</div>
 	);
 };
@@ -2495,6 +2527,11 @@ type BackgroundVariant =
 	| "perspective-grid"
 	| "flowing-gradient"
 	| "money-rain"
+	| "mist"
+	| "light-rays"
+	| "bubbles"
+	| "embers"
+	| "stars"
 	| "none";
 
 export const AnimatedBackground: React.FC<{
@@ -2845,6 +2882,13 @@ export const AnimatedBackground: React.FC<{
 	if (variant === "perspective-grid")
 		return <PerspectiveGrid color={colors[0]} intensity={intensity} />;
 	if (variant === "flowing-gradient") return <FlowingGradient colors={colors} />;
+
+	// Animation engine particles
+	if (variant === "mist") return <Mist color={colors[0]} intensity={intensity} />;
+	if (variant === "light-rays") return <LightRays color={colors[0]} intensity={intensity} />;
+	if (variant === "bubbles") return <Bubbles color={colors[0]} intensity={intensity} />;
+	if (variant === "embers") return <Embers colors={colors} intensity={intensity} />;
+	if (variant === "stars") return <Stars color={colors[0]} intensity={intensity} />;
 
 	return null;
 };

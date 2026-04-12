@@ -217,10 +217,10 @@ export const AI_PROVIDERS: AIProviderInfo[] = [
 	{
 		id: "anthropic",
 		name: "Anthropic",
-		description: "Claude Sonnet, Haiku. Excellent for narration scripts.",
+		description: "Claude Opus, Sonnet, Haiku. Excellent for narration scripts.",
 		requiresApiKey: true,
 		defaultModel: "claude-sonnet-4-6",
-		models: ["claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
+		models: ["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
 		hasTTS: false,
 	},
 	{
@@ -229,7 +229,12 @@ export const AI_PROVIDERS: AIProviderInfo[] = [
 		description: "Extremely fast inference. Free tier available.",
 		requiresApiKey: true,
 		defaultModel: "llama-3.3-70b-versatile",
-		models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"],
+		// Mixtral-8x7b dropped 2026-04-11: its 32k context was the only reason
+		// the Reviewer Agent had to cap code at 2.5k chars, which was causing
+		// false-positive "truncation" strips on all long scenes. Llama-3.3-70b
+		// has 128k context and strictly better quality — no reason to keep
+		// Mixtral in the rotation.
+		models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
 		hasTTS: false,
 	},
 	{

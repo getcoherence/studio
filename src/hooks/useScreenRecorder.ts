@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useScopedT } from "@/contexts/I18nContext";
 import type { CaptureBackendPreference } from "@/lib/native/types";
+import type { RecordingSession } from "@/lib/recordingSession";
 import { requestCameraAccess } from "@/lib/requestCameraAccess";
 
 const TARGET_FRAME_RATE = 60;
@@ -115,8 +116,21 @@ async function resolveCaptureMode(): Promise<CaptureMode> {
 }
 
 export function useScreenRecorder(options?: {
-	onRecordingFinalized?: () => void;
+	/** Called after the recording is fully written to disk and the
+	 *  per-window recording session has been registered with main. The
+	 *  freshly-stored session is passed in directly so callers don't have
+	 *  to round-trip through `getCurrentRecordingSession`. */
+	onRecordingFinalized?: (session?: RecordingSession) => void;
 }): UseScreenRecorderReturn {
+	// Always-fresh ref so the stale-closure problem in `stopRecording.current`
+	// (a useRef-captured function created on first render) can still call
+	// the LATEST onRecordingFinalized passed in by the parent. Without this,
+	// the callback that runs after Stop is the one captured at mount time,
+	// even if React re-rendered the parent and gave us a new callback.
+	const onFinalizedRef = useRef(options?.onRecordingFinalized);
+	useEffect(() => {
+		onFinalizedRef.current = options?.onRecordingFinalized;
+	}, [options?.onRecordingFinalized]);
 	const t = useScopedT("editor");
 	const [recording, setRecording] = useState(false);
 	const [captureMode, setCaptureMode] = useState<CaptureMode>("browser");
@@ -291,7 +305,11 @@ export function useScreenRecorder(options?: {
 					}
 
 					await window.electronAPI?.restoreEditor();
-					options?.onRecordingFinalized?.();
+					// Pass the freshly-stored session directly so the parent
+					// doesn't have to round-trip through getCurrentRecordingSession.
+					// Use the ref so we hit the LATEST callback (not the stale
+					// one captured by the stopRecording useRef closure).
+					onFinalizedRef.current?.(result.session);
 				} catch (error) {
 					console.error("Error saving recording:", error);
 				} finally {
@@ -667,12 +685,15 @@ export function useScreenRecorder(options?: {
 			}
 
 			// The native backend writes an MP4 directly — set the path and restore editor
-			await window.electronAPI.setCurrentRecordingSession({
+			const nativeSession: RecordingSession = {
 				screenVideoPath: result.outputPath,
 				createdAt: recordingId.current,
-			});
+			};
+			await window.electronAPI.setCurrentRecordingSession(nativeSession);
 			await window.electronAPI?.restoreEditor();
-			options?.onRecordingFinalized?.();
+			// Pass the session directly to the parent — same pattern as the
+			// browser path so the parent doesn't have to round-trip IPC.
+			onFinalizedRef.current?.(nativeSession);
 		} catch (error) {
 			console.error("Error stopping native recording:", error);
 			nativeRecordingActive.current = false;

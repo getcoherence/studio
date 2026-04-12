@@ -182,6 +182,10 @@ export default function VideoEditor() {
 	const playerContainerRef = useRef<HTMLDivElement>(null);
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
 	const cursorContainerRef = useRef<HTMLDivElement>(null);
+	// Tracks the desktopCapturer source ID we last marked as a recording
+	// target. Used to clear clean-capture mode on the same window when
+	// recording stops, regardless of how the stop was triggered.
+	const activeCaptureTargetRef = useRef<string | null>(null);
 	const [cursorContainerSize, setCursorContainerSize] = useState({ width: 0, height: 0 });
 
 	const nextZoomIdRef = useRef(1);
@@ -210,8 +214,36 @@ export default function VideoEditor() {
 		liveScreenStream,
 		liveWebcamStream,
 	} = useScreenRecorder({
-		onRecordingFinalized: () => {
+		// Load the just-finalized recording into editor state. The hook
+		// passes the freshly-stored session directly (no IPC round-trip)
+		// so this is fast and reliable. Without this the editor would
+		// stay on the WelcomeScreen even though the file was saved — the
+		// legacy `setReloadTrigger` approach was a no-op (the trigger
+		// variable is unused with the underscore prefix).
+		onRecordingFinalized: (session) => {
 			setReloadTrigger((prev) => prev + 1);
+			if (!session?.screenVideoPath) {
+				console.warn("[VideoEditor] onRecordingFinalized called without a session");
+				return;
+			}
+			const sourcePath = fromFileUrl(session.screenVideoPath);
+			const webcamSourcePath = session.webcamVideoPath
+				? fromFileUrl(session.webcamVideoPath)
+				: null;
+			setVideoSourcePath(sourcePath);
+			setVideoPath(toFileUrl(sourcePath));
+			setWebcamVideoSourcePath(webcamSourcePath);
+			setWebcamVideoPath(webcamSourcePath ? toFileUrl(webcamSourcePath) : null);
+			setCurrentProjectPath(null);
+			setLastSavedSnapshot(null);
+			// Make sure none of the other top-level views are blocking the
+			// editor render. Without this, if the user navigated through
+			// scene-editor / demo-studio / welcome flows before recording,
+			// stale view flags would keep WelcomeScreen showing even with
+			// videoPath set.
+			setError(null);
+			setShowSceneEditor(false);
+			setShowDemoStudio(false);
 		},
 	});
 
@@ -559,6 +591,21 @@ export default function VideoEditor() {
 		window.electronAPI.setHasUnsavedChanges(hasUnsavedChanges);
 	}, [hasUnsavedChanges]);
 
+	// Push the loaded video / project file name to the OS window title so
+	// multi-window users can tell editors apart in alt-tab and the Window
+	// menu. Falls back to a generic title when nothing is loaded.
+	useEffect(() => {
+		const source = videoSourcePath ?? videoPath ?? "";
+		if (!source) {
+			window.electronAPI.setWindowTitle?.("");
+			return;
+		}
+		// Strip path + ext to keep the title short
+		const fileName = source.split(/[/\\]/).pop() ?? source;
+		const baseName = fileName.replace(/\.[^.]+$/, "");
+		window.electronAPI.setWindowTitle?.(baseName);
+	}, [videoSourcePath, videoPath]);
+
 	useEffect(() => {
 		const cleanup = window.electronAPI.onRequestSaveBeforeClose(async () => {
 			return saveProject(false);
@@ -605,6 +652,47 @@ export default function VideoEditor() {
 		toast.success(`Project loaded from ${result.path}`);
 	}, [applyLoadedProject]);
 
+	// Load a raw video file path into editor state. Used by all the
+	// file-open paths (welcome screen, File menu → Open Video, etc.).
+	// Sets the per-window state in main first so reloads pick it up,
+	// then explicitly updates React state — the legacy `setReloadTrigger`
+	// approach was a no-op (the trigger variable is unused) and broke
+	// after the multi-window refactor revealed the latent bug.
+	const loadVideoFromPath = useCallback(async (filePath: string) => {
+		await window.electronAPI.setCurrentVideoPath(filePath);
+		setShowSceneEditor(false);
+		setShowDemoStudio(false);
+		setError(null);
+		// Pull the just-stored session back from main so we get the
+		// normalized recording session (handles webcam companion files).
+		try {
+			const sessionResult = await window.electronAPI.getCurrentRecordingSession?.();
+			if (sessionResult?.success && sessionResult.session) {
+				const session = sessionResult.session;
+				const sourcePath = fromFileUrl(session.screenVideoPath);
+				const webcamSourcePath = session.webcamVideoPath
+					? fromFileUrl(session.webcamVideoPath)
+					: null;
+				setVideoSourcePath(sourcePath);
+				setVideoPath(toFileUrl(sourcePath));
+				setWebcamVideoSourcePath(webcamSourcePath);
+				setWebcamVideoPath(webcamSourcePath ? toFileUrl(webcamSourcePath) : null);
+				setCurrentProjectPath(null);
+				setLastSavedSnapshot(null);
+				return;
+			}
+		} catch (err) {
+			console.error("Failed to load session for opened video:", err);
+		}
+		// Fallback: just use the picked path as a plain video source
+		setVideoSourcePath(filePath);
+		setVideoPath(toFileUrl(filePath));
+		setWebcamVideoSourcePath(null);
+		setWebcamVideoPath(null);
+		setCurrentProjectPath(null);
+		setLastSavedSnapshot(null);
+	}, []);
+
 	useEffect(() => {
 		const removeNewRecording = window.electronAPI.onMenuNewRecording?.(() => {
 			setShowRecordingSetup(true);
@@ -612,16 +700,23 @@ export default function VideoEditor() {
 		const removeCreateVideo = window.electronAPI.onMenuCreateVideo?.(() => {
 			setShowSceneEditor(true);
 		});
+		// "Open Window for Recording…" — spawn a new editor window and open
+		// the source picker pre-targeted at it. The dogfood loop in one click.
+		const removeOpenForRecording = window.electronAPI.onMenuOpenWindowForRecording?.(async () => {
+			const result = await window.electronAPI.openWindowForRecording?.();
+			if (result?.success) {
+				// onOpenSourcePicker (below) handles the actual UI side
+				setShowRecordingSetup(true);
+			} else {
+				toast.error(result?.error || "Failed to open recording window");
+			}
+		});
 		const removeLoadListener = window.electronAPI.onMenuLoadProject(handleLoadProject);
 		const removeOpenVideo = window.electronAPI.onMenuOpenVideo?.(async () => {
 			const result = await window.electronAPI.openVideoFilePicker();
 			if (result.canceled) return;
 			if (result.success && result.path) {
-				await window.electronAPI.setCurrentVideoPath(result.path);
-				setShowSceneEditor(false);
-				setShowDemoStudio(false);
-				setError(null);
-				setReloadTrigger((prev) => prev + 1);
+				await loadVideoFromPath(result.path);
 			}
 		});
 		const removeSaveListener = window.electronAPI.onMenuSaveProject(handleSaveProject);
@@ -630,12 +725,13 @@ export default function VideoEditor() {
 		return () => {
 			removeNewRecording?.();
 			removeCreateVideo?.();
+			removeOpenForRecording?.();
 			removeLoadListener?.();
 			removeOpenVideo?.();
 			removeSaveListener?.();
 			removeSaveAsListener?.();
 		};
-	}, [handleLoadProject, handleSaveProject, handleSaveProjectAs]);
+	}, [handleLoadProject, handleSaveProject, handleSaveProjectAs, loadVideoFromPath]);
 
 	// Listen for stop-recording-from-bar event
 	useEffect(() => {
@@ -647,6 +743,20 @@ export default function VideoEditor() {
 		});
 		return cleanup;
 	}, [recording, toggleRecording]);
+
+	// When recording stops (any cause), clear clean-capture mode on whichever
+	// window we marked as the target. This prevents stranded "recording-target"
+	// CSS class on the sibling window if the user stops via tray, bar, or
+	// editor button.
+	useEffect(() => {
+		if (recording) return;
+		const targetId = activeCaptureTargetRef.current;
+		if (!targetId) return;
+		activeCaptureTargetRef.current = null;
+		window.electronAPI.setCaptureTargetMode?.(targetId, false).catch(() => {
+			/* non-fatal */
+		});
+	}, [recording]);
 
 	// Recording setup handlers
 	const handleStartRecording = useCallback((config: RecordingConfig) => {
@@ -666,6 +776,18 @@ export default function VideoEditor() {
 		setMicrophoneEnabled(pendingRecordingConfig.microphoneEnabled);
 		setSystemAudioEnabled(pendingRecordingConfig.systemAudioEnabled);
 		await setWebcamEnabled(pendingRecordingConfig.webcamEnabled);
+
+		// Tell the main process the source is now being recorded. If the
+		// source is one of our editor windows, the main process forwards a
+		// `capture-mode-changed` event to that window so it hides dev UI
+		// for clean capture. Window-source IDs start with `window:`.
+		const sourceId = (pendingRecordingConfig.source as { id?: string })?.id;
+		if (sourceId?.startsWith("window:")) {
+			activeCaptureTargetRef.current = sourceId;
+			window.electronAPI.setCaptureTargetMode?.(sourceId, true).catch(() => {
+				/* non-fatal — capture proceeds without clean-mode */
+			});
+		}
 
 		// Start recording with explicit config overrides to avoid stale state
 		toggleRecording({
@@ -696,13 +818,9 @@ export default function VideoEditor() {
 		const result = await window.electronAPI.openVideoFilePicker();
 		if (result.canceled) return;
 		if (result.success && result.path) {
-			await window.electronAPI.setCurrentVideoPath(result.path);
-			setShowSceneEditor(false);
-			setShowDemoStudio(false);
-			setError(null);
-			setReloadTrigger((prev) => prev + 1);
+			await loadVideoFromPath(result.path);
 		}
-	}, []);
+	}, [loadVideoFromPath]);
 
 	// ── AI Demo Studio handler ──
 

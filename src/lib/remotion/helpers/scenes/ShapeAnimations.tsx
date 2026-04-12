@@ -511,26 +511,6 @@ export const ShapeHexGrid = ({ startDelay = 0 }: { startDelay?: number }) => {
 					/>
 				);
 			})}
-
-			{/* タイトル */}
-			<div
-				style={{
-					position: "absolute",
-					right: 80,
-					top: 80,
-					fontFamily: font,
-					fontSize: 48,
-					fontWeight: 700,
-					color: C.white,
-					textAlign: "right",
-					opacity: lerp(frame, [startDelay + 30, startDelay + 50], [0, 1]),
-				}}
-			>
-				HEXAGONAL
-				<div style={{ fontSize: 18, color: C.gray[500], marginTop: 10, letterSpacing: 4 }}>
-					GRID PATTERN
-				</div>
-			</div>
 		</AbsoluteFill>
 	);
 };
@@ -809,7 +789,20 @@ export const ShapeParticleField = ({
  * ShapeRipples - 波紋エフェクト - 水面の波紋
  */
 
-export const ShapeRipples = ({ startDelay = 0 }: { startDelay?: number }) => {
+export const ShapeRipples = ({
+	startDelay = 0,
+	label,
+	background = "transparent",
+	color,
+}: {
+	startDelay?: number;
+	/** Optional label — only shown if explicitly passed */
+	label?: string;
+	/** Background color (default transparent so it overlays cleanly) */
+	background?: string;
+	/** Ripple color override */
+	color?: string;
+}) => {
 	const frame = useCurrentFrame();
 
 	const ripples = [0, 20, 40, 60, 80].map((delay) => {
@@ -819,9 +812,10 @@ export const ShapeRipples = ({ startDelay = 0 }: { startDelay?: number }) => {
 		return { size, opacity, delay };
 	});
 
+	const rippleColor = color || C.accent;
+
 	return (
-		<AbsoluteFill style={{ background: C.black }}>
-			{/* 波紋 */}
+		<AbsoluteFill style={{ background }}>
 			{ripples.map((ripple, i) => (
 				<div
 					key={`ripple-${i}-${ripple.delay}`}
@@ -831,7 +825,7 @@ export const ShapeRipples = ({ startDelay = 0 }: { startDelay?: number }) => {
 						top: "50%",
 						width: ripple.size,
 						height: ripple.size,
-						border: `2px solid ${C.accent}`,
+						border: `2px solid ${rippleColor}`,
 						borderRadius: "50%",
 						transform: "translate(-50%, -50%)",
 						opacity: ripple.opacity * (frame > startDelay ? 1 : 0),
@@ -839,7 +833,6 @@ export const ShapeRipples = ({ startDelay = 0 }: { startDelay?: number }) => {
 				/>
 			))}
 
-			{/* 中央のドット */}
 			<div
 				style={{
 					position: "absolute",
@@ -847,28 +840,29 @@ export const ShapeRipples = ({ startDelay = 0 }: { startDelay?: number }) => {
 					top: "50%",
 					width: 16,
 					height: 16,
-					background: C.accent,
+					background: rippleColor,
 					borderRadius: "50%",
 					transform: "translate(-50%, -50%)",
-					boxShadow: `0 0 30px ${C.accent}`,
+					boxShadow: `0 0 30px ${rippleColor}`,
 				}}
 			/>
 
-			{/* テキスト */}
-			<div
-				style={{
-					position: "absolute",
-					left: 80,
-					bottom: 150,
-					fontFamily: font,
-					fontSize: 80,
-					fontWeight: 700,
-					color: C.white,
-					opacity: lerp(frame, [startDelay + 20, startDelay + 40], [0, 1]),
-				}}
-			>
-				RIPPLE
-			</div>
+			{label && (
+				<div
+					style={{
+						position: "absolute",
+						left: 80,
+						bottom: 150,
+						fontFamily: font,
+						fontSize: 80,
+						fontWeight: 700,
+						color: C.white,
+						opacity: lerp(frame, [startDelay + 20, startDelay + 40], [0, 1]),
+					}}
+				>
+					{label}
+				</div>
+			)}
 		</AbsoluteFill>
 	);
 };

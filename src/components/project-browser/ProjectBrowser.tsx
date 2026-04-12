@@ -8,12 +8,38 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import type { GenerationMetadata } from "@/lib/scene-renderer";
 
 interface RecentProject {
 	filePath: string;
 	fileName: string;
 	lastModified: number;
 	fileSize: number;
+	metadata?: GenerationMetadata;
+}
+
+/** Compact model name for display — strips provider prefix and version cruft */
+function formatModelLabel(metadata?: GenerationMetadata | null): string | null {
+	if (!metadata?.aiModel) return null;
+	const m = metadata.aiModel;
+	if (m.includes("opus"))
+		return m.includes("4-6") ? "Opus 4.6" : m.includes("4-5") ? "Opus 4.5" : "Opus";
+	if (m.includes("sonnet"))
+		return m.includes("4-6") ? "Sonnet 4.6" : m.includes("4-5") ? "Sonnet 4.5" : "Sonnet";
+	if (m.includes("haiku")) return m.includes("4-5") ? "Haiku 4.5" : "Haiku";
+	if (m.includes("gpt-5")) return m.toUpperCase();
+	return m;
+}
+
+function formatMetadataParts(metadata?: GenerationMetadata): string {
+	if (!metadata) return "";
+	const parts: string[] = [];
+	const model = formatModelLabel(metadata);
+	if (model) parts.push(model);
+	if (metadata.aestheticName) parts.push(metadata.aestheticName);
+	if (metadata.sceneCount !== undefined) parts.push(`${metadata.sceneCount} scenes`);
+	if (metadata.totalDurationSec !== undefined) parts.push(`${metadata.totalDurationSec}s`);
+	return parts.join(" · ");
 }
 
 interface ProjectBrowserProps {
@@ -151,6 +177,14 @@ export function ProjectBrowser({ open, onOpenChange, onProjectOpened }: ProjectB
 									<FileText className="w-5 h-5 text-slate-400 shrink-0" />
 									<div className="flex-1 min-w-0">
 										<p className="text-sm text-slate-200 truncate">{project.fileName}</p>
+										{project.metadata && (
+											<div
+												className="text-[10px] text-blue-300/60 truncate"
+												title={formatMetadataParts(project.metadata)}
+											>
+												🤖 {formatMetadataParts(project.metadata)}
+											</div>
+										)}
 										<div className="flex items-center gap-2 text-[11px] text-slate-500">
 											<span>{formatDate(project.lastModified)}</span>
 											<span className="text-slate-600">|</span>

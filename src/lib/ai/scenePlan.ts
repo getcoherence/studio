@@ -47,7 +47,9 @@ export type SceneType =
 	| "glass-stats" // glassmorphism cards with animated metric counters
 	| "cinematic-title" // gradient text with particle effects
 	| "countdown" // animated number countdown with confetti burst
-	| "contrast-pairs"; // statement/counter pairs with staggered reveals
+	| "contrast-pairs" // statement/counter pairs with staggered reveals
+	// Phase 4: animation engine additions
+	| "image-crossfade"; // multi-image crossfade with camera motion (2-4 images)
 
 export interface ScenePlanItem {
 	/** Stable unique ID for React keys — survives reordering/insertion */
@@ -230,11 +232,25 @@ export interface ScenePlanItem {
 		| "color-burst" // sharp radial flash at the cut
 		| "vertical-shutter" // venetian blind panels snap shut/open
 		| "glitch-slam" // horizontal shake + RGB strip tears
+		// Cinematic 3D transitions
+		| "zoom-through" // camera flies through current scene into next — portal feel
+		| "portal" // circular reveal expanding from focal point with glow
+		| "depth-parallax" // 3D perspective shift — scenes in spatial depth
+		| "warp-dissolve" // reality warps and bends — dimension shift
+		| "iris-zoom" // camera aperture closes, reveals new scene
+		| "shatter" // scene breaks into shards flying outward
 		| "cut"; // instant, no transition
 	/** Transition duration in frames (default 10, or 15 for zoom-morph) */
 	transitionDurationFrames?: number;
 	/** Custom color for transitions that support it (vertical-shutter, striped-slam, diagonal-reveal, color-burst) */
 	transitionColor?: string;
+
+	/** When set, this raw Remotion TSX code replaces the template renderer for this scene.
+	 *  The code has access to all MODULE_SCOPE components (useCurrentFrame, spring,
+	 *  interpolate, AbsoluteFill, AnimatedText, GlassCard, MetricCounter, particles, etc.)
+	 *  and receives `screenshots` as a prop. Must export VideoComposition or be a JSX
+	 *  expression wrapped in <AbsoluteFill>. Falls back to the template if compilation fails. */
+	customCode?: string;
 
 	/** AI video generation prompt — when set, this scene uses an AI-generated video clip
 	 *  instead of (or composited with) Remotion motion graphics. */
@@ -244,10 +260,102 @@ export interface ScenePlanItem {
 	/** Whether to overlay Remotion text/layers on top of the video clip (default: true) */
 	videoOverlayText?: boolean;
 
+	// ── Narration (Story Writer + Narrator step) ──
+
+	/** Voice-over text for this scene, written by the Story Writer agent.
+	 *  When set, the Narrator step synthesizes this via MiniMax TTS and the
+	 *  compiler emits an <Audio> element that plays alongside the visuals. */
+	narration?: string;
+	/** Absolute file path to the synthesized narration audio (mp3). Populated
+	 *  by the Narrator step after TTS completes. */
+	narrationPath?: string;
+	/** Duration of the narration audio in milliseconds. Used by the duration
+	 *  adjuster to ensure the scene runs at least as long as the voice-over. */
+	narrationDurationMs?: number;
+
+	// ── Sound effects (Sound Designer agent) ──
+
+	/** SFX cues for this scene — each plays a single clip at a specific frame.
+	 *  Picked by the Sound Designer agent based on motion and headline keywords. */
+	sfxCues?: Array<{
+		/** Clip name from the bundled SFX library (e.g. "whoosh", "pop", "thud") */
+		sfx: string;
+		/** Frame offset within this scene where the SFX should start */
+		atFrame: number;
+		/** Volume multiplier 0-1 (default 0.6 — SFX should not overpower narration) */
+		volume?: number;
+	}>;
+
+	// ── Generated imagery (Image Generator agent) ──
+
+	/** When set, an AI-generated reference/background image is available for
+	 *  this scene. The compiler can use it as a backdrop (blurred, low opacity)
+	 *  or the Composer can reference its subject for illustration. */
+	imagePath?: string;
+	/** Prompt used to generate imagePath — kept so users can regenerate later. */
+	imagePrompt?: string;
+
 	/** Gap between center-positioned layers in pixels (default 16) */
 	layerGap?: number;
 	/** Composable layers within this scene — enables multi-layer compositions */
 	layers?: SceneLayer[];
+
+	// ── Shot Language (cinematography intent) ──
+
+	/** Structured cinematography intent — guides the AI code generator's
+	 *  visual treatment decisions. Inspired by OpenMontage's shot language. */
+	shotIntent?: {
+		/** Shot size hint */
+		shotSize?:
+			| "extreme-wide"
+			| "wide"
+			| "medium-wide"
+			| "medium"
+			| "medium-close"
+			| "close"
+			| "extreme-close";
+		/** Camera movement to simulate */
+		cameraMovement?:
+			| "static"
+			| "pan-left"
+			| "pan-right"
+			| "tilt-up"
+			| "tilt-down"
+			| "zoom-in"
+			| "zoom-out"
+			| "dolly"
+			| "drift";
+		/** Lighting style */
+		lightingKey?: "high" | "low" | "silhouette" | "rim" | "dramatic" | "natural";
+		/** Depth effect */
+		depthOfField?: "deep" | "shallow";
+		/** Narrative purpose of this scene */
+		narrativeRole?: "hook" | "problem" | "solution" | "evidence" | "transition" | "climax" | "cta";
+		/** Information role */
+		informationRole?:
+			| "introduce"
+			| "explain"
+			| "demonstrate"
+			| "compare"
+			| "summarize"
+			| "persuade";
+	};
+
+	// ── Image Crossfade (multi-image scene) ──
+
+	/** For image-crossfade: 2-4 image URLs to crossfade between */
+	crossfadeImages?: string[];
+	/** For image-crossfade: camera animation type */
+	crossfadeAnimation?:
+		| "ken-burns"
+		| "pan"
+		| "drift-up"
+		| "drift-down"
+		| "parallax"
+		| "zoom-in"
+		| "zoom-out";
+	/** For image-crossfade: particle overlay type */
+	crossfadeParticles?: "fireflies" | "petals" | "sparkles" | "mist" | "light-rays" | "none";
 }
 
 /** A positioned, timed layer within a scene */
@@ -343,6 +451,29 @@ export interface ScenePlan {
 	/** Creative Director conversation history — persisted so the user can
 	 * continue refining across sessions. */
 	directorHistory?: Array<{ role: "user" | "director"; content: string }>;
+
+	// ── Narration flags (Story Writer + Narrator step) ──
+
+	/** True when every scene has a `narration` field populated by the Story
+	 *  Writer agent. The Narrator step reads this to decide whether to run. */
+	hasNarration?: boolean;
+	/** MiniMax voice ID used for this video's narration (e.g. "English_expressive_narrator").
+	 *  If omitted, the Narrator step picks a voice based on the active aesthetic. */
+	narrationVoiceId?: string;
+	/** When true, the Remotion export ducks music volume during narration. */
+	duckMusicDuringNarration?: boolean;
+
+	// ── Animation Engine additions ──
+
+	/** Theme configuration — drives all visual decisions (colors, motion, typography).
+	 *  When set, overrides individual accent/background defaults. */
+	theme?: import("./themeConfig").ThemeConfig;
+	/** Theme preset name — shorthand for a full ThemeConfig */
+	themePreset?: string;
+	/** Quality assessment — populated after running quality gates */
+	qualityScore?: import("./qualityGates").SlideshowRiskResult;
+	/** What this video promises to deliver — classified from scene content */
+	deliveryPromise?: import("./qualityGates").DeliveryPromiseType;
 }
 
 // ── Background presets ──────────────────────────────────────────────────

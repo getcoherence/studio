@@ -99,6 +99,50 @@ const PROVIDER_ENDPOINTS: Record<string, string> = {
 	minimax: "https://api.minimaxi.chat/v1/text/chatcompletion_v2",
 };
 
+/**
+ * Per-provider maximum output token limits.
+ *
+ * The Composer agent in studio-pro produces long customCode responses
+ * (10-15k chars typical, sometimes more). With a 16k token cap most
+ * scenes were getting truncated mid-expression and stripped by the
+ * Reviewer Agent. These limits should match what each provider/model
+ * actually supports — too high and the API rejects, too low and we lose
+ * scenes to truncation.
+ *
+ * Last verified 2026-04-10.
+ */
+function getMaxOutputTokens(endpoint: string, model: string): number {
+	const m = (model || "").toLowerCase();
+
+	// Anthropic Claude 4.x supports 32k output tokens natively (Opus,
+	// Sonnet, Haiku — all 32k). 64k is available with the extended-output
+	// beta header but we don't enable that.
+	if (endpoint.includes("api.anthropic.com")) {
+		return 32_768;
+	}
+
+	// MiniMax M2.7 supports very long outputs — generous limit.
+	if (endpoint.includes("api.minimaxi.chat")) {
+		return 65_536;
+	}
+
+	// OpenAI: GPT-5 and GPT-4.1 support 32k output. Mini variants typically
+	// support 16k. The API will return an error (not clamp) if we exceed,
+	// so we set per-model where it matters.
+	if (endpoint.includes("api.openai.com")) {
+		if (m.includes("mini") || m.includes("nano")) return 16_384;
+		return 32_768;
+	}
+
+	// Groq fast-inference models support 8-32k depending on the model.
+	if (endpoint.includes("api.groq.com")) {
+		return 32_768;
+	}
+
+	// Safe default
+	return 32_768;
+}
+
 const DEFAULT_MODELS: Record<string, string> = {
 	ollama: "llama3.2",
 	openai: "gpt-5.4-mini",
@@ -136,6 +180,85 @@ async function ollamaGenerate(prompt: string, model: string, ollamaUrl: string):
 	return data.response ?? "";
 }
 
+/**
+ * Detect OpenAI reasoning models that require the Responses API
+ * (instead of Chat Completions). These include o1-pro, o3-pro,
+ * gpt-5-pro, gpt-5.4-pro, etc.
+ */
+function requiresResponsesAPI(model: string): boolean {
+	const m = model.toLowerCase();
+	// Pro reasoning variants
+	if (m.endsWith("-pro")) return true;
+	// o1, o3 reasoning models also use Responses API
+	if (/^o\d+(-|$)/.test(m)) return true;
+	return false;
+}
+
+/**
+ * OpenAI Responses API call — for reasoning/Pro models that don't work
+ * with the Chat Completions endpoint.
+ */
+async function openaiResponsesAPI(
+	prompt: string,
+	apiKey: string,
+	model: string,
+	systemPrompt?: string,
+): Promise<string> {
+	// Build input — Responses API accepts either a string or an array of messages
+	const input: Array<{ role: string; content: string }> = [];
+	if (systemPrompt) {
+		input.push({ role: "system", content: systemPrompt });
+	}
+	input.push({ role: "user", content: prompt });
+
+	// Reasoning models can produce very long outputs (chain of thought + answer).
+	// Pro models support up to 65k+ output tokens.
+	const maxOutputTokens = getMaxOutputTokens("https://api.openai.com/v1/responses", model);
+	const response = await fetch("https://api.openai.com/v1/responses", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${apiKey}`,
+		},
+		body: JSON.stringify({
+			model,
+			input,
+			max_output_tokens: Math.max(maxOutputTokens, 65_536),
+		}),
+		signal: AbortSignal.timeout(180_000), // longer timeout — reasoning models are slower
+	});
+
+	const data = (await response.json()) as {
+		output_text?: string;
+		output?: Array<{
+			type?: string;
+			content?: Array<{ type?: string; text?: string }>;
+		}>;
+		error?: { message?: string };
+	};
+
+	if (!response.ok) {
+		throw new Error(
+			`OpenAI Responses API ${response.status}: ${data.error?.message || response.statusText}`,
+		);
+	}
+
+	// Try the convenience field first
+	if (data.output_text) return data.output_text.trim();
+
+	// Otherwise extract from the output array
+	const outputItems = data.output ?? [];
+	for (const item of outputItems) {
+		if (item.type === "message" && item.content) {
+			for (const c of item.content) {
+				if (c.type === "output_text" && c.text) return c.text.trim();
+			}
+		}
+	}
+
+	throw new Error("OpenAI Responses API returned empty response");
+}
+
 async function openaiCompatibleChat(
 	prompt: string,
 	apiKey: string,
@@ -143,12 +266,23 @@ async function openaiCompatibleChat(
 	endpoint: string,
 	systemPrompt?: string,
 ): Promise<string> {
+	// OpenAI reasoning/Pro models require the Responses API instead of Chat Completions
+	if (endpoint.includes("openai.com") && requiresResponsesAPI(model)) {
+		return openaiResponsesAPI(prompt, apiKey, model, systemPrompt);
+	}
+
 	const messages: Array<{ role: string; content: string }> = [];
 	if (systemPrompt) {
 		messages.push({ role: "system", content: systemPrompt });
 	}
 	messages.push({ role: "user", content: prompt });
 
+	const maxOutputTokens = getMaxOutputTokens(endpoint, model);
+	// Timeout: 4 minutes — matches the Anthropic Sonnet ceiling. Plan
+	// generation and Composer prompts run 8-12k tokens of input + 4-6k of
+	// output and routinely take 60-150s on MiniMax M2.7 / GPT-5-mini.
+	// The previous 120s ceiling was hitting timeouts on the Director +
+	// Composer steps for larger plans.
 	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
@@ -159,9 +293,9 @@ async function openaiCompatibleChat(
 			model,
 			messages,
 			temperature: 0.3,
-			max_completion_tokens: 16384,
+			max_completion_tokens: maxOutputTokens,
 		}),
-		signal: AbortSignal.timeout(120_000),
+		signal: AbortSignal.timeout(240_000),
 	});
 	const data = (await response.json()) as {
 		choices?: Array<{ message?: { content?: string } }>;
@@ -197,12 +331,20 @@ async function anthropicChat(
 ): Promise<string> {
 	const body: Record<string, unknown> = {
 		model,
-		max_tokens: 16384,
+		max_tokens: getMaxOutputTokens(PROVIDER_ENDPOINTS.anthropic, model),
 		messages: [{ role: "user", content: prompt }],
 	};
 	if (systemPrompt) {
 		body.system = systemPrompt;
 	}
+	// Anthropic timeouts scale with model weight.
+	// - Opus: slowest — 5 min (large prompts routinely take 90-180s)
+	// - Sonnet: fast but can hit 120s on Director prompts with 10+ hero scenes
+	//   or Composer scenes with heavy context. Bumped to 4 min.
+	// - Haiku: usually <30s but keeps the same 4 min ceiling for safety.
+	const modelLower = model.toLowerCase();
+	const isOpus = modelLower.includes("opus");
+	const timeoutMs = isOpus ? 300_000 : 240_000; // 5 min Opus, 4 min Sonnet/Haiku
 	const response = await fetch(PROVIDER_ENDPOINTS.anthropic, {
 		method: "POST",
 		headers: {
@@ -211,7 +353,7 @@ async function anthropicChat(
 			"anthropic-version": "2023-06-01",
 		},
 		body: JSON.stringify(body),
-		signal: AbortSignal.timeout(120_000),
+		signal: AbortSignal.timeout(timeoutMs),
 	});
 	if (!response.ok) {
 		const errorBody = await response.text().catch(() => "");
@@ -225,6 +367,61 @@ async function anthropicChat(
 	return data.content?.[0]?.text ?? "";
 }
 
+// ── Per-provider concurrency cap ────────────────────────────────────
+//
+// When two editor windows generate at the same time they hit the same
+// provider in parallel, doubling the rate-limit pressure and tripping
+// 429s on MiniMax / OpenAI / Anthropic. The cap below is a simple
+// semaphore that limits how many in-flight requests can target a single
+// provider at once. Excess calls queue and resume FIFO.
+//
+// Default: 3 concurrent calls per provider — high enough that a single
+// window's parallel scene composer runs at full speed (Composer fans out
+// 8 hero scenes), and low enough that two windows together don't burst
+// past the rate-limit ceiling. Ollama is local so it has no cap.
+const PROVIDER_CONCURRENCY: Record<AIProvider, number> = {
+	openai: 3,
+	anthropic: 3,
+	groq: 3,
+	minimax: 3,
+	ollama: Infinity, // local — no rate limits
+};
+
+interface ProviderSemaphore {
+	running: number;
+	queue: Array<() => void>;
+}
+
+const providerSemaphores: Map<AIProvider, ProviderSemaphore> = new Map();
+
+function getSemaphore(provider: AIProvider): ProviderSemaphore {
+	let sem = providerSemaphores.get(provider);
+	if (!sem) {
+		sem = { running: 0, queue: [] };
+		providerSemaphores.set(provider, sem);
+	}
+	return sem;
+}
+
+async function withConcurrencyLimit<T>(provider: AIProvider, work: () => Promise<T>): Promise<T> {
+	const limit = PROVIDER_CONCURRENCY[provider] ?? 3;
+	if (limit === Infinity) return work();
+
+	const sem = getSemaphore(provider);
+	if (sem.running >= limit) {
+		// Wait for a slot to open up
+		await new Promise<void>((resolve) => sem.queue.push(resolve));
+	}
+	sem.running++;
+	try {
+		return await work();
+	} finally {
+		sem.running--;
+		const next = sem.queue.shift();
+		if (next) next();
+	}
+}
+
 async function callProvider(
 	provider: AIProvider,
 	prompt: string,
@@ -233,23 +430,25 @@ async function callProvider(
 ): Promise<string> {
 	const model = config.model ?? DEFAULT_MODELS[provider] ?? "gpt-5.4-mini";
 
-	if (provider === "ollama") {
-		const ollamaUrl = config.ollamaUrl ?? "http://localhost:11434";
-		// For Ollama, concatenate system prompt into the prompt
-		const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
-		return ollamaGenerate(fullPrompt, model, ollamaUrl);
-	}
+	return withConcurrencyLimit(provider, async () => {
+		if (provider === "ollama") {
+			const ollamaUrl = config.ollamaUrl ?? "http://localhost:11434";
+			// For Ollama, concatenate system prompt into the prompt
+			const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+			return ollamaGenerate(fullPrompt, model, ollamaUrl);
+		}
 
-	if (provider === "anthropic") {
-		if (!config.apiKey) throw new Error("Anthropic API key not configured");
-		return anthropicChat(prompt, config.apiKey, model, systemPrompt);
-	}
+		if (provider === "anthropic") {
+			if (!config.apiKey) throw new Error("Anthropic API key not configured");
+			return anthropicChat(prompt, config.apiKey, model, systemPrompt);
+		}
 
-	// OpenAI, Groq, MiniMax all use OpenAI-compatible chat completions API
-	const endpoint = PROVIDER_ENDPOINTS[provider];
-	if (!endpoint) throw new Error(`Unknown provider: ${provider}`);
-	if (!config.apiKey) throw new Error(`${provider} API key not configured`);
-	return openaiCompatibleChat(prompt, config.apiKey, model, endpoint, systemPrompt);
+		// OpenAI, Groq, MiniMax all use OpenAI-compatible chat completions API
+		const endpoint = PROVIDER_ENDPOINTS[provider];
+		if (!endpoint) throw new Error(`Unknown provider: ${provider}`);
+		if (!config.apiKey) throw new Error(`${provider} API key not configured`);
+		return openaiCompatibleChat(prompt, config.apiKey, model, endpoint, systemPrompt);
+	});
 }
 
 // ── Availability check ──

@@ -428,5 +428,86 @@ export const coreSceneTypesPlugin: LucidPlugin = {
 			readsHeadline: true,
 			render: () => "",
 		});
+
+		// ── Animation Engine scene types ──
+
+		registry.registerSceneType({
+			id: "image-crossfade",
+			name: "Image Crossfade",
+			description: "2-4 images crossfading with camera motion — video from stills",
+			category: "cinematic",
+			icon: "🎞️",
+			layout: "img₁ → img₂ → img₃",
+			tags: ["images", "crossfade", "ken-burns", "cinematic", "anime", "parallax"],
+			variants: ["ken-burns", "pan", "drift-up", "drift-down", "parallax", "zoom-in", "zoom-out"],
+			readsHeadline: true,
+			readsSubtitle: true,
+			render: (scene, accent, bg) => {
+				const images = scene.crossfadeImages ?? [];
+				const animation = scene.crossfadeAnimation ?? "ken-burns";
+
+				if (images.length === 0) {
+					// Fallback: render as a simple scene with headline
+					return `<Scene bg="${bg}"><AnimatedText text="${scene.headline}" fontSize={${scene.fontSize ?? 64}} accentColor="${accent}" animation="${scene.animation ?? "chars"}" /></Scene>`;
+				}
+
+				const imagesArr = JSON.stringify(images);
+				let jsx = `<ImageCrossfade images={${imagesArr}} animation="${animation}" vignette={true}`;
+				if (scene.variant && scene.variant !== animation) {
+					jsx += ` animation="${scene.variant}"`;
+				}
+				jsx += " />";
+
+				// Add text overlay if headline exists
+				if (scene.headline) {
+					jsx = `<AbsoluteFill>${jsx}<AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}><AnimatedText text="${scene.headline}" fontSize={${scene.fontSize ?? 56}} color="#ffffff" accentColor="${accent}" animation="${scene.animation ?? "chars"}" /></AbsoluteFill></AbsoluteFill>`;
+				}
+
+				return jsx;
+			},
+			expandToLayers: (scene, accent) => {
+				const layers: any[] = [];
+				if (scene.headline) {
+					layers.push({
+						id: "headline",
+						type: "text",
+						content: scene.headline,
+						position: "center",
+						size: 80,
+						startFrame: 0,
+						endFrame: -1,
+						settings: {
+							fontSize: scene.fontSize ?? 56,
+							color: "#ffffff",
+							animation: scene.animation ?? "chars",
+							accentColor: accent,
+						},
+					});
+				}
+				if (scene.subtitle) {
+					layers.push({
+						id: "subtitle",
+						type: "text",
+						content: scene.subtitle,
+						position: "bottom",
+						size: 60,
+						startFrame: 15,
+						endFrame: -1,
+						settings: {
+							fontSize: 24,
+							color: "#cccccc",
+							animation: "words",
+						},
+					});
+				}
+				return layers;
+			},
+			seedDefaults: (current, seedText) => ({
+				headline: seedText || current.headline || "Visual Story",
+				crossfadeImages: current.crossfadeImages ?? [],
+				crossfadeAnimation: current.crossfadeAnimation ?? "ken-burns",
+				crossfadeParticles: current.crossfadeParticles ?? "none",
+			}),
+		});
 	},
 };

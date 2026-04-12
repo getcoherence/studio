@@ -22,12 +22,16 @@ import {
 	AlignRight,
 	ArrowDown,
 	ArrowLeft,
+	ArrowRightLeft,
 	Bot,
 	Check,
+	ChevronDown,
+	ChevronUp,
 	Clock,
 	Diamond,
 	Download,
 	Eye,
+	Film,
 	Globe,
 	History,
 	Image,
@@ -38,6 +42,7 @@ import {
 	MousePointerClick,
 	Music,
 	Navigation,
+	Palette,
 	Pause,
 	Play,
 	Plus,
@@ -89,8 +94,20 @@ import { toast } from "sonner";
 import { AISettingsButton } from "@/components/ui/AISettingsDialog";
 import { Slider } from "@/components/ui/slider";
 import { AnimatedBackgroundPicker } from "@/components/video-editor/AnimatedBackgroundPicker";
+// ── Quality gates ──
+import {
+	checkQuality,
+	checkVariation,
+	classifyPromise,
+	scoreSlideshowRisk,
+	validatePromise,
+} from "@/lib/ai/qualityGates";
 // ── Scene plan types + presets ──
 import { BACKGROUND_NAMES, BACKGROUND_PRESETS } from "@/lib/ai/scenePlan";
+// ── Production knowledge skills ──
+import { SKILL_CONTENT } from "@/lib/ai/skills/content";
+// ── Theme system ──
+import { buildTheme, resolveTheme, THEME_PRESETS } from "@/lib/ai/themeConfig";
 // ── AI types ──
 import { AI_PROVIDERS } from "@/lib/ai/types";
 // ── Music catalog ──
@@ -171,18 +188,25 @@ import {
 	verticalShutter,
 	zoomPunch,
 } from "@/lib/remotion/helpers/CustomTransitions";
+// ── Particle effects ──
+import { ImageCrossfade } from "@/lib/remotion/helpers/ImageCrossfade";
 // ── Lottie helpers ──
 import { LottieBackground, LottieOverlay } from "@/lib/remotion/helpers/LottieHelper";
-// ── Particle effects ──
 import {
+	Bubbles,
 	Confetti,
+	Embers,
 	Fireflies,
 	FlowingGradient,
+	LightRays,
+	Mist,
 	PerspectiveGrid,
 	Sakura,
 	Snow,
 	Sparks,
+	Stars,
 } from "@/lib/remotion/helpers/ParticleEffects";
+import { PIXI_PRESETS, PixiOverlay } from "@/lib/remotion/helpers/PixiOverlay";
 import {
 	CinematicAnime,
 	CinematicDocumentary,
@@ -391,6 +415,18 @@ export interface SharedBridge {
 	Sparks: typeof Sparks;
 	PerspectiveGrid: typeof PerspectiveGrid;
 	FlowingGradient: typeof FlowingGradient;
+	Mist: typeof Mist;
+	LightRays: typeof LightRays;
+	Bubbles: typeof Bubbles;
+	Embers: typeof Embers;
+	Stars: typeof Stars;
+
+	// Image crossfade
+	ImageCrossfade: typeof ImageCrossfade;
+
+	// PixiJS overlay
+	PixiOverlay: typeof PixiOverlay;
+	PIXI_PRESETS: typeof PIXI_PRESETS;
 
 	// Lottie
 	LottieOverlay: typeof LottieOverlay;
@@ -464,6 +500,21 @@ export interface SharedBridge {
 
 	// Monaco Editor
 	MonacoEditor: typeof MonacoEditorImport;
+
+	// Quality gates
+	checkQuality: typeof checkQuality;
+	scoreSlideshowRisk: typeof scoreSlideshowRisk;
+	checkVariation: typeof checkVariation;
+	classifyPromise: typeof classifyPromise;
+	validatePromise: typeof validatePromise;
+
+	// Theme system
+	buildTheme: typeof buildTheme;
+	resolveTheme: typeof resolveTheme;
+	THEME_PRESETS: typeof THEME_PRESETS;
+
+	// Production knowledge
+	SKILL_CONTENT: typeof SKILL_CONTENT;
 }
 
 declare global {
@@ -480,9 +531,13 @@ const lucide = {
 	AlertTriangle,
 	ArrowDown,
 	ArrowLeft,
+	ArrowRightLeft,
 	Bot,
 	Check,
+	ChevronDown,
+	ChevronUp,
 	Clock,
+	Film,
 	Diamond,
 	Download,
 	Eye,
@@ -496,6 +551,7 @@ const lucide = {
 	MousePointerClick,
 	Music,
 	Navigation,
+	Palette,
 	Pause,
 	Play,
 	Plus,
@@ -690,6 +746,18 @@ export function initSharedBridge(): void {
 		Sparks,
 		PerspectiveGrid,
 		FlowingGradient,
+		Mist,
+		LightRays,
+		Bubbles,
+		Embers,
+		Stars,
+
+		// Image crossfade
+		ImageCrossfade,
+
+		// PixiJS overlay
+		PixiOverlay,
+		PIXI_PRESETS,
 
 		// Lottie
 		LottieOverlay,
@@ -763,7 +831,26 @@ export function initSharedBridge(): void {
 
 		// Monaco Editor
 		MonacoEditor: MonacoEditorImport,
+
+		// Quality gates
+		checkQuality,
+		scoreSlideshowRisk,
+		checkVariation,
+		classifyPromise,
+		validatePromise,
+
+		// Theme system
+		buildTheme,
+		resolveTheme,
+		THEME_PRESETS,
+
+		// Production knowledge
+		SKILL_CONTENT,
 	};
+
+	// Make React globally available for pro bundle JSX (esbuild compiles JSX
+	// to React.createElement, which needs React in the global scope)
+	(window as any).React = React;
 
 	console.log(`[SharedBridge] Initialized v${BRIDGE_VERSION}`);
 }
