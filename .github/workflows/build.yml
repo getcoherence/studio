@@ -1,54 +1,82 @@
+name: Build & Release
 
-name: Build Electron App
-
+# Tag-push trigger: release-ready tags (`v1.0.0`, `v1.0.0-beta.1`) build
+# signed installers for all three platforms and publish to GitHub Releases.
+# Regular commits + branches do NOT trigger a release — push normally for
+# backup and CI-free iteration.
+#
+# Manual dispatch stays available for one-off test builds from main; the
+# publish step is skipped when triggered manually (no release to target).
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
+
+permissions:
+  contents: write  # needed to create the GitHub Release
 
 jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          
+          node-version: "22"
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Install app dependencies
         run: npx electron-builder install-app-deps
-        
-      - name: Build Windows app
-        run: npm run build:win
+
+      # Azure Trusted Signing requires the Trusted Signing client NuGet +
+      # the Windows SDK's signtool.exe. signtool is pre-installed on
+      # windows-latest runners; the NuGet isn't.
+      - name: Install Trusted Signing dlib
+        shell: pwsh
+        run: |
+          nuget install Microsoft.Trusted.Signing.Client -Version 1.0.95 -OutputDirectory C:\TS
+          "TRUSTED_SIGNING_DLIB_PATH=C:\TS\Microsoft.Trusted.Signing.Client.1.0.95\bin\x64\Azure.CodeSigning.Dlib.dll" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Build & publish Windows
+        # `--publish always` when triggered by a tag → uploads to GitHub
+        # Releases. On manual dispatch we skip publishing.
+        run: |
+          if ("${{ github.event_name }}" -eq "push") {
+            npm run build:win -- --publish always
+          } else {
+            npm run build:win
+          }
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-      - name: Upload Windows build
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      - name: Upload unsigned artifact (manual dispatch only)
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
           path: release/**/*.exe
-          retention-days: 30
+          retention-days: 14
 
   build-macos:
     runs-on: macos-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: npm ci
@@ -56,28 +84,42 @@ jobs:
       - name: Install app dependencies
         run: npx electron-builder install-app-deps
 
-      - name: Build macOS app
-        run: npm run build:mac
+      - name: Build & publish macOS
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            npm run build:mac -- --publish always
+          else
+            npm run build:mac
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Developer ID Application cert + password — electron-builder
+          # imports the base64-encoded .p12 into a temporary keychain.
+          CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          # App Store Connect API key for notarization (no 2FA hassle).
+          # APPLE_API_KEY is the .p8 file contents (or a path to a file);
+          # APPLE_API_KEY_ID is the key ID, APPLE_API_ISSUER the issuer UUID.
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
 
-      - name: Upload macOS build
+      - name: Upload unsigned artifact (manual dispatch only)
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: macos-installer
           path: release/**/*.dmg
-          retention-days: 30
+          retention-days: 14
 
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: Install dependencies
         run: npm ci
@@ -85,15 +127,20 @@ jobs:
       - name: Install app dependencies
         run: npx electron-builder install-app-deps
 
-      - name: Build Linux app
-        run: npm run build:linux
+      - name: Build & publish Linux
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            npm run build:linux -- --publish always
+          else
+            npm run build:linux
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Linux build
+      - name: Upload unsigned artifact (manual dispatch only)
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: linux-installer
           path: release/**/*.AppImage
-          retention-days: 30
-
+          retention-days: 14
