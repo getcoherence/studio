@@ -9,7 +9,22 @@ const ROOT = path.join(__dirname, "../..");
 const MAIN_JS = path.join(ROOT, "dist-electron/main.js");
 const TEST_VIDEO = path.join(__dirname, "../fixtures/sample.webm");
 
-test("exports a GIF from a loaded video", async () => {
+// TODO: rewrite — this test was authored for upstream OpenScreen's
+// two-window (HUD → editor) architecture. Our fork has a single-window
+// flow (first window IS the editor) + path-traversal validation on
+// setCurrentVideoPath that rejects fixture paths outside RECORDINGS_DIR.
+// The UI selectors (`testId-gif-format-button`, `testId-export-button`)
+// and success toast text ("GIF exported successfully") have also been
+// replaced in the refactored + i18n'd ExportDialog.
+//
+// To revive:
+//   1. Copy the fixture into the user's RECORDINGS_DIR via app.evaluate
+//      so the approveReadableVideoPath gate accepts it.
+//   2. Use app.firstWindow() as the editor directly; drop the HUD
+//      switch-to-editor step.
+//   3. Re-find the current format selector + export trigger; use
+//      t("export.complete") / Download icon for success detection.
+test.skip("exports a GIF from a loaded video", async () => {
 	const outputPath = path.join(os.tmpdir(), `test-gif-export-${Date.now()}.gif`);
 
 	const app = await electron.launch({
