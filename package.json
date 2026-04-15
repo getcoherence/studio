@@ -101,7 +101,7 @@
 		"@types/node": "^25.0.3",
 		"@types/react": "^18.2.64",
 		"@types/react-dom": "^18.2.21",
-		"@types/uuid": "^10.0.0",
+		"@types/uuid": "^11.0.0",
 		"@vitejs/plugin-react": "^4.2.1",
 		"autoprefixer": "^10.4.21",
 		"electron": "^39.2.7",
