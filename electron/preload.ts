@@ -168,6 +168,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	) => {
 		return ipcRenderer.invoke("ai-analyze", prompt, context, modelOverride);
 	},
+	// Bench keyframe capture — renders a single scene at a given frame in a
+	// hidden BrowserWindow and returns the PNG path.
+	benchCaptureFrame: (args: {
+		code: string;
+		frame: number;
+		briefId: string;
+		sceneIndex: number;
+	}) => {
+		return ipcRenderer.invoke("bench-capture-frame", args);
+	},
 	aiGenerateJSON: (prompt: string, context?: string, schema?: Record<string, unknown>) => {
 		return ipcRenderer.invoke("ai-generate-json", prompt, context, schema);
 	},
@@ -233,6 +243,55 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		},
 	) => {
 		return ipcRenderer.invoke("ai-minimax-image", prompt, options);
+	},
+	// ElevenLabs Sound Effects — text-to-SFX, cached on disk by prompt hash
+	aiElevenlabsSfx: (
+		prompt: string,
+		options?: { durationSec?: number; promptInfluence?: number },
+	) => {
+		return ipcRenderer.invoke("ai-elevenlabs-sfx", prompt, options) as Promise<{
+			success: boolean;
+			filePath?: string;
+			cached?: boolean;
+			error?: string;
+		}>;
+	},
+	aiElevenlabsSfxBatch: (
+		items: Array<{
+			prompt: string;
+			options?: { durationSec?: number; promptInfluence?: number };
+		}>,
+	) => {
+		return ipcRenderer.invoke("ai-elevenlabs-sfx-batch", items) as Promise<
+			Array<{ success: boolean; filePath?: string; cached?: boolean; error?: string }>
+		>;
+	},
+	// ElevenLabs Music — text-to-music via /v1/music (alternative to MiniMax)
+	aiElevenlabsMusic: (
+		prompt: string,
+		options?: {
+			durationSec?: number;
+			forceInstrumental?: boolean;
+			outputFormat?: string;
+			seed?: number;
+		},
+	) => {
+		return ipcRenderer.invoke("ai-elevenlabs-music", prompt, options) as Promise<{
+			success: boolean;
+			audioPath?: string;
+			songId?: string;
+			durationSec?: number;
+			error?: string;
+		}>;
+	},
+	aiSaveServiceKey: (service: "elevenlabs", apiKey: string) => {
+		return ipcRenderer.invoke("ai-save-service-key", service, apiKey) as Promise<{
+			success: boolean;
+			error?: string;
+		}>;
+	},
+	aiGetServiceKey: (service: "elevenlabs") => {
+		return ipcRenderer.invoke("ai-get-service-key", service) as Promise<{ apiKey: string }>;
 	},
 	aiGenerateMusic: (
 		mood: string,
@@ -449,20 +508,30 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		return () => ipcRenderer.removeListener("stop-recording-from-bar", listener);
 	},
 
-	// Updater
-	checkForUpdates: () => {
-		return ipcRenderer.invoke("check-for-updates");
+	// Updater — electron-updater against GitHub Releases. `update:event` is
+	// pushed for every state transition; React subscribes via onUpdateEvent.
+	checkForUpdates: (manual?: boolean) => {
+		return ipcRenderer.invoke("update:check", manual ?? false);
 	},
 	getUpdateStatus: () => {
-		return ipcRenderer.invoke("get-update-status");
+		return ipcRenderer.invoke("update:status");
 	},
 	dismissUpdate: () => {
-		return ipcRenderer.invoke("dismiss-update");
+		return ipcRenderer.invoke("update:dismiss");
 	},
-	onUpdateAvailable: (callback: (version: string) => void) => {
-		const listener = (_: unknown, version: string) => callback(version);
-		ipcRenderer.on("update-available", listener);
-		return () => ipcRenderer.removeListener("update-available", listener);
+	installUpdate: () => {
+		return ipcRenderer.invoke("update:install");
+	},
+	getUpdateChannel: () => {
+		return ipcRenderer.invoke("update:get-channel");
+	},
+	setUpdateChannel: (channel: "latest" | "beta") => {
+		return ipcRenderer.invoke("update:set-channel", channel);
+	},
+	onUpdateEvent: (callback: (event: unknown) => void) => {
+		const listener = (_: unknown, event: unknown) => callback(event);
+		ipcRenderer.on("update:event", listener);
+		return () => ipcRenderer.removeListener("update:event", listener);
 	},
 
 	// Project browser

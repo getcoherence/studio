@@ -40,6 +40,43 @@ const Extrapolate = {
 import { animate, createTimeline } from "animejs";
 import { stagger } from "animejs/utils";
 import * as flubber from "flubber";
+import {
+	Box,
+	Float,
+	OrbitControls,
+	PerspectiveCamera,
+	RoundedBox,
+	Sphere,
+	Stars as ThreeStars,
+	Text as ThreeText,
+	Text3D,
+	Torus,
+} from "@react-three/drei";
+import { Canvas as ThreeCanvas, useFrame as useThreeFrame } from "@react-three/fiber";
+import * as THREE from "three";
+import { gsap } from "gsap";
+import { CustomEase } from "gsap/CustomEase";
+import { DrawSVGPlugin } from "gsap/DrawSVGPlugin";
+import { Flip } from "gsap/Flip";
+import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
+import { MotionPathPlugin } from "gsap/MotionPathPlugin";
+import { Physics2DPlugin } from "gsap/Physics2DPlugin";
+import { ScrambleTextPlugin } from "gsap/ScrambleTextPlugin";
+import { SplitText } from "gsap/SplitText";
+import { TextPlugin } from "gsap/TextPlugin";
+
+// Register all plugins once at module load
+gsap.registerPlugin(
+	CustomEase,
+	DrawSVGPlugin,
+	Flip,
+	MorphSVGPlugin,
+	MotionPathPlugin,
+	Physics2DPlugin,
+	ScrambleTextPlugin,
+	SplitText,
+	TextPlugin,
+);
 import { transform } from "sucrase";
 import { ANIME_PRESETS, useAnimeAnimation, useAnimeTimeline } from "./helpers/AnimeHelper";
 import { AudioPulse, BeatDot, useAudioPulse } from "./helpers/AudioReactive";
@@ -630,10 +667,38 @@ class SceneErrorBoundary extends React.Component<
  * The module scope provided to AI-generated code.
  * These are the imports available via destructuring.
  */
+// Wrap effect hooks so cleanup errors are logged but don't crash the scene.
+// AI-generated cleanup functions often do `ref.current?.kill()` where
+// `ref.current` is set but missing the method — Sucrase's _optionalChain
+// helper doesn't short-circuit on intermediate undefined access, so it hits
+// `undefined.call(...)` during unmount and the whole scene boundary trips.
+// The setup already succeeded — the scene rendered fine — so swallowing the
+// cleanup error keeps playback from crashing mid-video.
+const safeEffect = (hookName: "useEffect" | "useLayoutEffect") => {
+	const hook = React[hookName];
+	return (effect: React.EffectCallback, deps?: React.DependencyList) => {
+		return hook(() => {
+			const cleanup = effect();
+			if (typeof cleanup !== "function") return cleanup;
+			return () => {
+				try {
+					cleanup();
+				} catch (err) {
+					console.warn(
+						`[${hookName} cleanup] swallowed error in AI scene:`,
+						err instanceof Error ? err.message : err,
+					);
+				}
+			};
+		}, deps);
+	};
+};
+
 export const MODULE_SCOPE = {
 	React,
 	useState: React.useState,
-	useEffect: React.useEffect,
+	useEffect: safeEffect("useEffect"),
+	useLayoutEffect: safeEffect("useLayoutEffect"),
 	useMemo: React.useMemo,
 	useCallback: React.useCallback,
 	useRef: React.useRef,
@@ -647,7 +712,57 @@ export const MODULE_SCOPE = {
 	interpolateColor,
 	spring,
 	random,
-	Easing,
+	// Easing wrapped in a Proxy so unknown method names (Easing.steps,
+	// Easing.smoothStep, Easing.easeInOut, etc.) return Easing.linear as a
+	// sensible default instead of crashing the scene with "Easing.X is not
+	// a function". Real Easing methods pass through untouched.
+	//
+	// wrapEasingFn: the AI sometimes calls Easing.out(Easing.cubic).fn(t) —
+	// this is the old React-Native Easing API where the callable lived on
+	// .fn. Remotion's Easing returns a plain function, so .fn is undefined
+	// and crashes the scene. We wrap every function returned from an Easing
+	// method so `.fn` resolves back to the function itself.
+	Easing: (() => {
+		const wrapEasingFn = (fn: unknown): unknown => {
+			if (typeof fn !== "function") return fn;
+			const wrapped = (...args: unknown[]) => {
+				const result = (fn as any)(...args);
+				return wrapEasingFn(result);
+			};
+			(wrapped as any).fn = wrapped;
+			return wrapped;
+		};
+		return new Proxy(Easing, {
+			get(target, prop) {
+				if (prop in target) {
+					const raw = (target as any)[prop];
+					return wrapEasingFn(raw);
+				}
+				if (typeof prop === "string") {
+					// Common AI confusions with React-Native / CSS naming
+					if (prop === "easeIn") return wrapEasingFn(Easing.in(Easing.ease));
+					if (prop === "easeOut") return wrapEasingFn(Easing.out(Easing.ease));
+					if (prop === "easeInOut") return wrapEasingFn(Easing.inOut(Easing.ease));
+					if (prop === "easeOutCubic") return wrapEasingFn(Easing.out(Easing.cubic));
+					if (prop === "easeInCubic") return wrapEasingFn(Easing.in(Easing.cubic));
+					if (prop === "easeInOutCubic") return wrapEasingFn(Easing.inOut(Easing.cubic));
+					if (prop === "easeOutQuad") return wrapEasingFn(Easing.out(Easing.quad));
+					if (prop === "easeInQuad") return wrapEasingFn(Easing.in(Easing.quad));
+					if (prop === "smoothStep" || prop === "smoothstep")
+						return wrapEasingFn((t: number) => t * t * (3 - 2 * t));
+					// CSS-like steps(n) — the AI calls it expecting stair-step easing
+					if (prop === "steps") return wrapEasingFn(() => Easing.linear);
+					// `.fn` accessed directly on Easing itself — shouldn't happen but
+					// return linear to be safe.
+					if (prop === "fn") return wrapEasingFn(Easing.linear);
+					console.warn(
+						`[Easing Proxy] "${prop}" is not a real Easing method — returning Easing.linear`,
+					);
+				}
+				return wrapEasingFn(Easing.linear);
+			},
+		});
+	})(),
 	Extrapolate,
 	// Per-scene error boundary — wraps each <CustomScene_N /> reference
 	// in the compiled VideoComposition so a single bad scene shows a
@@ -669,6 +784,44 @@ export const MODULE_SCOPE = {
 		useCurrentFrame,
 		useVideoConfig,
 	}),
+	// Compatibility shim — the AI sometimes reaches for React-Spring's
+	// `useSpring(...)` hook when it should be using Remotion's `spring()`
+	// helper. The React-Spring API returns an animated-value object; Remotion's
+	// spring() returns a number. We adapt: accept either `({ from, to, config })`
+	// or `({ frame, fps, ... })` style calls and return a number. This prevents
+	// "useSpring is not defined" runtime crashes while still producing a usable
+	// animated value. The AI's call sites usually consume the result as a
+	// number anyway.
+	useSpring: (config: any = {}) => {
+		try {
+			const frame = useCurrentFrame();
+			const { fps } = useVideoConfig();
+			const from = typeof config?.from === "number" ? config.from : 0;
+			const to = typeof config?.to === "number" ? config.to : 1;
+			const progress = spring({
+				frame,
+				fps,
+				from,
+				to,
+				config: { stiffness: 100, damping: 15, mass: 1, ...(config?.config || {}) },
+			});
+			// Proxy trap — the AI might index into this like `animated.scale` or
+			// `animated.value`. Return the number directly for any property
+			// access that asks for a number, and keep the raw number usable too.
+			return new Proxy(
+				{ valueOf: () => progress, value: progress },
+				{
+					get(target, prop) {
+						if (prop === Symbol.toPrimitive || prop === "valueOf") return () => progress;
+						if (prop in target) return (target as any)[prop];
+						return progress;
+					},
+				},
+			);
+		} catch {
+			return 0;
+		}
+	},
 	Loop,
 	Audio,
 	Video,
@@ -786,6 +939,33 @@ export const MODULE_SCOPE = {
 	stagger,
 	// SVG path morphing (flubber)
 	flubber,
+	// GSAP — richer animation timelines, used by Motion.so for polished motion
+	// All plugins pre-registered (free as of 2024)
+	gsap,
+	SplitText,        // split headlines into chars/words/lines for staggered reveals
+	DrawSVGPlugin,    // animate SVG strokes drawing on
+	MorphSVGPlugin,   // morph between SVG paths
+	MotionPathPlugin, // animate elements along curved SVG paths
+	ScrambleTextPlugin, // matrix-style text scramble
+	Physics2DPlugin,  // gravity/physics-based motion
+	Flip,             // smooth layout transitions
+	CustomEase,       // bespoke easing curves
+	TextPlugin,       // animate text content changes
+	// Three.js — for 3D scenes (camera moves, 3D text, product reveals)
+	THREE,
+	ThreeCanvas,      // <ThreeCanvas> wrapper — root of any 3D scene
+	useThreeFrame,    // useFrame() hook (renamed to avoid clash with Remotion)
+	// drei — react-three helpers (preloaded primitives + utilities)
+	PerspectiveCamera,
+	OrbitControls,
+	ThreeStars,       // drei <Stars> starfield (3D) — renamed to avoid clash with ParticleEffects.Stars
+	Float,
+	Box,
+	Sphere,
+	Torus,
+	RoundedBox,
+	ThreeText,        // 2D text in 3D space
+	Text3D,           // extruded 3D text (requires font URL)
 	// PixiJS effects overlay
 	PixiOverlay,
 	PIXI_PRESETS,

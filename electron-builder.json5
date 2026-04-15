@@ -66,7 +66,16 @@
     "target": [
       "nsis"
     ],
-    "icon": "icons/icons/win/icon.ico"
+    "icon": "icons/icons/win/icon.ico",
+    // Azure Trusted Signing — custom hook invokes SignTool with the
+    // Azure.CodeSigning.Dlib.dll. Auth + tool paths come from env vars;
+    // see signing/sign.js for the full list. electron-builder 26.x moved
+    // signing config under `signtoolOptions` (was flat on `win` in 25.x).
+    "signtoolOptions": {
+      "sign": "./signing/sign.cjs",
+      "signingHashAlgorithms": ["sha256"],
+      "publisherName": "Brightyard"
+    }
   },
   "nsis": {
     "oneClick": true,
@@ -77,10 +86,35 @@
     "installerIcon": "icons/icons/win/icon.ico",
     "uninstallerIcon": "icons/icons/win/icon.ico"
   },
+  // Auto-update target. electron-builder writes `latest.yml` +
+  // `latest-mac.yml` + `latest-linux.yml` alongside the installer on
+  // release publish; electron-updater (runtime) reads these to detect new
+  // versions. Prerelease tags (e.g. v1.0.0-beta.1) publish to the "beta"
+  // channel automatically because `allowPrerelease` is set in updater.ts
+  // when the user opts into Beta.
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "getcoherence",
+      "repo": "studio",
+      "releaseType": "release"
+    }
+  ],
   "protocols": [
     {
       "name": "Coherence Studio",
       "schemes": ["coherence-studio"]
+    }
+  ],
+  // Double-clicking a .studio file opens it in Coherence Studio.
+  // Icon defaults to the app icon; swap in a dedicated document icon
+  // once one is designed.
+  "fileAssociations": [
+    {
+      "ext": "studio",
+      "name": "Coherence Studio Project",
+      "description": "Coherence Studio Project",
+      "role": "Editor"
     }
   ]
 }

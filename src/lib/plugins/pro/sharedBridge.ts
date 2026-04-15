@@ -70,6 +70,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 // ── react-resizable-panels ──
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {
@@ -319,6 +320,8 @@ export interface SharedBridge {
 	Fragment: typeof Fragment;
 	lazy: typeof lazy;
 	Suspense: typeof Suspense;
+	// react-dom/server (used by pro bundle's sceneChecker dry-render harness)
+	renderToStaticMarkup: typeof renderToStaticMarkup;
 
 	// Remotion core
 	useCurrentFrame: typeof useCurrentFrame;
@@ -650,6 +653,7 @@ export function initSharedBridge(): void {
 		Fragment,
 		lazy,
 		Suspense,
+		renderToStaticMarkup,
 
 		// Remotion core
 		useCurrentFrame,
