@@ -39,7 +39,10 @@ export function createEditorWindow(): BrowserWindow {
 			webSecurity: true,
 			backgroundThrottling: false,
 			webviewTag: true,
-			devTools: IS_DEV,
+			// DevTools allowed in both dev and packaged builds. In prod the
+			// menu item isn't exposed by default, but Cmd/Ctrl+Shift+I still
+			// opens it — essential for diagnosing installer-only issues.
+			devTools: true,
 		},
 	});
 

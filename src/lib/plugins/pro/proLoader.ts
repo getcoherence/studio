@@ -36,15 +36,12 @@ const DEFAULT_CONFIG: ProAuthConfig = {
 	providerName: "Coherence",
 };
 
-// Auto-detect local development and use localhost URLs
-const isDev =
-	typeof window !== "undefined" &&
-	(window.location.hostname === "localhost" ||
-		window.location.hostname === "127.0.0.1" ||
-		window.location.protocol === "file:" ||
-		import.meta.env?.DEV === true ||
-		!!(import.meta as any).env?.MODE?.includes("development") ||
-		window.location.port !== "");
+// Dev detection — Vite sets `import.meta.env.DEV` at build time (true
+// under `npm run dev`, false in packaged prod builds). Previously this
+// also flagged `file:` protocol as dev, which broke packaged Electron
+// builds (renderer loads via file://), making prod installs silently
+// take the dev-bypass path and hang on "Loading..." for pro views.
+const isDev = import.meta.env?.DEV === true;
 const DEV_CONFIG: ProAuthConfig = {
 	baseUrl: "http://localhost:5175",
 	authUrl: "http://localhost:5175/login?redirect=studio-desktop",
