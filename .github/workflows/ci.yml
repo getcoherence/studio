@@ -6,10 +6,16 @@ on:
   push:
     branches: [main]
 
+# Default GITHUB_TOKEN to read-only — every job below opts in to anything more.
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,6 +28,8 @@ jobs:
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,6 +42,8 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,6 +56,8 @@ jobs:
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

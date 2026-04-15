@@ -100,6 +100,21 @@ const PROVIDER_ENDPOINTS: Record<string, string> = {
 };
 
 /**
+ * Parse the hostname from an endpoint URL. Returns "" if the URL is
+ * malformed. Used for exact-match host comparisons instead of
+ * `endpoint.includes("api.openai.com")`, which CodeQL flags because a
+ * crafted URL like `evil.com/api.openai.com/x` would pass a substring
+ * check. Hostname matching closes that whole class of issues.
+ */
+function endpointHost(endpoint: string): string {
+	try {
+		return new URL(endpoint).hostname.toLowerCase();
+	} catch {
+		return "";
+	}
+}
+
+/**
  * Per-provider maximum output token limits.
  *
  * The Composer agent in studio-pro produces long customCode responses
@@ -113,29 +128,30 @@ const PROVIDER_ENDPOINTS: Record<string, string> = {
  */
 function getMaxOutputTokens(endpoint: string, model: string): number {
 	const m = (model || "").toLowerCase();
+	const host = endpointHost(endpoint);
 
 	// Anthropic Claude 4.x supports 32k output tokens natively (Opus,
 	// Sonnet, Haiku — all 32k). 64k is available with the extended-output
 	// beta header but we don't enable that.
-	if (endpoint.includes("api.anthropic.com")) {
+	if (host === "api.anthropic.com") {
 		return 32_768;
 	}
 
 	// MiniMax M2.7 supports very long outputs — generous limit.
-	if (endpoint.includes("api.minimaxi.chat")) {
+	if (host === "api.minimaxi.chat") {
 		return 65_536;
 	}
 
 	// OpenAI: GPT-5 and GPT-4.1 support 32k output. Mini variants typically
 	// support 16k. The API will return an error (not clamp) if we exceed,
 	// so we set per-model where it matters.
-	if (endpoint.includes("api.openai.com")) {
+	if (host === "api.openai.com") {
 		if (m.includes("mini") || m.includes("nano")) return 16_384;
 		return 32_768;
 	}
 
 	// Groq fast-inference models support 8-32k depending on the model.
-	if (endpoint.includes("api.groq.com")) {
+	if (host === "api.groq.com") {
 		return 32_768;
 	}
 
@@ -267,7 +283,7 @@ async function openaiCompatibleChat(
 	systemPrompt?: string,
 ): Promise<string> {
 	// OpenAI reasoning/Pro models require the Responses API instead of Chat Completions
-	if (endpoint.includes("openai.com") && requiresResponsesAPI(model)) {
+	if (endpointHost(endpoint).endsWith("openai.com") && requiresResponsesAPI(model)) {
 		return openaiResponsesAPI(prompt, apiKey, model, systemPrompt);
 	}
 

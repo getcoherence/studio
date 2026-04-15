@@ -103,13 +103,66 @@ export function getProStatus(): typeof proStatus {
 	return proStatus;
 }
 
+// In-memory cache of tokens, hydrated from secure storage on init. Sync getters
+// read from this cache; sync setters update the cache and fire-and-forget the
+// async persist to OS-keychain-backed storage. We avoid plaintext localStorage
+// to satisfy CodeQL's clear-text-storage warning and to encrypt at rest.
+let cachedAccessToken: string | null = null;
+let cachedRefreshToken: string | null = null;
+let storageHydrated = false;
+
+const secureStorage = (() => {
+	const api = (globalThis as { electronAPI?: Window["electronAPI"] }).electronAPI;
+	return {
+		get: (key: string) => api?.secureStorageGet?.(key) ?? Promise.resolve(null),
+		set: (key: string, value: string) =>
+			api?.secureStorageSet?.(key, value) ?? Promise.resolve({ success: false }),
+		delete: (key: string) => api?.secureStorageDelete?.(key) ?? Promise.resolve({ success: false }),
+	};
+})();
+
+/**
+ * Hydrate the in-memory token cache from secure storage. Migrates any
+ * existing plaintext localStorage tokens (from older app versions) into
+ * encrypted storage and clears the plaintext copy.
+ */
+export async function hydrateProTokenCache(): Promise<void> {
+	if (storageHydrated) return;
+	const accessKey = config.tokenKey;
+	const refreshKey = `${config.tokenKey}-refresh`;
+
+	const [secureAccess, secureRefresh] = await Promise.all([
+		secureStorage.get(accessKey),
+		secureStorage.get(refreshKey),
+	]);
+
+	cachedAccessToken = secureAccess ?? null;
+	cachedRefreshToken = secureRefresh ?? null;
+
+	// Migrate from legacy plaintext localStorage if present.
+	try {
+		const legacyAccess = localStorage.getItem(accessKey);
+		const legacyRefresh = localStorage.getItem(refreshKey);
+		if (legacyAccess && !cachedAccessToken) {
+			cachedAccessToken = legacyAccess;
+			void secureStorage.set(accessKey, legacyAccess);
+		}
+		if (legacyRefresh && !cachedRefreshToken) {
+			cachedRefreshToken = legacyRefresh;
+			void secureStorage.set(refreshKey, legacyRefresh);
+		}
+		if (legacyAccess) localStorage.removeItem(accessKey);
+		if (legacyRefresh) localStorage.removeItem(refreshKey);
+	} catch {
+		/* ignore — non-Electron context */
+	}
+
+	storageHydrated = true;
+}
+
 /** Get stored token (internal) */
 function getStoredToken(): string | null {
-	try {
-		return localStorage.getItem(config.tokenKey);
-	} catch {
-		return null;
-	}
+	return cachedAccessToken;
 }
 
 /** Get stored token (exported for silent init check in license.ts) */
@@ -117,36 +170,26 @@ export function getStoredProToken(): string | null {
 	return getStoredToken();
 }
 
-/** Get the in-memory token (may still be valid even if localStorage was cleared) */
+/** Get the in-memory token (may still be valid even if storage was cleared) */
 export function getProToken(): string | null {
 	return proToken || getStoredToken();
 }
 
 /** Store token */
 function storeToken(token: string): void {
-	try {
-		localStorage.setItem(config.tokenKey, token);
-	} catch {
-		/* ignore */
-	}
+	cachedAccessToken = token;
+	void secureStorage.set(config.tokenKey, token);
 }
 
 /** Store refresh token */
 function storeRefreshToken(token: string): void {
-	try {
-		localStorage.setItem(`${config.tokenKey}-refresh`, token);
-	} catch {
-		/* ignore */
-	}
+	cachedRefreshToken = token;
+	void secureStorage.set(`${config.tokenKey}-refresh`, token);
 }
 
 /** Get stored refresh token */
 function getStoredRefreshToken(): string | null {
-	try {
-		return localStorage.getItem(`${config.tokenKey}-refresh`);
-	} catch {
-		return null;
-	}
+	return cachedRefreshToken;
 }
 
 /** Use refresh token to get a fresh access token */
@@ -177,6 +220,11 @@ async function refreshAccessToken(): Promise<string | null> {
 
 /** Clear stored tokens */
 function clearToken(): void {
+	cachedAccessToken = null;
+	cachedRefreshToken = null;
+	void secureStorage.delete(config.tokenKey);
+	void secureStorage.delete(`${config.tokenKey}-refresh`);
+	// Also clear any legacy plaintext entry, just in case migration didn't run.
 	try {
 		localStorage.removeItem(config.tokenKey);
 		localStorage.removeItem(`${config.tokenKey}-refresh`);
@@ -358,6 +406,8 @@ export async function activatePro(): Promise<{
 	error?: string;
 	code?: "no_subscription" | "auth_failed" | "bundle_failed";
 }> {
+	// Ensure the secure-storage cache is hydrated before any token reads.
+	await hydrateProTokenCache();
 	proStatus = "checking";
 
 	// ── Dev mode bypass: skip auth, load local bundle if available ──

@@ -322,6 +322,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		}>;
 	},
 
+	// Secure storage (OS-keychain-backed via Electron safeStorage)
+	secureStorageGet: (key: string) =>
+		ipcRenderer.invoke("secure-store-get", key) as Promise<string | null>,
+	secureStorageSet: (key: string, value: string) =>
+		ipcRenderer.invoke("secure-store-set", key, value) as Promise<{ success: boolean }>,
+	secureStorageDelete: (key: string) =>
+		ipcRenderer.invoke("secure-store-delete", key) as Promise<{ success: boolean }>,
+
 	musicLibraryList: () => {
 		return ipcRenderer.invoke("music-library-list");
 	},
