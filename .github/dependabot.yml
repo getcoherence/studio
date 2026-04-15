@@ -1,0 +1,49 @@
+# Dependabot config
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # GitHub Actions — keep SHA-pinned `uses: action@<sha> # <tag>` refs
+  # current. Dependabot updates both the SHA and the trailing comment when
+  # a new release ships. Runs weekly to avoid PR noise.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      # Group all first-party actions/* updates into a single PR to reduce
+      # review overhead — they usually ship compatible releases together.
+      actions-org:
+        patterns:
+          - "actions/*"
+
+  # npm — Dependabot already watching via security alerts; enable version
+  # updates (non-security) with a conservative weekly cadence so we see
+  # patches/minors for direct deps without being drowned in PRs.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    # Security updates are already automatic via the repo's Dependabot
+    # settings; this block covers non-security version updates.
+    groups:
+      # Monorepo groups — bump related packages together.
+      remotion:
+        patterns:
+          - "@remotion/*"
+          - "remotion"
+      radix:
+        patterns:
+          - "@radix-ui/*"
+      lucide:
+        patterns:
+          - "lucide-*"
+    ignore:
+      # Vite is the deferred 5 → 8 migration. Don't open weekly update PRs
+      # until we're ready to tackle the breaking-change work.
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+      # Electron major bumps are substantial — handled manually.
+      - dependency-name: "electron"
+        update-types: ["version-update:semver-major"]
