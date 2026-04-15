@@ -25,21 +25,30 @@ const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const DEFAULT_SIGNTOOL_PATHS = [
-	"C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe",
-	"C:/Program Files (x86)/Windows Kits/10/bin/10.0.22000.0/x64/signtool.exe",
-	"C:/Program Files (x86)/Windows Kits/10/bin/x64/signtool.exe",
-];
+const WINDOWS_KITS_BIN = "C:/Program Files (x86)/Windows Kits/10/bin";
 
 function resolveSigntool() {
 	if (process.env.SIGNTOOL_PATH && fs.existsSync(process.env.SIGNTOOL_PATH)) {
 		return process.env.SIGNTOOL_PATH;
 	}
-	for (const candidate of DEFAULT_SIGNTOOL_PATHS) {
-		if (fs.existsSync(candidate)) return candidate;
+	// Scan the Windows Kits bin/ directory for the newest SDK that ships
+	// signtool.exe — GitHub's windows-latest runner and dev machines move
+	// through SDK versions (10.0.22000, 22621, 26100, …) so a hardcoded
+	// list goes stale. Sort descending so we pick the newest available.
+	if (fs.existsSync(WINDOWS_KITS_BIN)) {
+		const versioned = fs
+			.readdirSync(WINDOWS_KITS_BIN)
+			.filter((entry) => /^\d+\.\d+\.\d+\.\d+$/.test(entry))
+			.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+		for (const version of versioned) {
+			const candidate = path.join(WINDOWS_KITS_BIN, version, "x64", "signtool.exe");
+			if (fs.existsSync(candidate)) return candidate;
+		}
+		const bare = path.join(WINDOWS_KITS_BIN, "x64", "signtool.exe");
+		if (fs.existsSync(bare)) return bare;
 	}
 	throw new Error(
-		"signtool.exe not found. Set SIGNTOOL_PATH or install the Windows SDK (10.0.22621+).",
+		"signtool.exe not found. Set SIGNTOOL_PATH or install the Windows SDK.",
 	);
 }
 
