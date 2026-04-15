@@ -1399,7 +1399,9 @@ export function registerIpcHandlers(
 				const seen = new Set<string>();
 
 				// Try ytInitialData first — much richer than RSS
-				const ytDataMatch = channelHtml.match(/var ytInitialData\s*=\s*(\{[\s\S]*?\});\s*<\/script>/);
+				const ytDataMatch = channelHtml.match(
+					/var ytInitialData\s*=\s*(\{[\s\S]*?\});\s*<\/script>/,
+				);
 				if (ytDataMatch) {
 					try {
 						// Extract all videoId values from the JSON blob

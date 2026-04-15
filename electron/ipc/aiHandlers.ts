@@ -13,20 +13,17 @@ import {
 	loadAIConfig,
 	saveAIConfig,
 } from "../ai/aiService";
-import {
-	downloadLottieAnimation,
-	getPopularLotties,
-	searchLottieAnimations,
-} from "../ai/lottieSearch";
+import { type ElevenLabsMusicOptions, generateElevenLabsMusic } from "../ai/elevenLabsMusicService";
 import {
 	type ElevenLabsSfxOptions,
 	generateSfx,
 	generateSfxBatch,
 } from "../ai/elevenLabsSfxService";
 import {
-	type ElevenLabsMusicOptions,
-	generateElevenLabsMusic,
-} from "../ai/elevenLabsMusicService";
+	downloadLottieAnimation,
+	getPopularLotties,
+	searchLottieAnimations,
+} from "../ai/lottieSearch";
 import { generateImage, type ImageGenOptions } from "../ai/minimaxImageService";
 import {
 	MINIMAX_VOICES,
@@ -82,17 +79,14 @@ export function registerAIHandlers(): void {
 
 	// Save an API key for a side-service (not the main chat provider).
 	// Today: "elevenlabs" for SFX. In future: whatever side-services we add.
-	ipcMain.handle(
-		"ai-save-service-key",
-		async (_event, service: "elevenlabs", apiKey: string) => {
-			const { saveSettings } = await import("../settings");
-			if (service === "elevenlabs") {
-				await saveSettings({ aiApiKey_elevenlabs: apiKey });
-				return { success: true };
-			}
-			return { success: false, error: `Unknown service: ${service}` };
-		},
-	);
+	ipcMain.handle("ai-save-service-key", async (_event, service: "elevenlabs", apiKey: string) => {
+		const { saveSettings } = await import("../settings");
+		if (service === "elevenlabs") {
+			await saveSettings({ aiApiKey_elevenlabs: apiKey });
+			return { success: true };
+		}
+		return { success: false, error: `Unknown service: ${service}` };
+	});
 
 	ipcMain.handle("ai-get-service-key", async (_event, service: "elevenlabs") => {
 		const { loadSettings } = await import("../settings");

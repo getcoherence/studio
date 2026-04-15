@@ -37,9 +37,6 @@ const Extrapolate = {
 	IDENTITY: "identity",
 } as const;
 
-import { animate, createTimeline } from "animejs";
-import { stagger } from "animejs/utils";
-import * as flubber from "flubber";
 import {
 	Box,
 	Float,
@@ -47,13 +44,15 @@ import {
 	PerspectiveCamera,
 	RoundedBox,
 	Sphere,
+	Text3D,
 	Stars as ThreeStars,
 	Text as ThreeText,
-	Text3D,
 	Torus,
 } from "@react-three/drei";
 import { Canvas as ThreeCanvas, useFrame as useThreeFrame } from "@react-three/fiber";
-import * as THREE from "three";
+import { animate, createTimeline } from "animejs";
+import { stagger } from "animejs/utils";
+import * as flubber from "flubber";
 import { gsap } from "gsap";
 import { CustomEase } from "gsap/CustomEase";
 import { DrawSVGPlugin } from "gsap/DrawSVGPlugin";
@@ -64,6 +63,7 @@ import { Physics2DPlugin } from "gsap/Physics2DPlugin";
 import { ScrambleTextPlugin } from "gsap/ScrambleTextPlugin";
 import { SplitText } from "gsap/SplitText";
 import { TextPlugin } from "gsap/TextPlugin";
+import * as THREE from "three";
 
 // Register all plugins once at module load
 gsap.registerPlugin(
@@ -77,6 +77,7 @@ gsap.registerPlugin(
 	SplitText,
 	TextPlugin,
 );
+
 import { transform } from "sucrase";
 import { ANIME_PRESETS, useAnimeAnimation, useAnimeTimeline } from "./helpers/AnimeHelper";
 import { AudioPulse, BeatDot, useAudioPulse } from "./helpers/AudioReactive";
@@ -942,30 +943,30 @@ export const MODULE_SCOPE = {
 	// GSAP — richer animation timelines, used by Motion.so for polished motion
 	// All plugins pre-registered (free as of 2024)
 	gsap,
-	SplitText,        // split headlines into chars/words/lines for staggered reveals
-	DrawSVGPlugin,    // animate SVG strokes drawing on
-	MorphSVGPlugin,   // morph between SVG paths
+	SplitText, // split headlines into chars/words/lines for staggered reveals
+	DrawSVGPlugin, // animate SVG strokes drawing on
+	MorphSVGPlugin, // morph between SVG paths
 	MotionPathPlugin, // animate elements along curved SVG paths
 	ScrambleTextPlugin, // matrix-style text scramble
-	Physics2DPlugin,  // gravity/physics-based motion
-	Flip,             // smooth layout transitions
-	CustomEase,       // bespoke easing curves
-	TextPlugin,       // animate text content changes
+	Physics2DPlugin, // gravity/physics-based motion
+	Flip, // smooth layout transitions
+	CustomEase, // bespoke easing curves
+	TextPlugin, // animate text content changes
 	// Three.js — for 3D scenes (camera moves, 3D text, product reveals)
 	THREE,
-	ThreeCanvas,      // <ThreeCanvas> wrapper — root of any 3D scene
-	useThreeFrame,    // useFrame() hook (renamed to avoid clash with Remotion)
+	ThreeCanvas, // <ThreeCanvas> wrapper — root of any 3D scene
+	useThreeFrame, // useFrame() hook (renamed to avoid clash with Remotion)
 	// drei — react-three helpers (preloaded primitives + utilities)
 	PerspectiveCamera,
 	OrbitControls,
-	ThreeStars,       // drei <Stars> starfield (3D) — renamed to avoid clash with ParticleEffects.Stars
+	ThreeStars, // drei <Stars> starfield (3D) — renamed to avoid clash with ParticleEffects.Stars
 	Float,
 	Box,
 	Sphere,
 	Torus,
 	RoundedBox,
-	ThreeText,        // 2D text in 3D space
-	Text3D,           // extruded 3D text (requires font URL)
+	ThreeText, // 2D text in 3D space
+	Text3D, // extruded 3D text (requires font URL)
 	// PixiJS effects overlay
 	PixiOverlay,
 	PIXI_PRESETS,

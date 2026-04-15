@@ -23,7 +23,14 @@ declare namespace NodeJS {
 
 // Auto-update event shape (mirrors UpdateEvent in electron/updater.ts)
 interface UpdateEvent {
-	state: "idle" | "checking" | "available" | "not-available" | "downloading" | "downloaded" | "error";
+	state:
+		| "idle"
+		| "checking"
+		| "available"
+		| "not-available"
+		| "downloading"
+		| "downloaded"
+		| "error";
 	currentVersion: string;
 	latestVersion?: string;
 	progress?: number;
@@ -214,8 +221,7 @@ interface Window {
 			briefId: string;
 			sceneIndex: number;
 		}) => Promise<
-			| { success: true; path: string; bytes: number }
-			| { success: false; error: string }
+			{ success: true; path: string; bytes: number } | { success: false; error: string }
 		>;
 		aiGenerateJSON: (
 			prompt: string,
@@ -309,9 +315,7 @@ interface Window {
 				prompt: string;
 				options?: { durationSec?: number; promptInfluence?: number };
 			}>,
-		) => Promise<
-			Array<{ success: boolean; filePath?: string; cached?: boolean; error?: string }>
-		>;
+		) => Promise<Array<{ success: boolean; filePath?: string; cached?: boolean; error?: string }>>;
 		aiElevenlabsMusic: (
 			prompt: string,
 			options?: {
