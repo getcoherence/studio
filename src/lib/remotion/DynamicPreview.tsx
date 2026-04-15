@@ -25,6 +25,10 @@ interface DynamicPreviewProps {
 	seekToFrame?: number;
 	/** Callback with current frame during playback */
 	onFrameUpdate?: (frame: number) => void;
+	/** Composition width (defaults to 1920 for 16:9) */
+	compositionWidth?: number;
+	/** Composition height (defaults to 1080 for 16:9) */
+	compositionHeight?: number;
 }
 
 /** Wrapper composition that layers DynamicComposition + background music + audio analysis */
@@ -60,6 +64,8 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 	resetSignal,
 	seekToFrame,
 	onFrameUpdate,
+	compositionWidth = 1920,
+	compositionHeight = 1080,
 }) => {
 	const playerRef = useRef<PlayerRef>(null);
 	const fps = 30;
@@ -123,13 +129,13 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 			}}
 		>
 			<Player
-				key={`player-${code.length}-${durationInFrames}`}
+				key={`player-${code.length}-${durationInFrames}-${compositionWidth}x${compositionHeight}`}
 				ref={playerRef}
 				component={CompositionComponent as React.FC<any>}
 				inputProps={inputProps}
 				durationInFrames={Math.max(1, durationInFrames)}
-				compositionWidth={1920}
-				compositionHeight={1080}
+				compositionWidth={compositionWidth}
+				compositionHeight={compositionHeight}
 				fps={fps}
 				// Default is 5 simultaneous Audio tags. Narrated videos can mount
 				// up to ~30 (one per scene narration + per SFX cue + 1 music track),
@@ -140,7 +146,7 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 				style={{
 					width: "100%",
 					maxHeight: "100%",
-					aspectRatio: "1920 / 1080",
+					aspectRatio: `${compositionWidth} / ${compositionHeight}`,
 				}}
 				controls
 				autoPlay={false}

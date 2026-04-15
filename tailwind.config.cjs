@@ -1,7 +1,14 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
 	darkMode: ["class"],
-	content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+	content: [
+		"./index.html",
+		"./src/**/*.{js,ts,jsx,tsx}",
+		// Studio Pro is a sibling repo that ships className strings the host's
+		// Tailwind must compile. Without this glob, any new utility used only
+		// inside studio-pro silently falls back to the browser default.
+		"../studio-pro/src/**/*.{js,ts,jsx,tsx}",
+	],
 	theme: {
 		extend: {
 			keyframes: {

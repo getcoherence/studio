@@ -16,11 +16,7 @@ import {
 	type ProFeature,
 	setLicenseTier,
 } from "@/lib/license";
-import {
-	activatePro,
-	checkSubscription,
-	getProToken,
-} from "@/lib/plugins/pro/proLoader";
+import { activatePro, checkSubscription, getProToken } from "@/lib/plugins/pro/proLoader";
 
 // ── ProBadge ────────────────────────────────────────────────────────────
 

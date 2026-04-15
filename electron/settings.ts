@@ -18,6 +18,7 @@ export interface StudioSettings {
 	aiApiKey_anthropic?: string;
 	aiApiKey_groq?: string;
 	aiApiKey_minimax?: string;
+	aiApiKey_elevenlabs?: string;
 
 	// Per-provider model selection (so switching providers doesn't lose model choice)
 	aiModel_openai?: string;
@@ -38,6 +39,7 @@ export interface StudioSettings {
 	// App
 	locale: string;
 	checkForUpdates: boolean;
+	updateChannel: "latest" | "beta";
 	recentProjects: string[];
 
 	// License
@@ -56,6 +58,7 @@ const DEFAULT_SETTINGS: StudioSettings = {
 	defaultExportFormat: "mp4",
 	locale: "en",
 	checkForUpdates: true,
+	updateChannel: "latest",
 	recentProjects: [],
 	licenseTier: "free",
 };
@@ -109,4 +112,13 @@ export async function setSetting<K extends keyof StudioSettings>(
 	value: StudioSettings[K],
 ): Promise<void> {
 	await saveSettings({ [key]: value } as Partial<StudioSettings>);
+}
+
+// Synchronous accessor — returns the cached value, or the default if
+// settings haven't been loaded yet. Safe to call from menu-building code
+// that needs a best-effort view of settings (e.g. which update channel is
+// currently selected so the Release Channel submenu renders the right
+// ✓ on app startup).
+export function getCachedSetting<K extends keyof StudioSettings>(key: K): StudioSettings[K] {
+	return (cachedSettings ?? DEFAULT_SETTINGS)[key];
 }

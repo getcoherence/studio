@@ -1,0 +1,14 @@
+{
+  "Endpoint": "https://wus2.codesigning.azure.net/",
+  "CodeSigningAccountName": "Brightyard",
+  "CertificateProfileName": "coherence-studio",
+  "ExcludeCredentials": [
+    "ManagedIdentityCredential",
+    "WorkloadIdentityCredential",
+    "VisualStudioCredential",
+    "VisualStudioCodeCredential",
+    "AzurePowerShellCredential",
+    "AzureDeveloperCliCredential",
+    "InteractiveBrowserCredential"
+  ]
+}

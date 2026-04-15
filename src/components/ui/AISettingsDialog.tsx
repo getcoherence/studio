@@ -3,7 +3,7 @@
  * Can be opened from anywhere in the app (welcome screen, scene builder, demo recorder).
  */
 
-import { Check, Crown, Loader2, Settings, X } from "lucide-react";
+import { Check, Crown, Info, Loader2, Settings, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AI_PROVIDERS, type AIProvider, type AIServiceConfig } from "@/lib/ai/types";
@@ -16,13 +16,24 @@ interface AISettingsDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	initialTab?: SettingsTab;
+	// Optional banner shown at the top of the dialog when opened as an
+	// onboarding/preflight prompt (e.g. "Auto-Narrate needs an AI provider…").
+	preflightMessage?: string | null;
 }
 
-export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISettingsDialogProps) {
+export function AISettingsDialog({
+	open,
+	onOpenChange,
+	initialTab = "ai",
+	preflightMessage,
+}: AISettingsDialogProps) {
 	const [tab, setTab] = useState<SettingsTab>(initialTab);
 
-	// AI state
-	const [provider, setProvider] = useState<AIProvider>("openai");
+	// AI state — `provider` is the tile currently selected in the UI. For chat
+	// providers it's an AIProvider. For side-services (e.g. ElevenLabs SFX) it's
+	// a virtual id that only controls which key field is shown.
+	type TileId = AIProvider | "elevenlabs";
+	const [provider, setProvider] = useState<TileId>("openai");
 	const [apiKey, setApiKey] = useState("");
 	const [model, setModel] = useState("");
 	const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
@@ -34,6 +45,9 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 	// Per-provider caches — survive provider switching within the dialog
 	const [keyCache, setKeyCache] = useState<Record<string, string>>({});
 	const [modelCache, setModelCache] = useState<Record<string, string>>({});
+
+	// Side-service keys (not chat providers — used for audio/sfx generation)
+	const [elevenLabsKey, setElevenLabsKey] = useState("");
 
 	// License state
 	const [licenseTier, setLicenseTierLocal] = useState<LicenseTier>("free");
@@ -71,16 +85,30 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 		setLicenseKeyInput("");
 		setLicenseError("");
 		setLicenseSuccess(false);
+		// Load ElevenLabs SFX key (side-service, not a chat provider)
+		window.electronAPI
+			?.aiGetServiceKey?.("elevenlabs")
+			.then((r: { apiKey: string }) => setElevenLabsKey(r?.apiKey ?? ""))
+			.catch(() => {});
 	}, [open, initialTab]);
 
-	const providerInfo = AI_PROVIDERS.find((p) => p.id === provider);
+	// When a chat provider is selected (not elevenlabs), look up its metadata.
+	const isElevenLabsSelected = provider === "elevenlabs";
+	const providerInfo = isElevenLabsSelected
+		? undefined
+		: AI_PROVIDERS.find((p) => p.id === provider);
 
 	async function handleSave() {
 		setSaving(true);
-		// Save current provider's key + model to caches
-		const allKeys = { ...keyCache, [provider]: apiKey };
-		const allModels = { ...modelCache, [provider]: model };
-		// Save each provider's key + model separately
+		// Chat provider keys go through aiSaveConfig (writes aiApiKey_<provider> +
+		// the active provider selection). Side-service keys (e.g. ElevenLabs SFX)
+		// go through aiSaveServiceKey and don't touch the active chat provider.
+		const isSide = provider === "elevenlabs";
+		const chatProvider: AIProvider = isSide ? ("openai" as AIProvider) : (provider as AIProvider);
+		// Merge in the current tile's value for chat providers only.
+		const allKeys = isSide ? keyCache : { ...keyCache, [chatProvider]: apiKey };
+		const allModels = isSide ? modelCache : { ...modelCache, [chatProvider]: model };
+		// Persist each chat provider's key + model.
 		for (const [prov, key] of Object.entries(allKeys)) {
 			if (key) {
 				await window.electronAPI?.aiSaveConfig({
@@ -90,13 +118,20 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 				});
 			}
 		}
-		// Save the active provider + model
-		await window.electronAPI?.aiSaveConfig({
-			provider,
-			apiKey: apiKey || undefined,
-			model: model || undefined,
-			ollamaUrl: provider === "ollama" ? ollamaUrl : undefined,
-		});
+		// Only update the active chat provider when the selected tile is one.
+		if (!isSide) {
+			await window.electronAPI?.aiSaveConfig({
+				provider: chatProvider,
+				apiKey: apiKey || undefined,
+				model: model || undefined,
+				ollamaUrl: chatProvider === "ollama" ? ollamaUrl : undefined,
+			});
+		}
+		// Always persist the ElevenLabs SFX key (whichever tile was last viewed
+		// carries the latest input value in state).
+		if (window.electronAPI?.aiSaveServiceKey) {
+			await window.electronAPI.aiSaveServiceKey("elevenlabs", elevenLabsKey);
+		}
 		setSaving(false);
 		setSaved(true);
 		setTimeout(() => setSaved(false), 2000);
@@ -105,9 +140,24 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 	async function handleTest() {
 		setTesting(true);
 		setTestResult(null);
-		// Save current provider + key so the test uses the right credentials
+		// ElevenLabs: persist the key, then generate a 0.5s test tone to verify
+		// the credential. Costs a few credits (well under $0.01) but gives a
+		// clear pass/fail signal.
+		if (provider === "elevenlabs") {
+			if (window.electronAPI?.aiSaveServiceKey) {
+				await window.electronAPI.aiSaveServiceKey("elevenlabs", elevenLabsKey);
+			}
+			const result = await window.electronAPI?.aiElevenlabsSfx?.(
+				"short soft click",
+				{ durationSec: 0.5 },
+			);
+			setTesting(false);
+			setTestResult(result?.success ? "success" : "error");
+			return;
+		}
+		// Chat providers: persist the key then round-trip a trivial prompt.
 		await window.electronAPI?.aiSaveConfig({
-			provider,
+			provider: provider as AIProvider,
 			apiKey: apiKey || undefined,
 			model: model || undefined,
 			ollamaUrl: provider === "ollama" ? ollamaUrl : undefined,
@@ -117,7 +167,7 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 		setTestResult(result?.success ? "success" : "error");
 		// Update cache with the key that worked (or didn't)
 		if (apiKey) {
-			setKeyCache((prev) => ({ ...prev, [provider]: apiKey }));
+			setKeyCache((prev) => ({ ...prev, [provider as AIProvider]: apiKey }));
 		}
 	}
 
@@ -170,6 +220,15 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 					</button>
 				</div>
 
+				{/* Preflight banner — shown when the dialog was opened by an AI action
+				    that needs a provider configured first. */}
+				{preflightMessage && (
+					<div className="flex items-start gap-2 px-3 py-2.5 rounded-md bg-[#2563eb]/10 border border-[#2563eb]/30 text-xs text-white/90">
+						<Info size={14} className="text-[#2563eb] mt-0.5 shrink-0" />
+						<span>{preflightMessage}</span>
+					</div>
+				)}
+
 				{/* Tabs */}
 				<div className="flex gap-1 p-0.5 rounded-md bg-white/5">
 					<button
@@ -202,10 +261,11 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 									<button
 										key={p.id}
 										onClick={() => {
-											// Cache current provider's key + model before switching
-											setKeyCache((prev) => ({ ...prev, [provider]: apiKey }));
-											setModelCache((prev) => ({ ...prev, [provider]: model }));
-											// Switch provider and restore its cached key + model
+											// Cache previous tile's inputs before switching.
+											if (provider !== "elevenlabs") {
+												setKeyCache((prev) => ({ ...prev, [provider]: apiKey }));
+												setModelCache((prev) => ({ ...prev, [provider]: model }));
+											}
 											setProvider(p.id);
 											setApiKey(keyCache[p.id] ?? "");
 											setModel(modelCache[p.id] ?? "");
@@ -221,6 +281,26 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 										<span className="text-[10px] text-white/30 leading-tight">{p.description}</span>
 									</button>
 								))}
+								<button
+									onClick={() => {
+										if (provider !== "elevenlabs") {
+											setKeyCache((prev) => ({ ...prev, [provider]: apiKey }));
+											setModelCache((prev) => ({ ...prev, [provider]: model }));
+										}
+										setProvider("elevenlabs");
+										setTestResult(null);
+									}}
+									className={`flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-md border text-left transition-colors ${
+										provider === "elevenlabs"
+											? "bg-[#2563eb]/10 border-[#2563eb]/40 text-white"
+											: "bg-white/3 border-white/8 text-white/60 hover:border-white/15 hover:text-white/80"
+									}`}
+								>
+									<span className="text-xs font-medium">ElevenLabs</span>
+									<span className="text-[10px] text-white/30 leading-tight">
+										Sound effects — text-to-SFX generation for scene audio.
+									</span>
+								</button>
 							</div>
 						</div>
 
@@ -271,6 +351,23 @@ export function AISettingsDialog({ open, onOpenChange, initialTab = "ai" }: AISe
 										</option>
 									))}
 								</select>
+							</div>
+						)}
+
+						{/* ElevenLabs — only its API key, no model/test (not a chat provider) */}
+						{isElevenLabsSelected && (
+							<div className="space-y-1.5">
+								<label className="text-xs text-white/50 font-medium">API Key</label>
+								<input
+									type="password"
+									value={elevenLabsKey}
+									onChange={(e) => setElevenLabsKey(e.target.value)}
+									placeholder="Enter your ElevenLabs API key"
+									className="w-full px-3 py-2 rounded-md bg-white/5 border border-white/10 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#2563eb]/50"
+								/>
+								<p className="text-[11px] text-white/30">
+									Used by Sound Designer to generate per-scene SFX. Get a key at elevenlabs.io.
+								</p>
 							</div>
 						)}
 

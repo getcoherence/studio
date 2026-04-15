@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BenchRenderPage } from "./components/BenchRenderPage";
 import { RecordingBar } from "./components/recording/RecordingBar";
 import { Toaster } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
@@ -43,6 +44,8 @@ export default function App() {
 		switch (windowType) {
 			case "recording-bar":
 				return <RecordingBar />;
+			case "bench-render":
+				return <BenchRenderPage />;
 			case "editor":
 			default:
 				return (

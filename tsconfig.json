@@ -17,6 +17,11 @@
 		"isolatedModules": true,
 		"noEmit": true,
 		"jsx": "react-jsx",
+		// gsap 3.14.x ships `Flip.js` with a lowercase `types/flip.d.ts`; the
+		// import `gsap/Flip` trips TS1149 on Windows (case-insensitive FS
+		// surfaces both casings). Disabling the check avoids patching the
+		// third-party package. CI and local are both Windows.
+		"forceConsistentCasingInFileNames": false,
 
 		/* Linting */
 		"strict": true,

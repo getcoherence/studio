@@ -8,7 +8,12 @@
 // In Electron, we can also read from the filesystem at runtime.
 
 /** All available skill names */
-export type SkillName = "composition" | "visual-variety" | "cinematography" | "effects";
+export type SkillName =
+	| "composition"
+	| "visual-variety"
+	| "cinematography"
+	| "effects"
+	| "gsap-patterns";
 
 /** Skill metadata */
 export interface Skill {
@@ -37,9 +42,9 @@ export function formatSkillsForPrompt(skills: Skill[]): string {
 export function getRelevantSkills(task: "scene-plan" | "edit" | "review"): SkillName[] {
 	switch (task) {
 		case "scene-plan":
-			return ["composition", "visual-variety", "cinematography", "effects"];
+			return ["composition", "visual-variety", "cinematography", "effects", "gsap-patterns"];
 		case "edit":
-			return ["visual-variety", "effects"];
+			return ["visual-variety", "effects", "gsap-patterns"];
 		case "review":
 			return ["composition", "visual-variety"];
 		default:

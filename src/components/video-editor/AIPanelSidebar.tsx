@@ -17,8 +17,9 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { AISettingsDialog } from "@/components/ui/AISettingsDialog";
 import type { EditorState } from "@/hooks/useEditorHistory";
-import { generateNarrationScript } from "@/lib/ai/autoNarration";
+import { useAIPreflight } from "@/hooks/useAIPreflight";
 import { extractClips } from "@/lib/ai/clipExtractor";
 import { generatePolishEdits } from "@/lib/ai/oneClickPolish";
 import { analyzeRecording } from "@/lib/ai/recordingAnalyzer";
@@ -82,17 +83,25 @@ export function AIPanelSidebar({
 	onAcceptTrimSuggestions,
 	onSeek,
 }: AIPanelSidebarProps) {
-	// ── AI availability ──
+	// ── AI availability + preflight ──
+	// Preflight gates AI-labeled actions on a configured provider; if none is
+	// set, it opens AISettingsDialog with a contextual banner instead of
+	// silently falling back to heuristics.
+	const {
+		availability: preflightAvailability,
+		refresh: refreshAvailability,
+		requireChatProvider,
+		dialogOpen: preflightOpen,
+		dialogMessage: preflightMessage,
+		closeDialog: closePreflight,
+	} = useAIPreflight();
 	const [availability, setAvailability] = useState<AIAvailability | null>(null);
 
 	useEffect(() => {
-		window.electronAPI
-			.aiCheckAvailability()
-			.then(setAvailability)
-			.catch(() => {
-				setAvailability({ providers: [], activeProvider: null });
-			});
-	}, []);
+		// Mirror the preflight hook's availability into the local state that
+		// already drives the inline settings form + status pill.
+		if (preflightAvailability) setAvailability(preflightAvailability);
+	}, [preflightAvailability]);
 
 	// ── Magic Polish ──
 	const [polishPreview, setPolishPreview] = useState<PolishPreview | null>(null);
@@ -134,12 +143,11 @@ export function AIPanelSidebar({
 
 	const handleGenerateNarration = useCallback(async () => {
 		if (cursorTelemetry.length === 0 || videoDurationMs <= 0) return;
+		if (!(await requireChatProvider("Auto-Narrate"))) return;
 		setIsGeneratingNarration(true);
 
 		try {
 			const profile = analyzeRecording(cursorTelemetry, videoDurationMs);
-
-			// Try AI-powered narration first
 			const profileSummary =
 				`Recording duration: ${Math.round(videoDurationMs / 1000)}s. ` +
 				`Active segments: ${profile.activeSegments.length}. ` +
@@ -161,7 +169,6 @@ export function AIPanelSidebar({
 					`Cursor activity data:\n${profileSummary}`,
 			);
 
-			console.log("[AI Narrate] Result:", aiResult);
 			if (aiResult?.success && aiResult.text) {
 				const lines = aiResult.text.split("\n\n").filter((l: string) => l.trim());
 				const duration = videoDurationMs / 1000;
@@ -175,23 +182,14 @@ export function AIPanelSidebar({
 				setNarrationSegments(segments);
 				setNarrationText(segments.map((s) => s.text).join("\n\n"));
 			} else {
-				console.warn("[AI Narrate] Failed, falling back:", aiResult?.error);
-				// Fallback to heuristic
-				const segments = generateNarrationScript(profile);
-				setNarrationSegments(segments);
-				setNarrationText(segments.map((s) => s.text).join("\n\n"));
+				toast.error(aiResult?.error || "Couldn't generate narration. Check your AI provider.");
 			}
 		} catch (err) {
-			console.error("[AI Narrate] Exception:", err);
-			// Fallback to heuristic
-			const profile = analyzeRecording(cursorTelemetry, videoDurationMs);
-			const segments = generateNarrationScript(profile);
-			setNarrationSegments(segments);
-			setNarrationText(segments.map((s) => s.text).join("\n\n"));
+			toast.error(err instanceof Error ? err.message : "Failed to generate narration");
 		} finally {
 			setIsGeneratingNarration(false);
 		}
-	}, [cursorTelemetry, videoDurationMs]);
+	}, [cursorTelemetry, videoDurationMs, requireChatProvider]);
 
 	const handleApplyNarration = useCallback(() => {
 		if (narrationSegments.length === 0) return;
@@ -205,6 +203,7 @@ export function AIPanelSidebar({
 
 	const handleGenerateAudio = useCallback(async () => {
 		if (!narrationText.trim()) return;
+		if (!(await requireChatProvider("Generate Audio"))) return;
 		setIsGeneratingAudio(true);
 		try {
 			const result = await window.electronAPI.aiTtsSynthesize(narrationText);
@@ -220,7 +219,7 @@ export function AIPanelSidebar({
 		} finally {
 			setIsGeneratingAudio(false);
 		}
-	}, [narrationText]);
+	}, [narrationText, requireChatProvider]);
 
 	// ── Extract Clips ──
 	const [clips, setClips] = useState<ExtractedClip[]>([]);
@@ -228,13 +227,13 @@ export function AIPanelSidebar({
 
 	const handleExtractClips = useCallback(async () => {
 		if (cursorTelemetry.length === 0 || videoDurationMs <= 0) return;
+		if (!(await requireChatProvider("Extract Clips"))) return;
 		setIsExtractingClips(true);
 
 		try {
 			const profile = analyzeRecording(cursorTelemetry, videoDurationMs);
 			const heuristicClips = extractClips(profile, videoDurationMs, 3);
 
-			// Try to get AI-generated titles for the clips
 			if (heuristicClips.length > 0) {
 				const clipDescriptions = heuristicClips
 					.map(
@@ -254,21 +253,23 @@ export function AIPanelSidebar({
 					for (let i = 0; i < Math.min(titles.length, heuristicClips.length); i++) {
 						heuristicClips[i].title = titles[i].replace(/^\d+[.)]\s*/, "").trim();
 					}
+				} else if (aiResult?.error) {
+					toast.error(`Couldn't generate clip titles: ${aiResult.error}`);
 				}
 			}
 
 			setClips(heuristicClips);
-		} catch {
-			const profile = analyzeRecording(cursorTelemetry, videoDurationMs);
-			setClips(extractClips(profile, videoDurationMs, 3));
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : "Failed to extract clips");
 		} finally {
 			setIsExtractingClips(false);
 		}
-	}, [cursorTelemetry, videoDurationMs]);
+	}, [cursorTelemetry, videoDurationMs, requireChatProvider]);
 
 	// ── AI Settings ──
 	const [provider, setProvider] = useState<AIProvider>("openai");
 	const [apiKey, setApiKey] = useState("");
+	const [elevenLabsKey, setElevenLabsKey] = useState("");
 	const [isSavingSettings, setIsSavingSettings] = useState(false);
 
 	useEffect(() => {
@@ -281,20 +282,26 @@ export function AIPanelSidebar({
 			.catch(() => {
 				// Ignore errors loading config
 			});
+		window.electronAPI
+			.aiGetServiceKey?.("elevenlabs")
+			.then((r) => setElevenLabsKey(r?.apiKey ?? ""))
+			.catch(() => {});
 	}, []);
 
 	const handleSaveSettings = useCallback(async () => {
 		setIsSavingSettings(true);
 		try {
 			await window.electronAPI.aiSaveConfig({ provider, apiKey: apiKey || undefined });
-			const newAvailability = await window.electronAPI.aiCheckAvailability();
-			setAvailability(newAvailability);
+			if (window.electronAPI.aiSaveServiceKey) {
+				await window.electronAPI.aiSaveServiceKey("elevenlabs", elevenLabsKey);
+			}
+			await refreshAvailability();
 		} catch {
 			// Ignore save errors
 		} finally {
 			setIsSavingSettings(false);
 		}
-	}, [provider, apiKey]);
+	}, [provider, apiKey, elevenLabsKey, refreshAvailability]);
 
 	function formatDuration(ms: number): string {
 		const totalSeconds = Math.floor(ms / 1000);
@@ -466,6 +473,17 @@ export function AIPanelSidebar({
 					</div>
 				</Section>
 
+				{/* Preflight dialog — opens when an AI-labeled action is triggered
+				    without a configured provider. Reuses AISettingsDialog with a
+				    contextual banner explaining which feature needs a key. */}
+				<AISettingsDialog
+					open={preflightOpen}
+					onOpenChange={(o) => {
+						if (!o) closePreflight();
+					}}
+					preflightMessage={preflightMessage}
+				/>
+
 				{/* AI Settings */}
 				<Section title="AI Settings" icon={Settings2}>
 					<div className="flex flex-col gap-2">
@@ -506,6 +524,21 @@ export function AIPanelSidebar({
 								value={apiKey}
 								onChange={(e) => setApiKey(e.target.value)}
 								placeholder="sk-..."
+								className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/80 placeholder-white/30 focus:outline-none focus:border-[#2563eb]/40"
+							/>
+						</div>
+
+						<div>
+							<label className="text-[10px] text-white/50 block mb-1">
+								<Key size={10} className="inline mr-1" />
+								ElevenLabs SFX Key
+								<span className="text-white/30 ml-1">(for AI sound effects)</span>
+							</label>
+							<input
+								type="password"
+								value={elevenLabsKey}
+								onChange={(e) => setElevenLabsKey(e.target.value)}
+								placeholder="sk_..."
 								className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/80 placeholder-white/30 focus:outline-none focus:border-[#2563eb]/40"
 							/>
 						</div>

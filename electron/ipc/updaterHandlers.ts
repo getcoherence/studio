@@ -1,36 +1,46 @@
 import { BrowserWindow, ipcMain } from "electron";
+import { loadSettings, setSetting } from "../settings";
 import {
 	checkForUpdates,
 	dismissUpdate,
+	getUpdateChannel,
 	getUpdateStatus,
-	onUpdateAvailable,
+	initAutoUpdater,
+	installUpdate,
+	setUpdateChannel,
 	startAutoUpdateCheck,
+	type UpdateChannel,
 } from "../updater";
 
-export function registerUpdaterHandlers() {
-	ipcMain.handle("check-for-updates", async () => {
-		const result = await checkForUpdates();
-		return { success: true, ...result };
+export async function registerUpdaterHandlers() {
+	// Broadcast events to every renderer via a single "update:event" channel.
+	// The React UpdateNotifier component subscribes and renders toast + badge.
+	const settings = await loadSettings();
+	initAutoUpdater(() => BrowserWindow.getAllWindows(), settings.updateChannel);
+
+	ipcMain.handle("update:check", async (_, manual?: boolean) => {
+		return await checkForUpdates({ manual: manual ?? false });
 	});
 
-	ipcMain.handle("get-update-status", () => {
-		return getUpdateStatus();
-	});
+	ipcMain.handle("update:status", () => getUpdateStatus());
 
-	ipcMain.handle("dismiss-update", () => {
+	ipcMain.handle("update:dismiss", () => {
 		dismissUpdate();
 		return { success: true };
 	});
 
-	// Notify all renderer windows when an update is available
-	onUpdateAvailable((version: string) => {
-		for (const win of BrowserWindow.getAllWindows()) {
-			if (!win.isDestroyed()) {
-				win.webContents.send("update-available", version);
-			}
-		}
+	ipcMain.handle("update:install", () => {
+		installUpdate();
+		return { success: true };
 	});
 
-	// Start auto-checking for updates
+	ipcMain.handle("update:get-channel", () => getUpdateChannel());
+
+	ipcMain.handle("update:set-channel", async (_, channel: UpdateChannel) => {
+		setUpdateChannel(channel);
+		await setSetting("updateChannel", channel);
+		return { success: true, channel };
+	});
+
 	startAutoUpdateCheck();
 }

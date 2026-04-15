@@ -24,7 +24,11 @@ import { RECORDINGS_DIR } from "../main";
 import { createRecordingBarWindow } from "../windows";
 import { addRecentProject } from "./projectHandlers";
 
-const PROJECT_FILE_EXTENSION = "lucid";
+const PROJECT_FILE_EXTENSION = "studio";
+// Legacy `.lucid` extension from the Lucid-branded era — still accepted by
+// the Open dialog so existing dogfood projects keep loading. New saves
+// always use PROJECT_FILE_EXTENSION.
+const LEGACY_PROJECT_FILE_EXTENSION = "lucid";
 const SHORTCUTS_FILE = path.join(app.getPath("userData"), "shortcuts.json");
 const RECORDING_SESSION_SUFFIX = ".session.json";
 
@@ -695,6 +699,115 @@ export function registerIpcHandlers(
 		}
 	});
 
+	// ── Bench keyframe capture ──────────────────────────────────────────────
+	// Opens a hidden BrowserWindow at ?windowType=bench-render&code=&frame=,
+	// waits for the page's __benchRenderReady flag, captures the page as a PNG,
+	// writes it to userData/bench-captures/<hash>_f<frame>.png, returns the
+	// absolute path. Used by studio-pro's bench harness for visual (Layer B)
+	// evaluation of AI-generated scenes.
+	ipcMain.handle(
+		"bench-capture-frame",
+		async (_, args: { code: string; frame: number; briefId: string; sceneIndex: number }) => {
+			const { code, frame, briefId, sceneIndex } = args;
+			if (!code || typeof code !== "string") {
+				return { success: false, error: "code param missing" };
+			}
+			const captureDir = path.join(app.getPath("userData"), "bench-captures");
+			await fs.mkdir(captureDir, { recursive: true }).catch(() => {});
+			const safeBrief = briefId.replace(/[^a-z0-9-]/gi, "_");
+			const outPath = path.join(captureDir, `${safeBrief}_s${sceneIndex}_f${frame}.png`);
+
+			const mainWin = getMainWindow();
+			if (!mainWin) return { success: false, error: "no main window" };
+			const mainUrl = mainWin.webContents.getURL();
+			// URL carries only short params (windowType + frame). Code is
+			// injected AFTER load via executeJavaScript to bypass Vite's 431
+			// "Request Header Fields Too Large" limit that hits when scenes
+			// have >15K chars and the base64-encoded URL exceeds 8K.
+			const url = new URL(mainUrl);
+			url.searchParams.set("windowType", "bench-render");
+			url.searchParams.set("frame", String(frame));
+			url.searchParams.delete("code");
+
+			// Visible-but-offscreen renderer — hidden BrowserWindows on Windows
+			// don't reliably paint even with paintWhenInitiallyHidden, so we
+			// position the window off the visible desktop (x=-3000) and leave
+			// it show:true. User never sees it; the compositor paints normally;
+			// capturePage() returns the real rendered content.
+			const renderWin = new BrowserWindow({
+				show: true,
+				x: -3000,
+				y: -3000,
+				skipTaskbar: true,
+				focusable: false,
+				alwaysOnTop: false,
+				width: 1920,
+				height: 1080,
+				webPreferences: {
+					contextIsolation: true,
+					nodeIntegration: false,
+					backgroundThrottling: false,
+					offscreen: false,
+				},
+			});
+			renderWin.webContents.setBackgroundThrottling(false);
+			try {
+				await renderWin.loadURL(url.toString());
+
+				// Wait for BenchRenderPage to mount and signal it's ready to
+				// receive code (sets window.__benchPageReady).
+				const pageReadyStart = Date.now();
+				while (Date.now() - pageReadyStart < 10_000) {
+					const ready = await renderWin.webContents
+						.executeJavaScript("window.__benchPageReady === true")
+						.catch(() => false);
+					if (ready) break;
+					await new Promise((r) => setTimeout(r, 100));
+				}
+
+				// Inject the scene code directly into the page. JSON.stringify
+				// escapes quotes/newlines so even 20K+ char strings round-trip
+				// safely through executeJavaScript.
+				const injectExpr = `window.__benchCode = ${JSON.stringify(code)}; true;`;
+				await renderWin.webContents.executeJavaScript(injectExpr);
+
+				// Poll for readiness up to 35s. BenchRenderPage sets the flag
+				// only after DynamicComposition JIT-compiles, Remotion Player
+				// mounts, and the scene's own useEffects fire. Complex scenes
+				// (>15K chars of customCode) can take 7-10s before paint.
+				const waitStart = Date.now();
+				let sawReady = false;
+				while (Date.now() - waitStart < 35_000) {
+					const ready = await renderWin.webContents
+						.executeJavaScript("window.__benchRenderReady === true")
+						.catch(() => false);
+					if (ready) {
+						sawReady = true;
+						break;
+					}
+					await new Promise((r) => setTimeout(r, 250));
+				}
+				// Give the compositor a full paint cycle + GSAP timeline seek
+				// a chance to resolve before capturing. 1200ms is empirical.
+				await new Promise((r) => setTimeout(r, 1200));
+				const image = await renderWin.webContents.capturePage();
+				const pngBuffer = image.toPNG();
+				await fs.writeFile(outPath, pngBuffer);
+				console.log(
+					`[bench-capture-frame] brief=${briefId} scene=${sceneIndex} frame=${frame} → ${pngBuffer.length} bytes, ready=${sawReady}`,
+				);
+				return { success: true, path: outPath, bytes: pngBuffer.length };
+			} catch (err) {
+				return {
+					success: false,
+					error: err instanceof Error ? err.message : String(err),
+				};
+			} finally {
+				if (!renderWin.isDestroyed()) renderWin.close();
+			}
+		},
+	);
+
 	ipcMain.handle("save-screenshot", async (_, imageData: ArrayBuffer, fileName: string) => {
 		try {
 			const isPng = fileName.toLowerCase().endsWith(".png");
@@ -831,7 +944,7 @@ export function registerIpcHandlers(
 					defaultPath: path.join(RECORDINGS_DIR, defaultName),
 					filters: [
 						{
-							name: mainT("dialogs", "fileDialogs.lucidProject"),
+							name: mainT("dialogs", "fileDialogs.studioProject"),
 							extensions: [PROJECT_FILE_EXTENSION],
 						},
 						{ name: "JSON", extensions: ["json"] },
@@ -929,8 +1042,8 @@ export function registerIpcHandlers(
 				defaultPath: RECORDINGS_DIR,
 				filters: [
 					{
-						name: mainT("dialogs", "fileDialogs.lucidProject"),
-						extensions: [PROJECT_FILE_EXTENSION],
+						name: mainT("dialogs", "fileDialogs.studioProject"),
+						extensions: [PROJECT_FILE_EXTENSION, LEGACY_PROJECT_FILE_EXTENSION],
 					},
 					{ name: "JSON", extensions: ["json"] },
 					{ name: mainT("dialogs", "fileDialogs.allFiles"), extensions: ["*"] },
@@ -1125,8 +1238,10 @@ export function registerIpcHandlers(
 				// Normalize: strip leading @ if present
 				const handle = channelHandle.replace(/^@/, "");
 
-				// Step 1: fetch the channel page and extract channelId
-				const channelPageRes = await fetch(`https://www.youtube.com/@${handle}`, {
+				// Step 1: fetch the channel's /shorts tab — this gives us the
+				// ytInitialData blob which contains 30+ shorts (vs the RSS
+				// feed's 15-video limit).
+				const channelPageRes = await fetch(`https://www.youtube.com/@${handle}/shorts`, {
 					headers: {
 						// Pretend to be a real browser so YouTube returns the full HTML
 						// instead of a stripped-down bot response
@@ -1149,30 +1264,54 @@ export function registerIpcHandlers(
 					return { success: false, error: "Could not extract channelId from channel page" };
 				}
 
-				// Step 2: fetch the RSS feed (no auth required)
-				const feedRes = await fetch(
-					`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
-					{ signal: AbortSignal.timeout(10_000) },
-				);
-				if (!feedRes.ok) {
-					return {
-						success: false,
-						channelId,
-						error: `RSS feed HTTP ${feedRes.status}`,
-					};
-				}
-				const feedXml = await feedRes.text();
-				// Parse out video IDs — they appear as <yt:videoId>...</yt:videoId>
+				// Step 2: extract video IDs from the ytInitialData JSON blob
+				// embedded in the page. This contains 30+ shorts from the
+				// /shorts tab. Falls back to RSS if parsing fails.
 				const videoIds: string[] = [];
-				const videoIdRe = /<yt:videoId>([\w-]{11})<\/yt:videoId>/g;
-				let match: RegExpExecArray | null;
-				match = videoIdRe.exec(feedXml);
-				while (match !== null) {
-					videoIds.push(match[1]);
-					match = videoIdRe.exec(feedXml);
+				const seen = new Set<string>();
+
+				// Try ytInitialData first — much richer than RSS
+				const ytDataMatch = channelHtml.match(/var ytInitialData\s*=\s*(\{[\s\S]*?\});\s*<\/script>/);
+				if (ytDataMatch) {
+					try {
+						// Extract all videoId values from the JSON blob
+						const videoIdMatches = ytDataMatch[1].matchAll(/"videoId"\s*:\s*"([\w-]{11})"/g);
+						for (const m of videoIdMatches) {
+							if (!seen.has(m[1])) {
+								seen.add(m[1]);
+								videoIds.push(m[1]);
+							}
+						}
+					} catch {
+						// JSON parse failed — fall through to RSS
+					}
 				}
+
+				// Fallback: also try RSS feed and merge any videos not already found
+				try {
+					const feedRes = await fetch(
+						`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
+						{ signal: AbortSignal.timeout(10_000) },
+					);
+					if (feedRes.ok) {
+						const feedXml = await feedRes.text();
+						const videoIdRe = /<yt:videoId>([\w-]{11})<\/yt:videoId>/g;
+						let match: RegExpExecArray | null;
+						match = videoIdRe.exec(feedXml);
+						while (match !== null) {
+							if (!seen.has(match[1])) {
+								seen.add(match[1]);
+								videoIds.push(match[1]);
+							}
+							match = videoIdRe.exec(feedXml);
+						}
+					}
+				} catch {
+					// RSS failed — non-fatal if we got videos from ytInitialData
+				}
+
 				if (videoIds.length === 0) {
-					return { success: false, channelId, error: "No videos found in RSS feed" };
+					return { success: false, channelId, error: "No videos found" };
 				}
 				return { success: true, channelId, videoIds };
 			} catch (err) {

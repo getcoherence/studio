@@ -7,13 +7,10 @@
 // The pro bundle accesses these via window.__STUDIO_SHARED__.SKILL_CONTENT
 // and injects them into the AI system prompt for scene plan generation.
 
-// @ts-expect-error — Vite raw imports
 import cinematographyMd from "./cinematography.md?raw";
-// @ts-expect-error — Vite raw imports
 import compositionMd from "./composition.md?raw";
-// @ts-expect-error — Vite raw imports
 import effectsMd from "./effects.md?raw";
-// @ts-expect-error — Vite raw imports
+import gsapPatternsMd from "./gsap-patterns.md?raw";
 import visualVarietyMd from "./visual-variety.md?raw";
 
 export interface SkillEntry {
@@ -45,6 +42,11 @@ export const SKILL_CONTENT: Record<string, SkillEntry> = {
 		name: "effects",
 		title: "Effects & Particle Selection",
 		content: effectsMd,
+	},
+	"gsap-patterns": {
+		name: "gsap-patterns",
+		title: "GSAP Animation Patterns (Remotion-adapted)",
+		content: gsapPatternsMd,
 	},
 };
 

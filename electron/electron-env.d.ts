@@ -21,6 +21,16 @@ declare namespace NodeJS {
 	}
 }
 
+// Auto-update event shape (mirrors UpdateEvent in electron/updater.ts)
+interface UpdateEvent {
+	state: "idle" | "checking" | "available" | "not-available" | "downloading" | "downloaded" | "error";
+	currentVersion: string;
+	latestVersion?: string;
+	progress?: number;
+	error?: string;
+	manual?: boolean;
+}
+
 // Used in Renderer process, expose in `preload.ts`
 interface Window {
 	electronAPI: {
@@ -198,6 +208,15 @@ interface Window {
 			context?: string,
 			modelOverride?: { provider: string; model: string },
 		) => Promise<import("../src/lib/ai/types").AIServiceResult>;
+		benchCaptureFrame: (args: {
+			code: string;
+			frame: number;
+			briefId: string;
+			sceneIndex: number;
+		}) => Promise<
+			| { success: true; path: string; bytes: number }
+			| { success: false; error: string }
+		>;
 		aiGenerateJSON: (
 			prompt: string,
 			context?: string,
@@ -276,6 +295,43 @@ interface Window {
 			imagePaths?: string[];
 			error?: string;
 		}>;
+		aiElevenlabsSfx: (
+			prompt: string,
+			options?: { durationSec?: number; promptInfluence?: number },
+		) => Promise<{
+			success: boolean;
+			filePath?: string;
+			cached?: boolean;
+			error?: string;
+		}>;
+		aiElevenlabsSfxBatch: (
+			items: Array<{
+				prompt: string;
+				options?: { durationSec?: number; promptInfluence?: number };
+			}>,
+		) => Promise<
+			Array<{ success: boolean; filePath?: string; cached?: boolean; error?: string }>
+		>;
+		aiElevenlabsMusic: (
+			prompt: string,
+			options?: {
+				durationSec?: number;
+				forceInstrumental?: boolean;
+				outputFormat?: string;
+				seed?: number;
+			},
+		) => Promise<{
+			success: boolean;
+			audioPath?: string;
+			songId?: string;
+			durationSec?: number;
+			error?: string;
+		}>;
+		aiSaveServiceKey: (
+			service: "elevenlabs",
+			apiKey: string,
+		) => Promise<{ success: boolean; error?: string }>;
+		aiGetServiceKey: (service: "elevenlabs") => Promise<{ apiKey: string }>;
 		aiGenerateMusic: (
 			mood: string,
 			customPrompt?: string,
@@ -434,22 +490,16 @@ interface Window {
 		restoreEditor: () => Promise<{ success: boolean }>;
 		onStopRecordingFromBar: (callback: () => void) => () => void;
 
-		// Updater
-		checkForUpdates: () => Promise<{
-			success: boolean;
-			state: string;
-			latestVersion?: string;
-			currentVersion?: string;
-			downloadUrl?: string;
-		}>;
-		getUpdateStatus: () => Promise<{
-			state: string;
-			latestVersion?: string;
-			currentVersion?: string;
-			downloadUrl?: string;
-		}>;
+		// Updater — electron-updater against GitHub Releases.
+		checkForUpdates: (manual?: boolean) => Promise<UpdateEvent>;
+		getUpdateStatus: () => Promise<UpdateEvent>;
 		dismissUpdate: () => Promise<{ success: boolean }>;
-		onUpdateAvailable: (callback: (version: string) => void) => () => void;
+		installUpdate: () => Promise<{ success: boolean }>;
+		getUpdateChannel: () => Promise<"latest" | "beta">;
+		setUpdateChannel: (
+			channel: "latest" | "beta",
+		) => Promise<{ success: boolean; channel: "latest" | "beta" }>;
+		onUpdateEvent: (callback: (event: UpdateEvent) => void) => () => void;
 
 		/** Fetch a YouTube channel's recent video IDs from the public RSS
 		 *  feed. Used by the Chit TV arcade tab to show a scrollable shorts

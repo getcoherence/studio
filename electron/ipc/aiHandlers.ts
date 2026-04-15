@@ -18,6 +18,15 @@ import {
 	getPopularLotties,
 	searchLottieAnimations,
 } from "../ai/lottieSearch";
+import {
+	type ElevenLabsSfxOptions,
+	generateSfx,
+	generateSfxBatch,
+} from "../ai/elevenLabsSfxService";
+import {
+	type ElevenLabsMusicOptions,
+	generateElevenLabsMusic,
+} from "../ai/elevenLabsMusicService";
 import { generateImage, type ImageGenOptions } from "../ai/minimaxImageService";
 import {
 	MINIMAX_VOICES,
@@ -71,6 +80,29 @@ export function registerAIHandlers(): void {
 		return { success: true };
 	});
 
+	// Save an API key for a side-service (not the main chat provider).
+	// Today: "elevenlabs" for SFX. In future: whatever side-services we add.
+	ipcMain.handle(
+		"ai-save-service-key",
+		async (_event, service: "elevenlabs", apiKey: string) => {
+			const { saveSettings } = await import("../settings");
+			if (service === "elevenlabs") {
+				await saveSettings({ aiApiKey_elevenlabs: apiKey });
+				return { success: true };
+			}
+			return { success: false, error: `Unknown service: ${service}` };
+		},
+	);
+
+	ipcMain.handle("ai-get-service-key", async (_event, service: "elevenlabs") => {
+		const { loadSettings } = await import("../settings");
+		const settings = await loadSettings();
+		if (service === "elevenlabs") {
+			return { apiKey: settings.aiApiKey_elevenlabs ?? "" };
+		}
+		return { apiKey: "" };
+	});
+
 	ipcMain.handle(
 		"ai-analyze-image",
 		async (_event, prompt: string, imageBase64: string, systemPrompt?: string) => {
@@ -110,6 +142,21 @@ export function registerAIHandlers(): void {
 		return generateImage(prompt, options);
 	});
 
+	// ── ElevenLabs Sound Effects (text-to-SFX, cached) ──
+	ipcMain.handle(
+		"ai-elevenlabs-sfx",
+		async (_event, prompt: string, options?: ElevenLabsSfxOptions) => {
+			return generateSfx(prompt, options);
+		},
+	);
+
+	ipcMain.handle(
+		"ai-elevenlabs-sfx-batch",
+		async (_event, items: Array<{ prompt: string; options?: ElevenLabsSfxOptions }>) => {
+			return generateSfxBatch(items);
+		},
+	);
+
 	ipcMain.handle(
 		"ai-generate-music",
 		async (
@@ -121,6 +168,16 @@ export function registerAIHandlers(): void {
 			lyrics?: string,
 		) => {
 			return generateMusic(mood, customPrompt, videoDurationSec, vocalMode, lyrics);
+		},
+	);
+
+	// ── ElevenLabs Music (text-to-music, prompt-based) ──
+	// Alternative provider to MiniMax. Renderer picks which one via the
+	// music provider toggle in the chat panel. Both return { success, audioPath }.
+	ipcMain.handle(
+		"ai-elevenlabs-music",
+		async (_event, prompt: string, options?: ElevenLabsMusicOptions) => {
+			return generateElevenLabsMusic(prompt, options);
 		},
 	);
 

@@ -25,6 +25,8 @@ import { registerProjectHandlers } from "./ipc/projectHandlers";
 import { registerSettingsHandlers } from "./ipc/settingsHandlers";
 import { registerStudioCacheHandlers } from "./ipc/studioCacheHandlers";
 import { registerUpdaterHandlers } from "./ipc/updaterHandlers";
+import { getCachedSetting, loadSettings, setSetting } from "./settings";
+import { checkForUpdates, setUpdateChannel, type UpdateChannel } from "./updater";
 import { registerWhisperHandlers } from "./ipc/whisperHandlers";
 import { registerYouTubeHandlers } from "./ipc/youtubeHandlers";
 import { createEditorWindow, createSourceSelectorWindow } from "./windows";
@@ -36,6 +38,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // which doesn't work when running from a terminal/IDE during development, makes my life easier
 if (process.platform === "darwin") {
 	app.commandLine.appendSwitch("disable-features", "MacCatapLoopbackAudioForScreenShare");
+}
+
+// Dev-mode only: expose Chrome DevTools Protocol on :9222 so an external CLI
+// driver (studio-pro/scripts/bench-cli.mjs) can trigger the bench harness via
+// Runtime.evaluate without needing a human at devtools. Safe to leave enabled
+// in dev because localhost only; absolutely must not run in packaged builds.
+if (!app.isPackaged) {
+	app.commandLine.appendSwitch("remote-debugging-port", "9222");
 }
 
 export const RECORDINGS_DIR = path.join(app.getPath("userData"), "recordings");
@@ -180,15 +190,52 @@ function buildOpenWindowMenuItems(): Electron.MenuItemConstructorOptions[] {
 	return items;
 }
 
+function triggerManualUpdateCheck() {
+	checkForUpdates({ manual: true }).catch(() => {});
+}
+
+function handleChannelSelect(channel: UpdateChannel) {
+	const isPro = getCachedSetting("licenseTier") === "pro";
+	if (channel === "beta" && !isPro) {
+		dialog
+			.showMessageBox({
+				type: "info",
+				title: "Pro Feature",
+				message: "Beta releases are a Coherence Studio Pro feature.",
+				detail:
+					"Pro subscribers get early access to new features through the Beta channel. " +
+					"Upgrade to Pro from Settings to opt in.",
+				buttons: ["OK", "Learn More"],
+				defaultId: 0,
+			})
+			.then((result) => {
+				if (result.response === 1) {
+					shell.openExternal("https://getcoherence.io/studio/pro");
+				}
+			});
+		// Rebuild menu so the checkmark stays on "Stable".
+		setupApplicationMenu();
+		return;
+	}
+	setUpdateChannel(channel);
+	setSetting("updateChannel", channel).catch(() => {});
+	setupApplicationMenu();
+}
+
 function setupApplicationMenu() {
 	const isMac = process.platform === "darwin";
 	const template: Electron.MenuItemConstructorOptions[] = [];
+	const currentChannel: UpdateChannel = getCachedSetting("updateChannel") ?? "latest";
 
 	if (isMac) {
 		template.push({
 			label: app.name,
 			submenu: [
 				{ role: "about" },
+				{
+					label: "Check for Updates…",
+					click: triggerManualUpdateCheck,
+				},
 				{ type: "separator" },
 				{ role: "services" },
 				{ type: "separator" },
@@ -325,41 +372,90 @@ function setupApplicationMenu() {
 		{
 			label: "Help",
 			submenu: [
+				// On macOS, Check for Updates lives in the app menu per Apple HIG.
+				// On Windows/Linux, it's here.
+				...(!isMac
+					? ([
+							{
+								label: "Check for Updates…",
+								click: triggerManualUpdateCheck,
+							},
+							{ type: "separator" as const },
+						] as Electron.MenuItemConstructorOptions[])
+					: []),
 				{
-					label: "About Coherence Studio",
-					click: () => {
-						dialog
-							.showMessageBox({
-								type: "info",
-								title: "About Coherence Studio",
-								message: "Coherence Studio",
-								detail:
-									"AI-powered screen recording and editing.\n\n" +
-									"Built by the team at Coherence — the AI-native work platform " +
-									"for modern teams.\n\n" +
-									"Originally forked from OpenScreen by Siddharth Vaddem.\n\n" +
-									"Version 0.1.0\n" +
-									"https://getcoherence.io",
-								buttons: ["OK", "Visit Coherence", "View on GitHub"],
-								defaultId: 0,
-							})
-							.then((result) => {
-								if (result.response === 1) {
-									shell.openExternal("https://getcoherence.io");
-								} else if (result.response === 2) {
-									shell.openExternal("https://github.com/getcoherence/studio");
-								}
-							});
-					},
+					label: "Release Channel",
+					submenu: [
+						{
+							label: "Stable",
+							type: "radio",
+							checked: currentChannel === "latest",
+							click: () => handleChannelSelect("latest"),
+						},
+						{
+							label:
+								getCachedSetting("licenseTier") === "pro" ? "Beta" : "Beta (Pro)",
+							type: "radio",
+							checked: currentChannel === "beta",
+							click: () => handleChannelSelect("beta"),
+						},
+					],
 				},
+				{ type: "separator" },
 				{
 					label: "Coherence Website",
 					click: () => shell.openExternal("https://getcoherence.io"),
 				},
 				{
+					label: "Documentation",
+					click: () => shell.openExternal("https://github.com/getcoherence/studio#readme"),
+				},
+				{
 					label: "Report a Bug",
 					click: () => shell.openExternal("https://github.com/getcoherence/studio/issues"),
 				},
+				{ type: "separator" },
+				{ role: "toggleDevTools" },
+				{
+					label: "Restart Coherence Studio",
+					click: () => {
+						app.relaunch();
+						app.exit(0);
+					},
+				},
+				// About sinks to the bottom on Win/Linux (Mac has it in app menu).
+				...(!isMac
+					? ([
+							{ type: "separator" as const },
+							{
+								label: "About Coherence Studio",
+								click: () => {
+									dialog
+										.showMessageBox({
+											type: "info",
+											title: "About Coherence Studio",
+											message: "Coherence Studio",
+											detail:
+												"AI-powered screen recording and editing.\n\n" +
+												"Built by the team at Coherence — the AI-native work platform " +
+												"for modern teams.\n\n" +
+												"Originally forked from OpenScreen by Siddharth Vaddem.\n\n" +
+												`Version ${app.getVersion()}\n` +
+												"https://getcoherence.io",
+											buttons: ["OK", "Visit Coherence", "View on GitHub"],
+											defaultId: 0,
+										})
+										.then((result) => {
+											if (result.response === 1) {
+												shell.openExternal("https://getcoherence.io");
+											} else if (result.response === 2) {
+												shell.openExternal("https://github.com/getcoherence/studio");
+											}
+										});
+								},
+							},
+						] as Electron.MenuItemConstructorOptions[])
+					: []),
 			],
 		},
 	);
@@ -871,6 +967,10 @@ app.whenReady().then(async () => {
 		updateTrayMenu();
 	});
 
+	// Prime the settings cache before the initial menu builds — the Release
+	// Channel submenu reads the stored channel + license tier synchronously.
+	await loadSettings();
+
 	createTray();
 	updateTrayMenu();
 	setupApplicationMenu();
@@ -904,7 +1004,7 @@ app.whenReady().then(async () => {
 	registerExportHandlers(getFocusedEditorWindow);
 	registerYouTubeHandlers(getFocusedEditorWindow);
 	registerFfmpegHandlers();
-	registerUpdaterHandlers();
+	await registerUpdaterHandlers();
 	registerProjectHandlers();
 
 	// Register Whisper / caption IPC handlers

@@ -24,7 +24,9 @@ const config: ProAuthConfig = isDev
 	: { authBaseUrl: "https://auth.getcoherence.io" };
 
 // Pending auth promise resolver
-let pendingResolve: ((result: { success: boolean; token?: string; refreshToken?: string; error?: string }) => void) | null = null;
+let pendingResolve:
+	| ((result: { success: boolean; token?: string; refreshToken?: string; error?: string }) => void)
+	| null = null;
 let authTimeout: ReturnType<typeof setTimeout> | null = null;
 
 /**
@@ -34,9 +36,7 @@ let authTimeout: ReturnType<typeof setTimeout> | null = null;
 export function registerProAuthProtocol(): void {
 	if (process.defaultApp) {
 		// Dev mode: need to pass the script path
-		app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [
-			process.argv[1],
-		]);
+		app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [process.argv[1]]);
 	} else {
 		app.setAsDefaultProtocolClient(PROTOCOL);
 	}
