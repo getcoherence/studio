@@ -84,6 +84,18 @@ jobs:
       - name: Install app dependencies
         run: npx electron-builder install-app-deps
 
+      - name: Write App Store Connect API key to disk
+        # @electron/notarize passes APPLE_API_KEY straight to
+        # `notarytool --key`, which requires a file PATH. Writing the
+        # secret contents to a temp file and pointing the env var at it
+        # avoids `Error: Invalid option:` when multi-line PEM is passed
+        # as a CLI arg.
+        run: |
+          mkdir -p "$HOME/private_keys"
+          printf '%s' "${{ secrets.APPLE_API_KEY }}" > "$HOME/private_keys/AuthKey.p8"
+          chmod 600 "$HOME/private_keys/AuthKey.p8"
+          echo "APPLE_API_KEY_PATH=$HOME/private_keys/AuthKey.p8" >> "$GITHUB_ENV"
+
       - name: Build & publish macOS
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
@@ -97,10 +109,10 @@ jobs:
           # imports the base64-encoded .p12 into a temporary keychain.
           CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
-          # App Store Connect API key for notarization (no 2FA hassle).
-          # APPLE_API_KEY is the .p8 file contents (or a path to a file);
-          # APPLE_API_KEY_ID is the key ID, APPLE_API_ISSUER the issuer UUID.
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          # App Store Connect API key for notarization. APPLE_API_KEY must
+          # be a file PATH (notarytool requirement); we wrote the p8 to
+          # disk in the step above and APPLE_API_KEY_PATH holds the path.
+          APPLE_API_KEY: ${{ env.APPLE_API_KEY_PATH }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
 
