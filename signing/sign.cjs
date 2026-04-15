@@ -47,9 +47,7 @@ function resolveSigntool() {
 		const bare = path.join(WINDOWS_KITS_BIN, "x64", "signtool.exe");
 		if (fs.existsSync(bare)) return bare;
 	}
-	throw new Error(
-		"signtool.exe not found. Set SIGNTOOL_PATH or install the Windows SDK.",
-	);
+	throw new Error("signtool.exe not found. Set SIGNTOOL_PATH or install the Windows SDK.");
 }
 
 function resolveDlib() {
@@ -68,11 +66,9 @@ function resolveDlib() {
 }
 
 function assertAuthEnv() {
-	const missing = [
-		"AZURE_TENANT_ID",
-		"AZURE_CLIENT_ID",
-		"AZURE_CLIENT_SECRET",
-	].filter((k) => !process.env[k]);
+	const missing = ["AZURE_TENANT_ID", "AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET"].filter(
+		(k) => !process.env[k],
+	);
 	if (missing.length > 0) {
 		throw new Error(
 			`Trusted Signing auth env vars missing: ${missing.join(", ")}. ` +

@@ -25,10 +25,10 @@ import { registerProjectHandlers } from "./ipc/projectHandlers";
 import { registerSettingsHandlers } from "./ipc/settingsHandlers";
 import { registerStudioCacheHandlers } from "./ipc/studioCacheHandlers";
 import { registerUpdaterHandlers } from "./ipc/updaterHandlers";
-import { getCachedSetting, loadSettings, setSetting } from "./settings";
-import { checkForUpdates, setUpdateChannel, type UpdateChannel } from "./updater";
 import { registerWhisperHandlers } from "./ipc/whisperHandlers";
 import { registerYouTubeHandlers } from "./ipc/youtubeHandlers";
+import { getCachedSetting, loadSettings, setSetting } from "./settings";
+import { checkForUpdates, setUpdateChannel, type UpdateChannel } from "./updater";
 import { createEditorWindow, createSourceSelectorWindow } from "./windows";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -393,8 +393,7 @@ function setupApplicationMenu() {
 							click: () => handleChannelSelect("latest"),
 						},
 						{
-							label:
-								getCachedSetting("licenseTier") === "pro" ? "Beta" : "Beta (Pro)",
+							label: getCachedSetting("licenseTier") === "pro" ? "Beta" : "Beta (Pro)",
 							type: "radio",
 							checked: currentChannel === "beta",
 							click: () => handleChannelSelect("beta"),

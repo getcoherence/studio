@@ -111,10 +111,7 @@ export async function generateElevenLabsMusic(
 
 		if (!response.ok) {
 			const errText = await response.text().catch(() => "");
-			console.error(
-				`[ElevenLabsMusic] HTTP ${response.status}:`,
-				errText.slice(0, 300),
-			);
+			console.error(`[ElevenLabsMusic] HTTP ${response.status}:`, errText.slice(0, 300));
 			return {
 				success: false,
 				error: `HTTP ${response.status}: ${errText.slice(0, 160) || "unknown"}`,

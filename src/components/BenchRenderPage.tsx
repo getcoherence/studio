@@ -18,8 +18,8 @@
 // render, we surface a bright error plate so the captured PNG is obviously
 // an error state (catches the class of "rendered but blank" failures).
 
-import { useEffect, useMemo, useState } from "react";
 import { Player } from "@remotion/player";
+import { useEffect, useMemo, useState } from "react";
 import { DynamicComposition } from "../lib/remotion/DynamicComposition";
 
 const DEFAULT_DURATION = 180;
@@ -98,10 +98,7 @@ export function BenchRenderPage() {
 		// arrays) have heavy first-paint costs. Empirically 15s covers the
 		// worst cases.
 		const minWaitMs =
-			codeSize > 17_000 ? 12_000 :
-			codeSize > 13_000 ? 9_000 :
-			codeSize > 10_000 ? 6_000 :
-			3_500;
+			codeSize > 17_000 ? 12_000 : codeSize > 13_000 ? 9_000 : codeSize > 10_000 ? 6_000 : 3_500;
 		const safetyTimeoutMs = Math.max(20_000, minWaitMs + 5_000);
 		const pollStart = Date.now();
 		const pollForContent = () => {

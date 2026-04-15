@@ -115,10 +115,7 @@ export async function generateSfx(
 
 		if (!response.ok) {
 			const errText = await response.text().catch(() => "");
-			console.error(
-				`[ElevenLabsSfx] HTTP ${response.status}:`,
-				errText.slice(0, 300),
-			);
+			console.error(`[ElevenLabsSfx] HTTP ${response.status}:`, errText.slice(0, 300));
 			return {
 				success: false,
 				error: `HTTP ${response.status}: ${errText.slice(0, 120) || "unknown"}`,

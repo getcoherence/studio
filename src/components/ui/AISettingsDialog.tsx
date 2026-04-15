@@ -147,10 +147,9 @@ export function AISettingsDialog({
 			if (window.electronAPI?.aiSaveServiceKey) {
 				await window.electronAPI.aiSaveServiceKey("elevenlabs", elevenLabsKey);
 			}
-			const result = await window.electronAPI?.aiElevenlabsSfx?.(
-				"short soft click",
-				{ durationSec: 0.5 },
-			);
+			const result = await window.electronAPI?.aiElevenlabsSfx?.("short soft click", {
+				durationSec: 0.5,
+			});
 			setTesting(false);
 			setTestResult(result?.success ? "success" : "error");
 			return;

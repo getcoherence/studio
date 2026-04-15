@@ -1,7 +1,10 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.3.13/schema.json",
 	"vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
-	"files": { "ignoreUnknown": false, "includes": ["**", "!**/*.css"] },
+	"files": {
+		"ignoreUnknown": false,
+		"includes": ["**", "!**/*.css", "!public/pro-bundle.js", "!dist-remotion/**", "!release/**"]
+	},
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab",
@@ -69,8 +72,8 @@
 				"noDuplicateElseIf": "error",
 				"noDuplicateObjectKeys": "error",
 				"noDuplicateParameters": "error",
-				"noEmptyBlockStatements": "warn",
-				"noExplicitAny": "warn",
+				"noEmptyBlockStatements": "off",
+				"noExplicitAny": "off",
 				"noExtraNonNullAssertion": "error",
 				"noFallthroughSwitchClause": "error",
 				"noFunctionAssign": "error",

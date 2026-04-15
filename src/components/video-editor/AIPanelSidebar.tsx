@@ -18,8 +18,8 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AISettingsDialog } from "@/components/ui/AISettingsDialog";
-import type { EditorState } from "@/hooks/useEditorHistory";
 import { useAIPreflight } from "@/hooks/useAIPreflight";
+import type { EditorState } from "@/hooks/useEditorHistory";
 import { extractClips } from "@/lib/ai/clipExtractor";
 import { generatePolishEdits } from "@/lib/ai/oneClickPolish";
 import { analyzeRecording } from "@/lib/ai/recordingAnalyzer";
