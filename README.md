@@ -7,7 +7,7 @@
 <p align="center"><strong>AI-powered screen recording and editing. Free and open source.</strong></p>
 
 <p align="center">
-  <a href="https://getcoherence.studio">Website</a> &middot;
+  <a href="https://studio.getcoherence.io">Website</a> &middot;
   <a href="https://github.com/getcoherence/studio/releases">Download</a> &middot;
   <a href="https://github.com/getcoherence/studio/issues">Issues</a>
 </p>
