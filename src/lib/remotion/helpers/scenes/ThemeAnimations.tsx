@@ -2,7 +2,9 @@
 // Adapted from remotion-scenes (MIT licensed)
 // https://github.com/lifeprompt-team/remotion-scenes
 
-import React from "react";
+import { Environment, MeshTransmissionMaterial } from "@react-three/drei";
+import { Canvas as ThreeCanvas, useThree } from "@react-three/fiber";
+import React, { Suspense, useEffect, useMemo, useRef } from "react";
 import {
 	AbsoluteFill,
 	Easing,
@@ -12,6 +14,11 @@ import {
 	useCurrentFrame,
 	useVideoConfig,
 } from "remotion";
+// 3D scene primitives — this file is usually rendered inside compileCode's
+// JIT-compiled context where these names are in MODULE_SCOPE, but we
+// still import them explicitly so Biome's static analysis sees them and
+// the module also works when imported directly (e.g. Remotion preview).
+import * as THREE from "three";
 
 const C = {
 	black: "#0a0a0a",

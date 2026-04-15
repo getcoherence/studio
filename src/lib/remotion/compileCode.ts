@@ -795,7 +795,14 @@ export const MODULE_SCOPE = {
 	// number anyway.
 	useSpring: (config: any = {}) => {
 		try {
+			// Hooks called inside the shim's try/catch. React's rule-of-hooks
+			// is technically violated but in practice safe: the shim is only
+			// invoked from inside a JIT-compiled component's render body
+			// where these hooks always run in the same order. The try/catch
+			// only triggers during Remotion's tear-down path.
+			// biome-ignore lint/correctness/useHookAtTopLevel: see above — shim pattern, hooks always run in same order at caller's render
 			const frame = useCurrentFrame();
+			// biome-ignore lint/correctness/useHookAtTopLevel: see above
 			const { fps } = useVideoConfig();
 			const from = typeof config?.from === "number" ? config.from : 0;
 			const to = typeof config?.to === "number" ? config.to : 1;
@@ -1451,7 +1458,7 @@ export function compileCode(
 		})();
 	`;
 
-	// biome-ignore lint: new Function is intentional for JIT compilation
+	// new Function is intentional for JIT compilation of AI-generated code.
 	const factory = new Function(...scopeKeys, wrappedCode);
 	const component = factory(...scopeValues);
 

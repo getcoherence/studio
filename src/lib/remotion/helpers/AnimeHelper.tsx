@@ -75,6 +75,7 @@ export function useAnimeTimeline(
 				timelineRef.current = null;
 			}
 		};
+		// biome-ignore lint/correctness/useExhaustiveDependencies: deps is caller-provided; this hook exposes anime.js's timeline API which takes deps as a user param, same shape as useEffect itself
 	}, deps);
 
 	// Seek to current frame position
@@ -120,6 +121,7 @@ export function useAnimeAnimation(
 		return () => {
 			animRef.current = null;
 		};
+		// biome-ignore lint/correctness/useExhaustiveDependencies: deps is caller-provided; same pattern as useAnimeTimeline above
 	}, deps);
 
 	useEffect(() => {

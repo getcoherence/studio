@@ -42,6 +42,45 @@ const C = {
 	cyan: "#06b6d4",
 };
 const font = "Inter, system-ui, sans-serif";
+
+// Deterministic organic-blob SVG path. `seed` keys the Remotion random so
+// the same blob renders identically across frames; `points` controls the
+// number of anchor points around the circle; `irregularity` (0..1) shifts
+// each anchor's radius; `radius` sets the base size. Returns a closed
+// cubic-Bezier path centered at (0, 0) — intended to be placed inside an
+// <svg> with a matching viewBox or a parent transform.
+function generateBlobPath(
+	seed: string,
+	points: number,
+	irregularity: number,
+	radius: number,
+): string {
+	const anchors: Array<{ x: number; y: number }> = [];
+	const twoPi = Math.PI * 2;
+	for (let i = 0; i < points; i++) {
+		const angle = (i / points) * twoPi;
+		const jitter = 1 + (random(`${seed}-${i}`) - 0.5) * 2 * irregularity;
+		const r = radius * jitter;
+		anchors.push({ x: Math.cos(angle) * r, y: Math.sin(angle) * r });
+	}
+	// Smooth via cubic Beziers — each segment's control points are offset
+	// tangentially from the anchor, producing Catmull-Rom-ish curves.
+	const k = 0.5;
+	let d = `M ${anchors[0].x.toFixed(2)} ${anchors[0].y.toFixed(2)}`;
+	for (let i = 0; i < points; i++) {
+		const p0 = anchors[(i - 1 + points) % points];
+		const p1 = anchors[i];
+		const p2 = anchors[(i + 1) % points];
+		const p3 = anchors[(i + 2) % points];
+		const c1x = p1.x + ((p2.x - p0.x) / 6) * k * 2;
+		const c1y = p1.y + ((p2.y - p0.y) / 6) * k * 2;
+		const c2x = p2.x - ((p3.x - p1.x) / 6) * k * 2;
+		const c2y = p2.y - ((p3.y - p1.y) / 6) * k * 2;
+		d += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+	}
+	return `${d} Z`;
+}
+
 const lerp = (
 	frame: number,
 	range: [number, number],

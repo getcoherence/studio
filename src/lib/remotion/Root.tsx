@@ -10,7 +10,6 @@ import { compileCode, estimateAiDuration } from "./compileCode";
 import { calculateProjectDuration, SceneProjectComposition } from "./SceneProjectComposition";
 
 // Remotion requires Record<string, unknown> compatible props
-// biome-ignore lint: Remotion requires Record<string, unknown> compatible component type
 const SceneProjectComponent = SceneProjectComposition as unknown as React.FC<
 	Record<string, unknown>
 >;
@@ -85,7 +84,7 @@ const DynamicVideoComposition: React.FC<{ code: string; screenshots: string[] }>
 	return <Component screenshots={screenshots} />;
 };
 
-// biome-ignore lint: Remotion requires Record<string, unknown> compatible component type
+// Remotion requires Record<string, unknown> compatible props on DynamicVideo
 const DynamicVideoComponent = DynamicVideoComposition as unknown as React.FC<
 	Record<string, unknown>
 >;
