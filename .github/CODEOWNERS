@@ -1,0 +1,36 @@
+# CODEOWNERS — required reviewers for sensitive paths.
+# https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# The order matters: later patterns take precedence over earlier ones.
+# Tick "Require review from Code Owners" in the main branch protection
+# rule to enforce.
+
+# Default owner — anything not matched below still requires review.
+*                               @keithfawcett
+
+# Build + release infrastructure — any change here can shift what gets
+# shipped into signed installers. Must be reviewed by the maintainer.
+/.github/                       @keithfawcett
+/electron-builder.json5         @keithfawcett
+/signing/                       @keithfawcett
+/build/entitlements.mac.plist   @keithfawcett
+/scripts/                       @keithfawcett
+
+# Dependency surface — package.json changes affect the supply chain.
+/package.json                   @keithfawcett
+/package-lock.json              @keithfawcett
+
+# Auto-update machinery — compromise here would push malicious code to
+# every user on auto-update.
+/electron/updater.ts            @keithfawcett
+/electron/ipc/updaterHandlers.ts @keithfawcett
+
+# Security-relevant IPC — path validation, credential storage.
+/electron/ipc/handlers.ts       @keithfawcett
+/electron/settings.ts           @keithfawcett
+
+# Pro plugin loader — license/auth gate.
+/src/lib/plugins/pro/           @keithfawcett
+
+# Security docs — shouldn't change without maintainer involvement.
+/SECURITY.md                    @keithfawcett
