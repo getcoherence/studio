@@ -19,6 +19,8 @@ interface ProAuthConfig {
 	authUrl: string;
 	/** Subscription check endpoint (GET, needs Bearer token) */
 	subscriptionUrl: string;
+	/** Refresh-token endpoint (POST, body: { refreshToken }) */
+	refreshUrl: string;
 	/** Pro plugin bundle URL (GET, needs Bearer token) */
 	bundleUrl: string;
 	/** localStorage key for storing the JWT */
@@ -31,6 +33,7 @@ const DEFAULT_CONFIG: ProAuthConfig = {
 	baseUrl: "https://app.getcoherence.io",
 	authUrl: "https://app.getcoherence.io/login?redirect=studio-desktop",
 	subscriptionUrl: "https://app.getcoherence.io/api/v1/auth/studio/subscription",
+	refreshUrl: "https://app.getcoherence.io/api/v1/auth/refresh",
 	bundleUrl: "https://app.getcoherence.io/api/v1/auth/studio/pro-bundle.js",
 	tokenKey: "studio-pro-token",
 	providerName: "Coherence",
@@ -46,6 +49,7 @@ const DEV_CONFIG: ProAuthConfig = {
 	baseUrl: "http://localhost:5175",
 	authUrl: "http://localhost:5175/login?redirect=studio-desktop",
 	subscriptionUrl: "http://localhost:4100/studio/subscription",
+	refreshUrl: "http://localhost:4100/refresh",
 	bundleUrl: "http://localhost:4900/studio/pro-bundle.js",
 	tokenKey: "studio-pro-token",
 	providerName: "Coherence (dev)",
@@ -198,8 +202,7 @@ async function refreshAccessToken(): Promise<string | null> {
 	if (!refreshToken) return null;
 
 	try {
-		const baseUrl = config.subscriptionUrl.replace("/studio/subscription", "");
-		const res = await fetch(`${baseUrl}/refresh`, {
+		const res = await fetch(config.refreshUrl, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ refreshToken }),
@@ -270,37 +273,49 @@ export async function authenticatePro(): Promise<{ success: boolean; error?: str
 			return;
 		}
 
+		// Guard against double-resolve and ensure every exit path tears down
+		// listeners + timers. Without this, the popup-closed poll below would
+		// race the message handler and resolve with "Login cancelled" after
+		// success, and the timeout would leak the interval.
+		let settled = false;
+		let checkClosed: ReturnType<typeof setInterval> | undefined;
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		const finalize = (result: { success: boolean; error?: string }) => {
+			if (settled) return;
+			settled = true;
+			window.removeEventListener("message", handler);
+			if (checkClosed !== undefined) clearInterval(checkClosed);
+			if (timeoutId !== undefined) clearTimeout(timeoutId);
+			if (!popup.closed) popup.close();
+			resolve(result);
+		};
+
 		const handler = (event: MessageEvent) => {
 			if (event.origin !== config.baseUrl) return;
 			const data = event.data;
 			if (data?.type === "studio-auth-success" && data.token) {
-				window.removeEventListener("message", handler);
 				proToken = data.token;
 				storeToken(data.token);
-				popup.close();
-				resolve({ success: true });
+				if (data.refreshToken) storeRefreshToken(data.refreshToken);
+				finalize({ success: true });
 			} else if (data?.type === "studio-auth-error") {
-				window.removeEventListener("message", handler);
-				popup.close();
-				resolve({ success: false, error: data.error || "Authentication failed" });
+				finalize({ success: false, error: data.error || "Authentication failed" });
 			}
 		};
 
 		window.addEventListener("message", handler);
 
 		// Timeout after 5 minutes
-		setTimeout(() => {
-			window.removeEventListener("message", handler);
-			if (!popup.closed) popup.close();
-			resolve({ success: false, error: "Authentication timed out" });
+		timeoutId = setTimeout(() => {
+			finalize({ success: false, error: "Authentication timed out" });
 		}, 300_000);
 
-		// Check if popup was closed manually
-		const checkClosed = setInterval(() => {
+		// Check if popup was closed manually. The settled flag prevents a
+		// success message that arrives just before this poll from being
+		// overwritten by a "Login cancelled" error.
+		checkClosed = setInterval(() => {
 			if (popup.closed) {
-				clearInterval(checkClosed);
-				window.removeEventListener("message", handler);
-				if (!proToken) resolve({ success: false, error: "Login cancelled" });
+				finalize({ success: false, error: "Login cancelled" });
 			}
 		}, 500);
 	});
