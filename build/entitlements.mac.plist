@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Allow V8 JIT (required for Electron) -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+	<!-- Ignore the default library validation so notarized bundled helpers
+	     (ffmpeg, native addons) can load even when they're signed by a
+	     different identity than the main app. -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+	<!-- Device access for screen + audio + video capture. NSxxxUsageDescription
+	     strings live in Info.plist via electron-builder.json5 `mac.extendInfo`. -->
+	<key>com.apple.security.device.microphone</key>
+	<true/>
+	<key>com.apple.security.device.camera</key>
+	<true/>
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+	<!-- File system access (user selects via native picker). -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+</dict>
+</plist>

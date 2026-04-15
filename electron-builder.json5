@@ -37,7 +37,15 @@
   ],
 
   "mac": {
-    "hardenedRuntime": false,
+    // Notarization requires hardenedRuntime + an entitlements plist.
+    // electron-builder runs the notarize step automatically when the
+    // `APPLE_API_KEY_ID` / `APPLE_API_ISSUER` / `APPLE_API_KEY` env vars are
+    // set (App Store Connect API key — newer / cleaner than ASP passwords).
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
+    "entitlements": "build/entitlements.mac.plist",
+    "entitlementsInherit": "build/entitlements.mac.plist",
+    "notarize": true,
     "target": [
       {
         "target": "dmg",
