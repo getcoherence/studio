@@ -40,55 +40,52 @@ export async function exportPlayerToVideo(options: PlayerExportOptions): Promise
 		if (e.data.size > 0) chunks.push(e.data);
 	};
 
-	return new Promise<Blob>(async (resolve, reject) => {
-		recorder.onstop = () => {
-			resolve(new Blob(chunks, { type: "video/webm" }));
-		};
+	// Hook up MediaRecorder → Blob resolution. The async capture loop runs
+	// alongside; we kick it off and let recorder.onstop resolve the outer
+	// promise. Capture errors from the loop surface via reject().
+	const recorded = new Promise<Blob>((resolve, reject) => {
+		recorder.onstop = () => resolve(new Blob(chunks, { type: "video/webm" }));
 		recorder.onerror = () => reject(new Error("MediaRecorder error"));
-		recorder.start();
-
-		for (let frame = 0; frame < totalFrames; frame++) {
-			// Seek player to this frame
-			seekToFrame(frame);
-
-			// Wait for render
-			await new Promise((r) => setTimeout(r, 50));
-
-			// Capture the player DOM
-			try {
-				const captured = await html2canvas(playerElement, {
-					width: playerElement.offsetWidth,
-					height: playerElement.offsetHeight,
-					backgroundColor: "#000000",
-					scale: 1920 / playerElement.offsetWidth,
-					logging: false,
-					useCORS: true,
-				});
-
-				ctx.clearRect(0, 0, 1920, 1080);
-				ctx.drawImage(captured, 0, 0, 1920, 1080);
-
-				// Push frame to MediaRecorder
-				const track = stream.getVideoTracks()[0] as any;
-				if (track?.requestFrame) {
-					track.requestFrame();
-				}
-			} catch {
-				// Black frame on error
-				ctx.fillStyle = "#000";
-				ctx.fillRect(0, 0, 1920, 1080);
-			}
-
-			onProgress?.(frame / totalFrames);
-
-			// Small delay to prevent UI freeze
-			if (frame % 10 === 0) {
-				await new Promise((r) => setTimeout(r, 10));
-			}
-		}
-
-		// Final frame delay then stop
-		await new Promise((r) => setTimeout(r, 100));
-		recorder.stop();
 	});
+
+	recorder.start();
+
+	(async () => {
+		try {
+			for (let frame = 0; frame < totalFrames; frame++) {
+				seekToFrame(frame);
+				await new Promise((r) => setTimeout(r, 50));
+
+				try {
+					const captured = await html2canvas(playerElement, {
+						width: playerElement.offsetWidth,
+						height: playerElement.offsetHeight,
+						backgroundColor: "#000000",
+						scale: 1920 / playerElement.offsetWidth,
+						logging: false,
+						useCORS: true,
+					});
+					ctx.clearRect(0, 0, 1920, 1080);
+					ctx.drawImage(captured, 0, 0, 1920, 1080);
+					const track = stream.getVideoTracks()[0] as any;
+					if (track?.requestFrame) track.requestFrame();
+				} catch {
+					ctx.fillStyle = "#000";
+					ctx.fillRect(0, 0, 1920, 1080);
+				}
+
+				onProgress?.(frame / totalFrames);
+				if (frame % 10 === 0) {
+					await new Promise((r) => setTimeout(r, 10));
+				}
+			}
+			await new Promise((r) => setTimeout(r, 100));
+			recorder.stop();
+		} catch (err) {
+			recorder.stop();
+			throw err;
+		}
+	})();
+
+	return recorded;
 }

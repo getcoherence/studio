@@ -12,9 +12,7 @@ import { pluginRegistry } from "../registry";
  * the pro bundle hasn't loaded yet. Automatically re-renders when the
  * bundle arrives.
  */
-// biome-ignore lint/suspicious/noExplicitAny: view components have varying prop shapes
 export function useProView(viewId: string): React.FC<any> | null {
-	// biome-ignore lint/suspicious/noExplicitAny: view components have varying prop shapes
 	const [component, setComponent] = useState<React.FC<any> | null>(() => {
 		const view = pluginRegistry.getView(viewId);
 		return view?.component ?? null;

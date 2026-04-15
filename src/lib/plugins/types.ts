@@ -78,7 +78,6 @@ export interface TransitionPlugin {
 	 * Create the TransitionPresentation.
 	 * Can accept accent color for brand-colored transitions.
 	 */
-	// biome-ignore lint: TransitionPresentation generic varies per transition type
 	create: (accentColor?: string) => TransitionPresentation<any>;
 	/**
 	 * The JSX expression string for the compiled code.
@@ -99,7 +98,6 @@ export interface EffectPlugin {
 	/** Category for grouping in the effect picker */
 	category: "ambient" | "particles" | "geometric" | "texture" | "gradient";
 	/** The React component that renders the effect overlay */
-	// biome-ignore lint: Effect components have varying prop shapes
 	component: React.FC<any>;
 }
 
