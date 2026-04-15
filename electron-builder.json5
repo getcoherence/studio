@@ -105,7 +105,10 @@
       "provider": "github",
       "owner": "getcoherence",
       "repo": "studio",
-      "releaseType": "release"
+      // Draft, not release — avoids publishing a half-baked release when
+      // one platform succeeds before another fails. You manually edit
+      // notes + publish from the GitHub UI once the full run is green.
+      "releaseType": "draft"
     }
   ],
   "protocols": [
