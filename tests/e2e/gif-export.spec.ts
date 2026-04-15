@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -25,7 +26,7 @@ const TEST_VIDEO = path.join(__dirname, "../fixtures/sample.webm");
 //   3. Re-find the current format selector + export trigger; use
 //      t("export.complete") / Download icon for success detection.
 test.skip("exports a GIF from a loaded video", async () => {
-	const outputPath = path.join(os.tmpdir(), `test-gif-export-${Date.now()}.gif`);
+	const outputPath = path.join(os.tmpdir(), `test-gif-export-${randomUUID()}.gif`);
 
 	const app = await electron.launch({
 		args: [
@@ -127,6 +128,15 @@ test.skip("exports a GIF from a loaded video", async () => {
 		const stats = fs.statSync(outputPath);
 		expect(stats.size).toBeGreaterThan(1024); // at least 1 KB
 	} finally {
+		// Clear the test-only global on the main process so a reused Electron
+		// instance doesn't leak the previous test's export buffer into the next.
+		try {
+			await app.evaluate(() => {
+				delete (globalThis as Record<string, unknown>)["__testExportData"];
+			});
+		} catch {
+			// App may already be closed or unavailable; ignore cleanup failure.
+		}
 		await app.close();
 		if (fs.existsSync(outputPath)) {
 			fs.unlinkSync(outputPath);
