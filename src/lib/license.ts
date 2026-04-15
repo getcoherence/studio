@@ -13,6 +13,7 @@ import {
 	checkSubscription,
 	getProStatus,
 	getStoredProToken,
+	hydrateProTokenCache,
 	isProActive,
 } from "./plugins/pro/proLoader";
 
@@ -106,6 +107,9 @@ export function getFeatureLabel(feature: ProFeature): string {
  */
 export async function initLicense(): Promise<LicenseTier> {
 	cachedTier = null;
+
+	// Hydrate the secure-storage token cache before any sync token reads.
+	await hydrateProTokenCache();
 
 	// If proLoader already verified, trust it
 	if (getProStatus() === "active" || isProActive()) {

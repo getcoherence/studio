@@ -614,6 +614,11 @@ interface Window {
 				stepIndex: number;
 			}) => void,
 		) => () => void;
+
+		// Secure storage (OS-keychain-backed via Electron safeStorage)
+		secureStorageGet: (key: string) => Promise<string | null>;
+		secureStorageSet: (key: string, value: string) => Promise<{ success: boolean }>;
+		secureStorageDelete: (key: string) => Promise<{ success: boolean }>;
 	};
 }
 

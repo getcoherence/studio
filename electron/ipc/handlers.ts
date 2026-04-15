@@ -7,6 +7,7 @@ import {
 	desktopCapturer,
 	dialog,
 	ipcMain,
+	safeStorage,
 	screen,
 	shell,
 	systemPreferences,
@@ -1468,6 +1469,76 @@ export function registerIpcHandlers(
 			return { success: true };
 		} catch (error) {
 			console.error("Failed to save shortcuts:", error);
+			return { success: false, error: String(error) };
+		}
+	});
+
+	// ── Secure storage for sensitive data (auth tokens, etc.) ──────────
+	// Uses Electron `safeStorage` which encrypts via OS keychain
+	// (DPAPI on Windows, Keychain on macOS, libsecret on Linux). Falls
+	// back to a base64-encoded plaintext blob if encryption isn't
+	// available — same security as localStorage, no worse.
+	const SECURE_STORE_FILE = path.join(app.getPath("userData"), "secure-store.json");
+	let secureStoreCache: Record<string, string> | null = null;
+
+	async function loadSecureStore(): Promise<Record<string, string>> {
+		if (secureStoreCache) return secureStoreCache;
+		try {
+			const raw = await fs.readFile(SECURE_STORE_FILE, "utf-8");
+			secureStoreCache = JSON.parse(raw);
+			return secureStoreCache!;
+		} catch {
+			secureStoreCache = {};
+			return secureStoreCache;
+		}
+	}
+
+	async function persistSecureStore(): Promise<void> {
+		if (!secureStoreCache) return;
+		await fs.writeFile(SECURE_STORE_FILE, JSON.stringify(secureStoreCache), "utf-8");
+	}
+
+	ipcMain.handle("secure-store-set", async (_, key: string, value: string) => {
+		try {
+			const store = await loadSecureStore();
+			const encoded = safeStorage.isEncryptionAvailable()
+				? `enc:${safeStorage.encryptString(value).toString("base64")}`
+				: `plain:${Buffer.from(value, "utf-8").toString("base64")}`;
+			store[key] = encoded;
+			await persistSecureStore();
+			return { success: true };
+		} catch (error) {
+			console.error("[secure-store] set failed:", error);
+			return { success: false, error: String(error) };
+		}
+	});
+
+	ipcMain.handle("secure-store-get", async (_, key: string) => {
+		try {
+			const store = await loadSecureStore();
+			const encoded = store[key];
+			if (!encoded) return null;
+			if (encoded.startsWith("enc:") && safeStorage.isEncryptionAvailable()) {
+				return safeStorage.decryptString(Buffer.from(encoded.slice(4), "base64"));
+			}
+			if (encoded.startsWith("plain:")) {
+				return Buffer.from(encoded.slice(6), "base64").toString("utf-8");
+			}
+			return null;
+		} catch (error) {
+			console.error("[secure-store] get failed:", error);
+			return null;
+		}
+	});
+
+	ipcMain.handle("secure-store-delete", async (_, key: string) => {
+		try {
+			const store = await loadSecureStore();
+			delete store[key];
+			await persistSecureStore();
+			return { success: true };
+		} catch (error) {
+			console.error("[secure-store] delete failed:", error);
 			return { success: false, error: String(error) };
 		}
 	});
