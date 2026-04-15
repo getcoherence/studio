@@ -325,7 +325,7 @@ export async function generateLyrics(themePrompt: string, title?: string): Promi
 				Authorization: `Bearer ${apiKey}`,
 			},
 			body: JSON.stringify({
-				model: "music-2.5+",
+				model: "music-2.6",
 				mode: "write_full_song",
 				prompt: themePrompt,
 				...(title ? { title } : {}),
@@ -377,7 +377,7 @@ async function generateMiniMaxMusic(
 	console.log("[Music] Prompt:", prompt.slice(0, 150));
 
 	const body: Record<string, unknown> = {
-		model: "music-2.5+",
+		model: "music-2.6",
 		prompt,
 		output_format: "url",
 		audio_setting: {

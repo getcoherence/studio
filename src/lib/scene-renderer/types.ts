@@ -2,7 +2,7 @@
 
 /**
  * Metadata captured when an AI-generated SceneProject is created.
- * Persisted with the .lucid file so you can see model, aesthetic, brand,
+ * Persisted with the .studio file so you can see model, aesthetic, brand,
  * scene counts, and which production-team agents ran for each project.
  *
  * All fields optional so old projects without metadata still load.

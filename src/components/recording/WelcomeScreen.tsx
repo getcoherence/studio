@@ -1,7 +1,8 @@
-import { Bot, Clapperboard, Film, FolderOpen, PlayCircle, Settings } from "lucide-react";
+import { Bot, Clapperboard, Film, FolderOpen, Key, PlayCircle, Settings } from "lucide-react";
 import { useState } from "react";
 import { AISettingsDialog } from "@/components/ui/AISettingsDialog";
 import { ProBadge, useProGate } from "@/components/ui/ProGate";
+import { useAIPreflight } from "@/hooks/useAIPreflight";
 import studioLogo from "/coherence-studio-logo.png";
 
 interface WelcomeScreenProps {
@@ -21,6 +22,9 @@ export function WelcomeScreen({
 }: WelcomeScreenProps) {
 	const { isPro, checkFeature, gateDialog } = useProGate();
 	const [settingsOpen, setSettingsOpen] = useState(false);
+	const { availability, requireChatProvider, dialogOpen, dialogMessage, closeDialog } =
+		useAIPreflight();
+	const hasAnyProvider = availability?.activeProvider != null;
 
 	return (
 		<div className="relative flex flex-col items-center justify-center h-screen gap-8 bg-[#09090b]">
@@ -53,8 +57,10 @@ export function WelcomeScreen({
 				)}
 				{onAiDemo && (
 					<button
-						onClick={() => {
-							if (checkFeature("ai-demo-recorder")) onAiDemo();
+						onClick={async () => {
+							if (!checkFeature("ai-demo-recorder")) return;
+							if (!(await requireChatProvider("Generate AI Video"))) return;
+							onAiDemo();
 						}}
 						className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 font-medium transition-colors border border-[#2563eb]/30 hover:border-[#2563eb]/50"
 					>
@@ -79,6 +85,19 @@ export function WelcomeScreen({
 				</button>
 			</div>
 
+			{/* "Connect AI providers" nudge — shown only if no provider has a key
+			    configured. Gives new users an obvious first step so they don't
+			    click AI features blind and hit the preflight dialog. */}
+			{availability && !hasAnyProvider && (
+				<button
+					onClick={() => setSettingsOpen(true)}
+					className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#2563eb]/10 hover:bg-[#2563eb]/20 border border-[#2563eb]/30 hover:border-[#2563eb]/50 text-xs text-white/80 transition-colors"
+				>
+					<Key size={12} className="text-[#2563eb]" />
+					Connect an AI provider to unlock AI features
+				</button>
+			)}
+
 			{/* Settings gear */}
 			<button
 				onClick={() => setSettingsOpen(true)}
@@ -88,6 +107,15 @@ export function WelcomeScreen({
 				<Settings size={16} />
 			</button>
 			<AISettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+			{/* Preflight dialog — opened when an AI action is invoked without a
+			    configured provider. Reuses AISettingsDialog with a banner. */}
+			<AISettingsDialog
+				open={dialogOpen}
+				onOpenChange={(o) => {
+					if (!o) closeDialog();
+				}}
+				preflightMessage={dialogMessage}
+			/>
 
 			{/* Attribution */}
 			<a

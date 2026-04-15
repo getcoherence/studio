@@ -112,7 +112,7 @@ export const ImageCrossfade: React.FC<ImageCrossfadeProps> = ({
 				fadeOutStart: i * (holdFramesPerImage + crossfadeDuration) + holdFramesPerImage,
 				end: i * (holdFramesPerImage + crossfadeDuration) + holdFramesPerImage + crossfadeDuration,
 			})),
-		[images.length, holdFramesPerImage, crossfadeDuration],
+		[holdFramesPerImage, crossfadeDuration, images.map],
 	);
 
 	// Lighting gradient progress

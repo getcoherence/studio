@@ -127,7 +127,7 @@ export function useAnimeAnimation(
 		const ms = (frame / fps) * 1000;
 		const dur = animRef.current.duration || 1;
 		animRef.current.seek(params.loop ? ms % dur : Math.min(ms, dur));
-	}, [frame, fps]);
+	}, [frame, fps, params.loop]);
 
 	return ref;
 }

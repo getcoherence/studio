@@ -322,7 +322,7 @@ export function useScreenRecorder(options?: {
 				}
 			})();
 		},
-		[teardownMedia, options?.onRecordingFinalized],
+		[teardownMedia],
 	);
 
 	const stopRecording = useRef(() => {

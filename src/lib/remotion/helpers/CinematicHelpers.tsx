@@ -976,12 +976,14 @@ export const Card: React.FC<{
 
 /** Animated pill button with typewriter text */
 export const Pill: React.FC<{
-	text: string;
+	text?: string;
+	label?: string;
 	delay?: number;
 	color?: string;
 	bg?: string;
 	width?: number;
-}> = ({ text, delay = 0, color = "#ffffff", bg = "rgba(255,255,255,0.06)", width }) => {
+}> = ({ text, label, delay = 0, color = "#ffffff", bg = "rgba(255,255,255,0.06)", width }) => {
+	const safeText = text || label || "";
 	const frame = useCurrentFrame();
 	const { fps } = useVideoConfig();
 	const progress = spring({
@@ -990,7 +992,7 @@ export const Pill: React.FC<{
 		config: { damping: 14, stiffness: 160 },
 	});
 	const visible = Math.floor(
-		interpolate(frame, [delay + 5, delay + 5 + text.length * 1.5], [0, text.length], {
+		interpolate(frame, [delay + 5, delay + 5 + safeText.length * 1.5], [0, safeText.length], {
 			extrapolateLeft: "clamp",
 			extrapolateRight: "clamp",
 		}),
@@ -1014,7 +1016,7 @@ export const Pill: React.FC<{
 			}}
 		>
 			<span style={{ fontSize: 16, fontWeight: 600, color, fontFamily: "'Inter', sans-serif" }}>
-				{text.slice(0, visible)}
+				{safeText.slice(0, visible)}
 			</span>
 		</div>
 	);
