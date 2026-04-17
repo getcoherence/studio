@@ -31,6 +31,8 @@ Built by the team behind [Coherence](https://getcoherence.io). Originally forked
 - Annotations (text, arrows, images)
 - Export to MP4 and GIF
 
+https://github.com/user-attachments/assets/a0be0a5f-a986-4f63-bbd7-d16a46f7b2f4
+
 ## Installation
 
 Download the latest installer from the [GitHub Releases](https://github.com/getcoherence/studio/releases) page.
