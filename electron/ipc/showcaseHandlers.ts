@@ -1,10 +1,10 @@
-import { BrowserWindow, ipcMain } from "electron";
-import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { BrowserWindow, ipcMain } from "electron";
 
 const BUCKET = "coherence-content-media";
 const ENDPOINT = "https://nyc3.digitaloceanspaces.com";
@@ -49,9 +49,7 @@ interface ShowcaseEntry {
 	createdAt: string;
 }
 
-export function registerShowcaseHandlers(
-	_getMainWindow: () => BrowserWindow | null,
-): void {
+export function registerShowcaseHandlers(_getMainWindow: () => BrowserWindow | null): void {
 	ipcMain.handle(
 		"showcase-upload",
 		async (
