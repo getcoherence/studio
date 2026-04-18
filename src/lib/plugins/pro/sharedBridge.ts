@@ -97,6 +97,7 @@ import { Slider } from "@/components/ui/slider";
 import { AnimatedBackgroundPicker } from "@/components/video-editor/AnimatedBackgroundPicker";
 // ── Quality gates ──
 import {
+	auditChoreography,
 	checkQuality,
 	checkVariation,
 	classifyPromise,
@@ -289,6 +290,7 @@ import {
 	ANIMATION_TYPE_LABELS,
 	captureCanvas,
 	DEFAULT_IMAGE_LAYER,
+	DEFAULT_VIDEO_LAYER,
 	DEFAULT_PROJECT,
 	DEFAULT_SCENE,
 	DEFAULT_SHAPE_LAYER,
@@ -479,6 +481,7 @@ export interface SharedBridge {
 	DEFAULT_SCENE: typeof DEFAULT_SCENE;
 	DEFAULT_TEXT_LAYER: typeof DEFAULT_TEXT_LAYER;
 	DEFAULT_IMAGE_LAYER: typeof DEFAULT_IMAGE_LAYER;
+	DEFAULT_VIDEO_LAYER: typeof DEFAULT_VIDEO_LAYER;
 	DEFAULT_SHAPE_LAYER: typeof DEFAULT_SHAPE_LAYER;
 
 	// Demo project store
@@ -505,6 +508,7 @@ export interface SharedBridge {
 	MonacoEditor: typeof MonacoEditorImport;
 
 	// Quality gates
+	auditChoreography: typeof auditChoreography;
 	checkQuality: typeof checkQuality;
 	scoreSlideshowRisk: typeof scoreSlideshowRisk;
 	checkVariation: typeof checkVariation;
@@ -811,6 +815,7 @@ export function initSharedBridge(): void {
 		DEFAULT_SCENE,
 		DEFAULT_TEXT_LAYER,
 		DEFAULT_IMAGE_LAYER,
+		DEFAULT_VIDEO_LAYER,
 		DEFAULT_SHAPE_LAYER,
 
 		// Demo project store
@@ -837,6 +842,7 @@ export function initSharedBridge(): void {
 		MonacoEditor: MonacoEditorImport,
 
 		// Quality gates
+		auditChoreography,
 		checkQuality,
 		scoreSlideshowRisk,
 		checkVariation,

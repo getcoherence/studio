@@ -61,6 +61,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	openVideoFilePicker: () => {
 		return ipcRenderer.invoke("open-video-file-picker");
 	},
+	remuxVideo: (inputPath: string) => {
+		return ipcRenderer.invoke("remux-video", inputPath);
+	},
 	setCurrentVideoPath: (path: string) => {
 		return ipcRenderer.invoke("set-current-video-path", path);
 	},
@@ -321,6 +324,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 			error?: string;
 		}>;
 	},
+
+	// Token usage tracking (reset at start of a generation run, read at end)
+	aiTokenUsageReset: () =>
+		ipcRenderer.invoke("ai-token-usage-reset") as Promise<{ success: boolean }>,
+	aiTokenUsageGet: () => ipcRenderer.invoke("ai-token-usage-get"),
 
 	// Secure storage (OS-keychain-backed via Electron safeStorage)
 	secureStorageGet: (key: string) =>

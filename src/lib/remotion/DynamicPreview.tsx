@@ -69,6 +69,27 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 }) => {
 	const playerRef = useRef<PlayerRef>(null);
 	const fps = 30;
+
+	// Signal preview mode to child components (PixiOverlay, particles)
+	useEffect(() => {
+		(window as any).__STUDIO_PREVIEW_MODE__ = true;
+		return () => { (window as any).__STUDIO_PREVIEW_MODE__ = false; };
+	}, []);
+
+	// Clean up persistent preview video elements when composition code changes
+	useEffect(() => {
+		const registry = (window as any).__PREVIEW_VIDEOS__ as Record<string, { vid: HTMLVideoElement; raf: number }> | undefined;
+		if (!registry) return;
+		return () => {
+			for (const [key, entry] of Object.entries(registry)) {
+				cancelAnimationFrame(entry.raf);
+				entry.vid.pause();
+				entry.vid.src = "";
+				entry.vid.remove();
+				delete registry[key];
+			}
+		};
+	}, [code]);
 	const estimated = estimateAiDuration(code, fps);
 	const durationInFrames = Number.isFinite(estimated) && estimated > 0 ? estimated : fps * 20;
 
@@ -88,14 +109,17 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 		}
 	}, [resetSignal]);
 
-	// Sync frame position to parent for timeline playhead
+	// Sync frame position to parent for timeline playhead + expose globally
+	// for PreviewVideo overlay to check frame bounds
 	useEffect(() => {
-		if (!onFrameUpdate || !playerRef.current) return;
+		if (!playerRef.current) return;
 		const interval = setInterval(() => {
 			if (playerRef.current) {
-				onFrameUpdate(playerRef.current.getCurrentFrame());
+				const f = playerRef.current.getCurrentFrame();
+				(window as any).__REMOTION_CURRENT_FRAME__ = f;
+				onFrameUpdate?.(f);
 			}
-		}, 100);
+		}, 50);
 		return () => clearInterval(interval);
 	}, [onFrameUpdate]);
 
@@ -129,7 +153,14 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 			}}
 		>
 			<Player
-				key={`player-${code.length}-${durationInFrames}-${compositionWidth}x${compositionHeight}`}
+				// Include music-presence in the key so when musicDataUrl finishes
+				// its async fetch AFTER the Player already mounted without music,
+				// the Player re-mounts with the DynamicWithMusic wrapper. Without
+				// this, the composition tree is cached from initial render and
+				// the Audio element never gets a chance to mount — the file
+				// plays fine in the music tab's standalone player but is silent
+				// inside the Remotion preview.
+				key={`player-${code.length}-${durationInFrames}-${compositionWidth}x${compositionHeight}-${musicSrc ? "m" : "nm"}`}
 				ref={playerRef}
 				component={CompositionComponent as React.FC<any>}
 				inputProps={inputProps}

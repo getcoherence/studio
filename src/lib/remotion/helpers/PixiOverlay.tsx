@@ -322,6 +322,9 @@ function renderFilterToCanvas(
 // ── React Component ────────────────────────────────────────────────────
 
 export const PixiOverlay: React.FC<PixiOverlayProps> = ({ effects, opacity = 1 }) => {
+	// Skip entirely in preview mode — grain/particles are invisible at half-res
+	if ((window as any).__STUDIO_PREVIEW_MODE__) return null;
+
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const particleCacheRef = useRef<Map<number, Particle[]>>(new Map());
 	const frame = useCurrentFrame();

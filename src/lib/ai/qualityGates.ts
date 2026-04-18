@@ -586,6 +586,138 @@ export function validatePromise(
 	return { honored: violations.length === 0, violations };
 }
 
+// ── Choreography Audit ────────────────────────────────────────────────
+//
+// Post-generation timing analysis. Flags dead zones, simultaneous
+// entrances, narration/visual misalignment, and stagger gaps.
+
+export interface ChoreographyIssue {
+	sceneIndex: number;
+	severity: "warning" | "error";
+	type: "dead-zone" | "simultaneous-entrance" | "narration-overflow" | "narration-gap" | "stagger-missing" | "sfx-overflow";
+	suggestion: string;
+}
+
+export interface ChoreographyResult {
+	issues: ChoreographyIssue[];
+	suggestions: string[];
+}
+
+const ANIMATION_SETTLE_FRAMES: Record<string, number> = {
+	chars: 45, words: 36, scale: 24, clip: 20, gradient: 30,
+	glitch: 28, "blur-in": 24, bounce: 36, wave: 40, typewriter: 60,
+	staccato: 30, split: 28, drop: 30, scramble: 40, matrix: 50,
+	"rotate-3d": 30, "glitch-in": 24, "mask-reveal": 30, none: 0,
+};
+
+export function auditChoreography(plan: ScenePlan): ChoreographyResult {
+	const scenes = plan.scenes;
+	const issues: ChoreographyIssue[] = [];
+
+	for (let i = 0; i < scenes.length; i++) {
+		const scene = scenes[i];
+		const dur = scene.durationFrames || 90;
+		const layers = scene.layers || [];
+
+		// 1. Dead zone: scene too short for its animation to settle
+		const settleFrames = ANIMATION_SETTLE_FRAMES[scene.animation] || 24;
+		const headlineLen = (scene.headline || "").length;
+		const readingFrames = Math.ceil(headlineLen * 1.2);
+		const minUseful = settleFrames + readingFrames;
+		if (dur < minUseful && dur < 60) {
+			issues.push({
+				sceneIndex: i,
+				severity: "warning",
+				type: "dead-zone",
+				suggestion: `Scene ${i + 1} "${scene.headline?.slice(0, 30)}" is ${dur} frames but animation + reading needs ~${minUseful}. Extend to at least ${Math.max(60, minUseful)} frames.`,
+			});
+		}
+
+		// 2. Simultaneous entrance: multiple layers start at frame 0 with no stagger
+		const frame0Layers = layers.filter(
+			(l) => l.startFrame === 0 && !l.id?.startsWith("lottie-") && !(l as any)._incompatible,
+		);
+		if (frame0Layers.length >= 3) {
+			const hasStagger = frame0Layers.some((l) => (l as any).settings?.stagger > 0);
+			if (!hasStagger) {
+				issues.push({
+					sceneIndex: i,
+					severity: "warning",
+					type: "simultaneous-entrance",
+					suggestion: `Scene ${i + 1} has ${frame0Layers.length} layers all entering at frame 0 with no stagger. Add stagger or offset startFrame by 4-8 frames between layers.`,
+				});
+			}
+		}
+
+		// 3. Stagger missing: text-heavy scenes with 2+ text layers and no timing spread
+		const textLayers = layers.filter((l) => l.type === "text" && !(l as any)._incompatible);
+		if (textLayers.length >= 2) {
+			const starts = textLayers.map((l) => l.startFrame);
+			const allSame = starts.every((s) => s === starts[0]);
+			if (allSame) {
+				issues.push({
+					sceneIndex: i,
+					severity: "warning",
+					type: "stagger-missing",
+					suggestion: `Scene ${i + 1} has ${textLayers.length} text layers all starting at frame ${starts[0]}. Stagger by 6-12 frames for visual rhythm.`,
+				});
+			}
+		}
+
+		// 4. Narration overflow: narration extends past scene boundary
+		if (scene.narrationDurationMs && scene.narrationDurationMs > 0) {
+			const narrationFrames = Math.ceil((scene.narrationDurationMs / 1000) * 30);
+			const headroom = 6 + 30;
+			if (narrationFrames + headroom > dur) {
+				const overflowMs = Math.round(
+					((narrationFrames + headroom - dur) / 30) * 1000,
+				);
+				issues.push({
+					sceneIndex: i,
+					severity: "error",
+					type: "narration-overflow",
+					suggestion: `Scene ${i + 1} narration (${Math.round(scene.narrationDurationMs / 1000)}s) overflows scene by ${overflowMs}ms. Extend scene to ${narrationFrames + headroom} frames or shorten narration text.`,
+				});
+			}
+		}
+
+		// 5. Narration gap: scene has no narration but neighbors do (orphaned silence)
+		if (plan.hasNarration && !scene.narration && scenes.length > 2) {
+			const prevHas = i > 0 && !!scenes[i - 1].narration;
+			const nextHas = i < scenes.length - 1 && !!scenes[i + 1].narration;
+			if (prevHas && nextHas) {
+				issues.push({
+					sceneIndex: i,
+					severity: "warning",
+					type: "narration-gap",
+					suggestion: `Scene ${i + 1} "${scene.headline?.slice(0, 30)}" has no narration but is between two narrated scenes. This creates an awkward silence gap.`,
+				});
+			}
+		}
+
+		// 6. SFX overflow: cue extends past scene boundary
+		const cues = (scene as any).sfxCues as Array<{ sfx: string; atFrame: number; durationSec?: number }> | undefined;
+		if (cues) {
+			for (const cue of cues) {
+				const sfxEnd = cue.atFrame + Math.round((cue.durationSec ?? 1.5) * 30);
+				if (sfxEnd > dur) {
+					issues.push({
+						sceneIndex: i,
+						severity: "warning",
+						type: "sfx-overflow",
+						suggestion: `Scene ${i + 1} SFX "${cue.sfx?.slice(0, 20)}" at frame ${cue.atFrame} extends ${sfxEnd - dur} frames past scene end.`,
+					});
+				}
+			}
+		}
+	}
+
+	return {
+		issues,
+		suggestions: issues.map((iss) => iss.suggestion),
+	};
+}
+
 // ── Combined Quality Check ─────────────────────────────────────────────
 
 export interface QualityCheckResult {
@@ -598,6 +730,8 @@ export interface QualityCheckResult {
 	/** Delivery promise validation */
 	deliveryPromise: DeliveryPromise;
 	deliveryHonored: { honored: boolean; violations: string[] };
+	/** Choreography timing audit */
+	choreography: ChoreographyResult;
 	/** All suggestions combined */
 	allSuggestions: string[];
 }
@@ -611,11 +745,13 @@ export function checkQuality(plan: ScenePlan): QualityCheckResult {
 	const variation = checkVariation(plan);
 	const deliveryPromise = classifyPromise(plan);
 	const deliveryHonored = validatePromise(plan, deliveryPromise);
+	const choreography = auditChoreography(plan);
 
 	const allSuggestions = [
 		...slideshowRisk.suggestions,
 		...variation.violations.map((v) => v.suggestion),
 		...deliveryHonored.violations,
+		...choreography.suggestions,
 	];
 
 	const passed = slideshowRisk.verdict === "pass" && variation.passed && deliveryHonored.honored;
@@ -626,6 +762,7 @@ export function checkQuality(plan: ScenePlan): QualityCheckResult {
 		variation,
 		deliveryPromise,
 		deliveryHonored,
+		choreography,
 		allSuggestions,
 	};
 }

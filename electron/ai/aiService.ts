@@ -11,6 +11,7 @@ import type {
 	AIServiceResult,
 } from "../../src/lib/ai/types";
 import { loadSettings, saveSettings } from "../settings";
+import { recordUsage } from "./tokenUsage";
 
 // Force IPv4 for all DNS lookups — prevents IPv6 socket errors with some API endpoints
 dns.setDefaultResultOrder("ipv4first");
@@ -250,6 +251,7 @@ async function openaiResponsesAPI(
 			type?: string;
 			content?: Array<{ type?: string; text?: string }>;
 		}>;
+		usage?: { input_tokens?: number; output_tokens?: number };
 		error?: { message?: string };
 	};
 
@@ -257,6 +259,11 @@ async function openaiResponsesAPI(
 		throw new Error(
 			`OpenAI Responses API ${response.status}: ${data.error?.message || response.statusText}`,
 		);
+	}
+
+	// Record token usage (Responses API uses input_tokens/output_tokens like Anthropic)
+	if (data.usage) {
+		recordUsage("openai", model, data.usage.input_tokens ?? 0, data.usage.output_tokens ?? 0);
 	}
 
 	// Try the convenience field first
@@ -315,6 +322,7 @@ async function openaiCompatibleChat(
 	});
 	const data = (await response.json()) as {
 		choices?: Array<{ message?: { content?: string } }>;
+		usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
 		base_resp?: { status_code?: number; status_msg?: string };
 		error?: { message?: string };
 	};
@@ -336,6 +344,11 @@ async function openaiCompatibleChat(
 	}
 	// Strip MiniMax thinking tags (<think>...</think>)
 	text = text.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
+	// Record token usage (OpenAI/MiniMax/Groq all return usage in this shape)
+	if (data.usage) {
+		const provider = endpointHost(endpoint).replace(/^api\./, "").split(".")[0];
+		recordUsage(provider, model, data.usage.prompt_tokens ?? 0, data.usage.completion_tokens ?? 0);
+	}
 	return text;
 }
 
@@ -379,7 +392,11 @@ async function anthropicChat(
 	}
 	const data = (await response.json()) as {
 		content?: Array<{ text?: string }>;
+		usage?: { input_tokens?: number; output_tokens?: number };
 	};
+	if (data.usage) {
+		recordUsage("anthropic", model, data.usage.input_tokens ?? 0, data.usage.output_tokens ?? 0);
+	}
 	return data.content?.[0]?.text ?? "";
 }
 
@@ -523,6 +540,19 @@ export function supportsVision(provider: AIProvider): boolean {
 	return provider in VISION_MODELS;
 }
 
+/**
+ * Detect the image MIME type from raw base64 by inspecting magic bytes.
+ * We previously hardcoded `image/png`, which makes strict validators reject
+ * JPG/WebP/GIF uploads even though the base64 data is valid for those formats.
+ */
+function detectImageMime(base64: string): "image/png" | "image/jpeg" | "image/webp" | "image/gif" {
+	if (base64.startsWith("iVBORw0KGgo")) return "image/png";
+	if (base64.startsWith("/9j/")) return "image/jpeg";
+	if (base64.startsWith("UklGR")) return "image/webp";
+	if (base64.startsWith("R0lGOD")) return "image/gif";
+	return "image/png"; // best-effort fallback
+}
+
 async function openaiVisionChat(
 	prompt: string,
 	imageBase64: string,
@@ -530,6 +560,7 @@ async function openaiVisionChat(
 	model: string,
 	systemPrompt?: string,
 ): Promise<string> {
+	const mime = detectImageMime(imageBase64);
 	const messages: Array<Record<string, unknown>> = [];
 	if (systemPrompt) {
 		messages.push({ role: "system", content: systemPrompt });
@@ -540,26 +571,44 @@ async function openaiVisionChat(
 			{ type: "text", text: prompt },
 			{
 				type: "image_url",
-				image_url: { url: `data:image/png;base64,${imageBase64}`, detail: "low" },
+				// `detail: high` gives the model enough pixels to read screenshots
+				// with small text. `low` downscales too aggressively for product
+				// page captures where the model needs to read headlines/copy.
+				image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "high" },
 			},
 		],
 	});
 
+	console.log(
+		`[AI vision] OpenAI call: model=${model}, mime=${mime}, base64Len=${imageBase64.length}, promptLen=${prompt.length}`,
+	);
 	const response = await fetch(PROVIDER_ENDPOINTS.openai, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
 			Authorization: `Bearer ${apiKey}`,
 		},
-		body: JSON.stringify({ model, messages, max_tokens: 4096, temperature: 0.3 }),
+		// `max_completion_tokens` replaces `max_tokens` on gpt-5 / reasoning
+		// models — older models accept either. Using the newer name is
+		// forward-compatible and avoids a 400 from gpt-5.4-mini.
+		body: JSON.stringify({ model, messages, max_completion_tokens: 4096, temperature: 0.3 }),
 		signal: AbortSignal.timeout(120_000),
 	});
 	if (!response.ok) {
-		throw new Error(`OpenAI vision responded with ${response.status}: ${response.statusText}`);
+		// Surface the response body so we can see model-not-found, image-too-large,
+		// or other API errors. Without this the caller only sees a generic status code.
+		const errorBody = await response.text().catch(() => "");
+		throw new Error(
+			`OpenAI vision ${response.status} ${response.statusText}: ${errorBody.slice(0, 400)}`,
+		);
 	}
 	const data = (await response.json()) as {
 		choices?: Array<{ message?: { content?: string } }>;
+		usage?: { prompt_tokens?: number; completion_tokens?: number };
 	};
+	if (data.usage) {
+		recordUsage("openai", model, data.usage.prompt_tokens ?? 0, data.usage.completion_tokens ?? 0);
+	}
 	return data.choices?.[0]?.message?.content ?? "";
 }
 
@@ -570,6 +619,7 @@ async function anthropicVisionChat(
 	model: string,
 	systemPrompt?: string,
 ): Promise<string> {
+	const mime = detectImageMime(imageBase64);
 	const body: Record<string, unknown> = {
 		model,
 		max_tokens: 4096,
@@ -579,7 +629,7 @@ async function anthropicVisionChat(
 				content: [
 					{
 						type: "image",
-						source: { type: "base64", media_type: "image/png", data: imageBase64 },
+						source: { type: "base64", media_type: mime, data: imageBase64 },
 					},
 					{ type: "text", text: prompt },
 				],
@@ -590,6 +640,9 @@ async function anthropicVisionChat(
 		body.system = systemPrompt;
 	}
 
+	console.log(
+		`[AI vision] Anthropic call: model=${model}, mime=${mime}, base64Len=${imageBase64.length}, promptLen=${prompt.length}`,
+	);
 	const response = await fetch(PROVIDER_ENDPOINTS.anthropic, {
 		method: "POST",
 		headers: {
@@ -601,11 +654,18 @@ async function anthropicVisionChat(
 		signal: AbortSignal.timeout(120_000),
 	});
 	if (!response.ok) {
-		throw new Error(`Anthropic vision responded with ${response.status}: ${response.statusText}`);
+		const errorBody = await response.text().catch(() => "");
+		throw new Error(
+			`Anthropic vision ${response.status} ${response.statusText}: ${errorBody.slice(0, 400)}`,
+		);
 	}
 	const data = (await response.json()) as {
 		content?: Array<{ text?: string }>;
+		usage?: { input_tokens?: number; output_tokens?: number };
 	};
+	if (data.usage) {
+		recordUsage("anthropic", model, data.usage.input_tokens ?? 0, data.usage.output_tokens ?? 0);
+	}
 	return data.content?.[0]?.text ?? "";
 }
 

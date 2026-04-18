@@ -56,6 +56,17 @@ export function registerAIHandlers(): void {
 		},
 	);
 
+	// ── Token usage tracking ──────────────────────────────────────────
+	ipcMain.handle("ai-token-usage-reset", async () => {
+		const { resetUsage } = await import("../ai/tokenUsage");
+		resetUsage();
+		return { success: true };
+	});
+	ipcMain.handle("ai-token-usage-get", async () => {
+		const { getUsageSummary } = await import("../ai/tokenUsage");
+		return getUsageSummary();
+	});
+
 	ipcMain.handle("ai-generate-json", async (_event, prompt: string, context?: string) => {
 		return generateJSON(prompt, context);
 	});

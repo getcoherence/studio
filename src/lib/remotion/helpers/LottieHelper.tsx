@@ -32,14 +32,24 @@ export const LottieOverlay: React.FC<{
 		typeof src === "object" ? (src as LottieAnimationData) : null,
 	);
 
-	// Load from file path if string
 	useEffect(() => {
 		if (typeof src !== "string") return;
-		const url = src.startsWith("http") ? src : staticFile(`lottie/${src}`);
+		const failedKey = `__lottie_failed_${src}`;
+		if ((window as any)[failedKey]) return;
+		const fileName = src.endsWith(".json") ? src : `${src}.json`;
+		const url = src.startsWith("http") ? src : staticFile(`lottie/${fileName}`);
 		fetch(url)
-			.then((r) => r.json())
+			.then((r) => {
+				if (!r.ok) throw new Error(`HTTP ${r.status}`);
+				const ct = r.headers.get("content-type") || "";
+				if (ct.includes("html")) throw new Error("Got HTML instead of JSON — file likely missing");
+				return r.json();
+			})
 			.then((data) => setAnimationData(data))
-			.catch((err) => console.error("Failed to load Lottie:", err));
+			.catch((err) => {
+				console.warn(`Lottie "${src}" not found — skipping`, err.message);
+				(window as any)[failedKey] = true;
+			});
 	}, [src]);
 
 	if (!animationData || frame < delay) return null;
@@ -80,11 +90,23 @@ export const LottieBackground: React.FC<{
 
 	useEffect(() => {
 		if (typeof src !== "string") return;
-		const url = src.startsWith("http") ? src : staticFile(`lottie/${src}`);
+		// Skip known-bad sources to prevent infinite retry loops
+		const failedKey = `__lottie_failed_${src}`;
+		if ((window as any)[failedKey]) return;
+		const fileName = src.endsWith(".json") ? src : `${src}.json`;
+		const url = src.startsWith("http") ? src : staticFile(`lottie/${fileName}`);
 		fetch(url)
-			.then((r) => r.json())
+			.then((r) => {
+				if (!r.ok) throw new Error(`HTTP ${r.status}`);
+				const ct = r.headers.get("content-type") || "";
+				if (ct.includes("html")) throw new Error("Got HTML instead of JSON — file likely missing");
+				return r.json();
+			})
 			.then((data) => setAnimationData(data))
-			.catch((err) => console.error("Failed to load Lottie bg:", err));
+			.catch((err) => {
+				console.warn(`Lottie "${src}" not found — skipping`, err.message);
+				(window as any)[failedKey] = true;
+			});
 	}, [src]);
 
 	if (!animationData) return null;

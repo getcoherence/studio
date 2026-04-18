@@ -695,6 +695,102 @@ const safeEffect = (hookName: "useEffect" | "useLayoutEffect") => {
 	};
 };
 
+/**
+ * PreviewVideo — native playback in the Player, Remotion <Video> during export.
+ * Remotion's <Video> seeks every frame which chokes on large webm files.
+ * In preview mode, we render a plain <video> with autoPlay — completely
+ * disconnected from Remotion's frame loop so it plays natively.
+ */
+const PreviewVideo: React.FC<{
+	src: string;
+	volume?: number;
+	loop?: boolean;
+	style?: React.CSSProperties;
+	/** Absolute start frame in the global timeline */
+	showFrom?: number;
+	/** Absolute end frame in the global timeline */
+	showUntil?: number;
+	[key: string]: any;
+}> = ({ src, volume = 0, loop = false, style, showFrom, showUntil, ...rest }) => {
+	const isPreview = (window as any).__STUDIO_PREVIEW_MODE__;
+	if (!isPreview) {
+		return React.createElement(Video, { src, volume, loop, style, ...rest });
+	}
+	// The Sequence wrapping this component unmounts it during Player playback,
+	// killing any useEffect-based video. Instead, manage a persistent video
+	// element on a global registry keyed by src, so it survives mount/unmount.
+	// Use a ref to store the last node so the callback ref doesn't restart
+	// the sync loop on every React re-render (Remotion re-renders 30x/sec).
+	const lastNodeRef = React.useRef<HTMLDivElement | null>(null);
+	const placeholderRef = React.useCallback((node: HTMLDivElement | null) => {
+		const registry = ((window as any).__PREVIEW_VIDEOS__ ||= {}) as Record<string, { vid: HTMLVideoElement; raf: number; node: HTMLDivElement | null }>;
+		if (!node) {
+			lastNodeRef.current = null;
+			const entry = registry[src];
+			if (entry) {
+				entry.node = null;
+				cancelAnimationFrame(entry.raf);
+				entry.vid.style.display = "none";
+			}
+			return;
+		}
+		// Same node as before — skip (React re-renders don't need a new sync loop)
+		if (node === lastNodeRef.current) return;
+		lastNodeRef.current = node;
+
+		if (!registry[src]) {
+			const vid = document.createElement("video");
+			vid.src = src;
+			vid.autoplay = true;
+			vid.muted = true;
+			vid.loop = loop;
+			vid.playsInline = true;
+			vid.style.position = "fixed";
+			vid.style.zIndex = "9990";
+			vid.style.pointerEvents = "none";
+			vid.style.objectFit = (style as any)?.objectFit || "contain";
+			vid.style.borderRadius = (style as any)?.borderRadius ? `${(style as any).borderRadius}px` : "0";
+			document.body.appendChild(vid);
+			registry[src] = { vid, raf: 0, node };
+		}
+		const entry = registry[src];
+		entry.node = node;
+		entry.vid.style.display = "block";
+		if (entry.vid.paused) entry.vid.play().catch(() => {});
+		const sync = () => {
+			const n = entry.node;
+			if (!n || !n.isConnected) { entry.vid.style.display = "none"; return; }
+			const currentFrame = (window as any).__REMOTION_CURRENT_FRAME__ as number | undefined;
+			if (currentFrame !== undefined && showFrom !== undefined && showUntil !== undefined) {
+				if (currentFrame < showFrom || currentFrame >= showUntil) {
+					entry.vid.style.display = "none";
+					entry.raf = requestAnimationFrame(sync);
+					return;
+				}
+			}
+			const rect = n.getBoundingClientRect();
+			if (rect.width <= 0 || rect.height <= 0) {
+				entry.vid.style.display = "none";
+				entry.raf = requestAnimationFrame(sync);
+				return;
+			}
+			entry.vid.style.left = `${rect.left}px`;
+			entry.vid.style.top = `${rect.top}px`;
+			entry.vid.style.width = `${rect.width}px`;
+			entry.vid.style.height = `${rect.height}px`;
+			entry.vid.style.display = "block";
+			entry.raf = requestAnimationFrame(sync);
+		};
+		cancelAnimationFrame(entry.raf);
+		entry.raf = requestAnimationFrame(sync);
+	}, [src]);
+
+	return React.createElement("div", {
+		ref: placeholderRef,
+		style: { ...style, background: "transparent" },
+	});
+};
+
 export const MODULE_SCOPE = {
 	React,
 	useState: React.useState,
@@ -833,6 +929,7 @@ export const MODULE_SCOPE = {
 	Loop,
 	Audio,
 	Video,
+	PreviewVideo,
 	// Wrap Sequence to guard against durationInFrames <= 0 (AI sometimes generates 0)
 	Sequence: (props: any) => {
 		const dur = props.durationInFrames;

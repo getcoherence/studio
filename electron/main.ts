@@ -843,7 +843,9 @@ app.whenReady().then(async () => {
 	// stop because they can't jump to a specific position.
 	protocol.handle("studio", async (request) => {
 		// studio://file/C:/path/to/file.webm → C:/path/to/file.webm
-		const filePath = decodeURIComponent(request.url.replace("studio://file/", ""));
+		const rawUrl = request.url;
+		const filePath = decodeURIComponent(rawUrl.replace("studio://file/", "").replace(/#.*$/, ""));
+		console.log("[studio://] request.url:", rawUrl, "→ filePath:", filePath);
 
 		const mimeFor = (p: string): string => {
 			const ext = path.extname(p).toLowerCase();

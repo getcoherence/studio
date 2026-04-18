@@ -96,6 +96,56 @@ export async function extractAudio(videoPath: string): Promise<string> {
 }
 
 /**
+ * Remux a video to MP4 with fast-start (moov atom at front) so Remotion
+ * can seek efficiently. MediaRecorder webm files have metadata at EOF which
+ * causes blank frames during playback in the Remotion Player.
+ * Returns the path to the remuxed MP4 file.
+ */
+export async function remuxToFastStartMp4(inputPath: string): Promise<string> {
+	const ffmpegBin = findFfmpegBinary();
+	const outputPath = inputPath.replace(/\.[^.]+$/, "-faststart.mp4");
+
+	const args = [
+		"-i", inputPath,
+		"-c:v", "copy",
+		"-c:a", "copy",
+		"-movflags", "+faststart",
+		"-y",
+		outputPath,
+	];
+
+	await new Promise<void>((resolve, reject) => {
+		execFile(ffmpegBin, args, { timeout: 300_000 }, (error, _stdout, _stderr) => {
+			if (error) {
+				// If copy codec fails (webm→mp4 incompatible codecs), re-encode
+				const reencodeArgs = [
+					"-i", inputPath,
+					"-c:v", "libx264",
+					"-preset", "fast",
+					"-crf", "18",
+					"-c:a", "aac",
+					"-movflags", "+faststart",
+					"-y",
+					outputPath,
+				];
+				execFile(ffmpegBin, reencodeArgs, { timeout: 600_000 }, (err2, _, stderr2) => {
+					if (err2) {
+						reject(new Error(`Remux failed: ${stderr2?.trim() || err2.message}`));
+					} else {
+						resolve();
+					}
+				});
+				return;
+			}
+			resolve();
+		});
+	});
+
+	await fs.access(outputPath);
+	return outputPath;
+}
+
+/**
  * Clean up temporary audio files. Safe to call even if the file doesn't exist.
  */
 export async function cleanupTempAudio(wavPath: string): Promise<void> {

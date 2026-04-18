@@ -615,6 +615,19 @@ interface Window {
 			}) => void,
 		) => () => void;
 
+		// Token usage tracking for AI runs
+		aiTokenUsageReset: () => Promise<{ success: boolean }>;
+		aiTokenUsageGet: () => Promise<{
+			totalInputTokens: number;
+			totalOutputTokens: number;
+			totalCalls: number;
+			estimatedCostUsd: number;
+			byModel: Record<
+				string,
+				{ calls: number; inputTokens: number; outputTokens: number; estimatedCostUsd: number }
+			>;
+		}>;
+
 		// Secure storage (OS-keychain-backed via Electron safeStorage)
 		secureStorageGet: (key: string) => Promise<string | null>;
 		secureStorageSet: (key: string, value: string) => Promise<{ success: boolean }>;

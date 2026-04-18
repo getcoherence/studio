@@ -673,7 +673,6 @@ export const BackgroundRadial = ({ startDelay = 0 }: { startDelay?: number }) =>
 				})}
 			</div>
 
-			{/* 中央の円 */}
 			<div
 				style={{
 					position: "absolute",
@@ -684,22 +683,8 @@ export const BackgroundRadial = ({ startDelay = 0 }: { startDelay?: number }) =>
 					background: C.gray[950],
 					borderRadius: "50%",
 					transform: "translate(-50%, -50%)",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
 				}}
-			>
-				<div
-					style={{
-						fontFamily: font,
-						fontSize: 40,
-						fontWeight: 800,
-						color: C.white,
-					}}
-				>
-					RADIAL
-				</div>
-			</div>
+			/>
 		</AbsoluteFill>
 	);
 };

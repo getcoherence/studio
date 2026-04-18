@@ -86,7 +86,7 @@ export interface SceneTransition {
 
 export interface SceneLayer {
 	id: string;
-	type: "text" | "image" | "shape" | "lottie";
+	type: "text" | "image" | "video" | "shape" | "lottie";
 	startMs: number; // relative to scene start
 	endMs: number;
 	position: { x: number; y: number }; // percentage (0-100)
@@ -94,7 +94,7 @@ export interface SceneLayer {
 	zIndex: number;
 	entrance: LayerAnimation;
 	exit: LayerAnimation;
-	content: TextContent | ImageContent | ShapeContent | LottieContent;
+	content: TextContent | ImageContent | VideoContent | ShapeContent | LottieContent;
 }
 
 // ── Content types ─────────────────────────────────────────────────────────
@@ -117,6 +117,15 @@ export interface ImageContent {
 	shadow: boolean;
 	/** Crop region (0-1 normalized). Only this region of the source image is shown. */
 	cropRegion?: { x: number; y: number; width: number; height: number };
+}
+
+export interface VideoContent {
+	src: string;
+	fit: "cover" | "contain" | "fill";
+	borderRadius: number;
+	volume: number;
+	muted: boolean;
+	loop: boolean;
 }
 
 export interface ShapeContent {
@@ -273,6 +282,29 @@ export function DEFAULT_IMAGE_LAYER(overrides?: Partial<SceneLayer>): SceneLayer
 			borderRadius: 8,
 			shadow: true,
 		} satisfies ImageContent,
+		...overrides,
+	};
+}
+
+export function DEFAULT_VIDEO_LAYER(overrides?: Partial<SceneLayer>): SceneLayer {
+	return {
+		id: uid(),
+		type: "video",
+		startMs: 0,
+		endMs: 5000,
+		position: { x: 10, y: 10 },
+		size: { width: 80, height: 70 },
+		zIndex: 0,
+		entrance: { type: "fade", durationMs: 400, easing: "ease-out", delay: 0 },
+		exit: DEFAULT_ANIMATION(),
+		content: {
+			src: "",
+			fit: "contain",
+			borderRadius: 8,
+			volume: 0,
+			muted: true,
+			loop: true,
+		} satisfies VideoContent,
 		...overrides,
 	};
 }

@@ -3,9 +3,10 @@
 // Maps a SceneLayer from the data model to HTML/CSS rendered by Remotion.
 // Full HTML text rendering, CSS transforms, proper font shaping.
 
-import { Img } from "remotion";
+import { Img, Video } from "remotion";
 import type {
 	ImageContent,
+	VideoContent,
 	SceneLayer,
 	ShapeContent,
 	TextContent,
@@ -89,6 +90,7 @@ export const RemotionLayer: React.FC<RemotionLayerProps> = ({
 				) : (
 					<ImageLayer content={layer.content as ImageContent} />
 				))}
+			{layer.type === "video" && <VideoLayer content={layer.content as VideoContent} />}
 			{layer.type === "shape" && <ShapeLayer content={layer.content as ShapeContent} />}
 		</div>
 	);
@@ -254,6 +256,25 @@ const ImageLayer: React.FC<{ content: ImageContent }> = ({ content }) => {
 	}
 
 	return <Img src={content.src} style={imgStyle} />;
+};
+
+// ── Video Layer ─────────────────────────────────────────────────────────
+
+const VideoLayer: React.FC<{ content: VideoContent }> = ({ content }) => {
+	return (
+		<Video
+			src={content.src}
+			volume={content.muted ? 0 : content.volume}
+			acceptableTimeShiftInSeconds={60}
+			pauseWhenBuffering={false}
+			style={{
+				width: "100%",
+				height: "100%",
+				objectFit: content.fit,
+				borderRadius: content.borderRadius,
+			}}
+		/>
+	);
 };
 
 // ── Shape Layer ──────────────────────────────────────────────────────────

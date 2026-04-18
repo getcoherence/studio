@@ -225,9 +225,15 @@ function normalizeVideoSourcePath(videoPath?: string | null): string | null {
 		return null;
 	}
 
-	const trimmed = videoPath.trim();
+	let trimmed = videoPath.trim();
 	if (!trimmed) {
 		return null;
+	}
+
+	// studio://file/<encoded-path> → decode to local file path
+	const studioFilePrefix = "studio://file/";
+	if (trimmed.startsWith(studioFilePrefix)) {
+		trimmed = decodeURIComponent(trimmed.slice(studioFilePrefix.length));
 	}
 
 	if (/^file:\/\//i.test(trimmed)) {
@@ -632,7 +638,8 @@ export function registerIpcHandlers(
 				return { success: false, message: "Invalid file path" };
 			}
 
-			if (!isPathAllowed(normalizedPath)) {
+			const approved = await approveReadableVideoPath(normalizedPath);
+			if (!approved) {
 				console.warn(
 					"[read-binary-file] Rejected path outside allowed directories:",
 					normalizedPath,
@@ -971,7 +978,7 @@ export function registerIpcHandlers(
 		}
 	});
 
-	ipcMain.handle("open-video-file-picker", async (event) => {
+	ipcMain.handle("open-video-file-picker", async () => {
 		try {
 			const result = await dialog.showOpenDialog({
 				title: mainT("dialogs", "fileDialogs.selectVideo"),
@@ -997,7 +1004,6 @@ export function registerIpcHandlers(
 					message: "Selected file is not a supported video",
 				};
 			}
-			setProjectPath(getSenderWindow(event), null);
 			return {
 				success: true,
 				path: approvedPath,
@@ -1009,6 +1015,17 @@ export function registerIpcHandlers(
 				message: "Failed to open file picker",
 				error: String(error),
 			};
+		}
+	});
+
+	ipcMain.handle("remux-video", async (_, inputPath: string) => {
+		try {
+			const { remuxToFastStartMp4 } = await import("../ai/audioExtractor");
+			const outputPath = await remuxToFastStartMp4(inputPath);
+			return { success: true, path: outputPath };
+		} catch (error) {
+			console.error("[remux-video] Failed:", error);
+			return { success: false, error: String(error) };
 		}
 	});
 
@@ -1051,9 +1068,25 @@ export function registerIpcHandlers(
 							).metadata
 						: undefined;
 
-				const trustedExistingProjectPath = isTrustedProjectPath(win, existingProjectPath)
+				// Trust the path if (a) it matches the main-process stored path, OR
+				// (b) the file already exists on disk with a .studio extension
+				// (handles cases where the stored path was cleared by recording
+				// state changes or window reloads).
+				let trustedExistingProjectPath = isTrustedProjectPath(win, existingProjectPath)
 					? existingProjectPath
 					: null;
+				if (!trustedExistingProjectPath && existingProjectPath) {
+					const ext = path.extname(existingProjectPath).toLowerCase();
+					if (ext === `.${PROJECT_FILE_EXTENSION}` || ext === `.${LEGACY_PROJECT_FILE_EXTENSION}`) {
+						try {
+							await fs.access(existingProjectPath);
+							trustedExistingProjectPath = existingProjectPath;
+							setProjectPath(win, existingProjectPath);
+						} catch {
+							// File doesn't exist — fall through to save dialog
+						}
+					}
+				}
 
 				if (trustedExistingProjectPath) {
 					await fs.writeFile(
@@ -1297,6 +1330,7 @@ export function registerIpcHandlers(
 			const win = getSenderWindow(event);
 			const content = await fs.readFile(filePath, "utf-8");
 			const project = JSON.parse(content);
+			const session = await getApprovedProjectSession(project);
 			setProjectPath(win, filePath);
 			// Refresh recent-project metadata snapshot from the loaded file
 			const loadedMetadata =
@@ -1310,18 +1344,7 @@ export function registerIpcHandlers(
 			addRecentProject(filePath, loadedMetadata).catch(() => {
 				/* fire-and-forget */
 			});
-			if (project && typeof project === "object") {
-				const rawProject = project as { media?: unknown; videoPath?: unknown };
-				const media =
-					normalizeProjectMedia(rawProject.media) ??
-					(typeof rawProject.videoPath === "string"
-						? {
-								screenVideoPath:
-									normalizeVideoSourcePath(rawProject.videoPath) ?? rawProject.videoPath,
-							}
-						: null);
-				setCurrentRecordingSessionState(win, media ? { ...media, createdAt: Date.now() } : null);
-			}
+			setCurrentRecordingSessionState(win, session);
 			return { success: true, path: filePath, project };
 		} catch (error) {
 			console.error("Failed to load project by path:", error);

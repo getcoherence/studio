@@ -2366,7 +2366,10 @@ export const FloatingOrbs: React.FC<{
 	blurAmount = 120,
 }) => {
 	const frame = useCurrentFrame();
-	const orbs = Array.from({ length: Math.min(count, 5) }, (_, i) => {
+	const isPreview = (window as any).__STUDIO_PREVIEW_MODE__;
+	const effectiveCount = isPreview ? Math.min(count, 2) : count;
+	const effectiveBlur = isPreview ? Math.round(blurAmount * 0.6) : blurAmount;
+	const orbs = Array.from({ length: Math.min(effectiveCount, 5) }, (_, i) => {
 		const color = colors[i % colors.length];
 		const phase = (i * Math.PI * 2) / count;
 		const x = 30 + Math.sin(frame * speed + phase) * 25;
@@ -2384,7 +2387,7 @@ export const FloatingOrbs: React.FC<{
 					borderRadius: "50%",
 					background: `radial-gradient(circle, ${color} 0%, transparent 70%)`,
 					opacity,
-					filter: `blur(${blurAmount}px)`,
+					filter: `blur(${effectiveBlur}px)`,
 					transform: "translate(-50%, -50%)",
 				}}
 			/>
@@ -2542,6 +2545,8 @@ export const AnimatedBackground: React.FC<{
 	intensity?: number;
 }> = ({ variant, colors = ["#2563eb", "#7c3aed", "#06b6d4", "#ec4899"], intensity = 1 }) => {
 	const frame = useCurrentFrame();
+	const isPreview = (window as any).__STUDIO_PREVIEW_MODE__;
+	if (isPreview) intensity = Math.min(intensity, 0.4);
 
 	if (variant === "none") return null;
 

@@ -251,6 +251,10 @@ export interface ScenePlanItem {
 	 *  and receives `screenshots` as a prop. Must export VideoComposition or be a JSX
 	 *  expression wrapped in <AbsoluteFill>. Falls back to the template if compilation fails. */
 	customCode?: string;
+	/** Director-supplied instruction for the Composer when regenerating customCode.
+	 *  Guides the Composer to preserve specific elements or make targeted changes
+	 *  (e.g. "keep the browser mockup but make the headline larger"). */
+	composerDirective?: string;
 
 	/** AI video generation prompt — when set, this scene uses an AI-generated video clip
 	 *  instead of (or composited with) Remotion motion graphics. */
@@ -431,6 +435,21 @@ export interface SceneLayer {
 	};
 }
 
+// ── Independent narration clip ────────────────────────────────────────
+
+export interface NarrationClip {
+	id: string;
+	text: string;
+	audioPath: string;
+	durationMs: number;
+	startFrame: number;
+	durationInFrames: number;
+	volume: number;
+	sourceSceneIndex?: number;
+	sourceSceneHeadline?: string;
+	voiceId?: string;
+}
+
 export interface ScenePlan {
 	/** Product/video name */
 	title: string;
@@ -462,6 +481,11 @@ export interface ScenePlan {
 	narrationVoiceId?: string;
 	/** When true, the Remotion export ducks music volume during narration. */
 	duckMusicDuringNarration?: boolean;
+	/** Independent narration clips — decoupled from scenes. Each clip has its
+	 *  own position and duration in the global timeline and survives scene
+	 *  deletion/reordering. Populated by the Narrator step; editable in the
+	 *  Narration tab. Falls back to per-scene narrationPath if absent. */
+	narrationClips?: NarrationClip[];
 
 	// ── Animation Engine additions ──
 
