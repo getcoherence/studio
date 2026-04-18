@@ -53,8 +53,12 @@ function emit(event: UpdateEvent) {
 export function configureUpdater(channel: UpdateChannel = "latest") {
 	autoUpdater.autoDownload = true;
 	autoUpdater.autoInstallOnAppQuit = true;
+	autoUpdater.autoRunAppAfterInstall = true;
 	autoUpdater.allowPrerelease = channel === "beta";
 	autoUpdater.channel = channel;
+	// Suppress electron-updater's built-in Windows dialogs — we use our own
+	// UpdateToast component in the renderer for a consistent UX.
+	autoUpdater.disableWebInstaller = true;
 	// Logging — electron-updater emits detailed logs to autoUpdater.logger.
 	// Leaving the default console logger in place; electron-log integration
 	// can be added later if we need persistent logs.
