@@ -346,7 +346,9 @@ async function openaiCompatibleChat(
 	text = text.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
 	// Record token usage (OpenAI/MiniMax/Groq all return usage in this shape)
 	if (data.usage) {
-		const provider = endpointHost(endpoint).replace(/^api\./, "").split(".")[0];
+		const provider = endpointHost(endpoint)
+			.replace(/^api\./, "")
+			.split(".")[0];
 		recordUsage(provider, model, data.usage.prompt_tokens ?? 0, data.usage.completion_tokens ?? 0);
 	}
 	return text;

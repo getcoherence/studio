@@ -73,12 +73,17 @@ export const DynamicPreview: React.FC<DynamicPreviewProps> = ({
 	// Signal preview mode to child components (PixiOverlay, particles)
 	useEffect(() => {
 		(window as any).__STUDIO_PREVIEW_MODE__ = true;
-		return () => { (window as any).__STUDIO_PREVIEW_MODE__ = false; };
+		return () => {
+			(window as any).__STUDIO_PREVIEW_MODE__ = false;
+		};
 	}, []);
 
 	// Clean up persistent preview video elements when composition code changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: cleanup must re-run when code changes
 	useEffect(() => {
-		const registry = (window as any).__PREVIEW_VIDEOS__ as Record<string, { vid: HTMLVideoElement; raf: number }> | undefined;
+		const registry = (window as any).__PREVIEW_VIDEOS__ as
+			| Record<string, { vid: HTMLVideoElement; raf: number }>
+			| undefined;
 		if (!registry) return;
 		return () => {
 			for (const [key, entry] of Object.entries(registry)) {

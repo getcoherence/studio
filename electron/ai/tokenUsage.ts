@@ -35,10 +35,7 @@ export interface UsageSummary {
 // USD per million tokens. Rates are approximate and intentionally slightly
 // high to avoid under-reporting. Flat-subscription providers (MiniMax on a
 // monthly plan) get 0 so we don't mis-count.
-const MODEL_COSTS: Record<
-	string,
-	{ inputPerM: number; outputPerM: number } | undefined
-> = {
+const MODEL_COSTS: Record<string, { inputPerM: number; outputPerM: number } | undefined> = {
 	// OpenAI
 	"gpt-5.4": { inputPerM: 5.0, outputPerM: 15.0 },
 	"gpt-5-mini": { inputPerM: 0.6, outputPerM: 2.4 },
@@ -76,7 +73,12 @@ function emptySummary(): UsageSummary {
 	};
 }
 
-export function recordUsage(provider: string, model: string, inputTokens: number, outputTokens: number): void {
+export function recordUsage(
+	provider: string,
+	model: string,
+	inputTokens: number,
+	outputTokens: number,
+): void {
 	if (!Number.isFinite(inputTokens) || !Number.isFinite(outputTokens)) return;
 	if (inputTokens <= 0 && outputTokens <= 0) return;
 	const cost = costFor(model, inputTokens, outputTokens);

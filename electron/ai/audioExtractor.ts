@@ -106,10 +106,14 @@ export async function remuxToFastStartMp4(inputPath: string): Promise<string> {
 	const outputPath = inputPath.replace(/\.[^.]+$/, "-faststart.mp4");
 
 	const args = [
-		"-i", inputPath,
-		"-c:v", "copy",
-		"-c:a", "copy",
-		"-movflags", "+faststart",
+		"-i",
+		inputPath,
+		"-c:v",
+		"copy",
+		"-c:a",
+		"copy",
+		"-movflags",
+		"+faststart",
 		"-y",
 		outputPath,
 	];
@@ -119,12 +123,18 @@ export async function remuxToFastStartMp4(inputPath: string): Promise<string> {
 			if (error) {
 				// If copy codec fails (webm→mp4 incompatible codecs), re-encode
 				const reencodeArgs = [
-					"-i", inputPath,
-					"-c:v", "libx264",
-					"-preset", "fast",
-					"-crf", "18",
-					"-c:a", "aac",
-					"-movflags", "+faststart",
+					"-i",
+					inputPath,
+					"-c:v",
+					"libx264",
+					"-preset",
+					"fast",
+					"-crf",
+					"18",
+					"-c:a",
+					"aac",
+					"-movflags",
+					"+faststart",
 					"-y",
 					outputPath,
 				];

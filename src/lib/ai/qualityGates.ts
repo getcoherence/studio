@@ -594,7 +594,13 @@ export function validatePromise(
 export interface ChoreographyIssue {
 	sceneIndex: number;
 	severity: "warning" | "error";
-	type: "dead-zone" | "simultaneous-entrance" | "narration-overflow" | "narration-gap" | "stagger-missing" | "sfx-overflow";
+	type:
+		| "dead-zone"
+		| "simultaneous-entrance"
+		| "narration-overflow"
+		| "narration-gap"
+		| "stagger-missing"
+		| "sfx-overflow";
 	suggestion: string;
 }
 
@@ -604,10 +610,25 @@ export interface ChoreographyResult {
 }
 
 const ANIMATION_SETTLE_FRAMES: Record<string, number> = {
-	chars: 45, words: 36, scale: 24, clip: 20, gradient: 30,
-	glitch: 28, "blur-in": 24, bounce: 36, wave: 40, typewriter: 60,
-	staccato: 30, split: 28, drop: 30, scramble: 40, matrix: 50,
-	"rotate-3d": 30, "glitch-in": 24, "mask-reveal": 30, none: 0,
+	chars: 45,
+	words: 36,
+	scale: 24,
+	clip: 20,
+	gradient: 30,
+	glitch: 28,
+	"blur-in": 24,
+	bounce: 36,
+	wave: 40,
+	typewriter: 60,
+	staccato: 30,
+	split: 28,
+	drop: 30,
+	scramble: 40,
+	matrix: 50,
+	"rotate-3d": 30,
+	"glitch-in": 24,
+	"mask-reveal": 30,
+	none: 0,
 };
 
 export function auditChoreography(plan: ScenePlan): ChoreographyResult {
@@ -669,9 +690,7 @@ export function auditChoreography(plan: ScenePlan): ChoreographyResult {
 			const narrationFrames = Math.ceil((scene.narrationDurationMs / 1000) * 30);
 			const headroom = 6 + 30;
 			if (narrationFrames + headroom > dur) {
-				const overflowMs = Math.round(
-					((narrationFrames + headroom - dur) / 30) * 1000,
-				);
+				const overflowMs = Math.round(((narrationFrames + headroom - dur) / 30) * 1000);
 				issues.push({
 					sceneIndex: i,
 					severity: "error",
@@ -696,7 +715,9 @@ export function auditChoreography(plan: ScenePlan): ChoreographyResult {
 		}
 
 		// 6. SFX overflow: cue extends past scene boundary
-		const cues = (scene as any).sfxCues as Array<{ sfx: string; atFrame: number; durationSec?: number }> | undefined;
+		const cues = (scene as any).sfxCues as
+			| Array<{ sfx: string; atFrame: number; durationSec?: number }>
+			| undefined;
 		if (cues) {
 			for (const cue of cues) {
 				const sfxEnd = cue.atFrame + Math.round((cue.durationSec ?? 1.5) * 30);

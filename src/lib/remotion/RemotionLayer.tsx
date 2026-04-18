@@ -6,10 +6,10 @@
 import { Img, Video } from "remotion";
 import type {
 	ImageContent,
-	VideoContent,
 	SceneLayer,
 	ShapeContent,
 	TextContent,
+	VideoContent,
 } from "@/lib/scene-renderer/types";
 import { FloatingCard } from "./components/FloatingCard";
 import { PerCharacterText } from "./text/PerCharacterText";

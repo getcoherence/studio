@@ -713,77 +713,87 @@ const PreviewVideo: React.FC<{
 	[key: string]: any;
 }> = ({ src, volume = 0, loop = false, style, showFrom, showUntil, ...rest }) => {
 	const isPreview = (window as any).__STUDIO_PREVIEW_MODE__;
-	if (!isPreview) {
-		return React.createElement(Video, { src, volume, loop, style, ...rest });
-	}
-	// The Sequence wrapping this component unmounts it during Player playback,
-	// killing any useEffect-based video. Instead, manage a persistent video
-	// element on a global registry keyed by src, so it survives mount/unmount.
-	// Use a ref to store the last node so the callback ref doesn't restart
-	// the sync loop on every React re-render (Remotion re-renders 30x/sec).
+	// Hooks must run unconditionally (React rules)
 	const lastNodeRef = React.useRef<HTMLDivElement | null>(null);
-	const placeholderRef = React.useCallback((node: HTMLDivElement | null) => {
-		const registry = ((window as any).__PREVIEW_VIDEOS__ ||= {}) as Record<string, { vid: HTMLVideoElement; raf: number; node: HTMLDivElement | null }>;
-		if (!node) {
-			lastNodeRef.current = null;
-			const entry = registry[src];
-			if (entry) {
-				entry.node = null;
-				cancelAnimationFrame(entry.raf);
-				entry.vid.style.display = "none";
+	// biome-ignore lint/correctness/useExhaustiveDependencies: src is the stable key
+	const placeholderRef = React.useCallback(
+		(node: HTMLDivElement | null) => {
+			if (!(window as any).__PREVIEW_VIDEOS__) (window as any).__PREVIEW_VIDEOS__ = {};
+			const registry = (window as any).__PREVIEW_VIDEOS__ as Record<
+				string,
+				{ vid: HTMLVideoElement; raf: number; node: HTMLDivElement | null }
+			>;
+			if (!node) {
+				lastNodeRef.current = null;
+				const entry = registry[src];
+				if (entry) {
+					entry.node = null;
+					cancelAnimationFrame(entry.raf);
+					entry.vid.style.display = "none";
+				}
+				return;
 			}
-			return;
-		}
-		// Same node as before — skip (React re-renders don't need a new sync loop)
-		if (node === lastNodeRef.current) return;
-		lastNodeRef.current = node;
+			// Same node as before — skip (React re-renders don't need a new sync loop)
+			if (node === lastNodeRef.current) return;
+			lastNodeRef.current = node;
 
-		if (!registry[src]) {
-			const vid = document.createElement("video");
-			vid.src = src;
-			vid.autoplay = true;
-			vid.muted = true;
-			vid.loop = loop;
-			vid.playsInline = true;
-			vid.style.position = "fixed";
-			vid.style.zIndex = "9990";
-			vid.style.pointerEvents = "none";
-			vid.style.objectFit = (style as any)?.objectFit || "contain";
-			vid.style.borderRadius = (style as any)?.borderRadius ? `${(style as any).borderRadius}px` : "0";
-			document.body.appendChild(vid);
-			registry[src] = { vid, raf: 0, node };
-		}
-		const entry = registry[src];
-		entry.node = node;
-		entry.vid.style.display = "block";
-		if (entry.vid.paused) entry.vid.play().catch(() => {});
-		const sync = () => {
-			const n = entry.node;
-			if (!n || !n.isConnected) { entry.vid.style.display = "none"; return; }
-			const currentFrame = (window as any).__REMOTION_CURRENT_FRAME__ as number | undefined;
-			if (currentFrame !== undefined && showFrom !== undefined && showUntil !== undefined) {
-				if (currentFrame < showFrom || currentFrame >= showUntil) {
+			if (!registry[src]) {
+				const vid = document.createElement("video");
+				vid.src = src;
+				vid.autoplay = true;
+				vid.muted = true;
+				vid.loop = loop;
+				vid.playsInline = true;
+				vid.style.position = "fixed";
+				vid.style.zIndex = "9990";
+				vid.style.pointerEvents = "none";
+				vid.style.objectFit = (style as any)?.objectFit || "contain";
+				vid.style.borderRadius = (style as any)?.borderRadius
+					? `${(style as any).borderRadius}px`
+					: "0";
+				document.body.appendChild(vid);
+				registry[src] = { vid, raf: 0, node };
+			}
+			const entry = registry[src];
+			entry.node = node;
+			entry.vid.style.display = "block";
+			if (entry.vid.paused) entry.vid.play().catch(() => {});
+			const sync = () => {
+				const n = entry.node;
+				if (!n || !n.isConnected) {
+					entry.vid.style.display = "none";
+					return;
+				}
+				const currentFrame = (window as any).__REMOTION_CURRENT_FRAME__ as number | undefined;
+				if (currentFrame !== undefined && showFrom !== undefined && showUntil !== undefined) {
+					if (currentFrame < showFrom || currentFrame >= showUntil) {
+						entry.vid.style.display = "none";
+						entry.raf = requestAnimationFrame(sync);
+						return;
+					}
+				}
+				const rect = n.getBoundingClientRect();
+				if (rect.width <= 0 || rect.height <= 0) {
 					entry.vid.style.display = "none";
 					entry.raf = requestAnimationFrame(sync);
 					return;
 				}
-			}
-			const rect = n.getBoundingClientRect();
-			if (rect.width <= 0 || rect.height <= 0) {
-				entry.vid.style.display = "none";
+				entry.vid.style.left = `${rect.left}px`;
+				entry.vid.style.top = `${rect.top}px`;
+				entry.vid.style.width = `${rect.width}px`;
+				entry.vid.style.height = `${rect.height}px`;
+				entry.vid.style.display = "block";
 				entry.raf = requestAnimationFrame(sync);
-				return;
-			}
-			entry.vid.style.left = `${rect.left}px`;
-			entry.vid.style.top = `${rect.top}px`;
-			entry.vid.style.width = `${rect.width}px`;
-			entry.vid.style.height = `${rect.height}px`;
-			entry.vid.style.display = "block";
+			};
+			cancelAnimationFrame(entry.raf);
 			entry.raf = requestAnimationFrame(sync);
-		};
-		cancelAnimationFrame(entry.raf);
-		entry.raf = requestAnimationFrame(sync);
-	}, [src]);
+		},
+		[src],
+	);
+
+	if (!isPreview) {
+		return React.createElement(Video, { src, volume, loop, style, ...rest });
+	}
 
 	return React.createElement("div", {
 		ref: placeholderRef,

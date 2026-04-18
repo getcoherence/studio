@@ -430,7 +430,19 @@ export function renderScene(
 				break;
 			case "video":
 				// Video layers render first frame as static image on canvas
-				renderImageLayer(ctx, { src: (layer.content as any).src, fit: (layer.content as any).fit, borderRadius: (layer.content as any).borderRadius, shadow: false } as ImageContent, layerX, layerY, layerW, layerH);
+				renderImageLayer(
+					ctx,
+					{
+						src: (layer.content as any).src,
+						fit: (layer.content as any).fit,
+						borderRadius: (layer.content as any).borderRadius,
+						shadow: false,
+					} as ImageContent,
+					layerX,
+					layerY,
+					layerW,
+					layerH,
+				);
 				break;
 			case "shape":
 				renderShapeLayer(ctx, layer.content as ShapeContent, layerX, layerY, layerW, layerH);
