@@ -55,8 +55,7 @@ export async function exportPlayerToVideo(options: PlayerExportOptions): Promise
 	// alongside; we kick it off and let recorder.onstop resolve the outer
 	// promise. Capture errors from the loop surface via reject().
 	const recorded = new Promise<Blob>((resolve, reject) => {
-		recorder.onstop = () =>
-			resolve(new Blob(chunks, { type: selectedMimeType || "video/webm" }));
+		recorder.onstop = () => resolve(new Blob(chunks, { type: selectedMimeType || "video/webm" }));
 		recorder.onerror = () => reject(new Error("MediaRecorder error"));
 	});
 
