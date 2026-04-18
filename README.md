@@ -18,6 +18,10 @@ Coherence Studio is a free, open-source screen recorder with AI-powered editing.
 
 Built by the team behind [Coherence](https://getcoherence.io). Originally forked from [OpenScreen](https://github.com/siddharthvaddem/openscreen) by Siddharth Vaddem.
 
+Go Pro to create AI Generated Motion Graphic Videos. Describe what you want or just give it a URL and 13 specialized AI agents handle script, visuals, motion, music, narration, and quality control — like having a motion graphics studio on your laptop.
+
+
+
 ## Features
 
 - Screen recording with native capture (ScreenCaptureKit on macOS, WGC on Windows)
