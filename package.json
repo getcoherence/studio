@@ -29,6 +29,7 @@
 		"prepare": "husky"
 	},
 	"dependencies": {
+		"@aws-sdk/client-s3": "^3.1032.0",
 		"@fix-webm-duration/fix": "^1.0.1",
 		"@monaco-editor/react": "^4.7.0",
 		"@pixi/filter-drop-shadow": "^5.2.0",

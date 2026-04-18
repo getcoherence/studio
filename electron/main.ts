@@ -26,6 +26,7 @@ import { registerSettingsHandlers } from "./ipc/settingsHandlers";
 import { registerStudioCacheHandlers } from "./ipc/studioCacheHandlers";
 import { registerUpdaterHandlers } from "./ipc/updaterHandlers";
 import { registerWhisperHandlers } from "./ipc/whisperHandlers";
+import { registerShowcaseHandlers } from "./ipc/showcaseHandlers";
 import { registerYouTubeHandlers } from "./ipc/youtubeHandlers";
 import { getCachedSetting, loadSettings, setSetting } from "./settings";
 import { checkForUpdates, setUpdateChannel, type UpdateChannel } from "./updater";
@@ -1004,6 +1005,7 @@ app.whenReady().then(async () => {
 	registerStudioCacheHandlers();
 	registerExportHandlers(getFocusedEditorWindow);
 	registerYouTubeHandlers(getFocusedEditorWindow);
+	registerShowcaseHandlers(getFocusedEditorWindow);
 	registerFfmpegHandlers();
 	await registerUpdaterHandlers();
 	registerProjectHandlers();

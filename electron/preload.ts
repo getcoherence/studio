@@ -385,6 +385,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		ipcRenderer.on("youtube-upload-progress", listener);
 		return () => ipcRenderer.removeListener("youtube-upload-progress", listener);
 	},
+	// ── Showcase Gallery ──
+	showcaseUpload: (opts: {
+		videoPath: string;
+		title: string;
+		prompt?: string;
+		aesthetic?: string;
+		model?: string;
+		sceneCount?: number;
+		durationSec?: number;
+		author?: string;
+	}) => ipcRenderer.invoke("showcase-upload", opts),
+	onShowcaseUploadProgress: (callback: (percent: number) => void) => {
+		const listener = (_: unknown, percent: number) => callback(percent);
+		ipcRenderer.on("showcase-upload-progress", listener);
+		return () => ipcRenderer.removeListener("showcase-upload-progress", listener);
+	},
+
 	lottieSearch: (query: string, page?: number) => {
 		return ipcRenderer.invoke("lottie-search", query, page);
 	},
