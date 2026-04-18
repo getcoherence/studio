@@ -394,7 +394,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		model?: string;
 		sceneCount?: number;
 		durationSec?: number;
-		author?: string;
+		token: string;
 	}) => ipcRenderer.invoke("showcase-upload", opts),
 	onShowcaseUploadProgress: (callback: (percent: number) => void) => {
 		const listener = (_: unknown, percent: number) => callback(percent);

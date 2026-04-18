@@ -1,16 +1,8 @@
 import { execFile } from "node:child_process";
-import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { BrowserWindow, ipcMain } from "electron";
-
-const BUCKET = "coherence-content-media";
-const ENDPOINT = "https://nyc3.digitaloceanspaces.com";
-const REGION = "nyc3";
-const SHOWCASE_PREFIX = "showcase";
-const BASE_URL = `https://${BUCKET}.nyc3.digitaloceanspaces.com/${SHOWCASE_PREFIX}`;
 
 function findFfmpegBinary(): string {
 	const { app } = require("electron");
@@ -21,33 +13,7 @@ function findFfmpegBinary(): string {
 	return path.join(app.getAppPath(), "native", "bin", process.platform, `ffmpeg${ext}`);
 }
 
-function getS3Client(): S3Client | null {
-	const accessKeyId = process.env.SPACES_ACCESS_KEY_ID || "";
-	const secretAccessKey = process.env.SPACES_SECRET_ACCESS_KEY || "";
-	if (!secretAccessKey) {
-		console.warn("[Showcase] No SPACES_SECRET_ACCESS_KEY — upload disabled");
-		return null;
-	}
-	return new S3Client({
-		endpoint: ENDPOINT,
-		region: REGION,
-		credentials: { accessKeyId, secretAccessKey },
-	});
-}
-
-interface ShowcaseEntry {
-	id: string;
-	title: string;
-	prompt?: string;
-	aesthetic?: string;
-	model?: string;
-	sceneCount?: number;
-	durationSec?: number;
-	videoUrl: string;
-	posterUrl: string;
-	author: string;
-	createdAt: string;
-}
+const AUTH_BASE_URL = "https://auth.getcoherence.io";
 
 export function registerShowcaseHandlers(_getMainWindow: () => BrowserWindow | null): void {
 	ipcMain.handle(
@@ -62,27 +28,37 @@ export function registerShowcaseHandlers(_getMainWindow: () => BrowserWindow | n
 				model?: string;
 				sceneCount?: number;
 				durationSec?: number;
-				author?: string;
+				token: string;
 			},
 		) => {
-			const s3 = getS3Client();
-			if (!s3) {
-				return { success: false, error: "Spaces credentials not configured" };
-			}
-
 			const senderWindow = BrowserWindow.fromWebContents(event.sender);
 			const sendProgress = (pct: number) => {
 				senderWindow?.webContents.send("showcase-upload-progress", pct);
 			};
 
 			try {
-				const id = randomUUID().slice(0, 8);
+				const baseUrl = AUTH_BASE_URL;
 				sendProgress(0.05);
 
-				// 1. Extract poster frame at 2 seconds
+				// 1. Get presigned URLs from auth service
+				const presignRes = await fetch(`${baseUrl}/studio/showcase/presign`, {
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${opts.token}`,
+						"Content-Type": "application/json",
+					},
+				});
+				if (!presignRes.ok) {
+					const err = await presignRes.text();
+					throw new Error(`Presign failed: ${presignRes.status} ${err}`);
+				}
+				const presign = await presignRes.json();
+				sendProgress(0.1);
+
+				// 2. Extract poster frame at 2 seconds
 				const tmpDir = path.join(os.tmpdir(), "coherence-studio-showcase");
 				await fs.mkdir(tmpDir, { recursive: true });
-				const posterPath = path.join(tmpDir, `${id}-poster.jpg`);
+				const posterPath = path.join(tmpDir, `${presign.id}-poster.jpg`);
 
 				await new Promise<void>((resolve, reject) => {
 					execFile(
@@ -94,78 +70,56 @@ export function registerShowcaseHandlers(_getMainWindow: () => BrowserWindow | n
 				});
 				sendProgress(0.2);
 
-				// 2. Upload video
+				// 3. Upload video directly to Spaces via presigned URL
 				const videoBody = await fs.readFile(opts.videoPath);
-				await s3.send(
-					new PutObjectCommand({
-						Bucket: BUCKET,
-						Key: `${SHOWCASE_PREFIX}/${id}.mp4`,
-						Body: videoBody,
-						ContentType: "video/mp4",
-						ACL: "public-read",
-					}),
-				);
+				const videoUpRes = await fetch(presign.videoUploadUrl, {
+					method: "PUT",
+					headers: { "Content-Type": "video/mp4" },
+					body: videoBody,
+				});
+				if (!videoUpRes.ok) throw new Error(`Video upload failed: ${videoUpRes.status}`);
 				sendProgress(0.6);
 
-				// 3. Upload poster
+				// 4. Upload poster via presigned URL
 				const posterBody = await fs.readFile(posterPath);
-				await s3.send(
-					new PutObjectCommand({
-						Bucket: BUCKET,
-						Key: `${SHOWCASE_PREFIX}/${id}-poster.jpg`,
-						Body: posterBody,
-						ContentType: "image/jpeg",
-						ACL: "public-read",
-					}),
-				);
+				const posterUpRes = await fetch(presign.posterUploadUrl, {
+					method: "PUT",
+					headers: { "Content-Type": "image/jpeg" },
+					body: posterBody,
+				});
+				if (!posterUpRes.ok) throw new Error(`Poster upload failed: ${posterUpRes.status}`);
 				sendProgress(0.8);
 
-				// 4. Update index.json manifest
-				const entry: ShowcaseEntry = {
-					id,
-					title: opts.title,
-					prompt: opts.prompt,
-					aesthetic: opts.aesthetic,
-					model: opts.model,
-					sceneCount: opts.sceneCount,
-					durationSec: opts.durationSec,
-					videoUrl: `${BASE_URL}/${id}.mp4`,
-					posterUrl: `${BASE_URL}/${id}-poster.jpg`,
-					author: opts.author || "Community",
-					createdAt: new Date().toISOString(),
-				};
-
-				let entries: ShowcaseEntry[] = [];
-				try {
-					const existing = await s3.send(
-						new GetObjectCommand({
-							Bucket: BUCKET,
-							Key: `${SHOWCASE_PREFIX}/index.json`,
-						}),
-					);
-					const body = await existing.Body?.transformToString();
-					if (body) entries = JSON.parse(body);
-				} catch {
-					// First entry — index.json doesn't exist yet
-				}
-
-				entries.unshift(entry);
-
-				await s3.send(
-					new PutObjectCommand({
-						Bucket: BUCKET,
-						Key: `${SHOWCASE_PREFIX}/index.json`,
-						Body: JSON.stringify(entries, null, 2),
-						ContentType: "application/json",
-						ACL: "public-read",
+				// 5. Publish entry via auth service (updates index.json server-side)
+				const publishRes = await fetch(`${baseUrl}/studio/showcase/publish`, {
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${opts.token}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						id: presign.id,
+						title: opts.title,
+						prompt: opts.prompt,
+						aesthetic: opts.aesthetic,
+						model: opts.model,
+						sceneCount: opts.sceneCount,
+						durationSec: opts.durationSec,
+						videoUrl: presign.videoPublicUrl,
+						posterUrl: presign.posterPublicUrl,
 					}),
-				);
+				});
+				if (!publishRes.ok) {
+					const err = await publishRes.text();
+					throw new Error(`Publish failed: ${publishRes.status} ${err}`);
+				}
+				const result = await publishRes.json();
 				sendProgress(1);
 
-				// Cleanup temp poster
+				// Cleanup
 				await fs.unlink(posterPath).catch(() => {});
 
-				return { success: true, entry };
+				return { success: true, entry: result.entry };
 			} catch (err: any) {
 				console.error("[Showcase] Upload failed:", err);
 				return { success: false, error: err.message || String(err) };
