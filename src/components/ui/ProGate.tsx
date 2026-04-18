@@ -276,6 +276,9 @@ export function ProGateDialog({ open, onOpenChange, feature, onUpgrade }: ProGat
 									$19<span className="text-white/40 text-xs">/mo</span>
 								</span>
 							</div>
+							<p className="text-xs text-emerald-400">
+								3-day free trial. Cancel anytime before it ends.
+							</p>
 							<ul className="text-[11px] text-white/40 space-y-1">
 								<li>AI scene generation & demo recorder</li>
 								<li>Scene builder & animated backgrounds</li>
@@ -303,7 +306,7 @@ export function ProGateDialog({ open, onOpenChange, feature, onUpgrade }: ProGat
 							) : (
 								<>
 									<CreditCard size={14} />
-									Subscribe — $19/mo
+									Start 3-Day Free Trial
 								</>
 							)}
 						</button>
