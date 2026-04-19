@@ -196,29 +196,46 @@ function getStoredRefreshToken(): string | null {
 	return cachedRefreshToken;
 }
 
-/** Use refresh token to get a fresh access token */
+/**
+ * Use the stored refresh token to get a fresh access token.
+ *
+ * Single-flight: if a refresh is already in progress, concurrent callers
+ * share the same promise instead of each firing their own request. Two
+ * simultaneous refreshes with the same token would trigger reuse-detection
+ * on the auth service and revoke the session (server has a grace window
+ * to tolerate this, but avoiding the race entirely is cheaper).
+ */
+let inFlightRefresh: Promise<string | null> | null = null;
+
 async function refreshAccessToken(): Promise<string | null> {
+	if (inFlightRefresh) return inFlightRefresh;
 	const refreshToken = getStoredRefreshToken();
 	if (!refreshToken) return null;
 
-	try {
-		const res = await fetch(config.refreshUrl, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ refreshToken }),
-		});
-		if (!res.ok) return null;
-		const data = await res.json();
-		if (data.accessToken) {
-			proToken = data.accessToken;
-			storeToken(data.accessToken);
-			if (data.refreshToken) storeRefreshToken(data.refreshToken);
-			return data.accessToken;
+	inFlightRefresh = (async () => {
+		try {
+			const res = await fetch(config.refreshUrl, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ refreshToken }),
+			});
+			if (!res.ok) return null;
+			const data = await res.json();
+			if (data.accessToken) {
+				proToken = data.accessToken;
+				storeToken(data.accessToken);
+				if (data.refreshToken) storeRefreshToken(data.refreshToken);
+				return data.accessToken;
+			}
+			return null;
+		} catch {
+			return null;
+		} finally {
+			inFlightRefresh = null;
 		}
-	} catch {
-		// refresh failed
-	}
-	return null;
+	})();
+
+	return inFlightRefresh;
 }
 
 /** Clear stored tokens */

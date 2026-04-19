@@ -16,7 +16,7 @@ import {
 	type ProFeature,
 	setLicenseTier,
 } from "@/lib/license";
-import { activatePro, checkSubscription, getProToken } from "@/lib/plugins/pro/proLoader";
+import { activatePro, checkSubscription, disconnectPro, getProToken } from "@/lib/plugins/pro/proLoader";
 
 // ── ProBadge ────────────────────────────────────────────────────────────
 
@@ -259,9 +259,22 @@ export function ProGateDialog({ open, onOpenChange, feature, onUpgrade }: ProGat
 				{/* ── Subscribe step ── */}
 				{step === "subscribe" && (
 					<>
-						<div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
-							<Check size={12} />
-							Connected to Coherence
+						<div className="flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
+							<span className="flex items-center gap-2">
+								<Check size={12} />
+								Connected to Coherence
+							</span>
+							<button
+								type="button"
+								onClick={() => {
+									disconnectPro();
+									onOpenChange(false);
+								}}
+								className="text-[11px] text-emerald-400/60 hover:text-emerald-300 underline underline-offset-2"
+								title="Sign out of your Coherence account"
+							>
+								Sign out
+							</button>
 						</div>
 
 						<p className="text-sm text-white/60">
