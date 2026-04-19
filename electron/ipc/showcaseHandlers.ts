@@ -5,11 +5,15 @@ import path from "node:path";
 import { app, BrowserWindow, ipcMain } from "electron";
 
 function findFfmpegBinary(): string {
-	const ext = process.platform === "win32" ? ".exe" : "";
+	// electron-builder.json5 copies native/bin/${os}/ffmpeg* to resources/ffmpeg/
+	// (see extraResources), so that's where the packaged binary lives. In dev
+	// we fall back to native/bin/<platform>/. Matches electron/capture/
+	// ffmpegCapture.ts which uses the same layout.
+	const name = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
 	if (app.isPackaged) {
-		return path.join(process.resourcesPath, "bin", `ffmpeg${ext}`);
+		return path.join(process.resourcesPath, "ffmpeg", name);
 	}
-	return path.join(app.getAppPath(), "native", "bin", process.platform, `ffmpeg${ext}`);
+	return path.join(app.getAppPath(), "native", "bin", process.platform, name);
 }
 
 // auth.getcoherence.io is the marketing/frontends static-site app, not the
