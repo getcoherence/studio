@@ -113,12 +113,13 @@
       "provider": "github",
       "owner": "getcoherence",
       "repo": "studio",
-      // Auto-publish on tag push. The draft model created a silent gap
-      // where fixes shipped to main but never reached users because no
-      // one manually promoted the drafts. If a mid-release fails (one
-      // platform builds, another doesn't), delete the partial release
-      // and re-tag rather than pre-emptively hiding every build.
-      "releaseType": "release"
+      // Draft, not release — builds land unpublished so you can download
+      // and smoke-test the installer on each platform before promoting
+      // to "Latest" (which is what the auto-updater and
+      // /releases/latest page serve to users). Once verified, publish
+      // via the GitHub UI or `gh release edit vX.Y.Z --draft=false
+      // --latest`.
+      "releaseType": "draft"
     }
   ],
   "protocols": [
