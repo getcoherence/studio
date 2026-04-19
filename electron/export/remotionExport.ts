@@ -22,6 +22,28 @@ import { renderMedia, selectComposition } from "@remotion/renderer";
 import { app } from "electron";
 import { getFfmpegPath } from "../ffmpeg";
 
+/**
+ * Resolve the directory containing Remotion's native binaries (remotion.exe,
+ * ffmpeg.exe, ffprobe.exe). Remotion's internal resolution uses
+ * require.resolve("@remotion/compositor-...") which returns the asar path
+ * in a packaged Electron app — spawn() can't execute from inside asar.
+ * electron-builder's asarUnpack copies them to app.asar.unpacked; we point
+ * Remotion at that directory explicitly via the binariesDirectory option.
+ */
+function getRemotionBinariesDirectory(): string {
+	const libcSuffix =
+		process.platform === "win32"
+			? "-msvc"
+			: process.platform === "linux"
+				? "-gnu"
+				: "";
+	const pkg = `compositor-${process.platform}-${process.arch}${libcSuffix}`;
+	const base = app.isPackaged
+		? path.join(process.resourcesPath, "app.asar.unpacked", "node_modules")
+		: path.join(app.getAppPath(), "node_modules");
+	return path.join(base, "@remotion", pkg);
+}
+
 const execFile = promisify(execFileCb);
 
 /** Cached bundle location — reused across exports within a session. */
@@ -84,10 +106,13 @@ export async function exportWithRemotion(opts: RemotionExportOptions) {
 	// 4. Select the DynamicVideo composition
 	const inputProps = { code, screenshots: screenshotUrls };
 
+	const binariesDirectory = getRemotionBinariesDirectory();
+
 	const composition = await selectComposition({
 		serveUrl,
 		id: "DynamicVideo",
 		inputProps,
+		binariesDirectory,
 	});
 
 	// 5. Override duration/resolution if explicitly provided
@@ -112,6 +137,7 @@ export async function exportWithRemotion(opts: RemotionExportOptions) {
 		pixelFormat: "yuv420p",
 		outputLocation: tempPath,
 		inputProps,
+		binariesDirectory,
 		onProgress: ({ progress }) => {
 			// Scale to 0–0.9 so the post-process step gets 0.9–1.0
 			onProgress?.(progress * 0.9);
