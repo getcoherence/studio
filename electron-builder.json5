@@ -113,10 +113,12 @@
       "provider": "github",
       "owner": "getcoherence",
       "repo": "studio",
-      // Draft, not release — avoids publishing a half-baked release when
-      // one platform succeeds before another fails. You manually edit
-      // notes + publish from the GitHub UI once the full run is green.
-      "releaseType": "draft"
+      // Auto-publish on tag push. The draft model created a silent gap
+      // where fixes shipped to main but never reached users because no
+      // one manually promoted the drafts. If a mid-release fails (one
+      // platform builds, another doesn't), delete the partial release
+      // and re-tag rather than pre-emptively hiding every build.
+      "releaseType": "release"
     }
   ],
   "protocols": [
