@@ -3,6 +3,15 @@
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "io.getcoherence.studio",
   "asar": true,
+  // Remotion's compositor package ships native binaries (ffmpeg.exe,
+  // ffprobe.exe, remotion.exe). Node can't spawn executables from inside
+  // an asar archive, and electron-builder's auto-detection only catches
+  // ffmpeg.exe here — ffprobe and remotion stay inside asar and fail
+  // with ENOENT at export time. Force the whole compositor folder into
+  // app.asar.unpacked so every binary is spawnable.
+  "asarUnpack": [
+    "node_modules/@remotion/compositor-*/**/*"
+  ],
   "productName": "Coherence Studio",
   "npmRebuild": true,
   "buildDependenciesFromSource": true,
