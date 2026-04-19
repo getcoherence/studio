@@ -13,7 +13,11 @@ function findFfmpegBinary(): string {
 	return path.join(app.getAppPath(), "native", "bin", process.platform, `ffmpeg${ext}`);
 }
 
-const AUTH_BASE_URL = "https://auth.getcoherence.io";
+// auth.getcoherence.io is the marketing/frontends static-site app, not the
+// auth service. The actual auth service lives behind app.getcoherence.io at
+// /api/v1/auth/*, matching the other pro endpoints in src/lib/plugins/pro/
+// proLoader.ts (refreshUrl, subscriptionUrl, bundleUrl).
+const AUTH_BASE_URL = "https://app.getcoherence.io/api/v1/auth";
 
 export function registerShowcaseHandlers(_getMainWindow: () => BrowserWindow | null): void {
 	ipcMain.handle(
