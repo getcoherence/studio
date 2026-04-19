@@ -20,7 +20,7 @@ Built by the team behind [Coherence](https://getcoherence.io). Originally forked
 
 Go <a href="https://studio.getcoherence.io/pro">Pro</a> to create AI Generated Motion Graphic Videos. Describe what you want or just give it a URL and 13 specialized AI agents handle script, visuals, motion, music, narration, and quality control — like having a motion graphics studio on your laptop.
 
-
+Till the end of April, 50 users can get 50% off the Pro version at checkout with code: GITHUB50
 
 ## Features
 
