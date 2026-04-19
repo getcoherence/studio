@@ -50,6 +50,31 @@ function emit(event: UpdateEvent) {
 	broadcast(event);
 }
 
+/**
+ * Compare two semver-ish version strings. Returns negative if a<b, 0 if
+ * equal, positive if a>b. Tolerates leading "v" and prerelease suffixes
+ * (prerelease is sorted before its release counterpart).
+ */
+function compareSemver(a: string, b: string): number {
+	const parse = (v: string) => {
+		const [core, pre] = v.replace(/^v/, "").split("-");
+		const parts = core.split(".").map((n) => parseInt(n, 10));
+		return { parts, pre: pre ?? "" };
+	};
+	const pa = parse(a);
+	const pb = parse(b);
+	for (let i = 0; i < 3; i++) {
+		const ai = pa.parts[i] ?? 0;
+		const bi = pb.parts[i] ?? 0;
+		if (ai !== bi) return ai - bi;
+	}
+	// A version without a prerelease sorts above a version with one.
+	if (pa.pre === pb.pre) return 0;
+	if (pa.pre === "") return 1;
+	if (pb.pre === "") return -1;
+	return pa.pre.localeCompare(pb.pre);
+}
+
 export function configureUpdater(channel: UpdateChannel = "latest") {
 	autoUpdater.autoDownload = true;
 	autoUpdater.autoInstallOnAppQuit = true;
@@ -166,9 +191,18 @@ export function initAutoUpdater(
 	});
 
 	autoUpdater.on("update-downloaded", (info: ElectronUpdateInfo) => {
+		// Guard against stale pending downloads surfacing as "ready to install"
+		// after the user manually installed a newer version. electron-updater
+		// caches the downloaded installer in %LOCALAPPDATA%\<app>-updater\
+		// pending\; if we've since moved ahead of that version, offering it
+		// would silently downgrade the user.
+		const current = app.getVersion();
+		if (info.version && compareSemver(info.version, current) <= 0) {
+			return;
+		}
 		emit({
 			state: "downloaded",
-			currentVersion: app.getVersion(),
+			currentVersion: current,
 			latestVersion: info.version,
 		});
 	});
