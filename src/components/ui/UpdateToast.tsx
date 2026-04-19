@@ -53,7 +53,7 @@ export function UpdateToast() {
 
 				case "error": {
 					if (!event.manual) return;
-					toast.error(event.error || "Couldn't check for updates");
+					toast.error(summarizeUpdateError(event.error));
 					return;
 				}
 
@@ -68,4 +68,32 @@ export function UpdateToast() {
 	}, []);
 
 	return null;
+}
+
+/**
+ * electron-updater on Windows sometimes dumps the entire PowerShell
+ * Get-AuthenticodeSignature result (including full X509 cert chains) into
+ * `Error.message` when the installer signature check walks the wrong
+ * signer. That payload can be 10KB+ of JSON — a useless wall of text in
+ * a toast. Recognize common shapes and show a friendly summary instead.
+ *
+ * The underlying publisher-name mismatch is still a bug (electron-builder
+ * publisherName doesn't match our actual code-signing cert CN), but
+ * surfacing it as a readable message is a better default either way.
+ */
+function summarizeUpdateError(raw: string | undefined): string {
+	if (!raw) return "Couldn't check for updates";
+	// Signature-verification dump: contains X509 + SubjectName + StatusMessage.
+	if (raw.includes("X509") && raw.includes("StatusMessage")) {
+		const verified = /"StatusMessage"\s*:\s*"Signature verified\.?"/.test(raw);
+		if (verified) {
+			return "Couldn't finish the update: installer signature published under a different publisher than expected. Please download the installer manually from GitHub Releases for now.";
+		}
+		return "Couldn't verify the update installer's signature. Please download manually from GitHub Releases.";
+	}
+	// Generic truncation — cap any other message so a future dump doesn't
+	// paint the screen.
+	const MAX_LEN = 240;
+	if (raw.length <= MAX_LEN) return raw;
+	return raw.slice(0, MAX_LEN).trim() + "…";
 }
