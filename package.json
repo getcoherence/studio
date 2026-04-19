@@ -1,7 +1,7 @@
 {
 	"name": "coherence-studio",
 	"private": true,
-	"version": "0.3.23",
+	"version": "0.3.24",
 	"type": "module",
 	"packageManager": "npm@10.9.4",
 	"engines": {
