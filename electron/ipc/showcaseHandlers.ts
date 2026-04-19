@@ -2,10 +2,9 @@ import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 
 function findFfmpegBinary(): string {
-	const { app } = require("electron");
 	const ext = process.platform === "win32" ? ".exe" : "";
 	if (app.isPackaged) {
 		return path.join(process.resourcesPath, "bin", `ffmpeg${ext}`);
