@@ -2064,6 +2064,17 @@ export default function VideoEditor() {
 
 	return (
 		<div className="flex flex-col h-screen bg-[#09090b] text-slate-200 overflow-hidden selection:bg-[#2563eb]/30">
+			{isMac && (
+				<div
+					className="h-[22px] flex-shrink-0 bg-[#09090b]"
+					aria-hidden
+					style={{
+						WebkitAppRegion: "drag",
+						WebkitUserSelect: "none",
+						userSelect: "none",
+					} as React.CSSProperties}
+				/>
+			)}
 			<div
 				className="h-10 flex-shrink-0 bg-[#09090b] border-b border-white/5 flex items-center justify-between px-6 z-50"
 				style={{
