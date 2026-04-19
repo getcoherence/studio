@@ -1496,6 +1496,46 @@ export function registerIpcHandlers(
 		}
 	});
 
+	// ── Studio Showcase Gallery ──────────────────────────────────────────
+	//
+	// Fetches the public showcase manifest (same one studio.getcoherence.io/
+	// showcase reads from). Lives in main process to bypass any renderer
+	// CORS restrictions against the Spaces bucket.
+	ipcMain.handle("showcase-fetch-manifest", async (): Promise<{
+		success: boolean;
+		entries?: Array<{
+			id: string;
+			title: string;
+			prompt?: string;
+			aesthetic?: string;
+			model?: string;
+			sceneCount?: number;
+			durationSec?: number;
+			videoUrl: string;
+			posterUrl: string;
+			author: string;
+			createdAt: string;
+		}>;
+		error?: string;
+	}> => {
+		try {
+			const res = await fetch(
+				"https://coherence-prod.nyc3.digitaloceanspaces.com/showcase/index.json",
+				{ signal: AbortSignal.timeout(10_000) },
+			);
+			if (!res.ok) {
+				return { success: false, error: `Manifest HTTP ${res.status}` };
+			}
+			const data = (await res.json()) as unknown;
+			if (!Array.isArray(data)) {
+				return { success: false, error: "Manifest is not an array" };
+			}
+			return { success: true, entries: data };
+		} catch (err) {
+			return { success: false, error: err instanceof Error ? err.message : String(err) };
+		}
+	});
+
 	// ── Secure storage for sensitive data (auth tokens, etc.) ──────────
 	// Uses Electron `safeStorage` which encrypts via OS keychain
 	// (DPAPI on Windows, Keychain on macOS, libsecret on Linux). Falls

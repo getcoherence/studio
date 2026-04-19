@@ -515,6 +515,27 @@ interface Window {
 			error?: string;
 		}>;
 
+		/** Fetch the Studio showcase manifest from DO Spaces (same source as
+		 *  studio.getcoherence.io/showcase). Returns the list of community-
+		 *  uploaded videos, used by the Studio TV arcade tab. */
+		showcaseFetchManifest: () => Promise<{
+			success: boolean;
+			entries?: Array<{
+				id: string;
+				title: string;
+				prompt?: string;
+				aesthetic?: string;
+				model?: string;
+				sceneCount?: number;
+				durationSec?: number;
+				videoUrl: string;
+				posterUrl: string;
+				author: string;
+				createdAt: string;
+			}>;
+			error?: string;
+		}>;
+
 		// Project browser
 		getRecentProjects: () => Promise<RecentProject[]>;
 		removeRecentProject: (filePath: string) => Promise<{ success: boolean }>;

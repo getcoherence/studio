@@ -490,6 +490,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		return ipcRenderer.invoke("youtube-fetch-channel-shorts", channelHandle);
 	},
 
+	/** Fetch the Studio showcase manifest from DO Spaces. Used by the
+	 *  Studio TV arcade tab to play community-submitted videos while the
+	 *  user waits for AI generation. */
+	showcaseFetchManifest: () => {
+		return ipcRenderer.invoke("showcase-fetch-manifest");
+	},
+
 	// Settings
 	getSettings: () => {
 		return ipcRenderer.invoke("get-settings");
