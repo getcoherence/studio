@@ -2977,6 +2977,16 @@ export const CameraText: React.FC<{
 	const keys = [...camera].sort((a, b) => a.frame - b.frame);
 	if (keys.length === 0) return null;
 
+	// Derive the max scale the camera will apply so content can wrap early
+	// enough that the scaled result still fits inside the parent's 1920px
+	// viewport (AbsoluteFill has overflow: hidden). Without this, peak
+	// scale > 1 can clip the trailing characters of the longest line —
+	// this is what caused the "obsesion" last-letter-chopped bug.
+	const peakScale = Math.max(1, ...keys.map((k) => k.scale ?? 1));
+	// 1760 = 1920 viewport - 2 × ~80px safety margin. Divide by peak scale
+	// so the post-scale rendered width stays inside that margin.
+	const effectiveMaxWidth = Math.floor(1760 / peakScale);
+
 	// Find current and next keyframe
 	let currentKey = keys[0];
 	let nextKey = keys[keys.length - 1];
@@ -3042,7 +3052,7 @@ export const CameraText: React.FC<{
 					justifyContent: "center",
 					gap: `${gap}em`,
 					willChange: "transform, filter",
-					maxWidth: 1600,
+					maxWidth: effectiveMaxWidth,
 				}}
 			>
 				{words.map((word, i) => {
