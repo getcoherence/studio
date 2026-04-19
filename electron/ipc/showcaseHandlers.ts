@@ -114,14 +114,29 @@ export function registerShowcaseHandlers(_getMainWindow: () => BrowserWindow | n
 				const baseUrl = AUTH_BASE_URL;
 				sendProgress(0.05);
 
-				// 1. Get presigned URLs from auth service
-				const presignRes = await fetch(`${baseUrl}/studio/showcase/presign`, {
-					method: "POST",
-					headers: {
-						Authorization: `Bearer ${opts.token}`,
-						"Content-Type": "application/json",
-					},
-				});
+				// 1. Get presigned URLs from auth service. If the stored token
+				// has expired (401), refresh it with the refresh token and retry
+				// once before surfacing an error.
+				let accessToken = opts.token;
+				const doPresign = (token: string) =>
+					fetch(`${baseUrl}/studio/showcase/presign`, {
+						method: "POST",
+						headers: {
+							Authorization: `Bearer ${token}`,
+							"Content-Type": "application/json",
+						},
+					});
+				let presignRes = await doPresign(accessToken);
+				if (presignRes.status === 401) {
+					const fresh = await refreshProAccessToken(baseUrl);
+					if (!fresh) {
+						throw new Error(
+							"Your Coherence session expired. Please sign in to Studio again and retry.",
+						);
+					}
+					accessToken = fresh;
+					presignRes = await doPresign(accessToken);
+				}
 				if (!presignRes.ok) {
 					const err = await presignRes.text();
 					throw new Error(`Presign failed: ${presignRes.status} ${err}`);
@@ -168,7 +183,7 @@ export function registerShowcaseHandlers(_getMainWindow: () => BrowserWindow | n
 				const publishRes = await fetch(`${baseUrl}/studio/showcase/publish`, {
 					method: "POST",
 					headers: {
-						Authorization: `Bearer ${opts.token}`,
+						Authorization: `Bearer ${accessToken}`,
 						"Content-Type": "application/json",
 					},
 					body: JSON.stringify({
