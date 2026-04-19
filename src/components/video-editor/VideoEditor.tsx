@@ -2065,11 +2065,11 @@ export default function VideoEditor() {
 	return (
 		<div className="flex flex-col h-screen bg-[#09090b] text-slate-200 overflow-hidden selection:bg-[#2563eb]/30">
 			<div
-				className="h-10 flex-shrink-0 bg-[#09090b]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-6 z-50"
+				className="h-10 flex-shrink-0 bg-[#09090b] border-b border-white/5 flex items-center justify-between px-6 z-50"
 				style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
 			>
 				<div
-					className="flex-1 flex items-center gap-1"
+					className="flex items-center gap-1"
 					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
 				>
 					<button
