@@ -72,15 +72,24 @@ async function refreshProAccessToken(baseUrl: string): Promise<string | null> {
 }
 
 function findFfmpegBinary(): string {
-	// electron-builder.json5 copies native/bin/${os}/ffmpeg* to resources/ffmpeg/
-	// (see extraResources), so that's where the packaged binary lives. In dev
-	// we fall back to native/bin/<platform>/. Matches electron/capture/
-	// ffmpegCapture.ts which uses the same layout.
+	// Use the ffmpeg binary shipped with @remotion/compositor-<platform>-<arch>.
+	// It's already a dependency (via @remotion/renderer), already signed in
+	// packaged builds, and unpacked into resources/app.asar.unpacked/node_modules
+	// by electron-builder automatically because it contains native code.
+	// Avoids maintaining a separate native/bin/ that would need to be
+	// downloaded in CI and kept in sync per-arch per-platform.
 	const name = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-	if (app.isPackaged) {
-		return path.join(process.resourcesPath, "ffmpeg", name);
-	}
-	return path.join(app.getAppPath(), "native", "bin", process.platform, name);
+	const libcSuffix =
+		process.platform === "win32"
+			? "-msvc"
+			: process.platform === "linux"
+				? "-gnu"
+				: "";
+	const pkg = `compositor-${process.platform}-${process.arch}${libcSuffix}`;
+	const base = app.isPackaged
+		? path.join(process.resourcesPath, "app.asar.unpacked", "node_modules")
+		: path.join(app.getAppPath(), "node_modules");
+	return path.join(base, "@remotion", pkg, name);
 }
 
 // auth.getcoherence.io is the marketing/frontends static-site app, not the

@@ -20,11 +20,10 @@
     "!CONTRIBUTING.md",
     "!LICENSE"
   ],
-  // Root extraResources apply to all platforms. The ffmpeg binary is
-  // platform-specific and lives in OS-named subfolders that match
-  // process.platform (win32/darwin/linux) — NOT electron-builder's ${os}
-  // token which expands to windows/mac/linux. Use per-platform overrides
-  // in win/mac/linux sections below.
+  // ffmpeg ships with @remotion/compositor-<platform>-<arch>, which
+  // electron-builder already unpacks into resources/app.asar.unpacked/
+  // node_modules (native code cannot live inside asar). See
+  // electron/ipc/showcaseHandlers.ts::findFfmpegBinary for the lookup path.
   "extraResources": [
     {
       "from": "public/wallpapers",
@@ -46,9 +45,6 @@
     "entitlements": "build/entitlements.mac.plist",
     "entitlementsInherit": "build/entitlements.mac.plist",
     "notarize": true,
-    "extraResources": [
-      { "from": "native/bin/darwin", "to": "ffmpeg", "filter": ["ffmpeg*"] }
-    ],
     "target": [
       {
         "target": "dmg",
@@ -69,9 +65,6 @@
     "target": [
       "AppImage"
     ],
-    "extraResources": [
-      { "from": "native/bin/linux", "to": "ffmpeg", "filter": ["ffmpeg*"] }
-    ],
     "icon": "icons/icons/png",
     "artifactName": "${productName}-Linux-${version}.${ext}",
     "category": "AudioVideo"
@@ -79,9 +72,6 @@
   "win": {
     "target": [
       "nsis"
-    ],
-    "extraResources": [
-      { "from": "native/bin/win32", "to": "ffmpeg", "filter": ["ffmpeg*"] }
     ],
     "icon": "icons/icons/win/icon.ico",
     // Azure Trusted Signing — custom hook invokes SignTool with the
