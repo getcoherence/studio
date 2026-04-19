@@ -90,7 +90,13 @@
     "signtoolOptions": {
       "sign": "./signing/sign.cjs",
       "signingHashAlgorithms": ["sha256"],
-      "publisherName": "Brightyard"
+      // Must match the CN on the Azure Trusted Signing cert EXACTLY —
+      // electron-updater compares the signer's CN against this value
+      // when verifying downloaded installers. Previously "Brightyard",
+      // which caused every update check to throw a giant signature-
+      // verification dump into the error toast because the signer walk
+      // never matched.
+      "publisherName": "Brightyard, Inc"
     }
   },
   "nsis": {
