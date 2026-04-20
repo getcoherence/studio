@@ -128,6 +128,8 @@ import {
 	setPendingAiComposition,
 	setPendingDemoProject,
 } from "@/lib/demoProjectStore";
+// ── Pro auth (for showcase upload retry) ──
+import { getProToken, refreshProToken } from "@/lib/plugins/pro/proLoader";
 // ── Plugin registry ──
 import { pluginRegistry } from "@/lib/plugins/registry";
 // ── compileCode + MODULE_SCOPE ──
@@ -456,6 +458,13 @@ export interface SharedBridge {
 
 	// Plugin registry
 	pluginRegistry: typeof pluginRegistry;
+
+	// Pro auth — the pro bundle uses these to retry showcase uploads when
+	// main-process reports a 401. Main deliberately does NOT refresh on its
+	// own; the renderer's proLoader owns refresh via a single in-flight lock
+	// that prevents cross-process races on the single-use refresh token.
+	getProToken: typeof getProToken;
+	refreshProToken: typeof refreshProToken;
 
 	// Scene plan
 	BACKGROUND_PRESETS: typeof BACKGROUND_PRESETS;
@@ -790,6 +799,10 @@ export function initSharedBridge(): void {
 
 		// Plugin registry
 		pluginRegistry,
+
+		// Pro auth helpers
+		getProToken,
+		refreshProToken,
 
 		// Scene plan
 		BACKGROUND_PRESETS,

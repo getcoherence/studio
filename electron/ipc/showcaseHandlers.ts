@@ -2,75 +2,8 @@ import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { app, BrowserWindow, ipcMain, safeStorage } from "electron";
+import { BrowserWindow, ipcMain } from "electron";
 import { findRemotionFfmpeg } from "../ffmpeg";
-
-// Mirror the secure-store layout used by electron/ipc/handlers.ts so the
-// showcase handler can refresh expired tokens without going through IPC.
-// Keep keys consistent with src/lib/plugins/pro/proLoader.ts (tokenKey =
-// "studio-pro-token", refresh key = `${tokenKey}-refresh`).
-const SECURE_STORE_FILE = path.join(app.getPath("userData"), "secure-store.json");
-const ACCESS_KEY = "studio-pro-token";
-const REFRESH_KEY = "studio-pro-token-refresh";
-
-async function readSecureValue(key: string): Promise<string | null> {
-	try {
-		const raw = await fs.readFile(SECURE_STORE_FILE, "utf-8");
-		const store = JSON.parse(raw) as Record<string, string>;
-		const encoded = store[key];
-		if (!encoded) return null;
-		if (encoded.startsWith("enc:") && safeStorage.isEncryptionAvailable()) {
-			return safeStorage.decryptString(Buffer.from(encoded.slice(4), "base64"));
-		}
-		if (encoded.startsWith("plain:")) {
-			return Buffer.from(encoded.slice(6), "base64").toString("utf-8");
-		}
-		return null;
-	} catch {
-		return null;
-	}
-}
-
-async function writeSecureValue(key: string, value: string): Promise<void> {
-	let store: Record<string, string> = {};
-	try {
-		const raw = await fs.readFile(SECURE_STORE_FILE, "utf-8");
-		store = JSON.parse(raw);
-	} catch {
-		/* new file */
-	}
-	const encoded = safeStorage.isEncryptionAvailable()
-		? `enc:${safeStorage.encryptString(value).toString("base64")}`
-		: `plain:${Buffer.from(value, "utf-8").toString("base64")}`;
-	store[key] = encoded;
-	await fs.writeFile(SECURE_STORE_FILE, JSON.stringify(store), "utf-8");
-}
-
-/**
- * Use the stored refresh token to get a fresh access token from the auth
- * service. Updates secure storage on success. Returns null if refresh fails
- * (expired, missing, network error) — caller should surface a "reconnect"
- * error in that case.
- */
-async function refreshProAccessToken(baseUrl: string): Promise<string | null> {
-	const refreshToken = await readSecureValue(REFRESH_KEY);
-	if (!refreshToken) return null;
-	try {
-		const res = await fetch(`${baseUrl}/refresh`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ refreshToken }),
-		});
-		if (!res.ok) return null;
-		const data = (await res.json()) as { accessToken?: string; refreshToken?: string };
-		if (!data.accessToken) return null;
-		await writeSecureValue(ACCESS_KEY, data.accessToken);
-		if (data.refreshToken) await writeSecureValue(REFRESH_KEY, data.refreshToken);
-		return data.accessToken;
-	} catch {
-		return null;
-	}
-}
 
 // Canonical ffmpeg lookup lives in electron/ffmpeg.ts so every feature
 // (export post-process, music merge, whisper, showcase poster) shares the
@@ -108,28 +41,27 @@ export function registerShowcaseHandlers(_getMainWindow: () => BrowserWindow | n
 				const baseUrl = AUTH_BASE_URL;
 				sendProgress(0.05);
 
-				// 1. Get presigned URLs from auth service. If the stored token
-				// has expired (401), refresh it with the refresh token and retry
-				// once before surfacing an error.
-				let accessToken = opts.token;
-				const doPresign = (token: string) =>
-					fetch(`${baseUrl}/studio/showcase/presign`, {
-						method: "POST",
-						headers: {
-							Authorization: `Bearer ${token}`,
-							"Content-Type": "application/json",
-						},
-					});
-				let presignRes = await doPresign(accessToken);
+				// 1. Get presigned URLs from auth service.
+				//
+				// IMPORTANT: we deliberately do NOT attempt a refresh here.
+				// Running a refresh from main while the renderer's proLoader is
+				// also running one races on a single-use refresh token — the
+				// auth service interprets the second POST as replay and revokes
+				// the whole session (symptom: 401 on /refresh). The renderer
+				// owns refresh via a single in-flight lock, and the caller in
+				// SceneEditor catches a 401 here, calls refreshProToken() on
+				// the renderer side, and retries the upload with the new
+				// token.
+				const accessToken = opts.token;
+				const presignRes = await fetch(`${baseUrl}/studio/showcase/presign`, {
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${accessToken}`,
+						"Content-Type": "application/json",
+					},
+				});
 				if (presignRes.status === 401) {
-					const fresh = await refreshProAccessToken(baseUrl);
-					if (!fresh) {
-						throw new Error(
-							"Your Coherence session expired. Please sign in to Studio again and retry.",
-						);
-					}
-					accessToken = fresh;
-					presignRes = await doPresign(accessToken);
+					return { success: false, authFailed: true, error: "auth_expired" };
 				}
 				if (!presignRes.ok) {
 					const err = await presignRes.text();

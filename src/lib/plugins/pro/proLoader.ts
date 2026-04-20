@@ -207,6 +207,18 @@ function getStoredRefreshToken(): string | null {
  */
 let inFlightRefresh: Promise<string | null> | null = null;
 
+/**
+ * Public refresh wrapper. Main-process features (e.g. showcase upload)
+ * MUST NOT run their own refresh — doing so races with this one, and the
+ * server's single-use refresh-token rotation will revoke the session as
+ * replay. Instead: call getProToken() for the current access token, try
+ * your request, and if it 401s, call refreshProToken() here to coordinate
+ * through the single in-flight lock, then retry.
+ */
+export function refreshProToken(): Promise<string | null> {
+	return refreshAccessToken();
+}
+
 async function refreshAccessToken(): Promise<string | null> {
 	if (inFlightRefresh) return inFlightRefresh;
 	const refreshToken = getStoredRefreshToken();
