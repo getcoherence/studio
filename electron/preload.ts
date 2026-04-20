@@ -338,6 +338,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	secureStorageDelete: (key: string) =>
 		ipcRenderer.invoke("secure-store-delete", key) as Promise<{ success: boolean }>,
 
+	// Cross-window single-flight pro-token refresh — renderers MUST use
+	// this instead of POSTing /refresh themselves so two Studio windows
+	// can't race on the single-use refresh token and revoke the session.
+	proRefreshToken: () =>
+		ipcRenderer.invoke("pro-refresh-token") as Promise<{
+			success: boolean;
+			accessToken: string | null;
+		}>,
+
 	musicLibraryList: () => {
 		return ipcRenderer.invoke("music-library-list");
 	},

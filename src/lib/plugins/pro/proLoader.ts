@@ -199,21 +199,21 @@ function getStoredRefreshToken(): string | null {
 /**
  * Use the stored refresh token to get a fresh access token.
  *
- * Single-flight: if a refresh is already in progress, concurrent callers
- * share the same promise instead of each firing their own request. Two
- * simultaneous refreshes with the same token would trigger reuse-detection
- * on the auth service and revoke the session (server has a grace window
- * to tolerate this, but avoiding the race entirely is cheaper).
+ * Refresh is serialized in the MAIN process via IPC (`proRefreshToken`)
+ * so two Studio windows can't both consume the same single-use refresh
+ * token and trip the auth service's replay detection. The per-renderer
+ * in-flight lock below is kept purely as an optimization for same-window
+ * concurrent callers; correctness lives in main.
+ *
+ * In a web/dev context where the Electron API isn't available we fall
+ * back to a direct fetch — but that context only runs one tab anyway.
  */
 let inFlightRefresh: Promise<string | null> | null = null;
 
 /**
- * Public refresh wrapper. Main-process features (e.g. showcase upload)
- * MUST NOT run their own refresh — doing so races with this one, and the
- * server's single-use refresh-token rotation will revoke the session as
- * replay. Instead: call getProToken() for the current access token, try
- * your request, and if it 401s, call refreshProToken() here to coordinate
- * through the single in-flight lock, then retry.
+ * Public refresh wrapper for code outside this module (including the
+ * pro bundle via sharedBridge). Coordinates through the same in-flight
+ * lock so concurrent callers share one network round trip.
  */
 export function refreshProToken(): Promise<string | null> {
 	return refreshAccessToken();
@@ -221,11 +221,29 @@ export function refreshProToken(): Promise<string | null> {
 
 async function refreshAccessToken(): Promise<string | null> {
 	if (inFlightRefresh) return inFlightRefresh;
-	const refreshToken = getStoredRefreshToken();
-	if (!refreshToken) return null;
 
 	inFlightRefresh = (async () => {
 		try {
+			const ipc = (globalThis as { electronAPI?: Window["electronAPI"] }).electronAPI;
+			if (ipc?.proRefreshToken) {
+				const result = await ipc.proRefreshToken();
+				if (!result.success || !result.accessToken) return null;
+				// Main already persisted to secure storage atomically.
+				// Hydrate the in-memory caches so getProToken() is accurate
+				// immediately, without waiting on another IPC round trip.
+				proToken = result.accessToken;
+				cachedAccessToken = result.accessToken;
+				// Refresh token was rotated and stored by main; re-read the
+				// cache from disk so a subsequent refresh uses the new one.
+				const fresh = await secureStorage.get(`${config.tokenKey}-refresh`);
+				if (fresh) cachedRefreshToken = fresh;
+				return result.accessToken;
+			}
+
+			// Non-Electron fallback (web/dev). Not subject to cross-window
+			// races because there's only one browsing context.
+			const refreshToken = getStoredRefreshToken();
+			if (!refreshToken) return null;
 			const res = await fetch(config.refreshUrl, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },

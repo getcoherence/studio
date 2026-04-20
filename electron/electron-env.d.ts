@@ -653,6 +653,14 @@ interface Window {
 		secureStorageGet: (key: string) => Promise<string | null>;
 		secureStorageSet: (key: string, value: string) => Promise<{ success: boolean }>;
 		secureStorageDelete: (key: string) => Promise<{ success: boolean }>;
+
+		// Cross-window single-flight pro-token refresh — main owns the
+		// lock so two Studio windows can't both consume the same
+		// single-use refresh token and revoke the session.
+		proRefreshToken: () => Promise<{
+			success: boolean;
+			accessToken: string | null;
+		}>;
 	};
 }
 

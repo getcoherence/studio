@@ -1608,4 +1608,86 @@ export function registerIpcHandlers(
 			return { success: false, error: String(error) };
 		}
 	});
+
+	// ── Pro token refresh (single-flight, cross-window) ────────────────
+	//
+	// MUST be handled in main, not per-renderer. Refresh tokens are
+	// single-use: the auth service rotates them on every /refresh call
+	// and flags a second POST with the same token as replay, revoking
+	// the session. When the user has two Studio windows open, each
+	// renderer has its own proLoader with its own single-flight lock —
+	// those locks DON'T see each other, so both windows happily POST the
+	// same stored refresh token within milliseconds and kill the session.
+	//
+	// Pinning the lock here (one main process regardless of window
+	// count) makes refresh safe across N windows: subsequent callers
+	// await the in-flight promise and receive the same new access
+	// token.
+	const AUTH_REFRESH_URL = "https://app.getcoherence.io/api/v1/auth/refresh";
+	const ACCESS_TOKEN_KEY = "studio-pro-token";
+	const REFRESH_TOKEN_KEY = "studio-pro-token-refresh";
+	let inFlightProRefresh: Promise<string | null> | null = null;
+
+	function encodeSecureValue(value: string): string {
+		return safeStorage.isEncryptionAvailable()
+			? `enc:${safeStorage.encryptString(value).toString("base64")}`
+			: `plain:${Buffer.from(value, "utf-8").toString("base64")}`;
+	}
+	function decodeSecureValue(encoded: string | undefined): string | null {
+		if (!encoded) return null;
+		if (encoded.startsWith("enc:") && safeStorage.isEncryptionAvailable()) {
+			return safeStorage.decryptString(Buffer.from(encoded.slice(4), "base64"));
+		}
+		if (encoded.startsWith("plain:")) {
+			return Buffer.from(encoded.slice(6), "base64").toString("utf-8");
+		}
+		return null;
+	}
+
+	ipcMain.handle("pro-refresh-token", async () => {
+		if (inFlightProRefresh) {
+			const token = await inFlightProRefresh;
+			return { success: !!token, accessToken: token };
+		}
+
+		inFlightProRefresh = (async () => {
+			try {
+				const store = await loadSecureStore();
+				const refreshToken = decodeSecureValue(store[REFRESH_TOKEN_KEY]);
+				if (!refreshToken) return null;
+
+				const res = await fetch(AUTH_REFRESH_URL, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ refreshToken }),
+				});
+				if (!res.ok) return null;
+
+				const data = (await res.json()) as {
+					accessToken?: string;
+					refreshToken?: string;
+				};
+				if (!data.accessToken) return null;
+
+				store[ACCESS_TOKEN_KEY] = encodeSecureValue(data.accessToken);
+				if (data.refreshToken) {
+					store[REFRESH_TOKEN_KEY] = encodeSecureValue(data.refreshToken);
+				}
+				await persistSecureStore();
+				return data.accessToken;
+			} catch (err) {
+				console.error("[pro-refresh] Refresh failed:", err);
+				return null;
+			} finally {
+				// Clear the lock on next tick so sequential callers also benefit
+				// from coalescing when they fire back-to-back.
+				setImmediate(() => {
+					inFlightProRefresh = null;
+				});
+			}
+		})();
+
+		const token = await inFlightProRefresh;
+		return { success: !!token, accessToken: token };
+	});
 }
