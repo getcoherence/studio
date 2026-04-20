@@ -32,11 +32,7 @@ import { getFfmpegPath } from "../ffmpeg";
  */
 function getRemotionBinariesDirectory(): string {
 	const libcSuffix =
-		process.platform === "win32"
-			? "-msvc"
-			: process.platform === "linux"
-				? "-gnu"
-				: "";
+		process.platform === "win32" ? "-msvc" : process.platform === "linux" ? "-gnu" : "";
 	const pkg = `compositor-${process.platform}-${process.arch}${libcSuffix}`;
 	const base = app.isPackaged
 		? path.join(process.resourcesPath, "app.asar.unpacked", "node_modules")

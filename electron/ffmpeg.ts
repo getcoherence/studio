@@ -51,11 +51,7 @@ export async function getFfmpegPath(): Promise<string | null> {
 export function findRemotionFfmpeg(): string {
 	const name = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
 	const libcSuffix =
-		process.platform === "win32"
-			? "-msvc"
-			: process.platform === "linux"
-				? "-gnu"
-				: "";
+		process.platform === "win32" ? "-msvc" : process.platform === "linux" ? "-gnu" : "";
 	const pkg = `compositor-${process.platform}-${process.arch}${libcSuffix}`;
 	const base = app.isPackaged
 		? path.join(process.resourcesPath, "app.asar.unpacked", "node_modules")
