@@ -45,10 +45,16 @@ export function ProGateDialog({ open, onOpenChange, feature, onUpgrade }: ProGat
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
 
-	// If we already have a token, verify it's still valid then skip to subscribe
+	// If we already have a token, verify it's still valid then route to the
+	// right step. Three outcomes:
+	//   - active subscription → auto-activate, close modal
+	//   - authed but no sub   → subscribe step (show Pro upsell)
+	//   - auth failed / no token → connect step (sign-in path, NOT upsell)
+	// Previously the `authFailed` branch fell through to "subscribe", which
+	// meant a signed-out user saw the "Subscribe to Pro" screen — confusing
+	// since they weren't even logged in yet.
 	useEffect(() => {
 		if (!open || !getProToken()) return;
-		// Quick subscription check to validate the token
 		checkSubscription()
 			.then((sub) => {
 				if (sub.active) {
@@ -60,13 +66,21 @@ export function ProGateDialog({ open, onOpenChange, feature, onUpgrade }: ProGat
 							onUpgrade?.();
 						}
 					});
+				} else if (sub.authFailed) {
+					// Token expired / revoked — properly clear the cached
+					// token (lives in secure storage, not localStorage) and
+					// send the user through the sign-in flow.
+					disconnectPro();
+					setStep("connect");
 				} else {
+					// Authed, just no pro subscription → show upsell.
 					setStep("subscribe");
 				}
 			})
 			.catch(() => {
-				// Token invalid — clear it and stay on connect step
-				localStorage.removeItem("studio-pro-token");
+				// Network / parse error — safest to route through connect so
+				// a dead token doesn't pin the user to the subscribe step.
+				disconnectPro();
 				setStep("connect");
 			});
 	}, [open, onOpenChange, onUpgrade]);
@@ -127,8 +141,10 @@ export function ProGateDialog({ open, onOpenChange, feature, onUpgrade }: ProGat
 			});
 
 			if (res.status === 401) {
-				// Token expired or invalidated — re-authenticate
-				localStorage.removeItem("studio-pro-token");
+				// Token expired / invalidated — clear from secure storage
+				// (not localStorage — that's the legacy location) and route
+				// back through the sign-in flow.
+				disconnectPro();
 				setStep("connect");
 				setError("Session expired — please connect again.");
 				setLoading(false);
