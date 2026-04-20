@@ -289,8 +289,13 @@ async function openaiCompatibleChat(
 	endpoint: string,
 	systemPrompt?: string,
 ): Promise<string> {
-	// OpenAI reasoning/Pro models require the Responses API instead of Chat Completions
-	if (endpointHost(endpoint).endsWith("openai.com") && requiresResponsesAPI(model)) {
+	// OpenAI reasoning/Pro models require the Responses API instead of Chat
+	// Completions. Use exact host / dot-prefixed suffix rather than a bare
+	// `endsWith("openai.com")`, which would also match lookalike domains
+	// like `evilopenai.com` (CodeQL rule js/incomplete-url-substring-sanitization).
+	const host = endpointHost(endpoint);
+	const isOpenAiHost = host === "openai.com" || host.endsWith(".openai.com");
+	if (isOpenAiHost && requiresResponsesAPI(model)) {
 		return openaiResponsesAPI(prompt, apiKey, model, systemPrompt);
 	}
 
