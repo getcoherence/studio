@@ -6,12 +6,25 @@ import { app } from "electron";
  * Resolves the path to the FFmpeg binary.
  *
  * Priority:
- * 1. Bundled binary in app resources (for packaged app)
- * 2. System FFmpeg on PATH
- * 3. null if not found
+ * 1. ffmpeg shipped with @remotion/compositor-<platform>-<arch> (always present
+ *    — it's a dependency of @remotion/renderer, signed in packaged builds, and
+ *    unpacked into app.asar.unpacked by electron-builder via `asarUnpack`)
+ * 2. Legacy native/bin/ in dev (kept as fallback for older setups)
+ * 3. Legacy extraResources/ffmpeg in prod (never bundled — kept for symmetry)
+ * 4. System FFmpeg on PATH
+ * 5. null if not found
  */
 export async function getFfmpegPath(): Promise<string | null> {
-	// Check bundled binary first (in extraResources)
+	// Remotion compositor is the canonical source — see findRemotionFfmpeg().
+	const remotionPath = findRemotionFfmpeg();
+	try {
+		await fs.access(remotionPath);
+		return remotionPath;
+	} catch {
+		// Fall through — compositor package missing (very unlikely)
+	}
+
+	// Legacy bundled-binary location (kept for backwards compat)
 	const bundledPath = getBundledFfmpegPath();
 	if (bundledPath) {
 		try {
@@ -27,6 +40,27 @@ export async function getFfmpegPath(): Promise<string | null> {
 	if (systemPath) return systemPath;
 
 	return null;
+}
+
+/**
+ * Resolve ffmpeg from the Remotion compositor package. This is the path used
+ * everywhere the app needs ffmpeg (export post-process, music merge, audio
+ * extraction, showcase poster). Centralized here so a missing binary can't
+ * silently break one feature while another works.
+ */
+export function findRemotionFfmpeg(): string {
+	const name = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+	const libcSuffix =
+		process.platform === "win32"
+			? "-msvc"
+			: process.platform === "linux"
+				? "-gnu"
+				: "";
+	const pkg = `compositor-${process.platform}-${process.arch}${libcSuffix}`;
+	const base = app.isPackaged
+		? path.join(process.resourcesPath, "app.asar.unpacked", "node_modules")
+		: path.join(app.getAppPath(), "node_modules");
+	return path.join(base, "@remotion", pkg, name);
 }
 
 function getBundledFfmpegPath(): string | null {

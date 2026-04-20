@@ -2,27 +2,12 @@ import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { app } from "electron";
+import { findRemotionFfmpeg } from "../ffmpeg";
 
-/**
- * Locate the ffmpeg binary. Checks bundled paths first, then falls back to
- * assuming it's available on the system PATH.
- */
-function findFfmpegBinary(): string {
-	const platform = process.platform;
-	const ext = platform === "win32" ? ".exe" : "";
-
-	// Check bundled location inside packaged app
-	if (app.isPackaged) {
-		const bundled = path.join(process.resourcesPath, "bin", `ffmpeg${ext}`);
-		return bundled;
-	}
-
-	// Check native/bin/{platform}/ during development
-	const devBin = path.join(app.getAppPath(), "native", "bin", platform, `ffmpeg${ext}`);
-	// Fall back to system PATH
-	return devBin || `ffmpeg${ext}`;
-}
+// Use the canonical Remotion-compositor ffmpeg lookup. The previous
+// `process.resourcesPath/bin/ffmpeg.exe` location was never bundled and
+// silently failed in production, breaking Whisper transcription.
+const findFfmpegBinary = findRemotionFfmpeg;
 
 /**
  * Extract audio from a video file as 16 kHz mono WAV (the format Whisper expects).

@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { app, BrowserWindow, ipcMain, safeStorage } from "electron";
+import { findRemotionFfmpeg } from "../ffmpeg";
 
 // Mirror the secure-store layout used by electron/ipc/handlers.ts so the
 // showcase handler can refresh expired tokens without going through IPC.
@@ -71,26 +72,10 @@ async function refreshProAccessToken(baseUrl: string): Promise<string | null> {
 	}
 }
 
-function findFfmpegBinary(): string {
-	// Use the ffmpeg binary shipped with @remotion/compositor-<platform>-<arch>.
-	// It's already a dependency (via @remotion/renderer), already signed in
-	// packaged builds, and unpacked into resources/app.asar.unpacked/node_modules
-	// by electron-builder automatically because it contains native code.
-	// Avoids maintaining a separate native/bin/ that would need to be
-	// downloaded in CI and kept in sync per-arch per-platform.
-	const name = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-	const libcSuffix =
-		process.platform === "win32"
-			? "-msvc"
-			: process.platform === "linux"
-				? "-gnu"
-				: "";
-	const pkg = `compositor-${process.platform}-${process.arch}${libcSuffix}`;
-	const base = app.isPackaged
-		? path.join(process.resourcesPath, "app.asar.unpacked", "node_modules")
-		: path.join(app.getAppPath(), "node_modules");
-	return path.join(base, "@remotion", pkg, name);
-}
+// Canonical ffmpeg lookup lives in electron/ffmpeg.ts so every feature
+// (export post-process, music merge, whisper, showcase poster) shares the
+// same binary and can't drift out of sync.
+const findFfmpegBinary = findRemotionFfmpeg;
 
 // auth.getcoherence.io is the marketing/frontends static-site app, not the
 // auth service. The actual auth service lives behind app.getcoherence.io at
