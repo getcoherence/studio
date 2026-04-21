@@ -80,7 +80,7 @@ export async function getAllProviderKeys(): Promise<{
 	const settings = await loadSettings();
 	const keys: Record<string, string> = {};
 	const models: Record<string, string> = {};
-	for (const provider of ["openai", "anthropic", "groq", "minimax", "ollama"]) {
+	for (const provider of ["openai", "anthropic", "groq", "minimax", "kimi", "ollama"]) {
 		const keyField = `aiApiKey_${provider}` as keyof typeof settings;
 		const keyVal = settings[keyField] as string | undefined;
 		if (keyVal) keys[provider] = keyVal;
@@ -98,6 +98,9 @@ const PROVIDER_ENDPOINTS: Record<string, string> = {
 	anthropic: "https://api.anthropic.com/v1/messages",
 	groq: "https://api.groq.com/openai/v1/chat/completions",
 	minimax: "https://api.minimaxi.chat/v1/text/chatcompletion_v2",
+	// Moonshot's Kimi API is fully OpenAI-compatible — same /chat/completions
+	// shape, Bearer token auth, supports kimi-k2.6 + the moonshot-v1 family.
+	kimi: "https://api.moonshot.ai/v1/chat/completions",
 };
 
 /**
@@ -143,6 +146,16 @@ function getMaxOutputTokens(endpoint: string, model: string): number {
 		return 65_536;
 	}
 
+	// Kimi K2.6 defaults max_tokens to 32k. Moonshot-v1 8k variant caps
+	// at ~8k output. Use the model name to pick the right ceiling so we
+	// don't ask moonshot-v1-8k for 32k and get a 400.
+	if (host === "api.moonshot.ai") {
+		if (m.includes("8k")) return 8_192;
+		if (m.includes("32k")) return 32_768;
+		// k2.6, k2.5, k2-thinking, moonshot-v1-128k all support 32k+ output
+		return 32_768;
+	}
+
 	// OpenAI: GPT-5 and GPT-4.1 support 32k output. Mini variants typically
 	// support 16k. The API will return an error (not clamp) if we exceed,
 	// so we set per-model where it matters.
@@ -166,6 +179,7 @@ const DEFAULT_MODELS: Record<string, string> = {
 	anthropic: "claude-sonnet-4-6",
 	groq: "llama-3.3-70b-versatile",
 	minimax: "MiniMax-M2.7",
+	kimi: "kimi-k2.6",
 };
 
 /** Check if a model name belongs to a given provider */
@@ -175,6 +189,9 @@ function isModelValidForProvider(model: string, provider: string): boolean {
 		anthropic: ["claude-"],
 		groq: ["llama", "mixtral", "gemma"],
 		minimax: ["MiniMax", "minimax"],
+		// Kimi covers two families: kimi-* (K2 series) and moonshot-v1-*
+		// (legacy generation, kept for users who want shorter context).
+		kimi: ["kimi-", "moonshot-"],
 		ollama: ["llama", "mistral", "phi", "gemma", "qwen", "deepseek"],
 	};
 	const providerPrefixes = prefixes[provider] ?? [];
@@ -424,6 +441,7 @@ const PROVIDER_CONCURRENCY: Record<AIProvider, number> = {
 	anthropic: 3,
 	groq: 3,
 	minimax: 3,
+	kimi: 3,
 	ollama: Infinity, // local — no rate limits
 };
 

@@ -176,7 +176,7 @@ export interface ExtractedClip {
 
 // ── AI service types ──
 
-export type AIProvider = "ollama" | "openai" | "anthropic" | "groq" | "minimax";
+export type AIProvider = "ollama" | "openai" | "anthropic" | "groq" | "minimax" | "kimi";
 
 export interface AIServiceConfig {
 	provider: AIProvider;
@@ -245,6 +245,29 @@ export const AI_PROVIDERS: AIProviderInfo[] = [
 		defaultModel: "MiniMax-M2.7",
 		models: ["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M2.5", "MiniMax-M2.5-highspeed"],
 		hasTTS: true,
+	},
+	{
+		// Moonshot AI's Kimi family. K2.6 is the current flagship — 256k
+		// context, vision-capable, OpenAI-compatible API. Positioned as a
+		// Sonnet alternative at substantially lower cost. K2 preview models
+		// (kimi-k2-*-preview) are scheduled for end-of-life on 2026-05-25 —
+		// keep them off the default list.
+		id: "kimi",
+		name: "Kimi",
+		description:
+			"Kimi K2.6 by Moonshot. 256k context, vision-capable, Sonnet-class quality at lower cost.",
+		requiresApiKey: true,
+		defaultModel: "kimi-k2.6",
+		models: [
+			"kimi-k2.6",
+			"kimi-k2.5",
+			"kimi-k2-thinking",
+			"kimi-k2-thinking-turbo",
+			"moonshot-v1-128k",
+			"moonshot-v1-32k",
+			"moonshot-v1-8k",
+		],
+		hasTTS: false,
 	},
 	{
 		id: "ollama",

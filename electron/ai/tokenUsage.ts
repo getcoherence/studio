@@ -53,6 +53,19 @@ const MODEL_COSTS: Record<string, { inputPerM: number; outputPerM: number } | un
 	// non-zero value here if you switch to pay-per-token.
 	"MiniMax-M2.7-highspeed": { inputPerM: 0, outputPerM: 0 },
 	"MiniMax-M2.7": { inputPerM: 0, outputPerM: 0 },
+	// Kimi (Moonshot AI) — published pay-per-token rates as of 2026-04.
+	// K2.6 is positioned as a Sonnet competitor at ~1/4 the price; K2 series
+	// is being deprecated 2026-05-25. Verify against
+	// https://platform.kimi.ai/docs/pricing before relying on cost reports
+	// for billing decisions — these are best-effort approximations to keep
+	// the cost panel honest.
+	"kimi-k2.6": { inputPerM: 0.6, outputPerM: 2.5 },
+	"kimi-k2.5": { inputPerM: 0.6, outputPerM: 2.5 },
+	"kimi-k2-thinking": { inputPerM: 1.2, outputPerM: 5.0 },
+	"kimi-k2-thinking-turbo": { inputPerM: 1.2, outputPerM: 5.0 },
+	"moonshot-v1-128k": { inputPerM: 1.7, outputPerM: 1.7 },
+	"moonshot-v1-32k": { inputPerM: 0.9, outputPerM: 0.9 },
+	"moonshot-v1-8k": { inputPerM: 0.4, outputPerM: 0.4 },
 };
 
 function costFor(model: string, inputTokens: number, outputTokens: number): number {

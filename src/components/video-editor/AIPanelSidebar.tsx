@@ -506,6 +506,9 @@ export function AIPanelSidebar({
 								<option value="minimax" className="bg-[#09090b]">
 									MiniMax
 								</option>
+								<option value="kimi" className="bg-[#09090b]">
+									Kimi
+								</option>
 								{availability?.providers.find((p) => p.id === "ollama" && p.available) && (
 									<option value="ollama" className="bg-[#09090b]">
 										Ollama (Local)
