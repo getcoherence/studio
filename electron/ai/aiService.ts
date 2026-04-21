@@ -363,29 +363,62 @@ async function openaiCompatibleChat(
 	// chains at 256k context). Give them the same 6-min ceiling we use
 	// for Anthropic Opus to stop "aborted due to timeout" on ResearchMode.
 	const providerTimeoutMs = isMoonshotHost ? 360_000 : 240_000;
-	const startedAt = Date.now();
-	const response = await fetch(endpoint, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${apiKey}`,
-		},
-		body: JSON.stringify(body),
-		signal: AbortSignal.timeout(providerTimeoutMs),
-	}).catch((err) => {
-		// Annotate AbortError with elapsed time + provider so the failure
-		// is diagnosable from one log line instead of a bare "aborted".
-		const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
-		const isAbort =
-			(err as { name?: string })?.name === "AbortError" ||
-			(err as { name?: string })?.name === "TimeoutError";
-		if (isAbort) {
-			throw new Error(
-				`${host} timed out after ${elapsedSec}s (limit ${Math.round(providerTimeoutMs / 1000)}s) — model: ${model}`,
+	const bodyBytes = JSON.stringify(body).length;
+
+	// Retry wrapper — node undici throws a bare "fetch failed" TypeError
+	// on socket-level issues (keep-alive reuse gone bad, server closed
+	// mid-stream, transient DNS). Those are almost always one-shot
+	// failures that succeed on a second attempt. Moonshot specifically
+	// has been dropping our large Planner posts with "fetch failed"
+	// even though test-connection and smaller calls go through cleanly.
+	// Other providers get retried too — the pattern is universal.
+	const MAX_ATTEMPTS = 2;
+	let response: Response | null = null;
+	for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+		const startedAt = Date.now();
+		try {
+			response = await fetch(endpoint, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${apiKey}`,
+				},
+				body: JSON.stringify(body),
+				signal: AbortSignal.timeout(providerTimeoutMs),
+			});
+			const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
+			console.log(
+				`[aiService] ${host} ${model} → ${response.status} in ${elapsedSec}s (body ${Math.round(bodyBytes / 1024)}KB, attempt ${attempt}/${MAX_ATTEMPTS})`,
 			);
+			break;
+		} catch (err) {
+			const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
+			const name = (err as { name?: string })?.name;
+			const isAbort = name === "AbortError" || name === "TimeoutError";
+			if (isAbort) {
+				// Timeouts are not retried — if a 6-min call times out,
+				// retrying is just going to waste another 6 minutes.
+				throw new Error(
+					`${host} timed out after ${elapsedSec}s (limit ${Math.round(providerTimeoutMs / 1000)}s) — model: ${model}, body ${Math.round(bodyBytes / 1024)}KB`,
+				);
+			}
+			const message = (err as { message?: string })?.message ?? String(err);
+			console.warn(
+				`[aiService] ${host} ${model} → ${message} after ${elapsedSec}s (body ${Math.round(bodyBytes / 1024)}KB, attempt ${attempt}/${MAX_ATTEMPTS})`,
+			);
+			if (attempt >= MAX_ATTEMPTS) {
+				throw new Error(
+					`${host} network error: ${message} after ${elapsedSec}s — model: ${model}, body ${Math.round(bodyBytes / 1024)}KB`,
+				);
+			}
+			// Short backoff before retrying — gives any connection-pool
+			// issue a moment to clear and the server a moment to accept.
+			await new Promise((r) => setTimeout(r, 1500));
 		}
-		throw err;
-	});
+	}
+	if (!response) {
+		throw new Error(`${host} unreachable after ${MAX_ATTEMPTS} attempts — model: ${model}`);
+	}
 	const data = (await response.json()) as {
 		choices?: Array<{ message?: { content?: string } }>;
 		usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
