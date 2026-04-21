@@ -369,11 +369,11 @@ async function openaiCompatibleChat(
 	const useStream = isMoonshotHost;
 	if (useStream) body.stream = true;
 
-	// Per-provider timeout. Moonshot K2-thinking models legitimately take
-	// 3-5 minutes on heavy research / planning prompts (long reasoning
-	// chains at 256k context). Give them the same 6-min ceiling we use
-	// for Anthropic Opus to stop "aborted due to timeout" on ResearchMode.
-	const providerTimeoutMs = isMoonshotHost ? 360_000 : 240_000;
+	// Per-provider timeout. Moonshot K2 on a 64KB Planner prompt with
+	// 32k max output legitimately runs 5-8 minutes — longer than even
+	// Anthropic Opus. Ceiling set to 8 minutes so Kimi doesn't time
+	// out mid-stream on heavy Planner calls.
+	const providerTimeoutMs = isMoonshotHost ? 480_000 : 240_000;
 	const bodyBytes = JSON.stringify(body).length;
 
 	// Retry wrapper — node undici throws a bare "fetch failed" TypeError
@@ -440,39 +440,60 @@ async function openaiCompatibleChat(
 		let accumulated = "";
 		let buffer = "";
 		let lastUsage: { prompt_tokens?: number; completion_tokens?: number } | undefined;
+		const streamStart = Date.now();
 
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-			buffer += decoder.decode(value, { stream: true });
-			// SSE events are separated by \n\n; within an event, `data: ...`
-			// lines carry the payload. Split on newlines and process each
-			// complete data line; keep any partial trailing line in buffer.
-			const lines = buffer.split("\n");
-			buffer = lines.pop() ?? "";
-			for (const line of lines) {
-				const trimmed = line.trim();
-				if (!trimmed.startsWith("data:")) continue;
-				const payload = trimmed.slice(5).trim();
-				if (!payload || payload === "[DONE]") continue;
-				try {
-					const parsed = JSON.parse(payload) as {
-						choices?: Array<{
-							delta?: { content?: string };
-							message?: { content?: string };
-						}>;
-						usage?: { prompt_tokens?: number; completion_tokens?: number };
-					};
-					const delta =
-						parsed.choices?.[0]?.delta?.content ?? parsed.choices?.[0]?.message?.content;
-					if (typeof delta === "string") accumulated += delta;
-					if (parsed.usage) lastUsage = parsed.usage;
-				} catch {
-					// Partial JSON — the next chunk will complete it. Skip silently.
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+				// SSE events are separated by \n\n; within an event, `data: ...`
+				// lines carry the payload. Split on newlines and process each
+				// complete data line; keep any partial trailing line in buffer.
+				const lines = buffer.split("\n");
+				buffer = lines.pop() ?? "";
+				for (const line of lines) {
+					const trimmed = line.trim();
+					if (!trimmed.startsWith("data:")) continue;
+					const payload = trimmed.slice(5).trim();
+					if (!payload || payload === "[DONE]") continue;
+					try {
+						const parsed = JSON.parse(payload) as {
+							choices?: Array<{
+								delta?: { content?: string };
+								message?: { content?: string };
+							}>;
+							usage?: { prompt_tokens?: number; completion_tokens?: number };
+						};
+						const delta =
+							parsed.choices?.[0]?.delta?.content ?? parsed.choices?.[0]?.message?.content;
+						if (typeof delta === "string") accumulated += delta;
+						if (parsed.usage) lastUsage = parsed.usage;
+					} catch {
+						// Partial JSON — the next chunk will complete it. Skip silently.
+					}
 				}
 			}
+		} catch (err) {
+			// Abort during streaming: the read loop throws with the browser's
+			// default "operation was aborted due to timeout" message. Annotate
+			// with elapsed + accumulated bytes so the next log tells us
+			// whether the stream stalled at 30s or died near the limit.
+			const elapsedSec = Math.round((Date.now() - streamStart) / 1000);
+			const name = (err as { name?: string })?.name;
+			const isAbort = name === "AbortError" || name === "TimeoutError";
+			if (isAbort) {
+				throw new Error(
+					`${host} stream timed out after ${elapsedSec}s (limit ${Math.round(providerTimeoutMs / 1000)}s) — model: ${model}, ${accumulated.length} chars accumulated`,
+				);
+			}
+			throw err;
 		}
 
+		const streamSec = Math.round((Date.now() - streamStart) / 1000);
+		console.log(
+			`[aiService] ${host} ${model} ← stream complete in ${streamSec}s (${accumulated.length} chars)`,
+		);
 		if (!accumulated) throw new Error("Streaming API returned empty response");
 		let text = accumulated.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
 		if (lastUsage) {
