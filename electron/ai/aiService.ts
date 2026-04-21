@@ -358,6 +358,17 @@ async function openaiCompatibleChat(
 	} else {
 		body.max_tokens = maxOutputTokens;
 	}
+	// Streaming: Moonshot's large-prompt calls (Planner at 64KB+) were
+	// dying with "fetch failed" at ~307s because their server-side proxy
+	// (Cloudflare) closes connections that stay idle for ~5 min while the
+	// model is still thinking and hasn't emitted any bytes. Enabling SSE
+	// streaming makes the server write tokens as they're generated, so
+	// the connection is never idle long enough to be reaped. We only
+	// stream for Moonshot today — other providers can be added if they
+	// exhibit the same pattern.
+	const useStream = isMoonshotHost;
+	if (useStream) body.stream = true;
+
 	// Per-provider timeout. Moonshot K2-thinking models legitimately take
 	// 3-5 minutes on heavy research / planning prompts (long reasoning
 	// chains at 256k context). Give them the same 6-min ceiling we use
@@ -368,10 +379,7 @@ async function openaiCompatibleChat(
 	// Retry wrapper — node undici throws a bare "fetch failed" TypeError
 	// on socket-level issues (keep-alive reuse gone bad, server closed
 	// mid-stream, transient DNS). Those are almost always one-shot
-	// failures that succeed on a second attempt. Moonshot specifically
-	// has been dropping our large Planner posts with "fetch failed"
-	// even though test-connection and smaller calls go through cleanly.
-	// Other providers get retried too — the pattern is universal.
+	// failures that succeed on a second attempt.
 	const MAX_ATTEMPTS = 2;
 	let response: Response | null = null;
 	for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -382,13 +390,14 @@ async function openaiCompatibleChat(
 				headers: {
 					"Content-Type": "application/json",
 					Authorization: `Bearer ${apiKey}`,
+					...(useStream ? { Accept: "text/event-stream" } : {}),
 				},
 				body: JSON.stringify(body),
 				signal: AbortSignal.timeout(providerTimeoutMs),
 			});
 			const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
 			console.log(
-				`[aiService] ${host} ${model} → ${response.status} in ${elapsedSec}s (body ${Math.round(bodyBytes / 1024)}KB, attempt ${attempt}/${MAX_ATTEMPTS})`,
+				`[aiService] ${host} ${model} → ${response.status} headers in ${elapsedSec}s (body ${Math.round(bodyBytes / 1024)}KB, attempt ${attempt}/${MAX_ATTEMPTS}${useStream ? ", stream" : ""})`,
 			);
 			break;
 		} catch (err) {
@@ -396,8 +405,6 @@ async function openaiCompatibleChat(
 			const name = (err as { name?: string })?.name;
 			const isAbort = name === "AbortError" || name === "TimeoutError";
 			if (isAbort) {
-				// Timeouts are not retried — if a 6-min call times out,
-				// retrying is just going to waste another 6 minutes.
 				throw new Error(
 					`${host} timed out after ${elapsedSec}s (limit ${Math.round(providerTimeoutMs / 1000)}s) — model: ${model}, body ${Math.round(bodyBytes / 1024)}KB`,
 				);
@@ -411,14 +418,77 @@ async function openaiCompatibleChat(
 					`${host} network error: ${message} after ${elapsedSec}s — model: ${model}, body ${Math.round(bodyBytes / 1024)}KB`,
 				);
 			}
-			// Short backoff before retrying — gives any connection-pool
-			// issue a moment to clear and the server a moment to accept.
 			await new Promise((r) => setTimeout(r, 1500));
 		}
 	}
 	if (!response) {
 		throw new Error(`${host} unreachable after ${MAX_ATTEMPTS} attempts — model: ${model}`);
 	}
+
+	// ── Streaming path (SSE) ──────────────────────────────────────────
+	if (useStream) {
+		if (!response.ok) {
+			// Error responses don't stream — read body as text and surface.
+			const errBody = await response.text().catch(() => "");
+			throw new Error(
+				`API responded with ${response.status}: ${errBody.slice(0, 300) || response.statusText}`,
+			);
+		}
+		const reader = response.body?.getReader();
+		if (!reader) throw new Error("Stream response had no readable body");
+		const decoder = new TextDecoder();
+		let accumulated = "";
+		let buffer = "";
+		let lastUsage: { prompt_tokens?: number; completion_tokens?: number } | undefined;
+
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			buffer += decoder.decode(value, { stream: true });
+			// SSE events are separated by \n\n; within an event, `data: ...`
+			// lines carry the payload. Split on newlines and process each
+			// complete data line; keep any partial trailing line in buffer.
+			const lines = buffer.split("\n");
+			buffer = lines.pop() ?? "";
+			for (const line of lines) {
+				const trimmed = line.trim();
+				if (!trimmed.startsWith("data:")) continue;
+				const payload = trimmed.slice(5).trim();
+				if (!payload || payload === "[DONE]") continue;
+				try {
+					const parsed = JSON.parse(payload) as {
+						choices?: Array<{
+							delta?: { content?: string };
+							message?: { content?: string };
+						}>;
+						usage?: { prompt_tokens?: number; completion_tokens?: number };
+					};
+					const delta =
+						parsed.choices?.[0]?.delta?.content ??
+						parsed.choices?.[0]?.message?.content;
+					if (typeof delta === "string") accumulated += delta;
+					if (parsed.usage) lastUsage = parsed.usage;
+				} catch {
+					// Partial JSON — the next chunk will complete it. Skip silently.
+				}
+			}
+		}
+
+		if (!accumulated) throw new Error("Streaming API returned empty response");
+		let text = accumulated.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
+		if (lastUsage) {
+			const provider = host.replace(/^api\./, "").split(".")[0];
+			recordUsage(
+				provider,
+				model,
+				lastUsage.prompt_tokens ?? 0,
+				lastUsage.completion_tokens ?? 0,
+			);
+		}
+		return text;
+	}
+
+	// ── Non-streaming path (original JSON response) ───────────────────
 	const data = (await response.json()) as {
 		choices?: Array<{ message?: { content?: string } }>;
 		usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
