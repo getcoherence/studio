@@ -341,8 +341,18 @@ async function openaiCompatibleChat(
 	const body: Record<string, unknown> = {
 		model,
 		messages,
-		temperature: 0.3,
 	};
+	// Temperature: we prefer 0.3 for determinism on planning/code-gen
+	// tasks, but some providers constrain it.
+	//   - Kimi K2.x returns 400 "only 1 is allowed for this model" on any
+	//     value other than 1 (same pattern as OpenAI's reasoning / Pro
+	//     models). Easiest fix: omit the field entirely for Moonshot so
+	//     the model uses its default; we lose a tiny bit of determinism
+	//     but gain a working connection.
+	const isMoonshotHost = host === "api.moonshot.ai" || host.endsWith(".moonshot.ai");
+	if (!isMoonshotHost) {
+		body.temperature = 0.3;
+	}
 	if (isOpenAiHost) {
 		body.max_completion_tokens = maxOutputTokens;
 	} else {
