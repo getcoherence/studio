@@ -380,8 +380,7 @@ async function openaiCompatibleChat(
 	//
 	// Per Kimi docs (use-kimi-k2-thinking-model): k2.6 accepts
 	// `{ thinking: { type: "disabled" } }` to bypass the reasoning phase.
-	const isKimiK2NonThinking =
-		isMoonshotHost && /^kimi-k2(?!-thinking)/i.test(model);
+	const isKimiK2NonThinking = isMoonshotHost && /^kimi-k2(?!-thinking)/i.test(model);
 	if (isKimiK2NonThinking) {
 		body.thinking = { type: "disabled" };
 	}
