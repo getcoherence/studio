@@ -464,8 +464,7 @@ async function openaiCompatibleChat(
 						usage?: { prompt_tokens?: number; completion_tokens?: number };
 					};
 					const delta =
-						parsed.choices?.[0]?.delta?.content ??
-						parsed.choices?.[0]?.message?.content;
+						parsed.choices?.[0]?.delta?.content ?? parsed.choices?.[0]?.message?.content;
 					if (typeof delta === "string") accumulated += delta;
 					if (parsed.usage) lastUsage = parsed.usage;
 				} catch {
@@ -478,12 +477,7 @@ async function openaiCompatibleChat(
 		let text = accumulated.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
 		if (lastUsage) {
 			const provider = host.replace(/^api\./, "").split(".")[0];
-			recordUsage(
-				provider,
-				model,
-				lastUsage.prompt_tokens ?? 0,
-				lastUsage.completion_tokens ?? 0,
-			);
+			recordUsage(provider, model, lastUsage.prompt_tokens ?? 0, lastUsage.completion_tokens ?? 0);
 		}
 		return text;
 	}
