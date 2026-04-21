@@ -369,6 +369,23 @@ async function openaiCompatibleChat(
 	const useStream = isMoonshotHost;
 	if (useStream) body.stream = true;
 
+	// Kimi K2.6 has thinking ENABLED by default and will emit
+	// `delta.reasoning_content` chunks for several minutes before any
+	// `delta.content` comes through. For Studio's Planner/ArtDirector/
+	// StoryWriter calls we don't need extended reasoning — we need a
+	// structured JSON scene plan. Disabling thinking turns k2.6 into a
+	// regular fast-path model. Thinking-forced variants (kimi-k2-thinking,
+	// kimi-k2-thinking-turbo) reject this flag so we only send it on the
+	// non-thinking K2 models.
+	//
+	// Per Kimi docs (use-kimi-k2-thinking-model): k2.6 accepts
+	// `{ thinking: { type: "disabled" } }` to bypass the reasoning phase.
+	const isKimiK2NonThinking =
+		isMoonshotHost && /^kimi-k2(?!-thinking)/i.test(model);
+	if (isKimiK2NonThinking) {
+		body.thinking = { type: "disabled" };
+	}
+
 	// Per-provider timeout. Moonshot K2 on a 64KB Planner prompt with
 	// 32k max output legitimately runs 5-8 minutes — longer than even
 	// Anthropic Opus. Ceiling set to 8 minutes so Kimi doesn't time
@@ -438,6 +455,7 @@ async function openaiCompatibleChat(
 		if (!reader) throw new Error("Stream response had no readable body");
 		const decoder = new TextDecoder();
 		let accumulated = "";
+		let reasoningChars = 0; // Kimi K2 thinking chunks — counted for visibility only
 		let buffer = "";
 		let lastUsage: { prompt_tokens?: number; completion_tokens?: number } | undefined;
 		const streamStart = Date.now();
@@ -460,7 +478,7 @@ async function openaiCompatibleChat(
 					try {
 						const parsed = JSON.parse(payload) as {
 							choices?: Array<{
-								delta?: { content?: string };
+								delta?: { content?: string; reasoning_content?: string };
 								message?: { content?: string };
 							}>;
 							usage?: { prompt_tokens?: number; completion_tokens?: number };
@@ -468,6 +486,14 @@ async function openaiCompatibleChat(
 						const delta =
 							parsed.choices?.[0]?.delta?.content ?? parsed.choices?.[0]?.message?.content;
 						if (typeof delta === "string") accumulated += delta;
+						// Kimi K2 thinking models emit delta.reasoning_content
+						// chunks FIRST, sometimes for minutes, before any
+						// delta.content. Don't accumulate them into output —
+						// just count so end-of-stream logs tell us whether the
+						// model spent its time reasoning vs writing. Reading
+						// these off the wire also keeps the connection alive.
+						const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
+						if (typeof reasoning === "string") reasoningChars += reasoning.length;
 						if (parsed.usage) lastUsage = parsed.usage;
 					} catch {
 						// Partial JSON — the next chunk will complete it. Skip silently.
@@ -484,7 +510,7 @@ async function openaiCompatibleChat(
 			const isAbort = name === "AbortError" || name === "TimeoutError";
 			if (isAbort) {
 				throw new Error(
-					`${host} stream timed out after ${elapsedSec}s (limit ${Math.round(providerTimeoutMs / 1000)}s) — model: ${model}, ${accumulated.length} chars accumulated`,
+					`${host} stream timed out after ${elapsedSec}s (limit ${Math.round(providerTimeoutMs / 1000)}s) — model: ${model}, ${accumulated.length} content chars${reasoningChars ? ` + ${reasoningChars} reasoning chars` : ""} accumulated`,
 				);
 			}
 			throw err;
@@ -492,7 +518,7 @@ async function openaiCompatibleChat(
 
 		const streamSec = Math.round((Date.now() - streamStart) / 1000);
 		console.log(
-			`[aiService] ${host} ${model} ← stream complete in ${streamSec}s (${accumulated.length} chars)`,
+			`[aiService] ${host} ${model} ← stream complete in ${streamSec}s (${accumulated.length} chars content${reasoningChars ? `, ${reasoningChars} chars reasoning` : ""})`,
 		);
 		if (!accumulated) throw new Error("Streaming API returned empty response");
 		let text = accumulated.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
