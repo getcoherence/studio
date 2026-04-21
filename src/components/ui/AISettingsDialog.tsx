@@ -41,6 +41,7 @@ export function AISettingsDialog({
 	const [saved, setSaved] = useState(false);
 	const [testing, setTesting] = useState(false);
 	const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
+	const [testError, setTestError] = useState<string | null>(null);
 
 	// Per-provider caches — survive provider switching within the dialog
 	const [keyCache, setKeyCache] = useState<Record<string, string>>({});
@@ -140,6 +141,7 @@ export function AISettingsDialog({
 	async function handleTest() {
 		setTesting(true);
 		setTestResult(null);
+		setTestError(null);
 		// ElevenLabs: persist the key, then generate a 0.5s test tone to verify
 		// the credential. Costs a few credits (well under $0.01) but gives a
 		// clear pass/fail signal.
@@ -152,6 +154,7 @@ export function AISettingsDialog({
 			});
 			setTesting(false);
 			setTestResult(result?.success ? "success" : "error");
+			if (!result?.success) setTestError(result?.error || null);
 			return;
 		}
 		// Chat providers: persist the key then round-trip a trivial prompt.
@@ -164,6 +167,9 @@ export function AISettingsDialog({
 		const result = await window.electronAPI?.aiAnalyze('Say "AI is connected" in exactly 3 words.');
 		setTesting(false);
 		setTestResult(result?.success ? "success" : "error");
+		// Surface the actual error so users can act on it (wrong key, wrong
+		// region, model not entitled, etc.) instead of guessing.
+		if (!result?.success) setTestError(result?.error || null);
 		// Update cache with the key that worked (or didn't)
 		if (apiKey) {
 			setKeyCache((prev) => ({ ...prev, [provider as AIProvider]: apiKey }));
@@ -373,19 +379,26 @@ export function AISettingsDialog({
 						{/* Test result */}
 						{testResult && (
 							<div
-								className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs ${
+								className={`flex flex-col gap-1 px-3 py-2 rounded-md text-xs ${
 									testResult === "success"
 										? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
 										: "bg-red-500/10 border border-red-500/20 text-red-400"
 								}`}
 							>
 								{testResult === "success" ? (
-									<>
+									<div className="flex items-center gap-2">
 										<Check size={12} />
 										Connection successful
-									</>
+									</div>
 								) : (
-									"Connection failed. Check your API key and provider."
+									<>
+										<div>Connection failed. Check your API key and provider.</div>
+										{testError && (
+											<div className="text-red-300/80 font-mono text-[10px] break-all">
+												{testError}
+											</div>
+										)}
+									</>
 								)}
 							</div>
 						)}

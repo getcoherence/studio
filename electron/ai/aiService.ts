@@ -328,18 +328,33 @@ async function openaiCompatibleChat(
 	// output and routinely take 60-150s on MiniMax M2.7 / GPT-5-mini.
 	// The previous 120s ceiling was hitting timeouts on the Director +
 	// Composer steps for larger plans.
+	//
+	// Output-token field naming is split across providers:
+	//   - OpenAI's newer chat models (gpt-4o+, gpt-5.x) REQUIRE
+	//     `max_completion_tokens` and reject `max_tokens`.
+	//   - Most OpenAI-compat providers (Moonshot/Kimi, Groq legacy, etc.)
+	//     only recognize the classic `max_tokens` and return a 400 on
+	//     `max_completion_tokens`.
+	// So: route by host. OpenAI gets the new name; everyone else gets
+	// the classic one. Sending both was tempting but Moonshot 400s on the
+	// unknown field rather than ignoring it.
+	const body: Record<string, unknown> = {
+		model,
+		messages,
+		temperature: 0.3,
+	};
+	if (isOpenAiHost) {
+		body.max_completion_tokens = maxOutputTokens;
+	} else {
+		body.max_tokens = maxOutputTokens;
+	}
 	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
 			Authorization: `Bearer ${apiKey}`,
 		},
-		body: JSON.stringify({
-			model,
-			messages,
-			temperature: 0.3,
-			max_completion_tokens: maxOutputTokens,
-		}),
+		body: JSON.stringify(body),
 		signal: AbortSignal.timeout(240_000),
 	});
 	const data = (await response.json()) as {
