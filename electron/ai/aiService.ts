@@ -358,6 +358,12 @@ async function openaiCompatibleChat(
 	} else {
 		body.max_tokens = maxOutputTokens;
 	}
+	// Per-provider timeout. Moonshot K2-thinking models legitimately take
+	// 3-5 minutes on heavy research / planning prompts (long reasoning
+	// chains at 256k context). Give them the same 6-min ceiling we use
+	// for Anthropic Opus to stop "aborted due to timeout" on ResearchMode.
+	const providerTimeoutMs = isMoonshotHost ? 360_000 : 240_000;
+	const startedAt = Date.now();
 	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
@@ -365,7 +371,20 @@ async function openaiCompatibleChat(
 			Authorization: `Bearer ${apiKey}`,
 		},
 		body: JSON.stringify(body),
-		signal: AbortSignal.timeout(240_000),
+		signal: AbortSignal.timeout(providerTimeoutMs),
+	}).catch((err) => {
+		// Annotate AbortError with elapsed time + provider so the failure
+		// is diagnosable from one log line instead of a bare "aborted".
+		const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
+		const isAbort =
+			(err as { name?: string })?.name === "AbortError" ||
+			(err as { name?: string })?.name === "TimeoutError";
+		if (isAbort) {
+			throw new Error(
+				`${host} timed out after ${elapsedSec}s (limit ${Math.round(providerTimeoutMs / 1000)}s) — model: ${model}`,
+			);
+		}
+		throw err;
 	});
 	const data = (await response.json()) as {
 		choices?: Array<{ message?: { content?: string } }>;
