@@ -270,9 +270,9 @@ export function ProGateDialog({ open, onOpenChange, feature, onUpgrade }: ProGat
 							onClick={() =>
 								window.electronAPI?.openExternalUrl?.("https://getcoherence.io/pricing")
 							}
-							className="block w-full text-center text-[11px] text-white/30 hover:text-white/50 transition-colors"
+							className="block w-full text-center text-[11px] text-white/40 hover:text-white/60 transition-colors"
 						>
-							Don't have an account? View plans
+							New here? Studio Pro is free with any paid Coherence plan →
 						</button>
 					</>
 				)}
@@ -343,6 +343,32 @@ export function ProGateDialog({ open, onOpenChange, feature, onUpgrade }: ProGat
 									Start 3-Day Free Trial
 								</>
 							)}
+						</button>
+
+						<div className="relative flex items-center py-1">
+							<div className="flex-grow border-t border-white/10" />
+							<span className="flex-shrink mx-3 text-[10px] uppercase tracking-wider text-white/30">or</span>
+							<div className="flex-grow border-t border-white/10" />
+						</div>
+
+						<button
+							type="button"
+							onClick={() =>
+								window.electronAPI?.openExternalUrl?.("https://getcoherence.io/pricing")
+							}
+							className="w-full rounded-md border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] px-4 py-2.5 text-left transition-colors group"
+						>
+							<div className="flex items-center justify-between gap-2">
+								<div>
+									<div className="text-sm font-medium text-white">
+										Get it free with Coherence
+									</div>
+									<div className="text-[11px] text-white/40 mt-0.5">
+										Studio Pro is included with any paid plan, from $12/mo
+									</div>
+								</div>
+								<ExternalLink size={14} className="text-white/30 group-hover:text-white/60 shrink-0" />
+							</div>
 						</button>
 					</>
 				)}
