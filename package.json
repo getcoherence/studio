@@ -9,7 +9,7 @@
 		"npm": "10.9.4"
 	},
 	"overrides": {
-		"dompurify": "^3.4.0"
+		"dompurify": "^3.4.12"
 	},
 	"scripts": {
 		"dev": "vite",
