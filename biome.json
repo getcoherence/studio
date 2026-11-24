@@ -100,6 +100,10 @@
 	"javascript": { "formatter": { "quoteStyle": "double" } },
 	"overrides": [
 		{
+			"includes": ["tests/contracts/**/*.json"],
+			"json": { "formatter": { "expand": "always" } }
+		},
+		{
 			"includes": ["*.ts", "*.tsx", "*.mts", "*.cts"],
 			"linter": {
 				"rules": {
