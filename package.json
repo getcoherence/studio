@@ -26,6 +26,7 @@
 		"test:watch": "vitest",
 		"build-vite": "tsc && vite build",
 		"test:e2e": "playwright test",
+		"smoke:remotion": "node scripts/smoke/remotion-render.mjs",
 		"prepare": "husky"
 	},
 	"dependencies": {

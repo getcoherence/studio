@@ -6,19 +6,26 @@
 // directly — no on-the-fly webpack bundling needed at runtime.
 //
 // Usage:  node scripts/bundle-remotion.mjs
+//
+// bundleRemotion() is also imported by scripts/smoke/remotion-render.mjs so
+// the smoke test renders from a bundle built exactly like production's.
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
 
-async function main() {
+/**
+ * Bundle src/lib/remotion/index.ts into `outDir` (cleaned first).
+ * @param {{ outDir?: string }} [options]
+ * @returns {Promise<string>} the bundle location (a serveUrl for renderMedia)
+ */
+export async function bundleRemotion({ outDir = path.resolve(projectRoot, "dist-remotion") } = {}) {
 	const { bundle } = await import("@remotion/bundler");
 
 	const entryPoint = path.resolve(projectRoot, "src/lib/remotion/index.ts");
-	const outDir = path.resolve(projectRoot, "dist-remotion");
 
 	// Clean previous bundle
 	if (fs.existsSync(outDir)) {
@@ -45,9 +52,15 @@ async function main() {
 	});
 
 	console.log("[bundle-remotion] Bundle ready at:", bundleLocation);
+	return bundleLocation;
 }
 
-main().catch((err) => {
-	console.error("[bundle-remotion] Failed:", err);
-	process.exit(1);
-});
+const invokedDirectly =
+	process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+
+if (invokedDirectly) {
+	bundleRemotion().catch((err) => {
+		console.error("[bundle-remotion] Failed:", err);
+		process.exit(1);
+	});
+}
