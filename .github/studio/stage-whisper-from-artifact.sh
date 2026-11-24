@@ -15,6 +15,12 @@ SRC="${2:?usage: stage-whisper-from-artifact.sh <tag> <download dir>}"
 ARTIFACT="whisper-stt-${TAG}"
 DEST="electron/native/bin/${TAG}"
 
+# On Windows runners $RUNNER_TEMP is "D:\a\_temp", and Git Bash's GNU tar
+# reads "D:..." as host "D" (rsh-style host:path). Use the POSIX form.
+if command -v cygpath > /dev/null 2>&1; then
+	SRC="$(cygpath -u "${SRC}")"
+fi
+
 ARCHIVE="$(find "${SRC}" -name "${ARTIFACT}.tar.gz" -print -quit)"
 [ -n "${ARCHIVE}" ] || { echo "FATAL: ${ARTIFACT}.tar.gz not found under ${SRC}" >&2; exit 1; }
 
