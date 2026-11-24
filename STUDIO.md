@@ -14,8 +14,11 @@ This branch line is Coherence Studio re-platformed onto upstream OpenScreen
 - Sync to upstream release commits on main (`chore(release): release vX.Y.Z into main`),
   never to tags (they sit on `release/*` branches) or to the tip of main.
 - On each sync: resolve conflicts at the patch points, diff upstream's
-  `.github/workflows/build.yml` and port relevant build changes into
-  `studio-build.yml`, and run the full Studio build.
+  `.github/workflows/build.yml` and `build-whisper-stt.yml` and port relevant
+  build changes into `studio-build.yml`, and run the full Studio build.
+- This repo only allows GitHub Actions pinned to a full commit SHA. Upstream
+  pins by tag, so none of upstream's workflows can run here as they are.
+  Studio's workflows mirror the ones we need, with pinned actions.
 
 ## Studio-owned paths
 
@@ -29,13 +32,17 @@ This branch line is Coherence Studio re-platformed onto upstream OpenScreen
 
 ## Patch points in upstream files
 
+None yet. Phase 0 leaves every upstream file untouched.
+
 | File | Change | Since |
 |---|---|---|
-| `.github/workflows/build-whisper-stt.yml` | Added a `workflow_call` trigger, so `studio-build.yml` can build the helper in-run. | phase 0 |
 
 ## Upstream workflows
 
 All upstream workflows are kept as they are for now. On a `replatform/**`
-push, only `build-whisper-stt.yml` runs, because of its all-branches path
-filter. The publishing workflows (winget, Homebrew, AUR, MS Store, Discord,
-Nix) only matter once this line lands on `main`, and phase 1 removes them.
+push, `build-whisper-stt.yml` still triggers when its path filter matches
+(its sources changed, or on a new branch), and fails immediately on the
+SHA-pinning policy. That failure is expected noise; `studio-build.yml` builds
+the helper itself. The publishing workflows (winget, Homebrew, AUR, MS Store,
+Discord, Nix) only matter once this line lands on `main`, and phase 1 removes
+them.

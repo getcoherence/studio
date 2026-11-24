@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # STUDIO: stage the whisper-stt-server binaries from an artifact of THIS run
-# (studio-build.yml calls build-whisper-stt.yml in-run) into
+# (studio-build.yml's whisper job) into
 # electron/native/bin/<tag>/, then hand over to upstream's
 # scripts/stage-whisper-stt.sh, which leaves a binary that is already present
 # alone and only runs its checks (the libgomp check on Linux).

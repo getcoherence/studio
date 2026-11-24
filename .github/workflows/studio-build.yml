@@ -8,11 +8,12 @@
 #   macOS arm64 + x64     DMG, Developer ID + notarization (App Store Connect key)
 #   Linux x64             AppImage
 #
-# Mirrors the build jobs of upstream's .github/workflows/build.yml (left
-# untouched, along with every other upstream workflow) minus publishing. When
-# syncing upstream, diff its build.yml and port what changed. The "Guard"
-# step fails loudly if upstream changes the build:* script chains replicated
-# here.
+# Mirrors the build jobs of upstream's .github/workflows/build.yml and
+# build-whisper-stt.yml (both left untouched, like every upstream workflow)
+# minus publishing, with every action pinned to a commit SHA as this repo
+# requires. When syncing upstream, diff those two files and port what
+# changed. The "Guard" step fails loudly if upstream changes the build:*
+# script chains replicated here.
 #
 # Artifacts are signed test builds of an app still branded "Openscreen", in a
 # public repo, so they are kept for 3 days only.
@@ -33,11 +34,116 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Upstream's own helper workflow, called in-run so its artifacts are part of
-  # this run (see the STUDIO note on its `workflow_call` trigger).
+  # Mirrors the build job of upstream's .github/workflows/build-whisper-stt.yml
+  # (port changes from it on sync). It can't be called as-is: Studio's repo only
+  # allows actions pinned to a full commit SHA, and upstream pins by tag.
   whisper:
-    name: whisper-stt
-    uses: ./.github/workflows/build-whisper-stt.yml
+    name: whisper-stt ${{ matrix.tag }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            tag: darwin-arm64
+            vulkan: false
+          - os: macos-15-intel
+            tag: darwin-x64
+            vulkan: false
+          # Pinned like upstream: the build machine's glibc sets the oldest
+          # distro the helper runs on.
+          - os: ubuntu-22.04
+            tag: linux-x64
+            vulkan: true
+          - os: windows-latest
+            tag: win32-x64
+            vulkan: true
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Ninja (Linux)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build build-essential
+
+      - name: Install Ninja (macOS)
+        if: startsWith(matrix.os, 'macos')
+        run: brew install ninja
+
+      - name: Install Vulkan SDK
+        if: matrix.vulkan
+        uses: jakoch/install-vulkan-sdk-action@7fe84289ddbf750f7eff9f8e4588e600e1dd06c8 # v1.8.1
+        with:
+          vulkan_version: 1.4.304.1
+          install_runtime: false
+          cache: true
+
+      - name: Put glslc on PATH
+        if: matrix.vulkan
+        shell: bash
+        run: |
+          set -euo pipefail
+          for cand in "${VULKAN_SDK}/Bin" "${VULKAN_SDK}/bin"; do
+            if [[ -d "${cand}" ]]; then
+              echo "${cand}" >> "$GITHUB_PATH"
+            fi
+          done
+
+      # ggml-vulkan needs SPIRV-Headers' CMake config, which the Windows
+      # LunarG installer doesn't ship; vcpkg on the image provides it.
+      - name: Install SPIRV-Headers (Windows only)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VCPKG_ROOT_DIR="$(dirname "$(command -v vcpkg)")"
+          "${VCPKG_ROOT_DIR}/vcpkg" install spirv-headers:x64-windows
+          echo "CMAKE_PREFIX_PATH=${VCPKG_ROOT_DIR}/installed/x64-windows" >> "$GITHUB_ENV"
+
+      - name: Read the runner image
+        id: image
+        shell: bash
+        run: echo "tag=${ImageOS:-unknown}-${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+
+      # Keyed on the runner image too: CMake bakes absolute toolchain paths into
+      # the cached tree, which break when GitHub rolls the image.
+      - name: Cache whisper.cpp build tree
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.os == 'Windows' && 'C:/wstbuild' || '.cache/whisper-stt-build' }}
+          key: whisper-stt-build-${{ matrix.tag }}-${{ steps.image.outputs.tag }}-${{ hashFiles('electron/native/whisper-stt/CMakeLists.txt') }}
+          restore-keys: |
+            whisper-stt-build-${{ matrix.tag }}-${{ steps.image.outputs.tag }}-
+
+      - name: Run whisper-stt build script
+        shell: bash
+        run: bash scripts/build-whisper-stt.sh
+
+      # cp -a keeps the Linux/macOS symlink farm as links (a third of the size);
+      # .github/studio/stage-whisper-from-artifact.sh expands it again.
+      - name: Stage binaries for upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          BAG="whisper-stt-${{ matrix.tag }}"
+          mkdir -p "$BAG"
+          cp -av "electron/native/bin/${{ matrix.tag }}/." "$BAG/"
+          tar -czf "${BAG}.tar.gz" "$BAG"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: whisper-stt-${{ matrix.tag }}
+          path: whisper-stt-${{ matrix.tag }}.tar.gz
+          if-no-files-found: error
+          retention-days: 3
 
   guard:
     name: Guard upstream build chains
