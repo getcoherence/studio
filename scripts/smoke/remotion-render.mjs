@@ -259,7 +259,7 @@ async function main() {
 
 	const { renderMedia, selectComposition } = await import("@remotion/renderer");
 
-	// 2. Bundle exactly like production (scripts/bundle-remotion.mjs), unless reusing one.
+	// 2. Bundle exactly like production (scripts/lib/bundleRemotion.mjs), unless reusing one.
 	let serveUrl;
 	let tempBundleDir = null;
 	let bundleMs = 0;
@@ -267,7 +267,7 @@ async function main() {
 		serveUrl = path.resolve(opts.bundle);
 		console.log(`[smoke] Using existing bundle: ${serveUrl}`);
 	} else {
-		const { bundleRemotion } = await import("../bundle-remotion.mjs");
+		const { bundleRemotion } = await import("../lib/bundleRemotion.mjs");
 		const t = Date.now();
 		tempBundleDir = fs.mkdtempSync(path.join(os.tmpdir(), "studio-remotion-bundle-"));
 		serveUrl = await bundleRemotion({ outDir: tempBundleDir });

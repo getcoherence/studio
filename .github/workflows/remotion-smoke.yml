@@ -15,6 +15,7 @@ on:
     paths:
       - "scripts/smoke/remotion-render.mjs"
       - "scripts/bundle-remotion.mjs"
+      - "scripts/lib/bundleRemotion.mjs"
       - "src/lib/remotion/**"
       - "package.json"
       - "package-lock.json"
