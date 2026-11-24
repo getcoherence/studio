@@ -1,0 +1,96 @@
+name: Remotion SSR smoke
+
+# Phase 0 of docs/V3-REPLATFORM-PLAN.md: render ~1 s of Create's DynamicVideo
+# composition with Remotion SSR (scripts/smoke/remotion-render.mjs) on every
+# desktop target, including the Windows-on-Arm spike: Remotion 4.0.448 ships
+# no win32-arm64 compositor, so that leg force-installs the x64 one and runs
+# it under emulation.
+#
+# workflow_dispatch only works once this file is on the default branch, so
+# pushes to phase0/** branches that touch the render path also run it.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["phase0/**"]
+    paths:
+      - "scripts/smoke/remotion-render.mjs"
+      - "scripts/bundle-remotion.mjs"
+      - "src/lib/remotion/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/remotion-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # windows-latest is the x64 control for the windows-11-arm spike.
+        os: [windows-latest, windows-11-arm, macos-latest, ubuntu-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Report runtime platform
+        run: |
+          echo "process.arch=$(node -p process.arch)"
+          echo "process.platform=$(node -p process.platform)"
+          echo "os.arch()=$(node -p "require('os').arch()")"
+          echo "RUNNER_ARCH=${RUNNER_ARCH}"
+
+      - run: npm ci
+
+      # npm skips @remotion/compositor-win32-x64-msvc on arm64 (its package.json
+      # says cpu: x64). `npm install --force` would lift the platform check for
+      # every optional dependency in the tree, so fetch just this one package at
+      # the exact renderer version and unpack it into node_modules instead.
+      - name: Force-install the x64 Remotion compositor
+        if: matrix.os == 'windows-11-arm'
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').dependencies['@remotion/renderer']")"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::@remotion/renderer must be pinned to an exact version in package.json (got '$version')"
+            exit 1
+          fi
+          mkdir -p .smoke-pkg
+          npm pack "@remotion/compositor-win32-x64-msvc@${version}" --pack-destination .smoke-pkg
+          dest=node_modules/@remotion/compositor-win32-x64-msvc
+          rm -rf "$dest"
+          mkdir -p "$dest"
+          tar -xzf .smoke-pkg/remotion-compositor-win32-x64-msvc-"${version}".tgz -C "$dest" --strip-components=1
+          ls -la "$dest"
+          # Mirror remotionExport.ts: point Remotion at an explicit binariesDirectory.
+          echo "SMOKE_REMOTION_BINARIES_DIR=$(cygpath -w "$PWD/$dest")" >> "$GITHUB_ENV"
+
+      - name: Remotion SSR smoke render
+        env:
+          # Remotion's browser downloader refuses win32-arm64 ("Chrome Headless
+          # Shell is not available for Windows for arm64"). On the arm leg the
+          # smoke script fetches the same win64 Chrome Headless Shell Remotion
+          # uses on the x64 control, so both compositor and browser are the x64
+          # builds running under emulation; only Node is native arm64.
+          SMOKE_REMOTION_X64_HEADLESS_SHELL: ${{ matrix.os == 'windows-11-arm' && '1' || '' }}
+        run: npm run smoke:remotion -- --out-dir smoke-output
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: remotion-smoke-${{ matrix.os }}
+          path: smoke-output/
+          if-no-files-found: warn
+          retention-days: 14
