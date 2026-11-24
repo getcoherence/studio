@@ -1,0 +1,35 @@
+{
+	"version": 2,
+	"media": {
+		"screenVideoPath": "C:/Users/fixture/Videos/Coherence Studio/recording-1730000000000.webm",
+		"webcamVideoPath": "C:/Users/fixture/Videos/Coherence Studio/recording-1730000000000-webcam.webm"
+	},
+	"editor": {
+		"wallpaper": "/wallpapers/wallpaper3.jpg",
+		"shadowIntensity": 0.4,
+		"showBlur": false,
+		"motionBlurAmount": 0.2,
+		"borderRadius": 12,
+		"padding": 40,
+		"cropRegion": { "x": 0, "y": 0, "width": 1, "height": 1 },
+		"zoomRegions": [
+			{ "id": "zoom-1", "startMs": 1000, "endMs": 2500, "depth": 2, "focus": { "cx": 0.3, "cy": 0.4 } }
+		],
+		"trimRegions": [{ "id": "trim-1", "startMs": 0, "endMs": 400 }],
+		"speedRegions": [{ "id": "speed-1", "startMs": 3000, "endMs": 4000, "speed": 1.5 }],
+		"annotationRegions": [],
+		"aspectRatio": "16:9",
+		"webcamLayoutPreset": "picture-in-picture",
+		"webcamPosition": { "cx": 0.9, "cy": 0.85 },
+		"exportQuality": "good",
+		"exportFormat": "mp4",
+		"gifFrameRate": 15,
+		"gifLoop": true,
+		"gifSizePreset": "medium",
+		"cursorSmoothing": 0.5,
+		"cursorSway": 0.3,
+		"cursorStyle": "default",
+		"showClickRings": true,
+		"showCursor": true
+	}
+}

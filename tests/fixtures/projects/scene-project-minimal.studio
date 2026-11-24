@@ -1,0 +1,37 @@
+{
+	"id": "fixture-scene-minimal",
+	"name": "Minimal scene project",
+	"scenes": [
+		{
+			"id": "scene-1",
+			"durationMs": 3000,
+			"background": "#0f172a",
+			"animatedBgSpeed": 1,
+			"transition": { "type": "fade", "durationMs": 500 },
+			"layers": [
+				{
+					"id": "layer-1",
+					"type": "text",
+					"startMs": 0,
+					"endMs": 3000,
+					"position": { "x": 10, "y": 40 },
+					"size": { "width": 80, "height": 20 },
+					"zIndex": 1,
+					"entrance": { "type": "fade", "durationMs": 500, "easing": "ease-out", "delay": 0 },
+					"exit": { "type": "none", "durationMs": 0, "easing": "linear", "delay": 0 },
+					"content": {
+						"text": "Hello",
+						"fontSize": 64,
+						"fontFamily": "Inter, system-ui, sans-serif",
+						"fontWeight": "700",
+						"color": "#ffffff",
+						"textAlign": "center",
+						"lineHeight": 1.2
+					}
+				}
+			]
+		}
+	],
+	"resolution": { "width": 1920, "height": 1080 },
+	"fps": 30
+}

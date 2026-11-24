@@ -1,0 +1,22 @@
+{
+	"version": 1,
+	"videoPath": "C:\\Users\\fixture\\Videos\\Lucid\\recording-1720000000000.webm",
+	"editor": {
+		"wallpaper": "/wallpapers/wallpaper1.jpg",
+		"shadowIntensity": 0,
+		"showBlur": false,
+		"motionBlurEnabled": true,
+		"borderRadius": 0,
+		"padding": 50,
+		"cropRegion": { "x": 0, "y": 0, "width": 1, "height": 1 },
+		"zoomRegions": [],
+		"trimRegions": [],
+		"annotationRegions": [],
+		"aspectRatio": "16:9",
+		"exportQuality": "good",
+		"exportFormat": "mp4",
+		"gifFrameRate": 15,
+		"gifLoop": true,
+		"gifSizePreset": "medium"
+	}
+}

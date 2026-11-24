@@ -1,0 +1,39 @@
+{
+	"id": "fixture-ai-cinematic",
+	"name": "AI cinematic project",
+	"styleId": "ai-cinematic",
+	"scenes": [
+		{
+			"id": "scene-1",
+			"durationMs": 1500,
+			"background": "#000000",
+			"animatedBgSpeed": 1,
+			"transition": { "type": "none", "durationMs": 0 },
+			"layers": []
+		},
+		{
+			"id": "scene-2",
+			"durationMs": 1500,
+			"background": "#000000",
+			"animatedBgSpeed": 1,
+			"transition": { "type": "fade", "durationMs": 300 },
+			"layers": []
+		}
+	],
+	"resolution": { "width": 1920, "height": 1080 },
+	"fps": 30,
+	"metadata": {
+		"pipeline": "ai-cinematic"
+	},
+	"_aiCode": "const CustomScene_0 = ({ screenshots }) => {\n  const frame = useCurrentFrame();\n  const { fps } = useVideoConfig();\n  const s = spring({ frame, fps, config: { damping: 200 } });\n  const opacity = interpolate(frame, [0, 15], [0, 1], { extrapolateRight: \"clamp\" });\n  return (\n    <AbsoluteFill style={{ backgroundColor: \"#0a0a0a\", justifyContent: \"center\", alignItems: \"center\" }}>\n      <div style={{ color: \"#fff\", fontSize: 120, fontWeight: 800, opacity, transform: `scale(${0.8 + 0.2 * s})` }}>Finally.</div>\n    </AbsoluteFill>\n  );\n};\n\nconst CustomScene_1 = ({ screenshots }) => {\n  const frame = useCurrentFrame();\n  const y = interpolate(frame, [0, 20], [40, 0], { extrapolateRight: \"clamp\", easing: Easing.out(Easing.cubic) });\n  return (\n    <AbsoluteFill style={{ background: \"linear-gradient(135deg, #2563eb, #7c3aed)\", justifyContent: \"center\", alignItems: \"center\" }}>\n      <div style={{ color: \"#fff\", fontSize: 72, transform: `translateY(${y}px)` }}>Ship it</div>\n    </AbsoluteFill>\n  );\n};\n\nfunction VideoComposition({ screenshots }) {\n  return (\n    <TransitionSeries>\n    <TransitionSeries.Sequence durationInFrames={45}>\n        <CustomScene_0 screenshots={screenshots} />\n      </TransitionSeries.Sequence>\n    <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 9 })} />\n    <TransitionSeries.Sequence durationInFrames={45}>\n        <CustomScene_1 screenshots={screenshots} />\n      </TransitionSeries.Sequence>\n    </TransitionSeries>\n  );\n}\n",
+	"_aiPlan": {
+		"title": "Fixture plan",
+		"scenes": [
+			{ "type": "impact-word", "headline": "Finally.", "durationFrames": 45 },
+			{ "type": "hero-text", "headline": "Ship it", "durationFrames": 45 }
+		]
+	},
+	"_aiScreenshots": [],
+	"_aiSteps": [],
+	"_aiBrand": { "primaryColor": "#2563eb" }
+}
