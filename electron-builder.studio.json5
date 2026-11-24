@@ -1,0 +1,34 @@
+// STUDIO: Coherence Studio's packaging overlay on top of upstream's
+// electron-builder.json5 (pulled in through `extends`, deep-merged).
+//
+// Keep upstream's file untouched and put every Studio difference here, so an
+// upstream sync never conflicts on packaging config. CI passes it explicitly:
+//   npx electron-builder --config electron-builder.studio.json5 ...
+//
+// Phase 0 (docs/V3-REPLATFORM-PLAN.md §6): sign the UNMODIFIED upstream build.
+// Identity, protocols, file associations, publish feed and extraResources for
+// the Remotion bundle arrive in phases 1–3.
+{
+	extends: "electron-builder.json5",
+
+	// Upstream's build:* scripts pass --config.npmRebuild=false; this overlay is
+	// used instead of those scripts' final electron-builder call.
+	npmRebuild: false,
+
+	win: {
+		// Azure Trusted Signing through Studio's custom hook. Upstream ships
+		// unsigned Windows builds (technical-documentation/engineering/
+		// build-and-packaging.md).
+		signtoolOptions: {
+			sign: "./signing/sign.cjs",
+			// The hook always signs SHA-256; the default ["sha1","sha256"] would
+			// call it twice per file.
+			signingHashAlgorithms: ["sha256"],
+		},
+		// Beyond the default .exe files: the compositor addon (.node) and every
+		// DLL that ships (Electron's, the LGPL ffmpeg build, ggml backends).
+		// signing/sign.cjs skips files that already carry a valid signature
+		// (e.g. Microsoft's vcomp140.dll, ONNX Runtime) instead of replacing it.
+		signExts: [".node", ".dll"],
+	},
+}

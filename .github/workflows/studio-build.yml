@@ -1,0 +1,468 @@
+# STUDIO: Coherence Studio's build of the re-platformed app (upstream OpenScreen
+# v3 + the Studio layer), signed with Studio's certificates.
+#
+# Phase 0 of docs/V3-REPLATFORM-PLAN.md: build the UNMODIFIED upstream app for
+# every Studio target (D7) and sign it, to prove the native toolchain works in
+# Studio's CI before any Studio code moves:
+#   Windows x64 + arm64   NSIS, Azure Trusted Signing on every .exe/.node/.dll
+#   macOS arm64 + x64     DMG, Developer ID + notarization (App Store Connect key)
+#   Linux x64             AppImage
+#
+# Mirrors the build jobs of upstream's .github/workflows/build.yml (left
+# untouched, along with every other upstream workflow) minus publishing. When
+# syncing upstream, diff its build.yml and port what changed. The "Guard"
+# step fails loudly if upstream changes the build:* script chains replicated
+# here.
+#
+# Artifacts are signed test builds of an app still branded "Openscreen", in a
+# public repo, so they are kept for 3 days only.
+
+name: Studio build
+
+on:
+  push:
+    branches:
+      - "replatform/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: studio-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Upstream's own helper workflow, called in-run so its artifacts are part of
+  # this run (see the STUDIO note on its `workflow_call` trigger).
+  whisper:
+    name: whisper-stt
+    uses: ./.github/workflows/build-whisper-stt.yml
+
+  guard:
+    name: Guard upstream build chains
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # The jobs below replay upstream's build:* npm scripts step by step so
+      # they can hand electron-builder Studio's overlay config. If upstream
+      # changes a chain, these copies go stale silently — so fail here instead.
+      - name: Check the build:* scripts still match what this workflow replays
+        run: |
+          node -e '
+            const s = require("./package.json").scripts;
+            const expected = {
+              "build:win": "npm run build:native:win && npm run fetch:ffmpeg && npm run fetch:onnxruntime && npm run stage:vcomp && npm run build:native:compositor && tsc && vite build && npm run licenses:generate && electron-builder --win --config.npmRebuild=false",
+              "build:win:arm64": "npm run build:native:win:arm64 && npm run fetch:ffmpeg && npm run fetch:onnxruntime && npm run stage:vcomp && npm run build:native:compositor && tsc && vite build && npm run licenses:generate && electron-builder --win --arm64 --config.npmRebuild=false",
+              "build:linux": "npm run fetch:ffmpeg:sdk && npm run build:native:linux && npm run fetch:onnxruntime && npm run build:native:compositor:linux && tsc && vite build && npm run licenses:generate && electron-builder --linux AppImage deb pacman rpm --config.npmRebuild=false",
+              "build:mac": "npm run build:native:mac && npm run fetch:ffmpeg:mac && npm run fetch:onnxruntime && npm run build:native:compositor:mac && tsc && vite build && npm run licenses:generate && electron-builder --mac",
+            };
+            let drift = 0;
+            for (const [name, want] of Object.entries(expected)) {
+              if (s[name] !== want) {
+                drift++;
+                console.log(`::error::package.json "${name}" changed upstream — update studio-build.yml to match.\n  expected: ${want}\n  actual:   ${s[name]}`);
+              }
+            }
+            process.exit(drift ? 1 : 0);
+          '
+
+  windows:
+    name: Windows ${{ matrix.arch }}
+    needs: [whisper, guard]
+    # Native per arch, like upstream: every fetch/build script keys off the host.
+    runs-on: ${{ matrix.arch == 'arm64' && 'windows-11-arm' || 'windows-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Ensure MSVC ARM64 build tools
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+          $installPath = & $vswhere -latest -products * -property installationPath
+          $hasArm64 = & $vswhere -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.ARM64 `
+            -property installationPath
+          if (-not $hasArm64) {
+            Write-Host "Installing MSVC ARM64 build tools component..."
+            $installer = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe"
+            & $installer modify --installPath "$installPath" `
+              --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 `
+              --quiet --norestart --wait
+          } else {
+            Write-Host "MSVC ARM64 build tools already present."
+          }
+
+      - name: Check the runner architecture
+        shell: bash
+        run: |
+          HOST="$(node -p process.arch)"
+          [ "$HOST" = "${{ matrix.arch }}" ] \
+            || { echo "::error::the ${{ matrix.arch }} installer must build on a ${{ matrix.arch }} runner, got $HOST"; exit 1; }
+
+      # win32-x64 for both arches, as upstream does: there is no arm64 helper
+      # yet and the x64 one runs under emulation on Windows on Arm.
+      - name: Download whisper-stt (win32-x64)
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: whisper-stt-win32-x64
+          path: ${{ runner.temp }}/whisper
+
+      - name: Stage whisper-stt
+        shell: bash
+        run: bash .github/studio/stage-whisper-from-artifact.sh win32-x64 "$RUNNER_TEMP/whisper"
+
+      - name: Build native parts and the app
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            npm run build:native:win:arm64
+          else
+            npm run build:native:win
+          fi
+          npm run fetch:ffmpeg
+          npm run fetch:onnxruntime
+          npm run stage:vcomp
+          npm run build:native:compositor
+          npx tsc
+          npx vite build
+          npm run licenses:generate
+
+      # Fetched from nuget.org directly rather than with nuget.exe, which the
+      # windows-11-arm image does not reliably carry.
+      - name: Install Trusted Signing dlib
+        shell: pwsh
+        run: |
+          $version = "1.0.95"
+          $pkg = "$env:RUNNER_TEMP\trusted-signing.zip"
+          Invoke-WebRequest "https://www.nuget.org/api/v2/package/Microsoft.Trusted.Signing.Client/$version" -OutFile $pkg
+          Expand-Archive $pkg -DestinationPath "$env:RUNNER_TEMP\trusted-signing" -Force
+          $dlib = "$env:RUNNER_TEMP\trusted-signing\bin\x64\Azure.CodeSigning.Dlib.dll"
+          if (-not (Test-Path $dlib)) { throw "Azure.CodeSigning.Dlib.dll not found in the package" }
+          "TRUSTED_SIGNING_DLIB_PATH=$dlib" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Package and sign
+        shell: bash
+        run: npx electron-builder --win --${{ matrix.arch }} --config electron-builder.studio.json5 --publish never
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      # The phase 0 exit criterion: every executable and native module we ship
+      # carries a valid signature. DLLs are reported, and must be valid too.
+      - name: Verify Authenticode signatures
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem release -Recurse -Filter "*.Setup.*-${{ matrix.arch }}.exe" | Select-Object -First 1
+          if (-not $installer) { throw "no ${{ matrix.arch }} installer under release/" }
+          $unpacked = Get-ChildItem release -Recurse -Directory | Where-Object { $_.Name -like "win*unpacked" } | Select-Object -First 1
+          if (-not $unpacked) { throw "no win*-unpacked directory under release/" }
+          $files = @($installer) + @(Get-ChildItem $unpacked.FullName -Recurse -File -Include *.exe, *.node, *.dll)
+          $bad = @()
+          foreach ($f in $files) {
+            $sig = Get-AuthenticodeSignature $f.FullName
+            $who = if ($sig.SignerCertificate) { $sig.SignerCertificate.GetNameInfo('SimpleName', $false) } else { "-" }
+            "{0,-14} {1,-40} {2}" -f $sig.Status, $who, $f.FullName.Substring((Get-Location).Path.Length + 1)
+            if ($sig.Status -ne 'Valid') { $bad += $f.FullName }
+          }
+          if ($bad.Count -gt 0) {
+            Write-Host "::error::$($bad.Count) shipped binaries are not validly signed"
+            exit 1
+          }
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: studio-phase0-windows-${{ matrix.arch }}
+          path: release/**/*.Setup.*.exe
+          if-no-files-found: error
+          retention-days: 3
+
+  macos:
+    name: macOS ${{ matrix.arch }}
+    needs: [whisper, guard]
+    # Native per arch, like upstream (fetch-ffmpeg-macos and the compositor
+    # build target the host arch).
+    runs-on: ${{ matrix.arch == 'x64' && 'macos-15-intel' || 'macos-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x64]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+
+      - name: Ensure sharp prebuilt
+        run: npm rebuild sharp
+        env:
+          npm_config_build_from_source: "false"
+
+      - name: Download whisper-stt (darwin-${{ matrix.arch }})
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: whisper-stt-darwin-${{ matrix.arch }}
+          path: ${{ runner.temp }}/whisper
+
+      - name: Stage whisper-stt
+        run: bash .github/studio/stage-whisper-from-artifact.sh darwin-${{ matrix.arch }} "$RUNNER_TEMP/whisper"
+
+      # Studio's Developer ID certificate, from the same secrets the 0.3.x
+      # release uses. Upstream's job expects a MAC_CSC_NAME secret; we read the
+      # identity name off the imported certificate instead.
+      - name: Import Developer ID certificate
+        id: signing
+        env:
+          MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          printf '%s' "$MAC_CERT_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$KEYCHAIN_PATH" -P "$MAC_CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$RUNNER_TEMP/certificate.p12"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+          # electron-builder wants the identity WITHOUT its "Developer ID Application:" prefix.
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
+            | sed -n 's/.*"Developer ID Application: \(.*\)"$/\1/p' | head -n1)"
+          [ -n "$IDENTITY" ] || { echo "::error::no Developer ID Application identity in MAC_CERT_P12"; exit 1; }
+          echo "Signing as: $IDENTITY"
+          echo "csc_name=$IDENTITY" >> "$GITHUB_OUTPUT"
+
+      - name: Build Vite + Electron
+        run: npx tsc && npx vite build
+
+      - name: Build native macOS helpers
+        run: npm run build:native:mac
+        env:
+          OPENSCREEN_MAC_HELPER_ARCHS: ${{ matrix.arch }}
+
+      - name: Cache LGPL ffmpeg tree
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: crates/thirdparty
+          key: ffmpeg-macos-${{ matrix.arch }}-${{ hashFiles('scripts/fetch-ffmpeg-macos.mjs') }}
+
+      - name: Vendor LGPL ffmpeg
+        run: npm run fetch:ffmpeg:mac
+
+      - name: Cache cargo + compositor build tree
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            crates/target
+          key: cargo-macos-${{ matrix.arch }}-${{ hashFiles('crates/Cargo.lock') }}
+          restore-keys: |
+            cargo-macos-${{ matrix.arch }}-
+
+      - name: Install Rust toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --target ${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}-apple-darwin
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Build Metal compositor addon
+        run: npm run build:native:compositor:mac
+
+      - name: Stage ONNX Runtime
+        run: npm run fetch:onnxruntime
+
+      - name: Generate third-party licences
+        run: npm run licenses:generate
+
+      - name: Package and sign .app
+        run: npx electron-builder --mac --${{ matrix.arch }} --dir --config electron-builder.studio.json5 --publish never
+        env:
+          CSC_NAME: ${{ steps.signing.outputs.csc_name }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "true"
+
+      # electron-builder builds BOTH arch bundles (mac.target lists both), so
+      # pick this job's by directory, then prove it with lipo.
+      - name: Find and check the .app
+        id: app
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p 'require("./package.json").version')"
+          if [ "${{ matrix.arch }}" = "arm64" ]; then DIR="mac-arm64"; EXPECTED="arm64"; else DIR="mac"; EXPECTED="x86_64"; fi
+          APP="$(find "release/${VERSION}/${DIR}" -maxdepth 2 -name '*.app' -type d | head -n1)"
+          [ -n "$APP" ] || { echo "::error::no .app in release/${VERSION}/${DIR}"; exit 1; }
+          BIN="$APP/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Contents/Info.plist")"
+          ACTUAL="$(lipo -archs "$BIN")"
+          echo "expected=$EXPECTED actual=$ACTUAL"
+          [[ " $ACTUAL " == *" $EXPECTED "* ]] || { echo "::error::wrong architecture in $APP"; exit 1; }
+          echo "path=$APP" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Verify .app code signature
+        run: |
+          set -euo pipefail
+          APP="${{ steps.app.outputs.path }}"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          EXPECTED="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")"
+          ACTUAL="$(codesign -dv --verbose=2 "$APP" 2>&1 | sed -n 's/^Identifier=//p')"
+          AUTHORITY="$(codesign -dv --verbose=2 "$APP" 2>&1 | sed -n 's/^Authority=//p' | head -n1)"
+          echo "identifier=$ACTUAL expected=$EXPECTED authority=$AUTHORITY"
+          [ "$ACTUAL" = "$EXPECTED" ] || { echo "::error::.app signed as '$ACTUAL', not '$EXPECTED'"; exit 1; }
+          case "$AUTHORITY" in "Developer ID Application:"*) ;; *) echo "::error::.app is not Developer ID signed"; exit 1 ;; esac
+
+      - name: Create DMG
+        id: dmg
+        run: |
+          set -euo pipefail
+          RELEASE_DIR="release/${{ steps.app.outputs.version }}"
+          DMG="${RELEASE_DIR}/Studio-phase0-macOS-${{ matrix.arch }}-${{ steps.app.outputs.version }}.dmg"
+          STAGING="${RELEASE_DIR}/dmg-staging"
+          rm -rf "$STAGING" "$DMG"; mkdir -p "$STAGING"
+          cp -R "${{ steps.app.outputs.path }}" "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+          hdiutil create -srcfolder "$STAGING" -volname "Studio phase 0" -fs HFS+ \
+            -fsargs "-c c=64,a=16,e=16" -format UDBZ "$DMG"
+          rm -rf "$STAGING"
+          echo "path=$DMG" >> "$GITHUB_OUTPUT"
+
+      - name: Sign DMG
+        run: codesign --force --sign "$CSC_NAME" --timestamp "${{ steps.dmg.outputs.path }}"
+        env:
+          CSC_NAME: ${{ steps.signing.outputs.csc_name }}
+
+      # App Store Connect API key, as Studio 0.3.x notarizes today (upstream
+      # uses an Apple ID + app-specific password instead).
+      - name: Notarize DMG
+        timeout-minutes: 20
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          set -euo pipefail
+          KEY="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s' "$APPLE_API_KEY" > "$KEY"; chmod 600 "$KEY"
+          xcrun notarytool submit "${{ steps.dmg.outputs.path }}" \
+            --key "$KEY" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" --wait
+          rm -f "$KEY"
+
+      - name: Staple and validate
+        timeout-minutes: 10
+        run: |
+          DMG="${{ steps.dmg.outputs.path }}"
+          for attempt in 1 2 3 4 5; do
+            xcrun stapler staple "$DMG" && break
+            [ "$attempt" -eq 5 ] && exit 1
+            echo "Staple attempt $attempt failed, retrying in 30 s"; sleep 30
+          done
+          xcrun stapler validate "$DMG"
+          spctl -a -vv -t install "$DMG"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: studio-phase0-macos-${{ matrix.arch }}
+          path: ${{ steps.dmg.outputs.path }}
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Cleanup keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/build.keychain-db" || true
+
+  linux:
+    name: Linux AppImage
+    needs: [whisper, guard]
+    # Pinned like upstream: the build machine's glibc sets the oldest distro the
+    # binaries run on, and before-pack.cjs enforces the 22.04 ceiling.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install packaging dependencies
+        run: sudo apt-get update && sudo apt-get install -y zsync
+
+      # 22.04's apt patchelf (0.14.3) lacks --rename-dynamic-symbols, which the
+      # compositor build needs; same pinned binary and checksum as upstream.
+      - name: Install patchelf 0.18.0
+        run: |
+          curl -fsSLo /tmp/patchelf.tar.gz \
+            https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz
+          echo "ce84f2447fb7a8679e58bc54a20dc2b01b37b5802e12c57eece772a6f14bf3f0  /tmp/patchelf.tar.gz" | sha256sum -c -
+          mkdir -p ~/.local/bin
+          tar -xzf /tmp/patchelf.tar.gz -C /tmp ./bin/patchelf
+          mv /tmp/bin/patchelf ~/.local/bin/patchelf
+          ~/.local/bin/patchelf --version
+
+      - name: Download whisper-stt (linux-x64)
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: whisper-stt-linux-x64
+          path: ${{ runner.temp }}/whisper
+
+      - name: Stage whisper-stt
+        run: bash .github/studio/stage-whisper-from-artifact.sh linux-x64 "$RUNNER_TEMP/whisper"
+
+      - name: Build native parts and the app
+        run: |
+          set -euxo pipefail
+          npm run fetch:ffmpeg:sdk
+          npm run build:native:linux
+          npm run fetch:onnxruntime
+          npm run build:native:compositor:linux
+          npx tsc
+          npx vite build
+          npm run licenses:generate
+
+      # AppImage only (D7); upstream also builds deb, pacman and rpm.
+      - name: Package AppImage
+        run: npx electron-builder --linux AppImage --config electron-builder.studio.json5 --publish never
+
+      - name: Check the AppImage
+        run: |
+          set -euo pipefail
+          IMAGE="$(find release -type f -name '*.AppImage' | head -n1)"
+          [ -n "$IMAGE" ] || { echo "::error::no AppImage under release/"; exit 1; }
+          ls -la "$IMAGE"
+          "$IMAGE" --appimage-extract > /dev/null
+          find squashfs-root -name 'compositor_view.node' | grep -q . \
+            || { echo "::error::compositor addon missing from the AppImage"; exit 1; }
+          find squashfs-root -name 'whisper-stt-server*' | grep -q . \
+            || { echo "::error::whisper-stt-server missing from the AppImage"; exit 1; }
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: studio-phase0-linux-x64
+          path: release/**/*.AppImage
+          if-no-files-found: error
+          retention-days: 3

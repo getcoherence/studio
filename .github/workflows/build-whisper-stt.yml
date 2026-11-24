@@ -14,6 +14,11 @@ name: Build whisper-stt binaries
 # NVIDIA cards, so there is no separate CUDA build.
 
 on:
+  # STUDIO: lets .github/workflows/studio-build.yml build the helper inside its
+  # own run (workflow_dispatch only works for workflows on the default branch,
+  # and the cross-run lookup in scripts/stage-whisper-stt.sh would race the
+  # push-triggered run of this file).
+  workflow_call:
   workflow_dispatch:
   push:
     # ALL branches, NO tags. `paths:` alone also matches a tag push, and it has:
