@@ -67,6 +67,7 @@ import {
 	toFileUrl,
 	validateProjectData,
 } from "./projectPersistence";
+import { routeLoadedProject } from "./projectRouting";
 import { SettingsPanel } from "./SettingsPanel";
 import TimelineEditor from "./timeline/TimelineEditor";
 import {
@@ -635,7 +636,7 @@ export default function VideoEditor() {
 
 		// Check if this is a SceneProject (has scenes array) — open in Scene Editor
 		const candidate = result.project as any;
-		if (candidate?.scenes && Array.isArray(candidate.scenes) && candidate.resolution) {
+		if (routeLoadedProject(candidate, "strict") === "scene-editor") {
 			sceneEditorInitialRef.current = candidate;
 			setSceneEditorKey((k) => k + 1);
 			setShowSceneEditor(true);
@@ -2040,7 +2041,8 @@ export default function VideoEditor() {
 					onOpenChange={setShowProjectBrowser}
 					onProjectOpened={(project, path) => {
 						setError(null);
-						if (project && typeof project === "object" && "scenes" in project) {
+						const route = routeLoadedProject(project, "loose");
+						if (route === "scene-editor") {
 							// Stamp the actual file path so auto-save uses the opened location,
 							// not a stale _projectPath from inside a copied file
 							if (path) (project as any)._projectPath = path;
@@ -2048,7 +2050,7 @@ export default function VideoEditor() {
 							sceneEditorInitialRef.current = project;
 							setSceneEditorKey((k) => k + 1);
 							setShowSceneEditor(true);
-						} else if (project) {
+						} else if (route === "recording-editor") {
 							applyLoadedProject(project, path);
 						} else {
 							setReloadTrigger((prev) => prev + 1);
@@ -2632,12 +2634,13 @@ export default function VideoEditor() {
 				onOpenChange={setShowProjectBrowser}
 				onProjectOpened={(project, path) => {
 					setError(null);
-					if (project && typeof project === "object" && "scenes" in project) {
+					const route = routeLoadedProject(project, "loose");
+					if (route === "scene-editor") {
 						if (path) (project as any)._projectPath = path;
 						sceneEditorInitialRef.current = project;
 						setSceneEditorKey((k) => k + 1);
 						setShowSceneEditor(true);
-					} else if (project) {
+					} else if (route === "recording-editor") {
 						applyLoadedProject(project, path);
 					} else {
 						setReloadTrigger((prev) => prev + 1);
